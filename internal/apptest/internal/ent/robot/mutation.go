@@ -21,6 +21,7 @@ type Mutation struct {
 	secret        *[]byte
 	date_attested *time.Time
 	keeper        *string
+	owner_id      *uuid.UUID
 	date_updated  *time.Time
 	date_created  *time.Time
 	date_erased   *time.Time
@@ -161,6 +162,42 @@ func (m *Mutation) Keeper() (r string, exists bool) {
 func (m *Mutation) ResetKeeper() {
 	m.keeper = nil
 	delete(m.exprs, FieldKeeper)
+}
+
+// SetOwnerId sets the "owner_id" field.
+func (m *Mutation) SetOwnerId(u uuid.UUID) {
+	m.owner_id = &u
+	delete(m.clearedFields, FieldOwnerId)
+	delete(m.exprs, FieldOwnerId)
+}
+
+// OwnerId returns the value of the "owner_id" field in the mutation.
+func (m *Mutation) OwnerId() (r uuid.UUID, exists bool) {
+	v := m.owner_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearOwnerId clears the value of the "owner_id" field.
+func (m *Mutation) ClearOwnerId() {
+	m.owner_id = nil
+	delete(m.exprs, FieldOwnerId)
+	m.clearedFields[FieldOwnerId] = struct{}{}
+}
+
+// OwnerIdCleared returns if the "owner_id" field was cleared in this mutation.
+func (m *Mutation) OwnerIdCleared() bool {
+	_, ok := m.clearedFields[FieldOwnerId]
+	return ok
+}
+
+// ResetOwnerId resets all changes to the "owner_id" field.
+func (m *Mutation) ResetOwnerId() {
+	m.owner_id = nil
+	delete(m.clearedFields, FieldOwnerId)
+	delete(m.exprs, FieldOwnerId)
 }
 
 // SetDateUpdated sets the "date_updated" field.
@@ -453,7 +490,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.alias != nil || m.exprs[FieldAlias] != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -465,6 +502,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.keeper != nil || m.exprs[FieldKeeper] != nil {
 		fields = append(fields, FieldKeeper)
+	}
+	if m.owner_id != nil || m.exprs[FieldOwnerId] != nil {
+		fields = append(fields, FieldOwnerId)
 	}
 	if m.date_updated != nil || m.exprs[FieldDateUpdated] != nil {
 		fields = append(fields, FieldDateUpdated)
@@ -506,6 +546,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateAttested()
 	case FieldKeeper:
 		return m.Keeper()
+	case FieldOwnerId:
+		return m.OwnerId()
 	case FieldDateUpdated:
 		return m.DateUpdated()
 	case FieldDateCreated:
@@ -576,6 +618,16 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeeper(v)
+		return nil
+	case FieldOwnerId:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerId(v)
 		return nil
 	case FieldDateUpdated:
 		v, ok := value.(time.Time)
@@ -667,6 +719,8 @@ func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
 		m.ResetDateAttested()
 	case FieldKeeper:
 		m.ResetKeeper()
+	case FieldOwnerId:
+		m.ResetOwnerId()
 	case FieldDateUpdated:
 		m.ResetDateUpdated()
 	case FieldDateCreated:
@@ -712,6 +766,9 @@ func (m *Mutation) ExprFields() []string {
 	if _, ok := m.exprs[FieldKeeper]; ok {
 		fields = append(fields, FieldKeeper)
 	}
+	if _, ok := m.exprs[FieldOwnerId]; ok {
+		fields = append(fields, FieldOwnerId)
+	}
 	if _, ok := m.exprs[FieldDateUpdated]; ok {
 		fields = append(fields, FieldDateUpdated)
 	}
@@ -753,6 +810,9 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateAttested) {
 		fields = append(fields, FieldDateAttested)
 	}
+	if m.FieldCleared(FieldOwnerId) {
+		fields = append(fields, FieldOwnerId)
+	}
 	if m.FieldCleared(FieldDateCreated) {
 		fields = append(fields, FieldDateCreated)
 	}
@@ -785,6 +845,9 @@ func (m *Mutation) ClearField(name string) error {
 	case FieldDateAttested:
 		m.ClearDateAttested()
 		return nil
+	case FieldOwnerId:
+		m.ClearOwnerId()
+		return nil
 	case FieldDateCreated:
 		m.ClearDateCreated()
 		return nil
@@ -816,6 +879,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldKeeper:
 		m.ResetKeeper()
+		return nil
+	case FieldOwnerId:
+		m.ResetOwnerId()
 		return nil
 	case FieldDateUpdated:
 		m.ResetDateUpdated()

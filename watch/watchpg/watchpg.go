@@ -391,6 +391,7 @@ type wire struct {
 type change struct {
 	Method   string `json:"m,omitempty"`
 	Resource []byte `json:"r,omitempty"`
+	Signal   []byte `json:"s,omitempty"`
 	By       string `json:"b"`
 	Key      string `json:"k"`
 }
@@ -404,6 +405,11 @@ func decode(s string) (watch.Event, error) {
 	v := watch.Event{Method: w.Method, Changes: make([]watch.Change, 0, len(w.Changes))}
 	for _, c := range w.Changes {
 		k, err := pdid.Parse(c.Key)
+		// App-wide signals have no resource key. Resource mutations still
+		// require a valid identifier, even when they also carry a signal.
+		if c.Key == pdid.Nil.String() && len(c.Signal) > 0 && len(c.Resource) == 0 {
+			k, err = pdid.Nil, nil
+		}
 		if err != nil {
 			return watch.Event{}, fmt.Errorf("key %q: %w", c.Key, err)
 		}
@@ -416,7 +422,7 @@ func decode(s string) (watch.Event, error) {
 		if err != nil {
 			return watch.Event{}, err
 		}
-		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource})
+		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource, Signal: c.Signal})
 	}
 
 	for _, p := range []struct {

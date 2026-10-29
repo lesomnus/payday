@@ -764,6 +764,13 @@ func (st RobotServiceServer) create(ctx context.Context, req *apptest.RobotAddRe
 		q.SetDateAttested(req.GetDateAttested().AsTime())
 	}
 	q.SetKeeper(req.GetKeeper())
+	if req.HasOwnerId() {
+		if v, err := entuuid.FromBytes(req.GetOwnerId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "owner_id: %s", err)
+		} else {
+			q.SetOwnerId(v)
+		}
+	}
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
@@ -1033,6 +1040,9 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 	if m.GetKeeper() {
 		vs = append(vs, robot.FieldKeeper)
 	}
+	if m.GetOwnerId() {
+		vs = append(vs, robot.FieldOwnerId)
+	}
 	if m.GetDateUpdated() {
 		vs = append(vs, robot.FieldDateUpdated)
 	}
@@ -1139,7 +1149,7 @@ func RobotGetKey(ctx context.Context, db *ent.Client, ref *apptest.RobotRef) (uu
 var robotOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Robot")
 
 var robotPatchColumns = entpatch.Columns{
-	1: robot.FieldId, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 31: robot.FieldDateAttested, 32: robot.FieldKeeper, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
+	1: robot.FieldId, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 31: robot.FieldDateAttested, 32: robot.FieldKeeper, 33: robot.FieldOwnerId, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
 	if !req.HasPatch() {

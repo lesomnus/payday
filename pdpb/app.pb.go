@@ -51,7 +51,7 @@ const (
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second.
+// second, [App.notify] the third.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -60,6 +60,7 @@ type App struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Past    *Past                  `protobuf:"bytes,1,opt,name=past"`
 	xxx_hidden_Domains *Domains               `protobuf:"bytes,2,opt,name=domains"`
+	xxx_hidden_Notify  *Notify                `protobuf:"bytes,3,opt,name=notify"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -103,12 +104,23 @@ func (x *App) GetDomains() *Domains {
 	return nil
 }
 
+func (x *App) GetNotify() *Notify {
+	if x != nil {
+		return x.xxx_hidden_Notify
+	}
+	return nil
+}
+
 func (x *App) SetPast(v *Past) {
 	x.xxx_hidden_Past = v
 }
 
 func (x *App) SetDomains(v *Domains) {
 	x.xxx_hidden_Domains = v
+}
+
+func (x *App) SetNotify(v *Notify) {
+	x.xxx_hidden_Notify = v
 }
 
 func (x *App) HasPast() bool {
@@ -125,12 +137,23 @@ func (x *App) HasDomains() bool {
 	return x.xxx_hidden_Domains != nil
 }
 
+func (x *App) HasNotify() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Notify != nil
+}
+
 func (x *App) ClearPast() {
 	x.xxx_hidden_Past = nil
 }
 
 func (x *App) ClearDomains() {
 	x.xxx_hidden_Domains = nil
+}
+
+func (x *App) ClearNotify() {
+	x.xxx_hidden_Notify = nil
 }
 
 type App_builder struct {
@@ -160,6 +183,9 @@ type App_builder struct {
 	// at 5 and 6, which is every app whose own entities never held either; one
 	// that says one of them has the other where payday puts it.
 	Domains *Domains
+	// Notify opts this app into notifications and assigns its internal records
+	// domains of the app's own. Topic and reader policy remain the app's.
+	Notify *Notify
 }
 
 func (b0 App_builder) Build() *App {
@@ -168,6 +194,7 @@ func (b0 App_builder) Build() *App {
 	_, _ = b, x
 	x.xxx_hidden_Past = b.Past
 	x.xxx_hidden_Domains = b.Domains
+	x.xxx_hidden_Notify = b.Notify
 	return m0
 }
 
@@ -363,35 +390,131 @@ func (b0 Domains_builder) Build() *Domains {
 	return m0
 }
 
+// Notify numbers the two records copied into an app that enables notifications.
+// Each is a distinct domain in 7..247, held by no other entity or optional
+// feature. The records and public NotificationService live in the app's package.
+type Notify struct {
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Notification uint32                 `protobuf:"varint,1,opt,name=notification"`
+	xxx_hidden_Receipt      uint32                 `protobuf:"varint,2,opt,name=receipt"`
+	xxx_hidden_Global       bool                   `protobuf:"varint,3,opt,name=global"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *Notify) Reset() {
+	*x = Notify{}
+	mi := &file_payday_app_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Notify) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Notify) ProtoMessage() {}
+
+func (x *Notify) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Notify) GetNotification() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Notification
+	}
+	return 0
+}
+
+func (x *Notify) GetReceipt() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Receipt
+	}
+	return 0
+}
+
+func (x *Notify) GetGlobal() bool {
+	if x != nil {
+		return x.xxx_hidden_Global
+	}
+	return false
+}
+
+func (x *Notify) SetNotification(v uint32) {
+	x.xxx_hidden_Notification = v
+}
+
+func (x *Notify) SetReceipt(v uint32) {
+	x.xxx_hidden_Receipt = v
+}
+
+func (x *Notify) SetGlobal(v bool) {
+	x.xxx_hidden_Global = v
+}
+
+type Notify_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Notification uint32
+	Receipt      uint32
+	// One app-global namespace instead of tenant-scoped notification records.
+	Global bool
+}
+
+func (b0 Notify_builder) Build() *Notify {
+	m0 := &Notify{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Notification = b.Notification
+	x.xxx_hidden_Receipt = b.Receipt
+	x.xxx_hidden_Global = b.Global
+	return m0
+}
+
 var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\"R\n" +
+	"\x10payday/app.proto\x12\x06payday\"z\n" +
 	"\x03App\x12 \n" +
 	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
-	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\"0\n" +
+	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\x12&\n" +
+	"\x06notify\x18\x03 \x01(\v2\x0e.payday.NotifyR\x06notify\"0\n" +
 	"\x04Past\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
 	"\aDomains\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
-	"\x06access\x18\x02 \x01(\rR\x06accessB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x06access\x18\x02 \x01(\rR\x06access\"^\n" +
+	"\x06Notify\x12\"\n" +
+	"\fnotification\x18\x01 \x01(\rR\fnotification\x12\x18\n" +
+	"\areceipt\x18\x02 \x01(\rR\areceipt\x12\x16\n" +
+	"\x06global\x18\x03 \x01(\bR\x06globalB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_payday_app_proto_goTypes = []any{
 	(*App)(nil),     // 0: payday.App
 	(*Past)(nil),    // 1: payday.Past
 	(*Domains)(nil), // 2: payday.Domains
+	(*Notify)(nil),  // 3: payday.Notify
 }
 var file_payday_app_proto_depIdxs = []int32{
 	1, // 0: payday.App.past:type_name -> payday.Past
 	2, // 1: payday.App.domains:type_name -> payday.Domains
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: payday.App.notify:type_name -> payday.Notify
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -405,7 +528,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

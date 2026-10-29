@@ -10,6 +10,7 @@
 package pd
 
 import (
+	bytes "bytes"
 	context "context"
 	sql1 "database/sql"
 	json "encoding/json"
@@ -33,8 +34,11 @@ import (
 	entFact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	entFleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	entHolder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	entJob "github.com/lesomnus/payday/internal/apptest/internal/ent/job"
 	entJoint "github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	entMachine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
+	entNotificationReceiptRecord "github.com/lesomnus/payday/internal/apptest/internal/ent/notificationreceiptrecord"
+	entNotificationRecord "github.com/lesomnus/payday/internal/apptest/internal/ent/notificationrecord"
 	entOutbox "github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	entOwed "github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	entPairing "github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -49,6 +53,7 @@ import (
 	entTenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	entThing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
+	notify "github.com/lesomnus/payday/notify"
 	past "github.com/lesomnus/payday/past"
 	pderr "github.com/lesomnus/payday/pderr"
 	pdid "github.com/lesomnus/payday/pdid"
@@ -110,28 +115,31 @@ func Check() error { return version.Same(Payday) }
 // trail says what kind of thing it was long after the row is gone. So a
 // number is chosen once and never given to something else.
 const (
-	AccessDomain   pdid.Domain = 6   // "access"
-	ArchivedDomain pdid.Domain = 5   // "archived"
-	AuditDomain    pdid.Domain = 3   // "audit"
-	CellDomain     pdid.Domain = 10  // "cell"
-	EventDomain    pdid.Domain = 17  // "event"
-	FactDomain     pdid.Domain = 18  // "fact"
-	FleetDomain    pdid.Domain = 9   // "fleet"
-	HolderDomain   pdid.Domain = 2   // "holder"
-	JointDomain    pdid.Domain = 8   // "joint"
-	MachineDomain  pdid.Domain = 19  // "machine"
-	OutboxDomain   pdid.Domain = 4   // "outbox"
-	OwedDomain     pdid.Domain = 254 // "owed"
-	PairingDomain  pdid.Domain = 12  // "pairing"
-	PulseDomain    pdid.Domain = 16  // "pulse"
-	ReadingDomain  pdid.Domain = 11  // "reading"
-	RobotDomain    pdid.Domain = 7   // "robot"
-	RowSealDomain  pdid.Domain = 255 // "row-seal"
-	SealDomain     pdid.Domain = 14  // "seal"
-	StintDomain    pdid.Domain = 20  // "stint"
-	TallyDomain    pdid.Domain = 15  // "tally"
-	TenantDomain   pdid.Domain = 1   // "tenant"
-	ThingDomain    pdid.Domain = 13  // "thing"
+	AccessDomain                    pdid.Domain = 6   // "access"
+	ArchivedDomain                  pdid.Domain = 5   // "archived"
+	AuditDomain                     pdid.Domain = 3   // "audit"
+	CellDomain                      pdid.Domain = 10  // "cell"
+	EventDomain                     pdid.Domain = 17  // "event"
+	FactDomain                      pdid.Domain = 18  // "fact"
+	FleetDomain                     pdid.Domain = 9   // "fleet"
+	HolderDomain                    pdid.Domain = 2   // "holder"
+	JobDomain                       pdid.Domain = 42  // "job"
+	JointDomain                     pdid.Domain = 8   // "joint"
+	MachineDomain                   pdid.Domain = 19  // "machine"
+	NotificationReceiptRecordDomain pdid.Domain = 41  // "notification-receipt"
+	NotificationRecordDomain        pdid.Domain = 40  // "notification"
+	OutboxDomain                    pdid.Domain = 4   // "outbox"
+	OwedDomain                      pdid.Domain = 254 // "owed"
+	PairingDomain                   pdid.Domain = 12  // "pairing"
+	PulseDomain                     pdid.Domain = 16  // "pulse"
+	ReadingDomain                   pdid.Domain = 11  // "reading"
+	RobotDomain                     pdid.Domain = 7   // "robot"
+	RowSealDomain                   pdid.Domain = 255 // "row-seal"
+	SealDomain                      pdid.Domain = 14  // "seal"
+	StintDomain                     pdid.Domain = 20  // "stint"
+	TallyDomain                     pdid.Domain = 15  // "tally"
+	TenantDomain                    pdid.Domain = 1   // "tenant"
+	ThingDomain                     pdid.Domain = 13  // "thing"
 )
 
 func init() {
@@ -143,8 +151,11 @@ func init() {
 	pdid.Register("app.Fact", FactDomain, "fact")
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
 	pdid.Register("app.Holder", HolderDomain, "holder")
+	pdid.Register("app.Job", JobDomain, "job")
 	pdid.Register("app.Joint", JointDomain, "joint")
 	pdid.Register("app.Machine", MachineDomain, "machine")
+	pdid.Register("app.NotificationReceiptRecord", NotificationReceiptRecordDomain, "notification-receipt")
+	pdid.Register("app.NotificationRecord", NotificationRecordDomain, "notification")
 	pdid.Register("app.Outbox", OutboxDomain, "outbox")
 	pdid.Register("app.Owed", OwedDomain, "owed")
 	pdid.Register("app.Pairing", PairingDomain, "pairing")
@@ -164,28 +175,31 @@ func init() {
 // Domains is the domain of each entity by the full name of its message,
 // which is the name a [Minter] is asked about.
 var Domains = map[string]pdid.Domain{
-	"app.Access":   AccessDomain,
-	"app.Archived": ArchivedDomain,
-	"app.Audit":    AuditDomain,
-	"app.Cell":     CellDomain,
-	"app.Event":    EventDomain,
-	"app.Fact":     FactDomain,
-	"app.Fleet":    FleetDomain,
-	"app.Holder":   HolderDomain,
-	"app.Joint":    JointDomain,
-	"app.Machine":  MachineDomain,
-	"app.Outbox":   OutboxDomain,
-	"app.Owed":     OwedDomain,
-	"app.Pairing":  PairingDomain,
-	"app.Pulse":    PulseDomain,
-	"app.Reading":  ReadingDomain,
-	"app.Robot":    RobotDomain,
-	"app.RowSeal":  RowSealDomain,
-	"app.Seal":     SealDomain,
-	"app.Stint":    StintDomain,
-	"app.Tally":    TallyDomain,
-	"app.Tenant":   TenantDomain,
-	"shared.Thing": ThingDomain,
+	"app.Access":                    AccessDomain,
+	"app.Archived":                  ArchivedDomain,
+	"app.Audit":                     AuditDomain,
+	"app.Cell":                      CellDomain,
+	"app.Event":                     EventDomain,
+	"app.Fact":                      FactDomain,
+	"app.Fleet":                     FleetDomain,
+	"app.Holder":                    HolderDomain,
+	"app.Job":                       JobDomain,
+	"app.Joint":                     JointDomain,
+	"app.Machine":                   MachineDomain,
+	"app.NotificationReceiptRecord": NotificationReceiptRecordDomain,
+	"app.NotificationRecord":        NotificationRecordDomain,
+	"app.Outbox":                    OutboxDomain,
+	"app.Owed":                      OwedDomain,
+	"app.Pairing":                   PairingDomain,
+	"app.Pulse":                     PulseDomain,
+	"app.Reading":                   ReadingDomain,
+	"app.Robot":                     RobotDomain,
+	"app.RowSeal":                   RowSealDomain,
+	"app.Seal":                      SealDomain,
+	"app.Stint":                     StintDomain,
+	"app.Tally":                     TallyDomain,
+	"app.Tenant":                    TenantDomain,
+	"shared.Thing":                  ThingDomain,
 }
 
 // EventKinds is the message each kind of this app's events holds, by kind:
@@ -233,6 +247,10 @@ var IndexRenames = []rename.Index{
 	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
+	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_notification_id_reader_id", To: "notificationreceiptrecord_receipt"},
+	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_tenant_id_reader_id_notification_id", To: "notificationreceiptrecord_reader"},
+	{Table: "notificationrecord", From: "notificationrecord_tenant_id_producer_idempotency_key", To: "notificationrecord_publication"},
+	{Table: "notificationrecord", From: "notificationrecord_tenant_id_topic_key_date_created_id", To: "notificationrecord_page"},
 	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
 	{Table: "owed", From: "owed_date_created_id", To: "owed_owed"},
 	{Table: "reading", From: "reading_tenant_id_date_created", To: "reading_wall"},
@@ -356,6 +374,16 @@ func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
 	return entHolder.TenantIdIn(vs...), nil
 }
 
+// JobScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) JobScope(ctx context.Context) (predicate.Job, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return entJob.TenantIdIn(vs...), nil
+}
+
 // JointScope: a row belongs to the tenant its "robot.tenant" reaches.
 func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 	vs, all, err := frame.Narrow(ctx)
@@ -374,6 +402,26 @@ func (wall) MachineScope(ctx context.Context) (predicate.Machine, error) {
 	}
 
 	return entMachine.TenantIdIn(vs...), nil
+}
+
+// NotificationReceiptRecordScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
+func (wall) NotificationReceiptRecordScope(ctx context.Context) (predicate.NotificationReceiptRecord, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return entNotificationReceiptRecord.TenantIdIn(vs...), nil
+}
+
+// NotificationRecordScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
+func (wall) NotificationRecordScope(ctx context.Context) (predicate.NotificationRecord, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return entNotificationRecord.TenantIdIn(vs...), nil
 }
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
@@ -553,6 +601,11 @@ func (x grouped) HolderScope(ctx context.Context) (predicate.Holder, error) {
 	return nil, nil
 }
 
+// JobScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) JobScope(ctx context.Context) (predicate.Job, error) {
+	return nil, nil
+}
+
 // JointScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
 	return nil, nil
@@ -560,6 +613,16 @@ func (x grouped) JointScope(ctx context.Context) (predicate.Joint, error) {
 
 // MachineScope: in no set -- it declared no field 3, so this narrows nothing.
 func (x grouped) MachineScope(ctx context.Context) (predicate.Machine, error) {
+	return nil, nil
+}
+
+// NotificationReceiptRecordScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) NotificationReceiptRecordScope(ctx context.Context) (predicate.NotificationReceiptRecord, error) {
+	return nil, nil
+}
+
+// NotificationRecordScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) NotificationRecordScope(ctx context.Context) (predicate.NotificationRecord, error) {
 	return nil, nil
 }
 
@@ -2284,6 +2347,45 @@ func (s sinkHolder) watchHolderKeys(
 	}
 
 	return ks, nil
+}
+
+type sinkJob struct {
+	apptest.JobServiceServer
+	store  bare.Store
+	w      *watch.Watch
+	namer  slug.Namer
+	joined bool
+}
+
+func (s Sink) Job() apptest.JobServiceServer {
+	return sinkJob{s.Server.Job(), s.Server.Store, s.w, s.namer, s.joined}
+}
+
+// Erase forgets what the transaction was told about the row, before it is
+// erased: whether a frame may see it, and where a walk from it arrives.
+// Neither is true of a row that is gone, nor of another put under its
+// key. See [seen.Forget].
+func (s sinkJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	seen.Forget(s.store.Db.Driver(), "Job", req)
+
+	return s.JobServiceServer.Erase(ctx, req)
+}
+
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	seen.Forget(s.store.Db.Driver(), "Job", req.GetRef())
+
+	return s.JobServiceServer.Apply(ctx, req)
+}
+
+// Patch forgets what the transaction was told about the row, before it is
+// written; see [sinkJob.Apply].
+func (s sinkJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	seen.Forget(s.store.Db.Driver(), "Job", req.GetRef())
+
+	return s.JobServiceServer.Patch(ctx, req)
 }
 
 type sinkJoint struct {
@@ -4480,6 +4582,50 @@ func (s gateFact) admit(ctx context.Context, req *apptest.FactAddRequest) (*appt
 	return req, nil
 }
 
+type gateJob struct {
+	Gate
+	apptest.JobServiceServer
+}
+
+func (s Gate) Job() apptest.JobServiceServer {
+	v := gateJob{s, s.Next().Job()}
+	v.JobServiceServer = bare.JobWithAddRule(v.JobServiceServer, v.admit)
+	return v
+}
+
+// admit refuses a Job put into a Tenant this caller cannot see.
+//
+// The wall is a predicate and an Add has no query, so without this the
+// identifier in `tenant` becomes a foreign key with nothing consulted.
+// The row is then invisible to whoever planted it and visible to whoever
+// holds that Tenant, which is the shape of the bug rather than a
+// mitigation of it.
+//
+// NotFound rather than a refusal, for the reason on `gateHolder.admit`:
+// that a row exists is itself something a caller who may not see it
+// should not be told.
+//
+// It is what an Add is asked, and an AddMany of every item it carries;
+// see [Gate.Job].
+func (s gateJob) admit(ctx context.Context, req *apptest.JobAddRequest) (*apptest.JobAddRequest, error) {
+	if ref := req.GetTenant(); ref != nil {
+		if err := seen.Visible(ctx, s.Gate.drv, "Tenant", ref, func() error {
+			_, err := s.Gate.Next().Tenant().Get(ctx, apptest.TenantGetRequest_builder{
+				Ref: ref,
+			}.Build())
+			return err
+		}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return nil, gate.ErrNotFound("Tenant")
+			}
+
+			return nil, err
+		}
+	}
+
+	return req, nil
+}
+
 type gateJoint struct {
 	Gate
 	apptest.JointServiceServer
@@ -5113,6 +5259,62 @@ func errPast() error {
 		"a past is written by the past package: an event by past.Begin, and a fact by the op it answers")
 }
 
+type notifyWrite struct{}
+
+func withNotifyWrite(ctx context.Context) context.Context {
+	return context.WithValue(ctx, notifyWrite{}, notifyWrite{})
+}
+func isNotifyWrite(ctx context.Context) bool {
+	_, ok := ctx.Value(notifyWrite{}).(notifyWrite)
+	return ok
+}
+
+// The base Sink seals these paths too, so forgetting an outer layer
+// cannot expose notification contents or allow forged receipt owners.
+func (s Sink) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return notifyNotificationRecordGuard{s.Server.NotificationRecord()}
+}
+func (s Audit) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return notifyNotificationRecordGuard{s.Next().NotificationRecord()}
+}
+
+type notifyNotificationRecordGuard struct {
+	apptest.NotificationRecordServiceServer
+}
+
+func (s notifyNotificationRecordGuard) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+	if !isNotifyWrite(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "notification records are written through NotificationService")
+	}
+	return s.NotificationRecordServiceServer.Add(ctx, req)
+}
+func (s notifyNotificationRecordGuard) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+	return nil, status.Error(codes.PermissionDenied, "notification records are read through NotificationService")
+}
+
+// The base Sink seals these paths too, so forgetting an outer layer
+// cannot expose notification contents or allow forged receipt owners.
+func (s Sink) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
+	return notifyNotificationReceiptRecordGuard{s.Server.NotificationReceiptRecord()}
+}
+func (s Audit) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
+	return notifyNotificationReceiptRecordGuard{s.Next().NotificationReceiptRecord()}
+}
+
+type notifyNotificationReceiptRecordGuard struct {
+	apptest.NotificationReceiptRecordServiceServer
+}
+
+func (s notifyNotificationReceiptRecordGuard) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
+	if !isNotifyWrite(ctx) {
+		return nil, status.Error(codes.PermissionDenied, "notification records are written through NotificationService")
+	}
+	return s.NotificationReceiptRecordServiceServer.Add(ctx, req)
+}
+func (s notifyNotificationReceiptRecordGuard) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
+	return nil, status.Error(codes.PermissionDenied, "notification records are read through NotificationService")
+}
+
 // Recorder writes one row of the trail for every write the generated
 // servers make, keeping as much of each as `content` says of its kind.
 //
@@ -5324,10 +5526,16 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedFleet.md, describedFleet.secret, describedFleet.personal
 	case HolderDomain:
 		return describedHolder.md, describedHolder.secret, describedHolder.personal
+	case JobDomain:
+		return describedJob.md, describedJob.secret, describedJob.personal
 	case JointDomain:
 		return describedJoint.md, describedJoint.secret, describedJoint.personal
 	case MachineDomain:
 		return describedMachine.md, describedMachine.secret, describedMachine.personal
+	case NotificationReceiptRecordDomain:
+		return describedNotificationReceiptRecord.md, describedNotificationReceiptRecord.secret, describedNotificationReceiptRecord.personal
+	case NotificationRecordDomain:
+		return describedNotificationRecord.md, describedNotificationRecord.secret, describedNotificationRecord.personal
 	case OutboxDomain:
 		return describedOutbox.md, describedOutbox.secret, describedOutbox.personal
 	case OwedDomain:
@@ -5401,12 +5609,21 @@ var (
 	describedHolder = describe((*apptest.Holder)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{4, 5, 6, 7, 8, 9})
+	describedJob = describe((*apptest.Job)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
 	describedJoint = describe((*apptest.Joint)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedMachine = describe((*apptest.Machine)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{24})
+	describedNotificationReceiptRecord = describe((*apptest.NotificationReceiptRecord)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedNotificationRecord = describe((*apptest.NotificationRecord)(nil),
+		[]protoreflect.FieldNumber{12},
+		[]protoreflect.FieldNumber{})
 	describedOutbox = describe((*apptest.Outbox)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
@@ -5471,8 +5688,11 @@ func added(by string) bool {
 		apptest.FactService_AddMany_FullMethodName,
 		apptest.FleetService_Add_FullMethodName,
 		apptest.HolderService_Add_FullMethodName,
+		apptest.JobService_Add_FullMethodName,
 		apptest.JointService_Add_FullMethodName,
 		apptest.MachineService_Add_FullMethodName,
+		apptest.NotificationReceiptRecordService_Add_FullMethodName,
+		apptest.NotificationRecordService_Add_FullMethodName,
 		apptest.PairingService_Add_FullMethodName,
 		apptest.ReadingService_Add_FullMethodName,
 		apptest.ReadingService_AddMany_FullMethodName,
@@ -5664,6 +5884,33 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 		return k, b, nil
 
+	case JobDomain:
+		row, ok := image.(*apptest.Job)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
 	case JointDomain:
 		row, ok := image.(*apptest.Joint)
 		if !ok {
@@ -5727,6 +5974,57 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		}
 
 		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
+	case NotificationReceiptRecordDomain:
+		row, ok := image.(*apptest.NotificationReceiptRecord)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenantId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
+	case NotificationRecordDomain:
+		row, ok := image.(*apptest.NotificationRecord)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			kept = proto.Clone(row).(*apptest.NotificationRecord)
+			_, secret, personal := described(key)
+			audit.Clear(kept, secret)
+			audit.Clear(kept, personal)
+
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenantId())
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -5951,10 +6249,16 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 		vs, err = rowsFleet(ctx, s.Db, entFleet.IdEQ(uuid.UUID(key)))
 	case HolderDomain:
 		vs, err = rowsHolder(ctx, s.Db, entHolder.IdEQ(uuid.UUID(key)))
+	case JobDomain:
+		vs, err = rowsJob(ctx, s.Db, entJob.IdEQ(uuid.UUID(key)))
 	case JointDomain:
 		vs, err = rowsJoint(ctx, s.Db, entJoint.IdEQ(uuid.UUID(key)))
 	case MachineDomain:
 		vs, err = rowsMachine(ctx, s.Db, entMachine.IdEQ(uuid.UUID(key)))
+	case NotificationReceiptRecordDomain:
+		vs, err = rowsNotificationReceiptRecord(ctx, s.Db, entNotificationReceiptRecord.IdEQ(uuid.UUID(key)))
+	case NotificationRecordDomain:
+		vs, err = rowsNotificationRecord(ctx, s.Db, entNotificationRecord.IdEQ(uuid.UUID(key)))
 	case PairingDomain:
 		vs, err = rowsPairing(ctx, s.Db, entPairing.IdEQ(uuid.UUID(key)))
 	case PulseDomain:
@@ -6352,11 +6656,20 @@ func Digests(ctx context.Context, db *ent.Client, d *audit.Digest, p trail.Polic
 	if err := audit.CheckKind(ctx, d, checkedHolder(db), archived, &out); err != nil {
 		return out, fmt.Errorf("holder: %w", err)
 	}
+	if err := audit.CheckKind(ctx, d, checkedJob(db), archived, &out); err != nil {
+		return out, fmt.Errorf("job: %w", err)
+	}
 	if err := audit.CheckKind(ctx, d, checkedJoint(db), archived, &out); err != nil {
 		return out, fmt.Errorf("joint: %w", err)
 	}
 	if err := audit.CheckKind(ctx, d, checkedMachine(db), archived, &out); err != nil {
 		return out, fmt.Errorf("machine: %w", err)
+	}
+	if err := audit.CheckKind(ctx, d, checkedNotificationReceiptRecord(db), archived, &out); err != nil {
+		return out, fmt.Errorf("notification-receipt: %w", err)
+	}
+	if err := audit.CheckKind(ctx, d, checkedNotificationRecord(db), archived, &out); err != nil {
+		return out, fmt.Errorf("notification: %w", err)
 	}
 	if err := audit.CheckKind(ctx, d, checkedPairing(db), archived, &out); err != nil {
 		return out, fmt.Errorf("pairing: %w", err)
@@ -6628,6 +6941,52 @@ func checkedHolder(db *ent.Client) audit.Kind {
 	}
 }
 
+// checkedJob is what a check of the rows reads of the job kind.
+func checkedJob(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Job) (audit.Page, error) {
+		var out audit.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsJob(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit.Kind{
+		Domain: JobDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entJob.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entJob.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, JobDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsJob(ctx, db, entJob.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
 // checkedJoint is what a check of the rows reads of the joint kind.
 func checkedJoint(db *ent.Client) audit.Kind {
 	read := func(ctx context.Context, ps ...predicate.Joint) (audit.Page, error) {
@@ -6713,6 +7072,98 @@ func checkedMachine(db *ent.Client) audit.Kind {
 			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 				rows, err := rowsMachine(ctx, db, entMachine.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedNotificationReceiptRecord is what a check of the rows reads of the notification-receipt kind.
+func checkedNotificationReceiptRecord(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.NotificationReceiptRecord) (audit.Page, error) {
+		var out audit.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsNotificationReceiptRecord(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit.Kind{
+		Domain: NotificationReceiptRecordDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entNotificationReceiptRecord.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entNotificationReceiptRecord.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, NotificationReceiptRecordDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsNotificationReceiptRecord(ctx, db, entNotificationReceiptRecord.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedNotificationRecord is what a check of the rows reads of the notification kind.
+func checkedNotificationRecord(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.NotificationRecord) (audit.Page, error) {
+		var out audit.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsNotificationRecord(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit.Kind{
+		Domain: NotificationRecordDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entNotificationRecord.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entNotificationRecord.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, NotificationRecordDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsNotificationRecord(ctx, db, entNotificationRecord.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -7200,6 +7651,26 @@ func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]
 	return out, nil
 }
 
+// rowsJob is the rows `ps` says of the job kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsJob(ctx context.Context, db *ent.Client, ps ...predicate.Job) ([]audit.Live, error) {
+	q := db.Job.Query().Where(ps...)
+	bare.JobSelectInit(q, nil)
+
+	vs, err := q.Order(entJob.ById()).Limit(audit.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // rowsJoint is the rows `ps` says of the joint kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
@@ -7228,6 +7699,46 @@ func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) (
 	bare.MachineSelectInit(q, nil)
 
 	vs, err := q.Order(entMachine.ById()).Limit(audit.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsNotificationReceiptRecord is the rows `ps` says of the notification-receipt kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsNotificationReceiptRecord(ctx context.Context, db *ent.Client, ps ...predicate.NotificationReceiptRecord) ([]audit.Live, error) {
+	q := db.NotificationReceiptRecord.Query().Where(ps...)
+	bare.NotificationReceiptRecordSelectInit(q, nil)
+
+	vs, err := q.Order(entNotificationReceiptRecord.ById()).Limit(audit.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
+// rowsNotificationRecord is the rows `ps` says of the notification kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsNotificationRecord(ctx context.Context, db *ent.Client, ps ...predicate.NotificationRecord) ([]audit.Live, error) {
+	q := db.NotificationRecord.Query().Where(ps...)
+	bare.NotificationRecordSelectInit(q, nil)
+
+	vs, err := q.Order(entNotificationRecord.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -7651,10 +8162,16 @@ func record(ctx context.Context, db *ent.Client, content audit.Contents, action 
 				rows, err = rowsFleet(ctx, db, entFleet.IdIn(uuids(page)...))
 			case HolderDomain:
 				rows, err = rowsHolder(ctx, db, entHolder.IdIn(uuids(page)...))
+			case JobDomain:
+				rows, err = rowsJob(ctx, db, entJob.IdIn(uuids(page)...))
 			case JointDomain:
 				rows, err = rowsJoint(ctx, db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
 				rows, err = rowsMachine(ctx, db, entMachine.IdIn(uuids(page)...))
+			case NotificationReceiptRecordDomain:
+				rows, err = rowsNotificationReceiptRecord(ctx, db, entNotificationReceiptRecord.IdIn(uuids(page)...))
+			case NotificationRecordDomain:
+				rows, err = rowsNotificationRecord(ctx, db, entNotificationRecord.IdIn(uuids(page)...))
 			case PairingDomain:
 				rows, err = rowsPairing(ctx, db, entPairing.IdIn(uuids(page)...))
 			case ReadingDomain:
@@ -7795,10 +8312,16 @@ func (s trailStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Doma
 			rows, err = rowsFleet(ctx, s.db, entFleet.IdIn(uuids(ids)...))
 		case HolderDomain:
 			rows, err = rowsHolder(ctx, s.db, entHolder.IdIn(uuids(ids)...))
+		case JobDomain:
+			rows, err = rowsJob(ctx, s.db, entJob.IdIn(uuids(ids)...))
 		case JointDomain:
 			rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(ids)...))
 		case MachineDomain:
 			rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(ids)...))
+		case NotificationReceiptRecordDomain:
+			rows, err = rowsNotificationReceiptRecord(ctx, s.db, entNotificationReceiptRecord.IdIn(uuids(ids)...))
+		case NotificationRecordDomain:
+			rows, err = rowsNotificationRecord(ctx, s.db, entNotificationRecord.IdIn(uuids(ids)...))
 		case PairingDomain:
 			rows, err = rowsPairing(ctx, s.db, entPairing.IdIn(uuids(ids)...))
 		case ReadingDomain:
@@ -8047,6 +8570,58 @@ func hideRobot(v *apptest.Robot) *apptest.Robot {
 	return v
 }
 
+func (s Secret) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return secretNotificationRecord{s, s.Next().NotificationRecord()}
+}
+
+type secretNotificationRecord struct {
+	Secret
+	apptest.NotificationRecordServiceServer
+}
+
+func (s secretNotificationRecord) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+	v, err := s.NotificationRecordServiceServer.Add(ctx, req)
+
+	return hideNotificationRecord(v), err
+}
+
+func (s secretNotificationRecord) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+	v, err := s.NotificationRecordServiceServer.Get(ctx, req)
+
+	return hideNotificationRecord(v), err
+}
+
+// hideNotificationRecord clears what this entity declared it never answers with.
+//
+// A nil row passes through, because an error is answered with one and the
+// caller of this is handing both on.
+//
+// By field number and through the descriptor, rather than a setter per
+// field, because a setter's argument has a type and this has to hold for
+// every field a row can carry. A `Set<F>(nil)` per secret is what this
+// was, and it compiled only while every secret anybody had declared was
+// `bytes`: a `string` one ended the build in a generated file, and an
+// enum would have needed its own type spelled out here to say zero.
+//
+// Clear is also the truer word. A field with presence is **absent**
+// afterwards rather than present and empty, which is what "never answered
+// with" says; one without presence reads as its zero value either way.
+// And the numbers are the ones `hidden` filters the trail's patch by, so
+// the two cannot come to disagree about which fields they are.
+func hideNotificationRecord(v *apptest.NotificationRecord) *apptest.NotificationRecord {
+	if v == nil {
+		return nil
+	}
+
+	m := v.ProtoReflect()
+	fs := m.Descriptor().Fields()
+	for _, n := range []protoreflect.FieldNumber{12} {
+		m.Clear(fs.ByNumber(n))
+	}
+
+	return v
+}
+
 func (s Secret) Seal() apptest.SealServiceServer {
 	return secretSeal{s, s.Next().Seal()}
 }
@@ -8224,6 +8799,40 @@ func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*ap
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
+}
+
+func (s Intercept) Job() apptest.JobServiceServer {
+	return interceptJob{s, s.Next().Job()}
+}
+
+type interceptJob struct {
+	Intercept
+	apptest.JobServiceServer
+}
+
+func (s interceptJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Add_FullMethodName, req, s.JobServiceServer.Add)
+}
+
+func (s interceptJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Get_FullMethodName, req, s.JobServiceServer.Get)
+}
+
+func (s interceptJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Patch_FullMethodName, req, s.JobServiceServer.Patch)
+}
+
+func (s interceptJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Apply_FullMethodName, req, s.JobServiceServer.Apply)
+}
+
+func (s interceptJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Erase_FullMethodName, req, s.JobServiceServer.Erase)
 }
 
 func (s Intercept) Thing() apptest.ThingServiceServer {
@@ -8696,6 +9305,44 @@ func (s interceptHolder) List(ctx context.Context, req *apptest.HolderListReques
 func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
 	return grpcx.RunStream(s.stream, s.HolderServiceServer,
 		apptest.HolderService_Watch_FullMethodName, req, out, s.HolderServiceServer.Watch)
+}
+
+func (s Intercept) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
+	return interceptNotificationReceiptRecord{s, s.Next().NotificationReceiptRecord()}
+}
+
+type interceptNotificationReceiptRecord struct {
+	Intercept
+	apptest.NotificationReceiptRecordServiceServer
+}
+
+func (s interceptNotificationReceiptRecord) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.NotificationReceiptRecordServiceServer,
+		apptest.NotificationReceiptRecordService_Add_FullMethodName, req, s.NotificationReceiptRecordServiceServer.Add)
+}
+
+func (s interceptNotificationReceiptRecord) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.NotificationReceiptRecordServiceServer,
+		apptest.NotificationReceiptRecordService_Get_FullMethodName, req, s.NotificationReceiptRecordServiceServer.Get)
+}
+
+func (s Intercept) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return interceptNotificationRecord{s, s.Next().NotificationRecord()}
+}
+
+type interceptNotificationRecord struct {
+	Intercept
+	apptest.NotificationRecordServiceServer
+}
+
+func (s interceptNotificationRecord) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.NotificationRecordServiceServer,
+		apptest.NotificationRecordService_Add_FullMethodName, req, s.NotificationRecordServiceServer.Add)
+}
+
+func (s interceptNotificationRecord) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.NotificationRecordServiceServer,
+		apptest.NotificationRecordService_Get_FullMethodName, req, s.NotificationRecordServiceServer.Get)
 }
 
 func (s Intercept) Seal() apptest.SealServiceServer {
@@ -10158,10 +10805,16 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 				global = true
 			case HolderDomain:
 				rows, err = rowsHolder(ctx, s.db, entHolder.IdIn(uuids(page)...))
+			case JobDomain:
+				rows, err = rowsJob(ctx, s.db, entJob.IdIn(uuids(page)...))
 			case JointDomain:
 				rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
 				rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(page)...))
+			case NotificationReceiptRecordDomain:
+				rows, err = rowsNotificationReceiptRecord(ctx, s.db, entNotificationReceiptRecord.IdIn(uuids(page)...))
+			case NotificationRecordDomain:
+				rows, err = rowsNotificationRecord(ctx, s.db, entNotificationRecord.IdIn(uuids(page)...))
 			case PairingDomain:
 				rows, err = rowsPairing(ctx, s.db, entPairing.IdIn(uuids(page)...))
 			case PulseDomain:
@@ -10507,6 +11160,520 @@ func PastTenants(db *ent.Client) func(ctx context.Context, after pdid.Id, limit 
 
 		return out, nil
 	}
+}
+
+// NotificationServer serves the app's notification RPCs. Register it explicitly
+// with RegisterNotificationServiceServer; private records stay in the ordinary
+// generated stack and are sealed by the base Sink and Audit layers.
+type NotificationServer struct {
+	apptest.UnimplementedNotificationServiceServer
+	service *notify.Service
+	stack   apptest.Server
+	watch   *watch.Watch
+	policy  notify.Policy
+	options notify.Options
+}
+
+// Notifications binds this app's records and public wire messages to notify.
+// Reusing the app driver makes a domain operation and its publication one
+// transaction. Every layer of stack must support rebinding.
+func Notifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*NotificationServer, error) {
+	options.Global = false
+	options.Namespace = "github.com/lesomnus/payday/internal/apptest"
+	rebound, err := enttx.Rebind(stack, driver)
+	if err != nil {
+		return nil, err
+	}
+	store := notificationStore{stack: rebound, driver: driver, db: ent.NewClient(ent.Driver(driver))}
+	service, err := notify.New(store, changes, policy, options)
+	if err != nil {
+		return nil, err
+	}
+	return &NotificationServer{service: service, stack: rebound, watch: changes, policy: policy, options: options}, nil
+}
+
+// WithDriver joins a business transaction without dropping a layer's rules.
+func (s *NotificationServer) WithDriver(driver dialect.Driver) (*NotificationServer, error) {
+	return Notifications(s.stack, driver, s.watch, s.policy, s.options)
+}
+
+// Invalidate is an app operation after a committed policy dependency changed.
+// It is deliberately absent from the public gRPC service.
+func (s *NotificationServer) Invalidate(ctx context.Context, tenant pdid.Id, topics []notify.Topic) error {
+	return s.service.Invalidate(ctx, tenant, topics)
+}
+
+func (s *NotificationServer) Add(ctx context.Context, req *apptest.NotificationAddRequest) (*apptest.Notification, error) {
+	tenant, err := notificationID(req.GetTenantId())
+	if err != nil {
+		return nil, notifyArgument(err)
+	}
+	topic, err := notificationTopic(req.GetTopic())
+	if err != nil {
+		return nil, err
+	}
+	source, err := notificationID(req.GetSourceId())
+	if err != nil {
+		return nil, notifyArgument(err)
+	}
+	v, err := s.service.Add(ctx, notify.AddRequest{Tenant: tenant, Topic: topic, Kind: req.GetKind(), Source: source, Payload: req.GetPayload(), IdempotencyKey: req.GetIdempotencyKey()})
+	if err != nil {
+		return nil, err
+	}
+	return notificationValue(v), nil
+}
+func (s *NotificationServer) Get(ctx context.Context, req *apptest.NotificationGetRequest) (*apptest.Notification, error) {
+	key, err := pdid.From(req.GetRef().GetId())
+	if err != nil {
+		return nil, notifyArgument(err)
+	}
+	v, err := s.service.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return notificationValue(v), nil
+}
+func (s *NotificationServer) List(ctx context.Context, req *apptest.NotificationListRequest) (*apptest.NotificationListResponse, error) {
+	q, err := notificationQuery(req.GetTenantId(), req.GetTopics(), req.GetSize(), req.GetCursor())
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.service.List(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	vs := make([]*apptest.Notification, len(page.Items))
+	for i, v := range page.Items {
+		vs[i] = notificationValue(v)
+	}
+	return apptest.NotificationListResponse_builder{Items: vs, Next: page.Next}.Build(), nil
+}
+func (s *NotificationServer) Read(ctx context.Context, req *apptest.NotificationReadRequest) (*apptest.NotificationReadResponse, error) {
+	q, err := notificationQuery(req.GetTenantId(), req.GetTopics(), req.GetSize(), req.GetCursor())
+	if err != nil {
+		return nil, err
+	}
+	q.Filter, err = notificationFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.service.Read(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	vs := make([]*apptest.NotificationReadItem, len(page.Items))
+	for i, v := range page.Items {
+		b := apptest.NotificationReadItem_builder{Notification: notificationValue(v.Notification)}
+		if v.Receipt != nil {
+			b.Receipt = notificationReceiptValue(*v.Receipt)
+		}
+		vs[i] = b.Build()
+	}
+	return apptest.NotificationReadResponse_builder{Items: vs, Next: page.Next, ReaderId: page.Reader.Bytes()}.Build(), nil
+}
+func (s *NotificationServer) Count(ctx context.Context, req *apptest.NotificationCountRequest) (*apptest.NotificationCountResponse, error) {
+	q, err := notificationQuery(req.GetTenantId(), req.GetTopics(), 0, "")
+	if err != nil {
+		return nil, err
+	}
+	filter, err := notificationFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.service.Count(ctx, notify.CountRequest{Tenant: q.Tenant, Topics: q.Topics, Filter: filter})
+	if err != nil {
+		return nil, err
+	}
+	topics := make([]*apptest.NotificationTopicCount, len(v.Topics))
+	for i, t := range v.Topics {
+		topics[i] = apptest.NotificationTopicCount_builder{Topic: notificationTopicValue(t.Topic), Count: t.Count, SourceCount: t.SourceCount}.Build()
+	}
+	return apptest.NotificationCountResponse_builder{Count: v.Count, SourceCount: v.SourceCount, Topics: topics, ReaderId: v.Reader.Bytes()}.Build(), nil
+}
+func (s *NotificationServer) Mark(ctx context.Context, req *apptest.NotificationMarkRequest) (*apptest.NotificationMarkResponse, error) {
+	tenant, err := notificationID(req.GetTenantId())
+	if err != nil {
+		return nil, notifyArgument(err)
+	}
+	refs := make([]pdid.Id, len(req.GetRefs()))
+	for i, r := range req.GetRefs() {
+		key, err := pdid.From(r.GetId())
+		if err != nil {
+			return nil, notifyArgument(err)
+		}
+		refs[i] = key
+	}
+	v, err := s.service.Mark(ctx, notify.MarkRequest{Tenant: tenant, Refs: refs})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*apptest.NotificationReceipt, len(v.Items))
+	for i, r := range v.Items {
+		items[i] = notificationReceiptValue(r)
+	}
+	return apptest.NotificationMarkResponse_builder{Items: items, ReaderId: v.Reader.Bytes()}.Build(), nil
+}
+func notificationFilter(v *apptest.NotificationReadFilter) (notify.ReadFilter, error) {
+	out := notify.ReadFilter{Kinds: v.GetKinds(), UnreadOnly: v.GetUnreadOnly()}
+	for _, b := range v.GetSourceIds() {
+		id, err := pdid.From(b)
+		if err != nil {
+			return out, notifyArgument(err)
+		}
+		out.Sources = append(out.Sources, id)
+	}
+	return out, nil
+}
+func (s *NotificationServer) Listen(req *apptest.NotificationListenRequest, stream grpc.ServerStreamingServer[apptest.NotificationListenResponse]) error {
+	tenant, err := notificationID(req.GetTenantId())
+	if err != nil {
+		return notifyArgument(err)
+	}
+	topics, err := notificationTopics(req.GetTopics())
+	if err != nil {
+		return err
+	}
+	return s.service.Listen(stream.Context(), notify.ListenRequest{Tenant: tenant, Topics: topics}, func(event notify.Event) error {
+		response := apptest.NotificationListenResponse_builder{}
+		if event.Ready {
+			response.Ready = apptest.NotificationListenReady_builder{ReaderId: event.Reader.Bytes()}.Build()
+		} else {
+			values := make([]*apptest.NotificationTopic, len(event.Topics))
+			for i, v := range event.Topics {
+				values[i] = notificationTopicValue(v)
+			}
+			response.Invalidated = apptest.NotificationInvalidation_builder{Topics: values}.Build()
+		}
+		return stream.Send(response.Build())
+	})
+}
+
+func notifyArgument(err error) error { return status.Error(codes.InvalidArgument, err.Error()) }
+func notificationBytes(v pdid.Id) []byte {
+	if v.IsZero() {
+		return nil
+	}
+	return v.Bytes()
+}
+func notificationID(v []byte) (pdid.Id, error) {
+	if len(v) == 0 {
+		return pdid.Nil, nil
+	}
+	return pdid.From(v)
+}
+func notificationTopic(v *apptest.NotificationTopic) (notify.Topic, error) {
+	if v == nil {
+		return notify.Topic{}, status.Error(codes.InvalidArgument, "topic is required")
+	}
+	if v.HasResourceId() {
+		key, err := pdid.From(v.GetResourceId())
+		if err != nil {
+			return notify.Topic{}, notifyArgument(err)
+		}
+		return notify.Topic{Resource: key}, nil
+	}
+	if v.HasName() {
+		return notify.Topic{Name: v.GetName()}, nil
+	}
+	return notify.Topic{}, status.Error(codes.InvalidArgument, "topic needs a resource or name")
+}
+func notificationTopics(vs []*apptest.NotificationTopic) ([]notify.Topic, error) {
+	values := make([]notify.Topic, len(vs))
+	for i, v := range vs {
+		topic, err := notificationTopic(v)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = topic
+	}
+	return values, nil
+}
+func notificationTopicValue(v notify.Topic) *apptest.NotificationTopic {
+	if !v.Resource.IsZero() {
+		return apptest.NotificationTopic_builder{ResourceId: v.Resource.Bytes()}.Build()
+	}
+	return apptest.NotificationTopic_builder{Name: &v.Name}.Build()
+}
+func notificationQuery(tenant []byte, topics []*apptest.NotificationTopic, size int32, cursor string) (notify.Query, error) {
+	key, err := notificationID(tenant)
+	if err != nil {
+		return notify.Query{}, notifyArgument(err)
+	}
+	values, err := notificationTopics(topics)
+	if err != nil {
+		return notify.Query{}, err
+	}
+	return notify.Query{Tenant: key, Topics: values, Size: int(size), Cursor: cursor}, nil
+}
+func notificationValue(v notify.Notification) *apptest.Notification {
+	b := apptest.Notification_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), Topic: notificationTopicValue(v.Topic), Kind: v.Kind, Payload: v.Payload, DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}
+	if !v.Source.IsZero() {
+		b.SourceId = v.Source.Bytes()
+	}
+	return b.Build()
+}
+func notificationReceiptValue(v notify.Receipt) *apptest.NotificationReceipt {
+	return apptest.NotificationReceipt_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}.Build()
+}
+
+type notificationStore struct {
+	stack  apptest.Server
+	driver dialect.Driver
+	db     *ent.Client
+}
+
+var _ notify.Store = notificationStore{}
+
+func (s notificationStore) Driver() dialect.Driver { return s.driver }
+func (s notificationStore) Rebind(driver dialect.Driver) (notify.Store, error) {
+	stack, err := enttx.Rebind(s.stack, driver)
+	if err != nil {
+		return nil, err
+	}
+	return notificationStore{stack: stack, driver: driver, db: ent.NewClient(ent.Driver(driver))}, nil
+}
+func (s notificationStore) Insert(ctx context.Context, v notify.Notification) (notify.Notification, error) {
+	b := apptest.NotificationRecordAddRequest_builder{TenantId: v.Tenant.Bytes(), Kind: v.Kind, TopicKey: v.Topic.Key(), Producer: v.Producer, IdempotencyKey: v.IdempotencyKey, DateCreated: timestamppb.New(v.DateCreated), PayloadValue: []byte{}}
+	if !v.ID.IsZero() {
+		b.Id = v.ID.Bytes()
+	}
+	if !v.Source.IsZero() {
+		b.SourceId = v.Source.Bytes()
+	}
+	if v.Payload != nil {
+		b.PayloadPresent = true
+		b.PayloadType = v.Payload.TypeUrl
+		b.PayloadValue = append([]byte{}, v.Payload.Value...)
+	}
+	row, err := s.stack.NotificationRecord().Add(withNotifyWrite(ctx), b.Build())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	key, err := pdid.From(row.GetId())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	// Read the stored value: secret response projection may hide the payload,
+	// and PostgreSQL normalizes timestamp precision before storing it.
+	return s.Find(ctx, key)
+}
+func (s notificationStore) Find(ctx context.Context, key pdid.Id) (notify.Notification, error) {
+	row, err := s.db.NotificationRecord.Query().Where(entNotificationRecord.IdEQ(key.Uuid())).Only(ctx)
+	if ent.IsNotFound(err) {
+		return notify.Notification{}, status.Error(codes.NotFound, "notification not found")
+	}
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	return notificationRow(row.Proto())
+}
+func (s notificationStore) FindPublication(ctx context.Context, tenant pdid.Id, producer, key string) (notify.Notification, bool, error) {
+	row, err := s.db.NotificationRecord.Query().Where(entNotificationRecord.TenantIdEQ(tenant.Uuid()), entNotificationRecord.ProducerEQ(producer), entNotificationRecord.IdempotencyKeyEQ(key)).Only(ctx)
+	if ent.IsNotFound(err) {
+		return notify.Notification{}, false, nil
+	}
+	if err != nil {
+		return notify.Notification{}, false, err
+	}
+	v, err := notificationRow(row.Proto())
+	return v, true, err
+}
+func (s notificationStore) Select(ctx context.Context, q notify.Selection) ([]notify.Notification, error) {
+	query := s.db.NotificationRecord.Query().Where(notificationSelection(q))
+	if q.Position != nil {
+		query.Where(entNotificationRecord.Or(entNotificationRecord.DateCreatedLT(q.Position.DateCreated), entNotificationRecord.And(entNotificationRecord.DateCreatedEQ(q.Position.DateCreated), entNotificationRecord.IdLT(q.Position.ID.Uuid()))))
+	}
+	rows, err := query.Order(ent.Desc(entNotificationRecord.FieldDateCreated), ent.Desc(entNotificationRecord.FieldId)).Limit(q.Limit).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	values := make([]notify.Notification, len(rows))
+	for i, row := range rows {
+		v, err := notificationRow(row.Proto())
+		if err != nil {
+			return nil, err
+		}
+		values[i] = v
+	}
+	return values, nil
+}
+func notificationSelection(q notify.Selection) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		keys := make([]any, len(q.Topics))
+		for i, t := range q.Topics {
+			keys[i] = t.Key()
+		}
+		s.Where(sql.In(s.C(entNotificationRecord.FieldTopicKey), keys...))
+		s.Where(sql.EQ(s.C(entNotificationRecord.FieldTenantId), q.Tenant.Uuid()))
+		if len(q.Filter.Kinds) > 0 {
+			values := make([]any, len(q.Filter.Kinds))
+			for i, v := range q.Filter.Kinds {
+				values[i] = v
+			}
+			s.Where(sql.In(s.C(entNotificationRecord.FieldKind), values...))
+		}
+		if len(q.Filter.Sources) > 0 {
+			values := make([]any, len(q.Filter.Sources))
+			for i, v := range q.Filter.Sources {
+				values[i] = v.Uuid()
+			}
+			s.Where(sql.In(s.C(entNotificationRecord.FieldSourceId), values...))
+		}
+		if q.Filter.UnreadOnly {
+			r := sql.Table(entNotificationReceiptRecord.Table).As("receipt")
+			seen := sql.Select(r.C(entNotificationReceiptRecord.FieldNotificationId)).From(r).Where(sql.And(sql.ColumnsEQ(r.C(entNotificationReceiptRecord.FieldNotificationId), s.C(entNotificationRecord.FieldId)), sql.EQ(r.C(entNotificationReceiptRecord.FieldReaderId), q.Reader.Uuid())))
+			seen.Where(sql.EQ(r.C(entNotificationReceiptRecord.FieldTenantId), q.Tenant.Uuid()))
+			s.Where(sql.Not(sql.Exists(seen)))
+		}
+	}
+}
+func (s notificationStore) Count(ctx context.Context, q notify.Selection) (notify.Counts, error) {
+	base := sql.Dialect(s.driver.Dialect()).Select(entNotificationRecord.FieldTopicKey, entNotificationRecord.FieldSourceId).From(sql.Table(entNotificationRecord.Table))
+	notificationSelection(q)(base)
+	query, args := base.Query()
+	query = "WITH matches AS (" + query + ") SELECT topic_key,COUNT(*),COUNT(DISTINCT source_id) FROM matches GROUP BY topic_key UNION ALL SELECT NULL,COUNT(*),COUNT(DISTINCT source_id) FROM matches"
+	var rows sql.Rows
+	if err := s.driver.Query(ctx, query, args, &rows); err != nil {
+		return notify.Counts{}, err
+	}
+	defer rows.Close()
+	result := notify.Counts{}
+	for rows.Next() {
+		var key *string
+		var count, sources uint64
+		if err := rows.Scan(&key, &count, &sources); err != nil {
+			return result, err
+		}
+		if key == nil {
+			result.Count = count
+			result.SourceCount = sources
+			continue
+		}
+		topic, err := notify.ParseTopicKey(*key)
+		if err != nil {
+			return result, err
+		}
+		result.Topics = append(result.Topics, notify.TopicCount{Topic: topic, Count: count, SourceCount: sources})
+	}
+	return result, rows.Err()
+}
+func (s notificationStore) Receipts(ctx context.Context, tenant, reader pdid.Id, ids []pdid.Id) ([]notify.Receipt, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	keys := make([]uuid.UUID, len(ids))
+	for i, v := range ids {
+		keys[i] = v.Uuid()
+	}
+	rows, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.TenantIdEQ(tenant.Uuid()), entNotificationReceiptRecord.ReaderIdEQ(reader.Uuid()), entNotificationReceiptRecord.NotificationIdIn(keys...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	values := make([]notify.Receipt, len(rows))
+	for i, row := range rows {
+		v, err := notificationReceiptRow(row.Proto())
+		if err != nil {
+			return nil, err
+		}
+		values[i] = v
+	}
+	return values, nil
+}
+func (s notificationStore) InsertReceipt(ctx context.Context, v notify.Receipt) (notify.Receipt, error) {
+	b := apptest.NotificationReceiptRecordAddRequest_builder{TenantId: v.Tenant.Bytes(), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated)}
+	if !v.ID.IsZero() {
+		b.Id = v.ID.Bytes()
+	}
+	row, err := s.stack.NotificationReceiptRecord().Add(withNotifyWrite(ctx), b.Build())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	key, err := pdid.From(row.GetId())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	saved, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.IdEQ(key.Uuid())).Only(ctx)
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	return notificationReceiptRow(saved.Proto())
+}
+func (s notificationStore) Change(ctx context.Context, change watch.Change) (notify.Hint, bool, error) {
+	switch change.Key.Domain() {
+	case NotificationRecordDomain:
+		row, err := s.Find(ctx, change.Key)
+		if status.Code(err) == codes.NotFound {
+			return notify.Hint{}, false, nil
+		}
+		if err != nil {
+			return notify.Hint{}, false, err
+		}
+		return notify.Hint{Tenant: row.Tenant, Topics: []notify.Topic{row.Topic}}, true, nil
+	case NotificationReceiptRecordDomain:
+		row, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.IdEQ(change.Key.Uuid())).Only(ctx)
+		if ent.IsNotFound(err) {
+			return notify.Hint{}, false, nil
+		}
+		if err != nil {
+			return notify.Hint{}, false, err
+		}
+		receipt, err := notificationReceiptRow(row.Proto())
+		if err != nil {
+			return notify.Hint{}, false, err
+		}
+		notification, err := s.Find(ctx, receipt.Notification)
+		if status.Code(err) == codes.NotFound {
+			return notify.Hint{}, false, nil
+		}
+		if err != nil {
+			return notify.Hint{}, false, err
+		}
+		return notify.Hint{Tenant: receipt.Tenant, Reader: receipt.Reader, Topics: []notify.Topic{notification.Topic}}, true, nil
+	default:
+		return notify.Hint{}, false, nil
+	}
+}
+func notificationRow(v *apptest.NotificationRecord) (notify.Notification, error) {
+	key, err := pdid.From(v.GetId())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	tenant, err := pdid.From(v.GetTenantId())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	topic, err := notify.ParseTopicKey(v.GetTopicKey())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	source, err := notificationID(v.GetSourceId())
+	if err != nil {
+		return notify.Notification{}, err
+	}
+	row := notify.Notification{ID: key, Tenant: tenant, Topic: topic, Source: source, Kind: v.GetKind(), Producer: v.GetProducer(), IdempotencyKey: v.GetIdempotencyKey(), DateCreated: v.GetDateCreated().AsTime(), DateUpdated: v.GetDateUpdated().AsTime()}
+	if v.GetPayloadPresent() {
+		row.Payload = &anypb.Any{TypeUrl: v.GetPayloadType(), Value: bytes.Clone(v.GetPayloadValue())}
+	}
+	return row, nil
+}
+func notificationReceiptRow(v *apptest.NotificationReceiptRecord) (notify.Receipt, error) {
+	key, err := pdid.From(v.GetId())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	tenant, err := pdid.From(v.GetTenantId())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	notification, err := pdid.From(v.GetNotificationId())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	reader, err := pdid.From(v.GetReaderId())
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	return notify.Receipt{ID: key, Tenant: tenant, Notification: notification, Reader: reader, DataRead: v.GetDataRead().AsTime(), DateCreated: v.GetDateCreated().AsTime(), DateUpdated: v.GetDateUpdated().AsTime()}, nil
 }
 
 // personal is what a message holding a field declared `personal` is to the
@@ -11167,6 +12334,16 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.TenantRef{}
 	case apptest.TenantService_List_FullMethodName:
 		v = &apptest.TenantListRequest{}
+	case apptest.JobService_Add_FullMethodName:
+		v = &apptest.JobAddRequest{}
+	case apptest.JobService_Get_FullMethodName:
+		v = &apptest.JobGetRequest{}
+	case apptest.JobService_Patch_FullMethodName:
+		v = &apptest.JobPatchRequest{}
+	case apptest.JobService_Apply_FullMethodName:
+		v = &apptest.JobApplyRequest{}
+	case apptest.JobService_Erase_FullMethodName:
+		v = &apptest.JobRef{}
 	case apptest.ThingService_Add_FullMethodName:
 		v = &apptest.ThingAddRequest{}
 	case apptest.ThingService_Get_FullMethodName:
@@ -11289,6 +12466,14 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.HolderRef{}
 	case apptest.HolderService_List_FullMethodName:
 		v = &apptest.HolderListRequest{}
+	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
+		v = &apptest.NotificationReceiptRecordAddRequest{}
+	case apptest.NotificationReceiptRecordService_Get_FullMethodName:
+		v = &apptest.NotificationReceiptRecordGetRequest{}
+	case apptest.NotificationRecordService_Add_FullMethodName:
+		v = &apptest.NotificationRecordAddRequest{}
+	case apptest.NotificationRecordService_Get_FullMethodName:
+		v = &apptest.NotificationRecordGetRequest{}
 	case apptest.SealService_Add_FullMethodName:
 		v = &apptest.SealAddRequest{}
 	case apptest.SealService_Get_FullMethodName:
@@ -11349,6 +12534,16 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Tenant().Erase(ctx, v.(*apptest.TenantRef))
 	case apptest.TenantService_List_FullMethodName:
 		res, err = s.Tenant().List(ctx, v.(*apptest.TenantListRequest))
+	case apptest.JobService_Add_FullMethodName:
+		res, err = s.Job().Add(ctx, v.(*apptest.JobAddRequest))
+	case apptest.JobService_Get_FullMethodName:
+		res, err = s.Job().Get(ctx, v.(*apptest.JobGetRequest))
+	case apptest.JobService_Patch_FullMethodName:
+		res, err = s.Job().Patch(ctx, v.(*apptest.JobPatchRequest))
+	case apptest.JobService_Apply_FullMethodName:
+		res, err = s.Job().Apply(ctx, v.(*apptest.JobApplyRequest))
+	case apptest.JobService_Erase_FullMethodName:
+		res, err = s.Job().Erase(ctx, v.(*apptest.JobRef))
 	case apptest.ThingService_Add_FullMethodName:
 		res, err = s.Thing().Add(ctx, v.(*apptest.ThingAddRequest))
 	case apptest.ThingService_Get_FullMethodName:
@@ -11471,6 +12666,14 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Holder().Erase(ctx, v.(*apptest.HolderRef))
 	case apptest.HolderService_List_FullMethodName:
 		res, err = s.Holder().List(ctx, v.(*apptest.HolderListRequest))
+	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
+		res, err = s.NotificationReceiptRecord().Add(ctx, v.(*apptest.NotificationReceiptRecordAddRequest))
+	case apptest.NotificationReceiptRecordService_Get_FullMethodName:
+		res, err = s.NotificationReceiptRecord().Get(ctx, v.(*apptest.NotificationReceiptRecordGetRequest))
+	case apptest.NotificationRecordService_Add_FullMethodName:
+		res, err = s.NotificationRecord().Add(ctx, v.(*apptest.NotificationRecordAddRequest))
+	case apptest.NotificationRecordService_Get_FullMethodName:
+		res, err = s.NotificationRecord().Get(ctx, v.(*apptest.NotificationRecordGetRequest))
 	case apptest.SealService_Add_FullMethodName:
 		res, err = s.Seal().Add(ctx, v.(*apptest.SealAddRequest))
 	case apptest.SealService_Get_FullMethodName:
@@ -11522,8 +12725,11 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Fact{},
 		&apptest.Fleet{},
 		&apptest.Holder{},
+		&apptest.Job{},
 		&apptest.Joint{},
 		&apptest.Machine{},
+		&apptest.NotificationReceiptRecord{},
+		&apptest.NotificationRecord{},
 		&apptest.Outbox{},
 		&apptest.Owed{},
 		&apptest.Pairing{},
@@ -11540,6 +12746,9 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 }
 
 var resourceSecrets = map[protoreflect.FullName][]protoreflect.FieldNumber{
+	"app.NotificationRecord": {
+		12,
+	},
 	"app.Robot": {
 		8,
 	},
@@ -11819,6 +13028,40 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			return publicResource(v), nil
+		case *apptest.Job:
+			ctx, err := read.Allow(ctx, apptest.JobService_Get_FullMethodName, 1)
+			if err != nil {
+				switch status.Code(err) {
+				case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+					return nil, nil
+				}
+				return nil, err
+			}
+			pred, err := bare.JobNarrow(ctx, scope, nil)
+			if err != nil {
+				return nil, err
+			}
+			row, err := resourcesql.Row(db.Dialect(), entJob.Table, []resourcesql.Column{
+				{Number: 1, Name: entJob.FieldId, Type: 64, Nullable: false, Key: 0},
+				{Number: 2, Name: entJob.TenantColumn, Type: 64, Nullable: false, Key: 1},
+				{Number: 8, Name: entJob.FieldRobotId, Type: 64, Nullable: false, Key: 0},
+				{Number: 9, Name: entJob.FieldIssuerId, Type: 64, Nullable: false, Key: 0},
+				{Number: 10, Name: entJob.FieldCompleted, Type: 8, Nullable: false, Key: 0},
+				{Number: 13, Name: entJob.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
+				{Number: 15, Name: entJob.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
+			}, v)
+			if err != nil {
+				return nil, err
+			}
+			query := db.Job.Query()
+			if pred != nil {
+				query.Where(pred)
+			}
+			ok, err := query.Modify(func(q *sql.Selector) { q.From(row) }).Exist(ctx)
+			if err != nil || !ok {
+				return nil, err
+			}
+			return publicResource(v), nil
 		case *apptest.Joint:
 			ctx, err := read.Allow(ctx, apptest.JointService_Get_FullMethodName, 1)
 			if err != nil {
@@ -11893,6 +13136,10 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			return publicResource(v), nil
+		case *apptest.NotificationReceiptRecord:
+			return nil, nil
+		case *apptest.NotificationRecord:
+			return nil, nil
 		case *apptest.Pairing:
 			ctx, err := read.Allow(ctx, apptest.PairingService_Get_FullMethodName, 1)
 			if err != nil {
@@ -12203,6 +13450,14 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.HolderService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.JobService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.JobService_Patch_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.JobService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.JobService_Erase_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.JointService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.JointService_Patch_FullMethodName:
@@ -12219,6 +13474,10 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.MachineService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
+	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
+	case apptest.NotificationRecordService_Add_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.PairingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.PairingService_Patch_FullMethodName:
@@ -12297,7 +13556,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Joint", "app.Machine", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Stint", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Job", "app.Joint", "app.Machine", "app.NotificationReceiptRecord", "app.NotificationRecord", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Stint", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}

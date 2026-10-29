@@ -228,7 +228,7 @@ func TestAnOverlayAddsToThePastAndDoesNotChangeIt(t *testing.T) {
 		_, err := readAs(t, "fleet", src)
 		x.Error(err, "the event's kind was redeclared quietly")
 		x.Contains(err.Error(), `fleet.Event: 8 is payday's "kind" (string) and was redeclared as "kind" (int64)`)
-		x.Contains(err.Error(), "Of its Event and Fact, payday keeps every number they declare")
+		x.Contains(err.Error(), "Of its optional records, payday keeps every number they declare")
 	})
 
 	t.Run("its declaration", func(t *testing.T) {

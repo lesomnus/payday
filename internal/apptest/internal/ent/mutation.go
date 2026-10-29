@@ -19,8 +19,11 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/job"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/joint"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/notificationreceiptrecord"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/notificationrecord"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/outbox"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/owed"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/pairing"
@@ -46,28 +49,31 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAccess   = "Access"
-	TypeArchived = "Archived"
-	TypeAudit    = "Audit"
-	TypeCell     = "Cell"
-	TypeEvent    = "Event"
-	TypeFact     = "Fact"
-	TypeFleet    = "Fleet"
-	TypeHolder   = "Holder"
-	TypeJoint    = "Joint"
-	TypeMachine  = "Machine"
-	TypeOutbox   = "Outbox"
-	TypeOwed     = "Owed"
-	TypePairing  = "Pairing"
-	TypePulse    = "Pulse"
-	TypeReading  = "Reading"
-	TypeRobot    = "Robot"
-	TypeRowSeal  = "RowSeal"
-	TypeSeal     = "Seal"
-	TypeStint    = "Stint"
-	TypeTally    = "Tally"
-	TypeTenant   = "Tenant"
-	TypeThing    = "Thing"
+	TypeAccess                    = "Access"
+	TypeArchived                  = "Archived"
+	TypeAudit                     = "Audit"
+	TypeCell                      = "Cell"
+	TypeEvent                     = "Event"
+	TypeFact                      = "Fact"
+	TypeFleet                     = "Fleet"
+	TypeHolder                    = "Holder"
+	TypeJob                       = "Job"
+	TypeJoint                     = "Joint"
+	TypeMachine                   = "Machine"
+	TypeNotificationReceiptRecord = "NotificationReceiptRecord"
+	TypeNotificationRecord        = "NotificationRecord"
+	TypeOutbox                    = "Outbox"
+	TypeOwed                      = "Owed"
+	TypePairing                   = "Pairing"
+	TypePulse                     = "Pulse"
+	TypeReading                   = "Reading"
+	TypeRobot                     = "Robot"
+	TypeRowSeal                   = "RowSeal"
+	TypeSeal                      = "Seal"
+	TypeStint                     = "Stint"
+	TypeTally                     = "Tally"
+	TypeTenant                    = "Tenant"
+	TypeThing                     = "Thing"
 )
 
 // AccessMutation represents an operation that mutates the Access nodes in the graph.
@@ -2512,6 +2518,240 @@ func (m *HolderMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	return nil, fmt.Errorf("unknown Holder field %s", name)
 }
 
+// JobMutation represents an operation that mutates the Job nodes in the graph.
+type JobMutation struct {
+	job.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*Job, error)
+}
+
+var _ ent.Mutation = (*JobMutation)(nil)
+
+// jobOption allows management of the mutation configuration using functional options.
+type jobOption func(*JobMutation)
+
+// newJobMutation creates new mutation for the Job entity.
+func newJobMutation(c config, op Op, opts ...jobOption) *JobMutation {
+	m := &JobMutation{
+		Mutation: *job.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of Job entities.
+func (m *JobMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *JobMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withJobId sets the Id field of the mutation.
+func withJobId(id uuid.UUID) jobOption {
+	return func(m *JobMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Job
+		)
+		m.oldValue = func(ctx context.Context) (*Job, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Job.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withJob sets the old Job of the mutation.
+func withJob(node *Job) jobOption {
+	return func(m *JobMutation) {
+		m.oldValue = func(context.Context) (*Job, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m JobMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m JobMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *JobMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().Job.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldRobotId returns the old "robot_id" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldRobotId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldRobotId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldRobotId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRobotId: %w", err)
+	}
+	return oldValue.RobotId, nil
+}
+
+// OldIssuerId returns the old "issuer_id" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldIssuerId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldIssuerId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldIssuerId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIssuerId: %w", err)
+	}
+	return oldValue.IssuerId, nil
+}
+
+// OldCompleted returns the old "completed" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldCompleted(ctx context.Context) (v bool, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldCompleted is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldCompleted requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompleted: %w", err)
+	}
+	return oldValue.Completed, nil
+}
+
+// OldDateUpdated returns the old "date_updated" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldDateUpdated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateUpdated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateUpdated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateUpdated: %w", err)
+	}
+	return oldValue.DateUpdated, nil
+}
+
+// OldDateCreated returns the old "date_created" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// OldTenantId returns the old "tenant_id" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
+	}
+	return oldValue.TenantId, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *JobMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case job.FieldRobotId:
+		return m.OldRobotId(ctx)
+	case job.FieldIssuerId:
+		return m.OldIssuerId(ctx)
+	case job.FieldCompleted:
+		return m.OldCompleted(ctx)
+	case job.FieldDateUpdated:
+		return m.OldDateUpdated(ctx)
+	case job.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	case job.FieldTenantId:
+		return m.OldTenantId(ctx)
+	}
+	return nil, fmt.Errorf("unknown Job field %s", name)
+}
+
 // JointMutation represents an operation that mutates the Joint nodes in the graph.
 type JointMutation struct {
 	joint.Mutation
@@ -3168,6 +3408,569 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldRobotId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Machine field %s", name)
+}
+
+// NotificationReceiptRecordMutation represents an operation that mutates the NotificationReceiptRecord nodes in the graph.
+type NotificationReceiptRecordMutation struct {
+	notificationreceiptrecord.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*NotificationReceiptRecord, error)
+}
+
+var _ ent.Mutation = (*NotificationReceiptRecordMutation)(nil)
+
+// notificationreceiptrecordOption allows management of the mutation configuration using functional options.
+type notificationreceiptrecordOption func(*NotificationReceiptRecordMutation)
+
+// newNotificationReceiptRecordMutation creates new mutation for the NotificationReceiptRecord entity.
+func newNotificationReceiptRecordMutation(c config, op Op, opts ...notificationreceiptrecordOption) *NotificationReceiptRecordMutation {
+	m := &NotificationReceiptRecordMutation{
+		Mutation: *notificationreceiptrecord.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of NotificationReceiptRecord entities.
+func (m *NotificationReceiptRecordMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NotificationReceiptRecordMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withNotificationReceiptRecordId sets the Id field of the mutation.
+func withNotificationReceiptRecordId(id uuid.UUID) notificationreceiptrecordOption {
+	return func(m *NotificationReceiptRecordMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NotificationReceiptRecord
+		)
+		m.oldValue = func(ctx context.Context) (*NotificationReceiptRecord, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NotificationReceiptRecord.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNotificationReceiptRecord sets the old NotificationReceiptRecord of the mutation.
+func withNotificationReceiptRecord(node *NotificationReceiptRecord) notificationreceiptrecordOption {
+	return func(m *NotificationReceiptRecordMutation) {
+		m.oldValue = func(context.Context) (*NotificationReceiptRecord, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NotificationReceiptRecordMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NotificationReceiptRecordMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NotificationReceiptRecordMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().NotificationReceiptRecord.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldTenantId returns the old "tenant_id" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
+	}
+	return oldValue.TenantId, nil
+}
+
+// OldNotificationId returns the old "notification_id" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldNotificationId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldNotificationId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldNotificationId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotificationId: %w", err)
+	}
+	return oldValue.NotificationId, nil
+}
+
+// OldReaderId returns the old "reader_id" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldReaderId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldReaderId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldReaderId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReaderId: %w", err)
+	}
+	return oldValue.ReaderId, nil
+}
+
+// OldDataRead returns the old "data_read" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldDataRead(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDataRead is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDataRead requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDataRead: %w", err)
+	}
+	return oldValue.DataRead, nil
+}
+
+// OldDateUpdated returns the old "date_updated" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldDateUpdated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateUpdated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateUpdated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateUpdated: %w", err)
+	}
+	return oldValue.DateUpdated, nil
+}
+
+// OldDateCreated returns the old "date_created" field's value of the NotificationReceiptRecord entity.
+// If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationReceiptRecordMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NotificationReceiptRecordMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case notificationreceiptrecord.FieldTenantId:
+		return m.OldTenantId(ctx)
+	case notificationreceiptrecord.FieldNotificationId:
+		return m.OldNotificationId(ctx)
+	case notificationreceiptrecord.FieldReaderId:
+		return m.OldReaderId(ctx)
+	case notificationreceiptrecord.FieldDataRead:
+		return m.OldDataRead(ctx)
+	case notificationreceiptrecord.FieldDateUpdated:
+		return m.OldDateUpdated(ctx)
+	case notificationreceiptrecord.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	}
+	return nil, fmt.Errorf("unknown NotificationReceiptRecord field %s", name)
+}
+
+// NotificationRecordMutation represents an operation that mutates the NotificationRecord nodes in the graph.
+type NotificationRecordMutation struct {
+	notificationrecord.Mutation
+	config
+	id       *uuid.UUID
+	done     bool
+	oldValue func(context.Context) (*NotificationRecord, error)
+}
+
+var _ ent.Mutation = (*NotificationRecordMutation)(nil)
+
+// notificationrecordOption allows management of the mutation configuration using functional options.
+type notificationrecordOption func(*NotificationRecordMutation)
+
+// newNotificationRecordMutation creates new mutation for the NotificationRecord entity.
+func newNotificationRecordMutation(c config, op Op, opts ...notificationrecordOption) *NotificationRecordMutation {
+	m := &NotificationRecordMutation{
+		Mutation: *notificationrecord.NewMutation(op),
+		config:   c,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// SetId sets the value of the id field. Note that this
+// operation is only accepted on creation of NotificationRecord entities.
+func (m *NotificationRecordMutation) SetId(id uuid.UUID) {
+	m.id = &id
+}
+
+// Id returns the Id value in the mutation. Note that the Id is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *NotificationRecordMutation) Id() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// withNotificationRecordId sets the Id field of the mutation.
+func withNotificationRecordId(id uuid.UUID) notificationrecordOption {
+	return func(m *NotificationRecordMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *NotificationRecord
+		)
+		m.oldValue = func(ctx context.Context) (*NotificationRecord, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().NotificationRecord.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withNotificationRecord sets the old NotificationRecord of the mutation.
+func withNotificationRecord(node *NotificationRecord) notificationrecordOption {
+	return func(m *NotificationRecordMutation) {
+		m.oldValue = func(context.Context) (*NotificationRecord, error) {
+			return node, nil
+		}
+		m.id = &node.Id
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m NotificationRecordMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m NotificationRecordMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// Ids queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *NotificationRecordMutation) Ids(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.Op().Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.Id()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.Op().Is(OpUpdate | OpDelete):
+		return m.Client().NotificationRecord.Query().Where(m.Predicates()...).Ids(ctx)
+	default:
+		return nil, fmt.Errorf("Ids is not allowed on %s operations", m.Op())
+	}
+}
+
+// OldTenantId returns the old "tenant_id" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTenantId: %w", err)
+	}
+	return oldValue.TenantId, nil
+}
+
+// OldKind returns the old "kind" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldKind(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldKind requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+	}
+	return oldValue.Kind, nil
+}
+
+// OldTopicKey returns the old "topic_key" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldTopicKey(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldTopicKey is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldTopicKey requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTopicKey: %w", err)
+	}
+	return oldValue.TopicKey, nil
+}
+
+// OldSourceId returns the old "source_id" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldSourceId(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldSourceId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldSourceId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceId: %w", err)
+	}
+	return oldValue.SourceId, nil
+}
+
+// OldPayloadType returns the old "payload_type" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldPayloadType(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldPayloadType is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldPayloadType requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayloadType: %w", err)
+	}
+	return oldValue.PayloadType, nil
+}
+
+// OldPayloadValue returns the old "payload_value" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldPayloadValue(ctx context.Context) (v []byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldPayloadValue is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldPayloadValue requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayloadValue: %w", err)
+	}
+	return oldValue.PayloadValue, nil
+}
+
+// OldDateUpdated returns the old "date_updated" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldDateUpdated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateUpdated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateUpdated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateUpdated: %w", err)
+	}
+	return oldValue.DateUpdated, nil
+}
+
+// OldDateCreated returns the old "date_created" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldDateCreated(ctx context.Context) (v time.Time, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldDateCreated is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldDateCreated requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDateCreated: %w", err)
+	}
+	return oldValue.DateCreated, nil
+}
+
+// OldProducer returns the old "producer" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldProducer(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldProducer is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldProducer requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProducer: %w", err)
+	}
+	return oldValue.Producer, nil
+}
+
+// OldIdempotencyKey returns the old "idempotency_key" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldIdempotencyKey(ctx context.Context) (v string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldIdempotencyKey is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldIdempotencyKey requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIdempotencyKey: %w", err)
+	}
+	return oldValue.IdempotencyKey, nil
+}
+
+// OldPayloadPresent returns the old "payload_present" field's value of the NotificationRecord entity.
+// If the NotificationRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NotificationRecordMutation) OldPayloadPresent(ctx context.Context) (v bool, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldPayloadPresent is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldPayloadPresent requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayloadPresent: %w", err)
+	}
+	return oldValue.PayloadPresent, nil
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *NotificationRecordMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case notificationrecord.FieldTenantId:
+		return m.OldTenantId(ctx)
+	case notificationrecord.FieldKind:
+		return m.OldKind(ctx)
+	case notificationrecord.FieldTopicKey:
+		return m.OldTopicKey(ctx)
+	case notificationrecord.FieldSourceId:
+		return m.OldSourceId(ctx)
+	case notificationrecord.FieldPayloadType:
+		return m.OldPayloadType(ctx)
+	case notificationrecord.FieldPayloadValue:
+		return m.OldPayloadValue(ctx)
+	case notificationrecord.FieldDateUpdated:
+		return m.OldDateUpdated(ctx)
+	case notificationrecord.FieldDateCreated:
+		return m.OldDateCreated(ctx)
+	case notificationrecord.FieldProducer:
+		return m.OldProducer(ctx)
+	case notificationrecord.FieldIdempotencyKey:
+		return m.OldIdempotencyKey(ctx)
+	case notificationrecord.FieldPayloadPresent:
+		return m.OldPayloadPresent(ctx)
+	}
+	return nil, fmt.Errorf("unknown NotificationRecord field %s", name)
 }
 
 // OutboxMutation represents an operation that mutates the Outbox nodes in the graph.
@@ -4348,6 +5151,23 @@ func (m *RobotMutation) OldKeeper(ctx context.Context) (v string, err error) {
 	return oldValue.Keeper, nil
 }
 
+// OldOwnerId returns the old "owner_id" field's value of the Robot entity.
+// If the Robot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RobotMutation) OldOwnerId(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldOwnerId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerId: %w", err)
+	}
+	return oldValue.OwnerId, nil
+}
+
 // OldDateUpdated returns the old "date_updated" field's value of the Robot entity.
 // If the Robot object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -4463,6 +5283,8 @@ func (m *RobotMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDateAttested(ctx)
 	case robot.FieldKeeper:
 		return m.OldKeeper(ctx)
+	case robot.FieldOwnerId:
+		return m.OldOwnerId(ctx)
 	case robot.FieldDateUpdated:
 		return m.OldDateUpdated(ctx)
 	case robot.FieldDateCreated:

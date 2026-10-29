@@ -28,10 +28,16 @@ type Tx struct {
 	Fleet *FleetClient
 	// Holder is the client for interacting with the Holder builders.
 	Holder *HolderClient
+	// Job is the client for interacting with the Job builders.
+	Job *JobClient
 	// Joint is the client for interacting with the Joint builders.
 	Joint *JointClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
+	// NotificationReceiptRecord is the client for interacting with the NotificationReceiptRecord builders.
+	NotificationReceiptRecord *NotificationReceiptRecordClient
+	// NotificationRecord is the client for interacting with the NotificationRecord builders.
+	NotificationRecord *NotificationRecordClient
 	// Outbox is the client for interacting with the Outbox builders.
 	Outbox *OutboxClient
 	// Owed is the client for interacting with the Owed builders.
@@ -195,8 +201,11 @@ func (tx *Tx) init() {
 	tx.Fact = NewFactClient(tx.config)
 	tx.Fleet = NewFleetClient(tx.config)
 	tx.Holder = NewHolderClient(tx.config)
+	tx.Job = NewJobClient(tx.config)
 	tx.Joint = NewJointClient(tx.config)
 	tx.Machine = NewMachineClient(tx.config)
+	tx.NotificationReceiptRecord = NewNotificationReceiptRecordClient(tx.config)
+	tx.NotificationRecord = NewNotificationRecordClient(tx.config)
 	tx.Outbox = NewOutboxClient(tx.config)
 	tx.Owed = NewOwedClient(tx.config)
 	tx.Pairing = NewPairingClient(tx.config)

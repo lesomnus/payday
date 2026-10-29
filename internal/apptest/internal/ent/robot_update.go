@@ -92,6 +92,26 @@ func (_u *RobotUpdate) SetNillableKeeper(v *string) *RobotUpdate {
 	return _u
 }
 
+// SetOwnerId sets the "owner_id" field.
+func (_u *RobotUpdate) SetOwnerId(v uuid.UUID) *RobotUpdate {
+	_u.mutation.SetOwnerId(v)
+	return _u
+}
+
+// SetNillableOwnerId sets the "owner_id" field if the given value is not nil.
+func (_u *RobotUpdate) SetNillableOwnerId(v *uuid.UUID) *RobotUpdate {
+	if v != nil {
+		_u.SetOwnerId(*v)
+	}
+	return _u
+}
+
+// ClearOwnerId clears the value of the "owner_id" field.
+func (_u *RobotUpdate) ClearOwnerId() *RobotUpdate {
+	_u.mutation.ClearOwnerId()
+	return _u
+}
+
 // SetDateUpdated sets the "date_updated" field.
 func (_u *RobotUpdate) SetDateUpdated(v time.Time) *RobotUpdate {
 	_u.mutation.SetDateUpdated(v)
@@ -276,6 +296,15 @@ func (_u *RobotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if e, ok := _u.mutation.FieldExpr(robot.FieldKeeper); ok {
 		_spec.SetField(robot.FieldKeeper, field.TypeString, e)
 	}
+	if value, ok := _u.mutation.OwnerId(); ok {
+		_spec.SetField(robot.FieldOwnerId, field.TypeUuid, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldOwnerId); ok {
+		_spec.SetField(robot.FieldOwnerId, field.TypeUuid, e)
+	}
+	if _u.mutation.OwnerIdCleared() {
+		_spec.ClearField(robot.FieldOwnerId, field.TypeUuid)
+	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -431,6 +460,26 @@ func (_u *RobotUpdateOne) SetNillableKeeper(v *string) *RobotUpdateOne {
 	if v != nil {
 		_u.SetKeeper(*v)
 	}
+	return _u
+}
+
+// SetOwnerId sets the "owner_id" field.
+func (_u *RobotUpdateOne) SetOwnerId(v uuid.UUID) *RobotUpdateOne {
+	_u.mutation.SetOwnerId(v)
+	return _u
+}
+
+// SetNillableOwnerId sets the "owner_id" field if the given value is not nil.
+func (_u *RobotUpdateOne) SetNillableOwnerId(v *uuid.UUID) *RobotUpdateOne {
+	if v != nil {
+		_u.SetOwnerId(*v)
+	}
+	return _u
+}
+
+// ClearOwnerId clears the value of the "owner_id" field.
+func (_u *RobotUpdateOne) ClearOwnerId() *RobotUpdateOne {
+	_u.mutation.ClearOwnerId()
 	return _u
 }
 
@@ -647,6 +696,15 @@ func (_u *RobotUpdateOne) sqlSave(ctx context.Context) (_node *Robot, err error)
 	}
 	if e, ok := _u.mutation.FieldExpr(robot.FieldKeeper); ok {
 		_spec.SetField(robot.FieldKeeper, field.TypeString, e)
+	}
+	if value, ok := _u.mutation.OwnerId(); ok {
+		_spec.SetField(robot.FieldOwnerId, field.TypeUuid, value)
+	}
+	if e, ok := _u.mutation.FieldExpr(robot.FieldOwnerId); ok {
+		_spec.SetField(robot.FieldOwnerId, field.TypeUuid, e)
+	}
+	if _u.mutation.OwnerIdCleared() {
+		_spec.ClearField(robot.FieldOwnerId, field.TypeUuid)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(robot.FieldDateUpdated, field.TypeTime, value)

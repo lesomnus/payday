@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiQwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMiIwoEUGFzdBINCgVldmVudBgBIAEoDRIMCgRmYWN0GAIgASgNIisKB0RvbWFpbnMSEAoIYXJjaGl2ZWQYASABKA0SDgoGYWNjZXNzGAIgASgNQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac");
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0iPwoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEg4KBmdsb2JhbBgDIAEoCEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
 
 /**
  * App says that this file's proto package is the app's own.
@@ -45,7 +45,7 @@ export const file_payday_app: GenFile = /*@__PURE__*/
  * say: a file either says it or does not. It is a message rather than a `bool`
  * so that something could be added to it without every app that set it having
  * to change, and [App.past] is the first thing that was, [App.domains] the
- * second.
+ * second, [App.notify] the third.
  *
  * Setting it on more than one package is refused. Two answers to "where do
  * payday's entities go" is the thing this exists to avoid, and getting two of
@@ -87,6 +87,14 @@ export type App = Message<"payday.App"> & {
    * @generated from field: payday.Domains domains = 2;
    */
   domains?: Domains | undefined;
+
+  /**
+   * Notify opts this app into notifications and assigns its internal records
+   * domains of the app's own. Topic and reader policy remain the app's.
+   *
+   * @generated from field: payday.Notify notify = 3;
+   */
+  notify?: Notify | undefined;
 };
 
 /**
@@ -195,4 +203,37 @@ export type Domains = Message<"payday.Domains"> & {
  */
 export const DomainsSchema: GenMessage<Domains> = /*@__PURE__*/
   messageDesc(file_payday_app, 2);
+
+/**
+ * Notify numbers the two records copied into an app that enables notifications.
+ * Each is a distinct domain in 7..247, held by no other entity or optional
+ * feature. The records and public NotificationService live in the app's package.
+ *
+ * @generated from message payday.Notify
+ */
+export type Notify = Message<"payday.Notify"> & {
+  /**
+   * @generated from field: uint32 notification = 1;
+   */
+  notification: number;
+
+  /**
+   * @generated from field: uint32 receipt = 2;
+   */
+  receipt: number;
+
+  /**
+   * One app-global namespace instead of tenant-scoped notification records.
+   *
+   * @generated from field: bool global = 3;
+   */
+  global: boolean;
+};
+
+/**
+ * Describes the message payday.Notify.
+ * Use `create(NotifySchema)` to create a new message.
+ */
+export const NotifySchema: GenMessage<Notify> = /*@__PURE__*/
+  messageDesc(file_payday_app, 3);
 

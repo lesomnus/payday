@@ -105,6 +105,18 @@ func (f HolderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HolderMutation", m)
 }
 
+// The JobFunc type is an adapter to allow the use of ordinary
+// function as Job mutator.
+type JobFunc func(context.Context, *ent.JobMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f JobFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.JobMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.JobMutation", m)
+}
+
 // The JointFunc type is an adapter to allow the use of ordinary
 // function as Joint mutator.
 type JointFunc func(context.Context, *ent.JointMutation) (ent.Value, error)
@@ -127,6 +139,30 @@ func (f MachineFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MachineMutation", m)
+}
+
+// The NotificationReceiptRecordFunc type is an adapter to allow the use of ordinary
+// function as NotificationReceiptRecord mutator.
+type NotificationReceiptRecordFunc func(context.Context, *ent.NotificationReceiptRecordMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NotificationReceiptRecordFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NotificationReceiptRecordMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NotificationReceiptRecordMutation", m)
+}
+
+// The NotificationRecordFunc type is an adapter to allow the use of ordinary
+// function as NotificationRecord mutator.
+type NotificationRecordFunc func(context.Context, *ent.NotificationRecordMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NotificationRecordFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NotificationRecordMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NotificationRecordMutation", m)
 }
 
 // The OutboxFunc type is an adapter to allow the use of ordinary

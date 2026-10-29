@@ -27,6 +27,7 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // that gives them 240 and 241.
 option (payday.app) = {
   past: {event: 17, fact: 18}
+  notify: {notification: 40, receipt: 41}
 };
 
 // Cell was added to answer one question: what does adding an entity cost?
@@ -125,6 +126,13 @@ message Robot {
   // answered with like any other field, and on the trail as a value at no
   // content level, which is what the trail's tests hold it to.
   string keeper = 32 [(payday.field) = {personal: true}];
+
+  // A stable Holder identity for the notification policy. An identifier avoids
+  // a cycle: this app's Holder already points to Robot through its overlay.
+  bytes owner_id = 33 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
 
   // Stamped on every write and refused to a patch document, so it is a version
   // and not a field. It is here because this entity declares a `watch:`, and

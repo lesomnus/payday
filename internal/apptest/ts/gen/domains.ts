@@ -36,11 +36,20 @@ export const FleetDomain = 9
 /** The domain identifiers of app.Holder carry. */
 export const HolderDomain = 2
 
+/** The domain identifiers of app.Job carry. */
+export const JobDomain = 42
+
 /** The domain identifiers of app.Joint carry. */
 export const JointDomain = 8
 
 /** The domain identifiers of app.Machine carry. */
 export const MachineDomain = 19
+
+/** The domain identifiers of app.NotificationReceiptRecord carry. */
+export const NotificationReceiptRecordDomain = 41
+
+/** The domain identifiers of app.NotificationRecord carry. */
+export const NotificationRecordDomain = 40
 
 /** The domain identifiers of app.Outbox carry. */
 export const OutboxDomain = 4
@@ -88,8 +97,11 @@ pdid.register("app.Event", EventDomain, "event")
 pdid.register("app.Fact", FactDomain, "fact")
 pdid.register("app.Fleet", FleetDomain, "fleet")
 pdid.register("app.Holder", HolderDomain, "holder")
+pdid.register("app.Job", JobDomain, "job")
 pdid.register("app.Joint", JointDomain, "joint")
 pdid.register("app.Machine", MachineDomain, "machine")
+pdid.register("app.NotificationReceiptRecord", NotificationReceiptRecordDomain, "notification-receipt")
+pdid.register("app.NotificationRecord", NotificationRecordDomain, "notification")
 pdid.register("app.Outbox", OutboxDomain, "outbox")
 pdid.register("app.Owed", OwedDomain, "owed")
 pdid.register("app.Pairing", PairingDomain, "pairing")

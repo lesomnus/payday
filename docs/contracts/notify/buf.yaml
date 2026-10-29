@@ -1,0 +1,19 @@
+# The public wire contract, compiled independently of private storage records.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+  except:
+    # The package stands for the application's own package, as its entities do.
+    - PACKAGE_VERSION_SUFFIX
+    - PACKAGE_DIRECTORY_MATCH
+    # Requests are named after their entity, and Add/Get return the entity,
+    # as payday's generated methods do.
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
+breaking:
+  use:
+    - FILE

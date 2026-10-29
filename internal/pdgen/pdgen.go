@@ -205,6 +205,9 @@ type Schema struct {
 	// by their marker; this is what says whether they should be.
 	Past *Past
 
+	// Notify declares the domains of the optional notification storage records.
+	Notify *Notify
+
 	// Domains is what the app declared of the domains of payday's Archived and
 	// Access, and nil for an app that declared none (payday#163): the two are
 	// in [Schema.Entities] wherever they are, found by their marker, and this
@@ -236,7 +239,16 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 	s.Past = past
 
-	domains, err := readDomains(files, past)
+	notify, err := readNotify(files)
+	if err != nil {
+		return nil, err
+	}
+	s.Notify = notify
+	if err := CheckNotifyDomains(notifyProto(notify), pastProto(past), nil); err != nil {
+		return nil, err
+	}
+
+	domains, err := readDomains(files, past, notify)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +296,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	if err := s.checkPast(); err != nil {
+		return nil, err
+	}
+	if err := s.checkNotify(); err != nil {
 		return nil, err
 	}
 	if err := s.checkDomains(); err != nil {

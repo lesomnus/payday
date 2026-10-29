@@ -62,6 +62,9 @@ func (Robot) Fields() []ent.Field {
 			Nillable().
 			Optional(),
 		field.String("keeper"),
+		field.Uuid("owner_id").
+			Nillable().
+			Optional(),
 		field.Time("date_updated"),
 		field.Time("date_created").
 			Immutable().

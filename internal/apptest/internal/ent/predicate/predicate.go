@@ -52,6 +52,9 @@ func HolderOrErr(p Holder, err error) Holder {
 	}
 }
 
+// Job is the predicate function for job builders.
+type Job func(*sql.Selector)
+
 // Joint is the predicate function for joint builders.
 type Joint func(*sql.Selector)
 
@@ -68,6 +71,12 @@ func MachineOrErr(p Machine, err error) Machine {
 		p(s)
 	}
 }
+
+// NotificationReceiptRecord is the predicate function for notificationreceiptrecord builders.
+type NotificationReceiptRecord func(*sql.Selector)
+
+// NotificationRecord is the predicate function for notificationrecord builders.
+type NotificationRecord func(*sql.Selector)
 
 // Outbox is the predicate function for outbox builders.
 type Outbox func(*sql.Selector)

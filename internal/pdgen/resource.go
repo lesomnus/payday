@@ -7,6 +7,8 @@ import (
 	"github.com/protobuf-orm/protobuf-orm/graph"
 	"github.com/protobuf-orm/protobuf-orm/ormpb"
 	"google.golang.org/protobuf/compiler/protogen"
+
+	"github.com/lesomnus/payday/pdpb"
 )
 
 const pkgResource = protogen.GoImportPath("github.com/lesomnus/payday/resource")
@@ -54,6 +56,12 @@ func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	g.P("switch v:=message.(type) {")
 	for _, e := range s.Sorted() {
 		if !e.Rpcs().HasGet() {
+			continue
+		}
+		if e.Own == pdpb.Own_OWN_NOTIFICATION || e.Own == pdpb.Own_OWN_NOTIFICATION_RECEIPT {
+			// The public NotificationService applies topic and reader policy.
+			// Its storage records are never an alternate subscription surface.
+			g.P("case *", root.Ident(e.GoName()), ": return nil,nil")
 			continue
 		}
 		name := e.GoName()

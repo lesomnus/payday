@@ -29,6 +29,8 @@ type Robot struct {
 	DateAttested *time.Time `json:"date_attested,omitempty"`
 	// Keeper holds the value of the "keeper" field.
 	Keeper string `json:"keeper,omitempty"`
+	// OwnerId holds the value of the "owner_id" field.
+	OwnerId *uuid.UUID `json:"owner_id,omitempty"`
 	// DateUpdated holds the value of the "date_updated" field.
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -104,7 +106,7 @@ func (*Robot) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case robot.FieldDateAttested, robot.FieldDateUpdated, robot.FieldDateCreated, robot.FieldDateErased:
 			values[i] = new(sql.NullTime)
-		case robot.FieldThingId, robot.FieldCellId:
+		case robot.FieldOwnerId, robot.FieldThingId, robot.FieldCellId:
 			values[i] = new(sql.Null[uuid.UUID])
 		case robot.FieldId, robot.FieldTenantId:
 			values[i] = new(uuid.UUID)
@@ -153,6 +155,13 @@ func (_m *Robot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field keeper", values[i])
 			} else if value.Valid {
 				_m.Keeper = value.String
+			}
+		case robot.FieldOwnerId:
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field owner_id", values[i])
+			} else if value.Valid {
+				_m.OwnerId = new(uuid.UUID)
+				*_m.OwnerId = value.V
 			}
 		case robot.FieldDateUpdated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -255,6 +264,11 @@ func (_m *Robot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("keeper=")
 	builder.WriteString(_m.Keeper)
+	builder.WriteString(", ")
+	if v := _m.OwnerId; v != nil {
+		builder.WriteString("owner_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("date_updated=")
 	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))

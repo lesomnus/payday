@@ -42,6 +42,15 @@ jobs:
         with:
           setup_only: true
 
+      # The public notification contract is compiled without private storage
+      # records. schema's tests keep it equal to what an app receives.
+      - name: notification contract
+        working-directory: docs/contracts/notify
+        run: |
+          buf format --diff --exit-code
+          buf lint
+          buf build
+
       # Two baselines, because payday's schema reaches apps two ways.
       #
       # `proto/` is fetched: an app declares `buf.build/payday/payday:dev` and
@@ -161,6 +170,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
+        with:
+          setup_only: true
 
       - name: payday
         run: go test ./... -count=1

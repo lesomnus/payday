@@ -58,24 +58,31 @@ func CheckOwn(s *Schema) error {
 	if err != nil {
 		return err
 	}
-	opted, err := schema.Opted()
+	features, err := schema.Features()
 	if err != nil {
 		return err
 	}
 
-	// From what payday ships rather than a list written here, so an entity
-	// added to payday's schema is covered by having been added.
 	gone := []string{}
 	past := []string{}
+	notifications := []string{}
 	for own := range owned {
 		switch {
 		case s.Has(own):
-		case !opted[own]:
+		case features[own] == "":
 			gone = append(gone, own.String())
-		case s.Past != nil:
+		case features[own] == schema.DirPast && s.Past != nil:
 			past = append(past, own.String())
+		case features[own] == schema.DirNotify && s.Notify != nil:
+			notifications = append(notifications, own.String())
 		}
 	}
+	sort.Strings(notifications)
+	if len(gone) == 0 && len(notifications) > 0 {
+		return fmt.Errorf("%s: %s declares notifications, and nothing in this schema carries the marker; run `pd gen` to restore the notification records",
+			strings.Join(notifications, ", "), s.Notify.At)
+	}
+
 	sort.Strings(past)
 
 	if len(gone) == 0 && len(past) > 0 {
@@ -92,6 +99,7 @@ func CheckOwn(s *Schema) error {
 		return nil
 	}
 	gone = append(gone, past...)
+	gone = append(gone, notifications...)
 	sort.Strings(gone)
 
 	return fmt.Errorf(
@@ -177,11 +185,14 @@ func CheckOverlay(s *Schema) error {
 
 		got := fieldsOf(v.Descriptor())
 		for n, w := range want {
+			if n == 2 && s.Notify != nil && s.Notify.Global && (v.Own == pdpb.Own_OWN_NOTIFICATION || v.Own == pdpb.Own_OWN_NOTIFICATION_RECEIPT) {
+				continue
+			}
 			g, ok := got[n]
 			switch {
 			case !ok && opted[v.Own]:
 				errs = append(errs, fmt.Sprintf(
-					"%s: %d is payday's %q and is gone; the past is written and read by it",
+					"%s: %d is payday's %q and is gone; the optional feature is written and read by it",
 					v.FullName(), n, w.Name))
 			case !ok:
 				errs = append(errs, fmt.Sprintf(
@@ -200,6 +211,10 @@ func CheckOverlay(s *Schema) error {
 		if opted[v.Own] || numbered(v.Own) {
 			shipped = proto.Clone(shipped).(*pdpb.Entity)
 			shipped.SetDomain(e.GetDomain())
+		}
+		if s.Notify != nil && s.Notify.Global && (v.Own == pdpb.Own_OWN_NOTIFICATION || v.Own == pdpb.Own_OWN_NOTIFICATION_RECEIPT) {
+			shipped = proto.Clone(shipped).(*pdpb.Entity)
+			shipped.SetGlobal(&pdpb.Entity_Global{})
 		}
 		for _, p := range added(e.ProtoReflect(), shipped.ProtoReflect(), "") {
 			errs = append(errs, fmt.Sprintf(
@@ -222,7 +237,7 @@ func CheckOverlay(s *Schema) error {
 	return fmt.Errorf(
 		"an overlay may add to one of payday's entities and may not change it.\n"+
 			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n"+
-			"Of its Event and Fact, payday keeps every number they declare, and an app's own go at any other.\n"+
+			"Of its optional records, payday keeps every number they declare, and an app's own go at any other.\n"+
 			"Of its options, an overlay may add an index to (orm.message), and nothing else.\n\n  %s",
 		strings.Join(errs, "\n  "))
 }

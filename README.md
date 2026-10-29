@@ -13,6 +13,8 @@ it is generated rather than remembered.
   way, writing a layer, the interceptors, configuration, the commands.
 - [**The page**](docs/guide/client.md) — reads that keep themselves current,
   writes that need no invalidation rule, and what persists across a reload.
+- [**Adding notifications**](docs/guide/notifications.md) — named and resource
+  Topics, app-defined readers, and read state that stays current across clients.
 - [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
   `add`, `patch` and `erase` for every entity, from a `Connector` that says how
   to reach the deployment; the output formats, and a command for an RPC of your

@@ -1,6 +1,7 @@
 package watchpg
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -49,5 +50,56 @@ func TestMalformedFragmentIsObservable(t *testing.T) {
 		var r receiver
 		_, err := r.accept(data)
 		require.Error(t, err)
+	}
+}
+
+func TestInvalidationSurvivesTheWireWithoutPublishingMutationPatches(t *testing.T) {
+	x := require.New(t)
+	signal := []byte(`{"topic":"n:maintenance"}`)
+	input := watch.Event{Changes: []watch.Change{{
+		By: "/payday.notify/internal/Invalidate", Key: pdid.New(1),
+		Signal: signal, Patch: []byte("private mutation content"),
+	}}}
+	chunks, err := packets(input)
+	x.NoError(err)
+	x.Len(chunks, 1)
+	x.NotContains(chunks[0], "private mutation content")
+	output, err := decode(chunks[0])
+	x.NoError(err)
+	x.Equal(signal, output.Changes[0].Signal)
+	x.Empty(output.Changes[0].Patch)
+	x.Nil(output.Changes[0].Resource)
+}
+
+func TestInvalidationCountsTowardsThePublicationLimit(t *testing.T) {
+	_, err := packets(watch.Event{Changes: []watch.Change{{
+		Key: pdid.New(1), Signal: make([]byte, MaxWire),
+	}}})
+	require.ErrorContains(t, err, "payload limit")
+}
+
+func TestAppWideSignalsAllowAnAbsentResourceKey(t *testing.T) {
+	x := require.New(t)
+	signal := []byte(`{"topic":"n:maintenance"}`)
+	chunks, err := packets(watch.Event{Changes: []watch.Change{{
+		By: "/app/internal/Invalidate", Signal: signal,
+	}}})
+	x.NoError(err)
+	x.Len(chunks, 1)
+	output, err := decode(chunks[0])
+	x.NoError(err)
+	x.True(output.Changes[0].Key.IsZero())
+	x.Equal(signal, output.Changes[0].Signal)
+
+	for _, item := range []change{
+		{Key: pdid.Nil.String()},
+		{Key: pdid.Nil.String(), Signal: signal, Resource: []byte{8, 1}},
+		{Key: "not-an-id", Signal: signal},
+		{Key: "", Signal: signal},
+	} {
+		data, err := json.Marshal(wire{Changes: []change{item}})
+		x.NoError(err)
+		_, err = decode(string(data))
+		x.ErrorContains(err, "key")
 	}
 }
