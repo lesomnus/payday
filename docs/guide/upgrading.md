@@ -138,12 +138,39 @@ payday that brought `pd upgrade` was `--payday 56a32f4`.
 - **Move Node, a Dockerfile's base image, or the Node your CI runs.** Those are
   files and machines payday does not own.
 
-## 6. Renovate, for the rest
+## 6. Renovate and common Go dependencies
 
-Keeping current above the floors is Renovate's. An app made with `pd new` has a
+An app made with `pd new` has a
 `renovate.json` that extends payday's preset, `github>lesomnus/payday//renovate/app`
 (`renovate/app.json` in this repository). An app made before that can extend the
-same preset. The preset does these things:
+same preset.
+
+Go modules payday already requires, direct or indirect, are updated in payday
+and follow into apps through `pd upgrade --payday`. The preset disables their
+individual Renovate updates in apps. This does not pin the app to payday's
+versions: Go chooses the highest minimum required anywhere in the graph, so
+an app that already requires a newer version keeps it. App-only modules still
+receive updates, and a later app-local package rule can opt a common module
+back into individual updates.
+Security fixes for common modules follow the same payday upgrade path.
+
+`renovate/go-common.json` holds those module names, generated from the root
+`go.mod` by `go run ./scripts/renovate-go-common.go`. Run it after adding or
+removing a requirement; `scripts/test.sh` checks that it is current. Payday
+itself extends `renovate/base` and enables indirect-module updates too, so the
+common modules still receive updates here. The existing generator exceptions
+remain manual.
+
+The app preset leaves payday upgrades manual by default. A self-hosted runner
+can opt an app in with a later rule enabling payday and a `postUpgradeTasks`
+command that runs `pd upgrade --payday` at the exact proposed module version.
+Install the page's dependencies first, include regenerated Go and TypeScript
+in the PR, and gate it on the app's generation checks, tests and build. The
+runner must allow the command and provide Go and Node. An app that embeds a
+second payday app must still review that app's compatibility; updating payday
+does not regenerate a dependency's committed code.
+
+The preset also does these things:
 
 - **It waits three days before it proposes a release** of an npm package or a
   Go module: time for a release published to do harm to be found and pulled,
@@ -158,12 +185,13 @@ same preset. The preset does these things:
   names the commit instead, with the tag after it as a comment, and from then
   on an update moves the two together.
 - **It asks osv.dev about vulnerabilities as well as GitHub**
-  (`osvVulnerabilityAlerts`), and proposes the fix for each, when there is
-  one, at once and whatever the app's schedule says.
-- **It leaves payday and protobuf-orm to `pd upgrade --payday`.** An upgrade of
-  either has to generate the app's code again. Renovate cannot generate, and
-  code another payday generated is refused when it runs, so a pull request that
-  only moves `go.mod` would fail every time.
+  (`osvVulnerabilityAlerts`), and proposes fixes for enabled packages at once,
+  whatever the app's schedule says. Common Go modules are fixed in payday and
+  then brought into the app through its payday upgrade.
+- **It leaves payday and protobuf-orm to `pd upgrade --payday` by default.** An
+  upgrade of either has to generate the app's code again. Code another payday
+  generated is refused when it runs, so a pull request that only moves `go.mod`
+  is incomplete. A self-hosted post-upgrade task can do the generation as above.
 - **It holds the generators until somebody asks for them.** `protoc-gen-go`,
   `protoc-gen-go-grpc` and `protoc-gen-es` write their version into every file
   they write, so a pull request that moves one fails `pd gen --check` until it
@@ -173,8 +201,10 @@ same preset. The preset does these things:
   its own release of it exactly. In roster's `non-major`, `protoc-gen-es` 2.15
   to 2.16 held twenty other updates back.
 
-  The Go two also move with payday. `pd upgrade --payday` runs `go get`, which
-  raises them to what payday requires when that is newer, and then generates.
+  The two Go modules are common dependencies, so their individual updates in
+  apps are disabled by `renovate/go-common`. `pd upgrade --payday` raises them
+  to what payday requires when that is newer, and then generates. The dashboard
+  group still applies to npm generators and to payday's own Go updates.
 - **It keeps vite and @vitejs/plugin-react in one pull request**, for the reason
   in §2.
 - **It groups patches, digests, and minors from 1.0 on, into one `non-major`

@@ -3,6 +3,26 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## payday's Tenant says its name is about no one
+
+**Applies if** an overlay of yours declares a field of the tenant personal,
+or you name a tenant after a person.
+
+`Tenant`'s `alias`, `name`, `desc` and `labels` are declared
+`personal: false`: what an organisation is called and said to be is its own,
+and the trail keeps it as it always did. `pd gen` copies the declaration in,
+and nothing it writes behaves differently.
+
+- **`pd doctor` stops asking about them.** A tenant with a personal field of
+  the app's -- the reason one was closed, say -- holds people, and the doctor
+  asked about these four, which no overlay may declare. An app that kept the
+  finding as known can drop it.
+- **Write nobody into them.** A tenant named after a person -- "Kim's
+  workspace", made when Kim signs up -- is a person's name in a field about
+  no one: on the trail as a value, where nothing that forgets Kim reaches it.
+  Leave the name empty and say it where it is read, after whoever has the
+  tenant then, as rove does now (lesomnus/rove#233).
+
 ## A migration refuses an index PostgreSQL left invalid
 
 **Applies to every app on PostgreSQL**: call `valid.Indexes` in your

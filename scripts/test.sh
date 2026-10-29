@@ -26,6 +26,12 @@ if v="$(gofmt -l . | grep -v node_modules || true)"; [ -n "${v}" ]; then
 	exit 1
 fi
 
+# Apps follow this module's Go dependencies through payday updates. Keep the
+# shared Renovate rule in step when go.mod gains or loses a module; payday uses
+# the base preset instead, so its own dependency updates remain enabled.
+echo "== shared Go dependency preset"
+go run ./scripts/renovate-go-common.go -check
+
 # Each module's go.mod, read on its own. go.work makes the three one build, in
 # which the highest version any of them asks for wins -- so a go.mod can name
 # an old payday, old versions with known vulnerabilities, or no module at all

@@ -3,13 +3,22 @@
   "extends": [
     "config:recommended",
     ":dependencyDashboard",
-    "github>lesomnus/payday//renovate/app"
+    "github>lesomnus/payday//renovate/base"
   ],
   "timezone": "Asia/Seoul",
   "schedule": [
     "* 0-8 * * 1"
   ],
   "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "Apps follow our direct and indirect requirements through payday upgrades, so keep indirect Go modules current here too. The generators left to reviewed upgrades by the base preset remain excluded.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchPackageNames": ["!github.com/lesomnus/payday", "!github.com/lesomnus/payday/**", "!github.com/protobuf-orm/**"],
+      "enabled": true
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
