@@ -21,6 +21,7 @@ comments, which are where the detail actually lives.
 | [What the operator keeps about a tenant](guide/operator.md) | a plan, a contract, how long its history lasts: an entity the tenant reads and only the operator writes |
 | [Keeping a past](guide/past.md) | an app's events and facts: declaring them, the messages an event holds, the lock that keeps old events readable, recording an operation and the facts it writes, reading them at a moment as known now or then, saying what happened in the reader's language, correcting them, taking a reason out, and letting them go by the tenant's window |
 | [Adding notifications](guide/notifications.md) | opt-in setup, named and resource Topics, app policies, publication, and read-state synchronization |
+| [Notification reader-state proposal](notify-adoption-contract.md) | proposed global scope, unread filtering/counts and atomic batch marking; contract review before implementation |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 
 ## References

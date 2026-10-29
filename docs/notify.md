@@ -14,6 +14,10 @@ app's package. The generated `pd.Notifications` helper binds that service to the
 app's server stack, driver, Watch, and policy; the app registers it explicitly
 with `app.RegisterNotificationServiceServer`. Keeping a past is not a prerequisite.
 
+The [reader-state extension proposal](notify-adoption-contract.md) describes
+global apps, filtered unread queries, counts and batch marking for contract
+review. Those extensions are not implemented by the runtime described here.
+
 ## Topics and readers
 
 A notification is published to a **Topic**. The Topic identifies an interest;
