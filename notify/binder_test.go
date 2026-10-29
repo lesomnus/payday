@@ -114,11 +114,11 @@ func TestOwnTransactionRebindsPublisherReaderAndReadPolicy(t *testing.T) {
 	if len(publications) != 2 || publications[0] != f.store.Driver() || !dialect.InTx(publications[1]) {
 		t.Fatalf("publisher drivers: %+v", publications)
 	}
-	r, err := service.Mark(f.ctx, v.ID)
+	r, err := markOne(service, f.ctx, f.tenant, v.ID)
 	if err != nil || r.Reader != f.reader {
 		t.Fatalf("transaction-bound Mark: %+v, %v", r, err)
 	}
-	if len(binds) != 3 || len(readers) != 2 || len(reads) != 2 || readers[0] != binds[2] || reads[1] != binds[2] {
+	if len(binds) != 3 || len(readers) != 2 || len(reads) != 1 || readers[0] != binds[2] || reads[0] != binds[2] {
 		t.Fatalf("policy was not rebound for each write: binds=%d readers=%d reads=%d", len(binds), len(readers), len(reads))
 	}
 }
@@ -149,7 +149,7 @@ func TestPolicyBindingFailureClosesConstructionAndWrites(t *testing.T) {
 		t.Fatalf("failed transaction binding wrote a notification: %v", err)
 	}
 	v := f.add(t, "one")
-	_, err = service.Mark(f.ctx, v.ID)
+	_, err = markOne(service, f.ctx, f.tenant, v.ID)
 	if !errors.Is(err, want) || len(f.store.data.receipts) != 0 {
 		t.Fatalf("failed transaction binding wrote a receipt: %v", err)
 	}

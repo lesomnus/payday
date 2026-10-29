@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Gen is one run of the generator.
@@ -844,6 +845,8 @@ func (g Gen) entRuntime(ctx context.Context) error {
 
 		"./"+DirEnt+"/schema")
 	cmd.Dir = g.Out
+	// A cancelled go tool can leave its child's stderr pipe open.
+	cmd.WaitDelay = 2 * time.Second
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

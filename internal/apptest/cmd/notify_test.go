@@ -206,7 +206,7 @@ func TestNotifyStoresOnePublicationAndLazyIndependentReceipts(t *testing.T) {
 	results := make(chan marked, 6)
 	for range 6 {
 		go func() {
-			value, err := f.client.Mark(ctx, app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+			value, err := notificationMarked(f.client.Mark(ctx, app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 			results <- marked{value, err}
 		}()
 	}
@@ -227,13 +227,13 @@ func TestNotifyStoresOnePublicationAndLazyIndependentReceipts(t *testing.T) {
 	issuerPage, err := f.client.Read(issuerCtx, f.read())
 	x.NoError(err)
 	x.False(issuerPage.GetItems()[0].HasReceipt())
-	issuerReceipt, err := f.client.Mark(issuerCtx, app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	issuerReceipt, err := notificationMarked(f.client.Mark(issuerCtx, app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
 	x.Equal(f.issuer.GetId(), issuerReceipt.GetReaderId())
 	x.NotEqual(first.GetId(), issuerReceipt.GetId())
 
 	robotCtx := notificationAs(t.Context(), f.b.Tenant, f.robot.GetId())
-	robotReceipt, err := f.server.Mark(robotCtx, app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	robotReceipt, err := notificationMarked(f.server.Mark(robotCtx, app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
 	x.Equal(f.robot.GetId(), robotReceipt.GetReaderId(), "a persistent reader need not be a Holder")
 	x.Equal(3, f.b.Ent.NotificationReceiptRecord.Query().CountX(t.Context()))
@@ -301,7 +301,7 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 	outside := notificationCredential(t.Context(), "outside")
 	_, err = f.client.Get(outside, app.NotificationGetRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
 	x.Equal(codes.NotFound, status.Code(err))
-	_, err = f.client.Mark(outside, app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	_, err = notificationMarked(f.client.Mark(outside, app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.Equal(codes.NotFound, status.Code(err))
 	_, err = f.client.Read(outside, f.read())
 	x.Equal(codes.PermissionDenied, status.Code(err))
@@ -320,7 +320,7 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 	_, err = f.b.batched(t, closedGuard).Do(f.b.as(t.Context()), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{op(t, app.NotificationRecordService_Add_FullMethodName, request)}}.Build())
 	x.Equal(codes.PermissionDenied, status.Code(err), "Batch must enter the same sealed record path")
 
-	receipt, err := f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	receipt, err := notificationMarked(f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
 	forged := app.NotificationReceiptRecordAddRequest_builder{TenantId: f.b.Tenant.Bytes(), NotificationId: v.GetId(), ReaderId: f.outside.GetId(), DataRead: receipt.GetDataRead()}.Build()
 	_, err = f.b.Walled.NotificationReceiptRecord().Add(f.b.as(t.Context()), forged)
@@ -434,7 +434,7 @@ func TestNotifyListenReconcilesCreationReceiptsAndPolicyRevocation(t *testing.T)
 		x.Len(hint.GetInvalidated().GetTopics(), 1)
 		x.True(proto.Equal(f.topic, hint.GetInvalidated().GetTopics()[0]))
 	}
-	_, err = f.client.Mark(f.b.travels(ctx), app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	_, err = notificationMarked(f.client.Mark(f.b.travels(ctx), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
 	hint, err := owner.Recv()
 	x.NoError(err)
@@ -498,7 +498,7 @@ func TestNotifyCrossReplicaListen(t *testing.T) {
 	x.NoError(err)
 	x.Equal(v.GetId(), got.GetId())
 
-	receipt, err := remote.Mark(two.travels(t.Context()), app.NotificationMarkRequest_builder{Ref: app.NotificationRef_builder{Id: v.GetId()}.Build()}.Build())
+	receipt, err := notificationMarked(remote.Mark(two.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
 	x.Equal(one.Holder.Bytes(), receipt.GetReaderId())
 	hint, err := stream.Recv()
@@ -557,7 +557,17 @@ func TestNotifyPolicyReadsTheBusinessTransaction(t *testing.T) {
 		}
 		// This query must observe the pending issuer change. Using a policy on
 		// the original driver would deny access or read outside this transaction.
-		receipt, err = writer.Mark(notificationAs(ctx, f.b.Tenant, f.outside.GetId()), app.NotificationMarkRequest_builder{Ref: ref}.Build())
+		counts, err := writer.Count(notificationAs(ctx, f.b.Tenant, f.outside.GetId()), app.NotificationCountRequest_builder{
+			TenantId: f.b.Tenant.Bytes(), Topics: []*app.NotificationTopic{f.topic},
+			Filter: app.NotificationReadFilter_builder{UnreadOnly: true}.Build(),
+		}.Build())
+		if err != nil {
+			return err
+		}
+		if counts.GetCount() != 1 {
+			return fmt.Errorf("transaction-bound Count returned %d", counts.GetCount())
+		}
+		receipt, err = notificationMarked(writer.Mark(notificationAs(ctx, f.b.Tenant, f.outside.GetId()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{ref}, TenantId: f.b.Tenant.Bytes()}.Build()))
 		if err != nil {
 			return err
 		}
@@ -567,4 +577,14 @@ func TestNotifyPolicyReadsTheBusinessTransaction(t *testing.T) {
 	x.Equal(1, f.b.Ent.NotificationReceiptRecord.Query().CountX(t.Context()))
 	_, err = f.server.Get(notificationAs(t.Context(), f.b.Tenant, f.issuer.GetId()), app.NotificationGetRequest_builder{Ref: ref}.Build())
 	x.Equal(codes.NotFound, status.Code(err), "the previous issuer loses access after the same commit")
+}
+
+func notificationMarked(v *app.NotificationMarkResponse, err error) (*app.NotificationReceipt, error) {
+	if err != nil {
+		return nil, err
+	}
+	if len(v.GetItems()) != 1 {
+		return nil, fmt.Errorf("expected one marked receipt")
+	}
+	return v.GetItems()[0], nil
 }

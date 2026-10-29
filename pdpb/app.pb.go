@@ -397,6 +397,7 @@ type Notify struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Notification uint32                 `protobuf:"varint,1,opt,name=notification"`
 	xxx_hidden_Receipt      uint32                 `protobuf:"varint,2,opt,name=receipt"`
+	xxx_hidden_Global       bool                   `protobuf:"varint,3,opt,name=global"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -440,6 +441,13 @@ func (x *Notify) GetReceipt() uint32 {
 	return 0
 }
 
+func (x *Notify) GetGlobal() bool {
+	if x != nil {
+		return x.xxx_hidden_Global
+	}
+	return false
+}
+
 func (x *Notify) SetNotification(v uint32) {
 	x.xxx_hidden_Notification = v
 }
@@ -448,11 +456,17 @@ func (x *Notify) SetReceipt(v uint32) {
 	x.xxx_hidden_Receipt = v
 }
 
+func (x *Notify) SetGlobal(v bool) {
+	x.xxx_hidden_Global = v
+}
+
 type Notify_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Notification uint32
 	Receipt      uint32
+	// One app-global namespace instead of tenant-scoped notification records.
+	Global bool
 }
 
 func (b0 Notify_builder) Build() *Notify {
@@ -461,6 +475,7 @@ func (b0 Notify_builder) Build() *Notify {
 	_, _ = b, x
 	x.xxx_hidden_Notification = b.Notification
 	x.xxx_hidden_Receipt = b.Receipt
+	x.xxx_hidden_Global = b.Global
 	return m0
 }
 
@@ -478,10 +493,11 @@ const file_payday_app_proto_rawDesc = "" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
 	"\aDomains\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
-	"\x06access\x18\x02 \x01(\rR\x06access\"F\n" +
+	"\x06access\x18\x02 \x01(\rR\x06access\"^\n" +
 	"\x06Notify\x12\"\n" +
 	"\fnotification\x18\x01 \x01(\rR\fnotification\x12\x18\n" +
-	"\areceipt\x18\x02 \x01(\rR\areceiptB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\areceipt\x18\x02 \x01(\rR\areceipt\x12\x16\n" +
+	"\x06global\x18\x03 \x01(\bR\x06globalB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_payday_app_proto_goTypes = []any{

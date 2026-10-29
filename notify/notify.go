@@ -90,6 +90,42 @@ type Query struct {
 	Topics []Topic
 	Size   int
 	Cursor string
+	Filter ReadFilter
+}
+
+type ReadFilter struct {
+	Kinds      []string
+	Sources    []pdid.Id
+	UnreadOnly bool
+}
+
+type CountRequest struct {
+	Tenant pdid.Id
+	Topics []Topic
+	Filter ReadFilter
+}
+
+type TopicCount struct {
+	Topic       Topic
+	Count       uint64
+	SourceCount uint64
+}
+
+type Counts struct {
+	Count       uint64
+	SourceCount uint64
+	Topics      []TopicCount
+	Reader      pdid.Id
+}
+
+type MarkRequest struct {
+	Tenant pdid.Id
+	Refs   []pdid.Id
+}
+
+type Marked struct {
+	Items  []Receipt
+	Reader pdid.Id
 }
 
 type Page struct {
@@ -120,6 +156,8 @@ type Selection struct {
 	Topics   []Topic
 	Position *Position
 	Limit    int
+	Reader   pdid.Id
+	Filter   ReadFilter
 }
 
 // Hint has a zero Reader for a shared notification or policy change. Receipt
@@ -173,6 +211,7 @@ type Store interface {
 	// another entity kind. Service applies the tenant wall and topic policy.
 	Find(context.Context, pdid.Id) (Notification, error)
 	Select(context.Context, Selection) ([]Notification, error)
+	Count(context.Context, Selection) (Counts, error)
 	FindPublication(context.Context, pdid.Id, string, string) (Notification, bool, error)
 	Receipts(context.Context, pdid.Id, pdid.Id, []pdid.Id) ([]Receipt, error)
 	InsertReceipt(context.Context, Receipt) (Receipt, error)
@@ -183,6 +222,10 @@ type Store interface {
 }
 
 type Options struct {
+	// Global is fixed by the app declaration in generated servers.
+	Global bool
+	// Namespace binds cursors to one app; generated servers set it.
+	Namespace string
 	// CursorKey authenticates cursors. All app replicas use the same secret of
 	// at least 32 bytes; changing it invalidates outstanding cursors.
 	CursorKey []byte

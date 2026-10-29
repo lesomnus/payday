@@ -15,11 +15,11 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/notification.proto.
  */
 export const file_app_payday_notification: GenFile = /*@__PURE__*/
-  fileDesc("Ch1hcHAvcGF5ZGF5L25vdGlmaWNhdGlvbi5wcm90bxIDYXBwIkEKEU5vdGlmaWNhdGlvblRvcGljEhUKC3Jlc291cmNlX2lkGAEgASgMSAASDgoEbmFtZRgCIAEoCUgAQgUKA2tleSKAAgoMTm90aWZpY2F0aW9uEgoKAmlkGAEgASgMEhEKCXRlbmFudF9pZBgCIAEoDBIMCgRraW5kGAggASgJEiUKBXRvcGljGAkgASgLMhYuYXBwLk5vdGlmaWNhdGlvblRvcGljEhEKCXNvdXJjZV9pZBgKIAEoDBIlCgdwYXlsb2FkGAsgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIwCgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAi8wEKE05vdGlmaWNhdGlvblJlY2VpcHQSCgoCaWQYASABKAwSEQoJdGVuYW50X2lkGAIgASgMEhcKD25vdGlmaWNhdGlvbl9pZBgIIAEoDBIRCglyZWFkZXJfaWQYCSABKAwSLQoJZGF0YV9yZWFkGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiagoUTm90aWZpY2F0aW9uUmVhZEl0ZW0SJwoMbm90aWZpY2F0aW9uGAEgASgLMhEuYXBwLk5vdGlmaWNhdGlvbhIpCgdyZWNlaXB0GAIgASgLMhguYXBwLk5vdGlmaWNhdGlvblJlY2VpcHQiHQoPTm90aWZpY2F0aW9uUmVmEgoKAmlkGAEgASgMIrMBChZOb3RpZmljYXRpb25BZGRSZXF1ZXN0EhEKCXRlbmFudF9pZBgCIAEoDBIMCgRraW5kGAggASgJEiUKBXRvcGljGAkgASgLMhYuYXBwLk5vdGlmaWNhdGlvblRvcGljEhEKCXNvdXJjZV9pZBgKIAEoDBIlCgdwYXlsb2FkGAsgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIXCg9pZGVtcG90ZW5jeV9rZXkYECABKAkiOwoWTm90aWZpY2F0aW9uR2V0UmVxdWVzdBIhCgNyZWYYASABKAsyFC5hcHAuTm90aWZpY2F0aW9uUmVmInIKF05vdGlmaWNhdGlvbkxpc3RSZXF1ZXN0EiYKBnRvcGljcxgBIAMoCzIWLmFwcC5Ob3RpZmljYXRpb25Ub3BpYxIMCgRzaXplGAIgASgFEg4KBmN1cnNvchgDIAEoCRIRCgl0ZW5hbnRfaWQYBCABKAwiSgoYTm90aWZpY2F0aW9uTGlzdFJlc3BvbnNlEiAKBWl0ZW1zGAEgAygLMhEuYXBwLk5vdGlmaWNhdGlvbhIMCgRuZXh0GAIgASgJInIKF05vdGlmaWNhdGlvblJlYWRSZXF1ZXN0EiYKBnRvcGljcxgBIAMoCzIWLmFwcC5Ob3RpZmljYXRpb25Ub3BpYxIMCgRzaXplGAIgASgFEg4KBmN1cnNvchgDIAEoCRIRCgl0ZW5hbnRfaWQYBCABKAwiZQoYTm90aWZpY2F0aW9uUmVhZFJlc3BvbnNlEigKBWl0ZW1zGAEgAygLMhkuYXBwLk5vdGlmaWNhdGlvblJlYWRJdGVtEgwKBG5leHQYAiABKAkSEQoJcmVhZGVyX2lkGAMgASgMIjwKF05vdGlmaWNhdGlvbk1hcmtSZXF1ZXN0EiEKA3JlZhgBIAEoCzIULmFwcC5Ob3RpZmljYXRpb25SZWYiVgoZTm90aWZpY2F0aW9uTGlzdGVuUmVxdWVzdBImCgZ0b3BpY3MYASADKAsyFi5hcHAuTm90aWZpY2F0aW9uVG9waWMSEQoJdGVuYW50X2lkGAIgASgMIooBChpOb3RpZmljYXRpb25MaXN0ZW5SZXNwb25zZRItCgVyZWFkeRgBIAEoCzIcLmFwcC5Ob3RpZmljYXRpb25MaXN0ZW5SZWFkeUgAEjQKC2ludmFsaWRhdGVkGAIgASgLMh0uYXBwLk5vdGlmaWNhdGlvbkludmFsaWRhdGlvbkgAQgcKBWV2ZW50IiwKF05vdGlmaWNhdGlvbkxpc3RlblJlYWR5EhEKCXJlYWRlcl9pZBgBIAEoDCJCChhOb3RpZmljYXRpb25JbnZhbGlkYXRpb24SJgoGdG9waWNzGAEgAygLMhYuYXBwLk5vdGlmaWNhdGlvblRvcGljIrgEChJOb3RpZmljYXRpb25SZWNvcmQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEgwKBGtpbmQYCCABKAkSEQoJdG9waWNfa2V5GAkgASgJEhsKCXNvdXJjZV9pZBgKIAEoDEII6oIWBBBAOAESFAoMcGF5bG9hZF90eXBlGAsgASgJEiQKDXBheWxvYWRfdmFsdWUYDCABKAxCDeqCFgOCAQCqwRYCCAESOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASEAoIcHJvZHVjZXIYECABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GBEgASgJEhcKD3BheWxvYWRfcHJlc2VudBgSIAEoCDq3Acr8FYsBEgaCAQCKAQAaQRILcHVibGljYXRpb24aDQoJdGVuYW50X2lkEAIaDAoIcHJvZHVjZXIQEBoTCg9pZGVtcG90ZW5jeV9rZXkQETABGj4SBHBhZ2UaDQoJdGVuYW50X2lkEAIaDQoJdG9waWNfa2V5EAkaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQAYq7FiMIKBIMbm90aWZpY2F0aW9uQgIKAEgLIgsSCXRlbmFudF9pZDKaAwoTTm90aWZpY2F0aW9uU2VydmljZRI1CgNBZGQSGy5hcHAuTm90aWZpY2F0aW9uQWRkUmVxdWVzdBoRLmFwcC5Ob3RpZmljYXRpb24SNQoDR2V0EhsuYXBwLk5vdGlmaWNhdGlvbkdldFJlcXVlc3QaES5hcHAuTm90aWZpY2F0aW9uEkMKBExpc3QSHC5hcHAuTm90aWZpY2F0aW9uTGlzdFJlcXVlc3QaHS5hcHAuTm90aWZpY2F0aW9uTGlzdFJlc3BvbnNlEkMKBFJlYWQSHC5hcHAuTm90aWZpY2F0aW9uUmVhZFJlcXVlc3QaHS5hcHAuTm90aWZpY2F0aW9uUmVhZFJlc3BvbnNlEj4KBE1hcmsSHC5hcHAuTm90aWZpY2F0aW9uTWFya1JlcXVlc3QaGC5hcHAuTm90aWZpY2F0aW9uUmVjZWlwdBJLCgZMaXN0ZW4SHi5hcHAuTm90aWZpY2F0aW9uTGlzdGVuUmVxdWVzdBofLmFwcC5Ob3RpZmljYXRpb25MaXN0ZW5SZXNwb25zZTABQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_any, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Ch1hcHAvcGF5ZGF5L25vdGlmaWNhdGlvbi5wcm90bxIDYXBwIkEKEU5vdGlmaWNhdGlvblRvcGljEhUKC3Jlc291cmNlX2lkGAEgASgMSAASDgoEbmFtZRgCIAEoCUgAQgUKA2tleSKAAgoMTm90aWZpY2F0aW9uEgoKAmlkGAEgASgMEhEKCXRlbmFudF9pZBgCIAEoDBIMCgRraW5kGAggASgJEiUKBXRvcGljGAkgASgLMhYuYXBwLk5vdGlmaWNhdGlvblRvcGljEhEKCXNvdXJjZV9pZBgKIAEoDBIlCgdwYXlsb2FkGAsgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIwCgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAi8wEKE05vdGlmaWNhdGlvblJlY2VpcHQSCgoCaWQYASABKAwSEQoJdGVuYW50X2lkGAIgASgMEhcKD25vdGlmaWNhdGlvbl9pZBgIIAEoDBIRCglyZWFkZXJfaWQYCSABKAwSLQoJZGF0YV9yZWFkGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiagoUTm90aWZpY2F0aW9uUmVhZEl0ZW0SJwoMbm90aWZpY2F0aW9uGAEgASgLMhEuYXBwLk5vdGlmaWNhdGlvbhIpCgdyZWNlaXB0GAIgASgLMhguYXBwLk5vdGlmaWNhdGlvblJlY2VpcHQiHQoPTm90aWZpY2F0aW9uUmVmEgoKAmlkGAEgASgMIrMBChZOb3RpZmljYXRpb25BZGRSZXF1ZXN0EhEKCXRlbmFudF9pZBgCIAEoDBIMCgRraW5kGAggASgJEiUKBXRvcGljGAkgASgLMhYuYXBwLk5vdGlmaWNhdGlvblRvcGljEhEKCXNvdXJjZV9pZBgKIAEoDBIlCgdwYXlsb2FkGAsgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIXCg9pZGVtcG90ZW5jeV9rZXkYECABKAkiOwoWTm90aWZpY2F0aW9uR2V0UmVxdWVzdBIhCgNyZWYYASABKAsyFC5hcHAuTm90aWZpY2F0aW9uUmVmInIKF05vdGlmaWNhdGlvbkxpc3RSZXF1ZXN0EiYKBnRvcGljcxgBIAMoCzIWLmFwcC5Ob3RpZmljYXRpb25Ub3BpYxIMCgRzaXplGAIgASgFEg4KBmN1cnNvchgDIAEoCRIRCgl0ZW5hbnRfaWQYBCABKAwiSgoYTm90aWZpY2F0aW9uTGlzdFJlc3BvbnNlEiAKBWl0ZW1zGAEgAygLMhEuYXBwLk5vdGlmaWNhdGlvbhIMCgRuZXh0GAIgASgJIp8BChdOb3RpZmljYXRpb25SZWFkUmVxdWVzdBImCgZ0b3BpY3MYASADKAsyFi5hcHAuTm90aWZpY2F0aW9uVG9waWMSDAoEc2l6ZRgCIAEoBRIOCgZjdXJzb3IYAyABKAkSEQoJdGVuYW50X2lkGAQgASgMEisKBmZpbHRlchgFIAEoCzIbLmFwcC5Ob3RpZmljYXRpb25SZWFkRmlsdGVyImUKGE5vdGlmaWNhdGlvblJlYWRSZXNwb25zZRIoCgVpdGVtcxgBIAMoCzIZLmFwcC5Ob3RpZmljYXRpb25SZWFkSXRlbRIMCgRuZXh0GAIgASgJEhEKCXJlYWRlcl9pZBgDIAEoDCJQChZOb3RpZmljYXRpb25SZWFkRmlsdGVyEg0KBWtpbmRzGAEgAygJEhIKCnNvdXJjZV9pZHMYAiADKAwSEwoLdW5yZWFkX29ubHkYAyABKAgiggEKGE5vdGlmaWNhdGlvbkNvdW50UmVxdWVzdBImCgZ0b3BpY3MYASADKAsyFi5hcHAuTm90aWZpY2F0aW9uVG9waWMSEQoJdGVuYW50X2lkGAQgASgMEisKBmZpbHRlchgFIAEoCzIbLmFwcC5Ob3RpZmljYXRpb25SZWFkRmlsdGVyIoABChlOb3RpZmljYXRpb25Db3VudFJlc3BvbnNlEg0KBWNvdW50GAEgASgEEhQKDHNvdXJjZV9jb3VudBgCIAEoBBIrCgZ0b3BpY3MYAyADKAsyGy5hcHAuTm90aWZpY2F0aW9uVG9waWNDb3VudBIRCglyZWFkZXJfaWQYBCABKAwiZAoWTm90aWZpY2F0aW9uVG9waWNDb3VudBIlCgV0b3BpYxgBIAEoCzIWLmFwcC5Ob3RpZmljYXRpb25Ub3BpYxINCgVjb3VudBgCIAEoBBIUCgxzb3VyY2VfY291bnQYAyABKAQiUAoXTm90aWZpY2F0aW9uTWFya1JlcXVlc3QSIgoEcmVmcxgBIAMoCzIULmFwcC5Ob3RpZmljYXRpb25SZWYSEQoJdGVuYW50X2lkGAIgASgMIlYKGE5vdGlmaWNhdGlvbk1hcmtSZXNwb25zZRInCgVpdGVtcxgBIAMoCzIYLmFwcC5Ob3RpZmljYXRpb25SZWNlaXB0EhEKCXJlYWRlcl9pZBgCIAEoDCJWChlOb3RpZmljYXRpb25MaXN0ZW5SZXF1ZXN0EiYKBnRvcGljcxgBIAMoCzIWLmFwcC5Ob3RpZmljYXRpb25Ub3BpYxIRCgl0ZW5hbnRfaWQYAiABKAwiigEKGk5vdGlmaWNhdGlvbkxpc3RlblJlc3BvbnNlEi0KBXJlYWR5GAEgASgLMhwuYXBwLk5vdGlmaWNhdGlvbkxpc3RlblJlYWR5SAASNAoLaW52YWxpZGF0ZWQYAiABKAsyHS5hcHAuTm90aWZpY2F0aW9uSW52YWxpZGF0aW9uSABCBwoFZXZlbnQiLAoXTm90aWZpY2F0aW9uTGlzdGVuUmVhZHkSEQoJcmVhZGVyX2lkGAEgASgMIkIKGE5vdGlmaWNhdGlvbkludmFsaWRhdGlvbhImCgZ0b3BpY3MYASADKAsyFi5hcHAuTm90aWZpY2F0aW9uVG9waWMiuAQKEk5vdGlmaWNhdGlvblJlY29yZBIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASGQoJdGVuYW50X2lkGAIgASgMQgbqghYCEEASDAoEa2luZBgIIAEoCRIRCgl0b3BpY19rZXkYCSABKAkSGwoJc291cmNlX2lkGAogASgMQgjqghYEEEA4ARIUCgxwYXlsb2FkX3R5cGUYCyABKAkSJAoNcGF5bG9hZF92YWx1ZRgMIAEoDEIN6oIWA4IBAKrBFgIIARI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIQCghwcm9kdWNlchgQIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYESABKAkSFwoPcGF5bG9hZF9wcmVzZW50GBIgASgIOrcByvwViwESBoIBAIoBABpBEgtwdWJsaWNhdGlvbhoNCgl0ZW5hbnRfaWQQAhoMCghwcm9kdWNlchAQGhMKD2lkZW1wb3RlbmN5X2tleRARMAEaPhIEcGFnZRoNCgl0ZW5hbnRfaWQQAhoNCgl0b3BpY19rZXkQCRoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABirsWIwgoEgxub3RpZmljYXRpb25CAgoASAsiCxIJdGVuYW50X2lkMucDChNOb3RpZmljYXRpb25TZXJ2aWNlEjUKA0FkZBIbLmFwcC5Ob3RpZmljYXRpb25BZGRSZXF1ZXN0GhEuYXBwLk5vdGlmaWNhdGlvbhI1CgNHZXQSGy5hcHAuTm90aWZpY2F0aW9uR2V0UmVxdWVzdBoRLmFwcC5Ob3RpZmljYXRpb24SQwoETGlzdBIcLmFwcC5Ob3RpZmljYXRpb25MaXN0UmVxdWVzdBodLmFwcC5Ob3RpZmljYXRpb25MaXN0UmVzcG9uc2USQwoEUmVhZBIcLmFwcC5Ob3RpZmljYXRpb25SZWFkUmVxdWVzdBodLmFwcC5Ob3RpZmljYXRpb25SZWFkUmVzcG9uc2USRgoFQ291bnQSHS5hcHAuTm90aWZpY2F0aW9uQ291bnRSZXF1ZXN0Gh4uYXBwLk5vdGlmaWNhdGlvbkNvdW50UmVzcG9uc2USQwoETWFyaxIcLmFwcC5Ob3RpZmljYXRpb25NYXJrUmVxdWVzdBodLmFwcC5Ob3RpZmljYXRpb25NYXJrUmVzcG9uc2USSwoGTGlzdGVuEh4uYXBwLk5vdGlmaWNhdGlvbkxpc3RlblJlcXVlc3QaHy5hcHAuTm90aWZpY2F0aW9uTGlzdGVuUmVzcG9uc2UwAUIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_any, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * NotificationTopic identifies an interest, not its audience or receipt owner.
- * Both variants are scoped by the notification's tenant. Resource identifiers
+ * Both variants use the app's configured notification scope. Resource identifiers
  * already carry their domain; names need not correspond to database resources.
  *
  * @generated from message app.NotificationTopic
@@ -355,7 +355,7 @@ export const NotificationListResponseSchema: GenMessage<NotificationListResponse
  */
 export type NotificationReadRequest = Message<"app.NotificationReadRequest"> & {
   /**
-   * The same topic, paging and authorization rules as List. No reader identifier
+   * Filters apply before paging. No reader identifier
    * is accepted from the request; the server resolves it from the caller.
    *
    * @generated from field: repeated app.NotificationTopic topics = 1;
@@ -380,6 +380,11 @@ export type NotificationReadRequest = Message<"app.NotificationReadRequest"> & {
    * @generated from field: bytes tenant_id = 4;
    */
   tenantId: Uint8Array;
+
+  /**
+   * @generated from field: app.NotificationReadFilter filter = 5;
+   */
+  filter?: NotificationReadFilter | undefined;
 };
 
 /**
@@ -423,16 +428,142 @@ export const NotificationReadResponseSchema: GenMessage<NotificationReadResponse
   messageDesc(file_app_payday_notification, 10);
 
 /**
+ * @generated from message app.NotificationReadFilter
+ */
+export type NotificationReadFilter = Message<"app.NotificationReadFilter"> & {
+  /**
+   * Empty lists are unrestricted; choices within each list use OR. Each list
+   * accepts at most 100 distinct valid selectors. Predicates combine with AND.
+   *
+   * @generated from field: repeated string kinds = 1;
+   */
+  kinds: string[];
+
+  /**
+   * @generated from field: repeated bytes source_ids = 2;
+   */
+  sourceIds: Uint8Array[];
+
+  /**
+   * @generated from field: bool unread_only = 3;
+   */
+  unreadOnly: boolean;
+};
+
+/**
+ * Describes the message app.NotificationReadFilter.
+ * Use `create(NotificationReadFilterSchema)` to create a new message.
+ */
+export const NotificationReadFilterSchema: GenMessage<NotificationReadFilter> = /*@__PURE__*/
+  messageDesc(file_app_payday_notification, 11);
+
+/**
+ * @generated from message app.NotificationCountRequest
+ */
+export type NotificationCountRequest = Message<"app.NotificationCountRequest"> & {
+  /**
+   * @generated from field: repeated app.NotificationTopic topics = 1;
+   */
+  topics: NotificationTopic[];
+
+  /**
+   * @generated from field: bytes tenant_id = 4;
+   */
+  tenantId: Uint8Array;
+
+  /**
+   * @generated from field: app.NotificationReadFilter filter = 5;
+   */
+  filter?: NotificationReadFilter | undefined;
+};
+
+/**
+ * Describes the message app.NotificationCountRequest.
+ * Use `create(NotificationCountRequestSchema)` to create a new message.
+ */
+export const NotificationCountRequestSchema: GenMessage<NotificationCountRequest> = /*@__PURE__*/
+  messageDesc(file_app_payday_notification, 12);
+
+/**
+ * @generated from message app.NotificationCountResponse
+ */
+export type NotificationCountResponse = Message<"app.NotificationCountResponse"> & {
+  /**
+   * @generated from field: uint64 count = 1;
+   */
+  count: bigint;
+
+  /**
+   * Distinct nonempty source IDs across all requested Topics, not the sum of
+   * per-Topic source counts. Source-less notifications count only toward count.
+   *
+   * @generated from field: uint64 source_count = 2;
+   */
+  sourceCount: bigint;
+
+  /**
+   * Request order, including zeros. All counts share one database snapshot.
+   *
+   * @generated from field: repeated app.NotificationTopicCount topics = 3;
+   */
+  topics: NotificationTopicCount[];
+
+  /**
+   * @generated from field: bytes reader_id = 4;
+   */
+  readerId: Uint8Array;
+};
+
+/**
+ * Describes the message app.NotificationCountResponse.
+ * Use `create(NotificationCountResponseSchema)` to create a new message.
+ */
+export const NotificationCountResponseSchema: GenMessage<NotificationCountResponse> = /*@__PURE__*/
+  messageDesc(file_app_payday_notification, 13);
+
+/**
+ * @generated from message app.NotificationTopicCount
+ */
+export type NotificationTopicCount = Message<"app.NotificationTopicCount"> & {
+  /**
+   * @generated from field: app.NotificationTopic topic = 1;
+   */
+  topic?: NotificationTopic | undefined;
+
+  /**
+   * @generated from field: uint64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * @generated from field: uint64 source_count = 3;
+   */
+  sourceCount: bigint;
+};
+
+/**
+ * Describes the message app.NotificationTopicCount.
+ * Use `create(NotificationTopicCountSchema)` to create a new message.
+ */
+export const NotificationTopicCountSchema: GenMessage<NotificationTopicCount> = /*@__PURE__*/
+  messageDesc(file_app_payday_notification, 14);
+
+/**
  * @generated from message app.NotificationMarkRequest
  */
 export type NotificationMarkRequest = Message<"app.NotificationMarkRequest"> & {
   /**
-   * The server checks current topic access and resolves the receipt's reader.
-   * Neither the receipt owner nor its timestamps are accepted from the client.
+   * 1–100 distinct explicit refs; all must be accessible in this namespace.
+   * Concurrent arrivals are not marked by this request. Failure writes none.
    *
-   * @generated from field: app.NotificationRef ref = 1;
+   * @generated from field: repeated app.NotificationRef refs = 1;
    */
-  ref?: NotificationRef | undefined;
+  refs: NotificationRef[];
+
+  /**
+   * @generated from field: bytes tenant_id = 2;
+   */
+  tenantId: Uint8Array;
 };
 
 /**
@@ -440,7 +571,31 @@ export type NotificationMarkRequest = Message<"app.NotificationMarkRequest"> & {
  * Use `create(NotificationMarkRequestSchema)` to create a new message.
  */
 export const NotificationMarkRequestSchema: GenMessage<NotificationMarkRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 11);
+  messageDesc(file_app_payday_notification, 15);
+
+/**
+ * @generated from message app.NotificationMarkResponse
+ */
+export type NotificationMarkResponse = Message<"app.NotificationMarkResponse"> & {
+  /**
+   * Request order; retries preserve existing receipt IDs and first-read times.
+   *
+   * @generated from field: repeated app.NotificationReceipt items = 1;
+   */
+  items: NotificationReceipt[];
+
+  /**
+   * @generated from field: bytes reader_id = 2;
+   */
+  readerId: Uint8Array;
+};
+
+/**
+ * Describes the message app.NotificationMarkResponse.
+ * Use `create(NotificationMarkResponseSchema)` to create a new message.
+ */
+export const NotificationMarkResponseSchema: GenMessage<NotificationMarkResponse> = /*@__PURE__*/
+  messageDesc(file_app_payday_notification, 16);
 
 /**
  * @generated from message app.NotificationListenRequest
@@ -465,7 +620,7 @@ export type NotificationListenRequest = Message<"app.NotificationListenRequest">
  * Use `create(NotificationListenRequestSchema)` to create a new message.
  */
 export const NotificationListenRequestSchema: GenMessage<NotificationListenRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 12);
+  messageDesc(file_app_payday_notification, 17);
 
 /**
  * @generated from message app.NotificationListenResponse
@@ -497,7 +652,7 @@ export type NotificationListenResponse = Message<"app.NotificationListenResponse
  * Use `create(NotificationListenResponseSchema)` to create a new message.
  */
 export const NotificationListenResponseSchema: GenMessage<NotificationListenResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 13);
+  messageDesc(file_app_payday_notification, 18);
 
 /**
  * @generated from message app.NotificationListenReady
@@ -517,7 +672,7 @@ export type NotificationListenReady = Message<"app.NotificationListenReady"> & {
  * Use `create(NotificationListenReadySchema)` to create a new message.
  */
 export const NotificationListenReadySchema: GenMessage<NotificationListenReady> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 14);
+  messageDesc(file_app_payday_notification, 19);
 
 /**
  * NotificationInvalidation carries no notification body, unread count, other
@@ -541,7 +696,7 @@ export type NotificationInvalidation = Message<"app.NotificationInvalidation"> &
  * Use `create(NotificationInvalidationSchema)` to create a new message.
  */
 export const NotificationInvalidationSchema: GenMessage<NotificationInvalidation> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 15);
+  messageDesc(file_app_payday_notification, 20);
 
 /**
  * NotificationRecord is the internal indexed representation of the public
@@ -617,7 +772,7 @@ export type NotificationRecord = Message<"app.NotificationRecord"> & {
  * Use `create(NotificationRecordSchema)` to create a new message.
  */
 export const NotificationRecordSchema: GenMessage<NotificationRecord> = /*@__PURE__*/
-  messageDesc(file_app_payday_notification, 16);
+  messageDesc(file_app_payday_notification, 21);
 
 /**
  * NotificationService belongs to an app that opts into notifications. The
@@ -675,15 +830,25 @@ export const NotificationService: GenService<{
     output: typeof NotificationReadResponseSchema;
   },
   /**
-   * Mark records the resolved reader's first read time. Concurrent calls
-   * return the same receipt without changing its original read time.
+   * Count aggregates the entire authorized reader selection, without paging.
+   *
+   * @generated from rpc app.NotificationService.Count
+   */
+  count: {
+    methodKind: "unary";
+    input: typeof NotificationCountRequestSchema;
+    output: typeof NotificationCountResponseSchema;
+  },
+  /**
+   * Mark atomically records this reader's first read of 1–100 distinct refs.
+   * Retries preserve receipts and their first-read times; order follows refs.
    *
    * @generated from rpc app.NotificationService.Mark
    */
   mark: {
     methodKind: "unary";
     input: typeof NotificationMarkRequestSchema;
-    output: typeof NotificationReceiptSchema;
+    output: typeof NotificationMarkResponseSchema;
   },
   /**
    * Listen first sends ready once its live subscription is installed, then

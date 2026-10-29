@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -23,6 +24,7 @@ import (
 type Notify struct {
 	Notification uint32
 	Receipt      uint32
+	Global       bool
 	At           string
 }
 
@@ -48,7 +50,7 @@ func (n *Notify) proto() *pdpb.Notify {
 	if n == nil {
 		return nil
 	}
-	return pdpb.Notify_builder{Notification: n.Notification, Receipt: n.Receipt}.Build()
+	return pdpb.Notify_builder{Notification: n.Notification, Receipt: n.Receipt, Global: n.Global}.Build()
 }
 
 // NotifyDir is beside the required entity sources, in the same payday module.
@@ -84,7 +86,7 @@ func readNotify(l Layout) (*Notify, error) {
 		if err := pdgen.CheckNotifyDomains(n, past, a.GetDomains()); err != nil {
 			return fmt.Errorf("%s: %w", l.rel(p), err)
 		}
-		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), At: l.rel(p)}
+		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.GetGlobal(), At: l.rel(p)}
 		return nil
 	})
 	return found, err
@@ -107,7 +109,14 @@ func (g Gen) notify(ctx context.Context, dst string) error {
 		n := g.Layout.Notify.Domain(v.Own)
 		g.say("  notify: %s, domain %d", v.Message, n)
 		if err := g.copyEntity(ctx, filepath.Join(src, v.Name), dst, func(b []byte) ([]byte, error) {
-			return numbered(b, 0, n)
+			b, err := numbered(b, 0, n)
+			if err != nil {
+				return nil, err
+			}
+			if g.Layout.Notify.Global {
+				return globalNotificationSource(b, v.Message)
+			}
+			return b, nil
 		}); err != nil {
 			return err
 		}
@@ -165,4 +174,22 @@ func checkNotifyNames(l Layout) error {
 		}
 		return nil
 	})
+}
+
+// Only the private record changes scope; public tenant selectors remain present.
+func globalNotificationSource(b []byte, message string) ([]byte, error) {
+	at := bytes.Index(b, []byte("message "+message+" {"))
+	if at < 0 {
+		return nil, fmt.Errorf("missing notification record %s", message)
+	}
+	head, record := b[:at], string(b[at:])
+	column := regexp.MustCompile(`(?m)^  bytes tenant_id = 2 \[\(orm.field\) = \{type: TYPE_UUID\}\];\n`)
+	if len(column.FindAllString(record, -1)) != 1 {
+		return nil, fmt.Errorf("notification tenant field is not the shipped shape")
+	}
+	record = column.ReplaceAllString(record, "")
+	index := regexp.MustCompile(`(?s)          \{\s*name: "tenant_id"\s*number: 2\s*\},?\n`)
+	record = index.ReplaceAllString(record, "")
+	record = strings.Replace(record, `tenanted: {field: "tenant_id"}`, `global: {}`, 1)
+	return append(bytes.Clone(head), []byte(record)...), nil
 }

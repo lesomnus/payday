@@ -25,7 +25,7 @@ const (
 )
 
 // NotificationTopic identifies an interest, not its audience or receipt owner.
-// Both variants are scoped by the notification's tenant. Resource identifiers
+// Both variants use the app's configured notification scope. Resource identifiers
 // already carry their domain; names need not correspond to database resources.
 type NotificationTopic struct {
 	state          protoimpl.MessageState  `protogen:"opaque.v1"`
@@ -1179,11 +1179,12 @@ func (b0 NotificationListResponse_builder) Build() *NotificationListResponse {
 }
 
 type NotificationReadRequest struct {
-	state               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Topics   *[]*NotificationTopic  `protobuf:"bytes,1,rep,name=topics"`
-	xxx_hidden_Size     int32                  `protobuf:"varint,2,opt,name=size"`
-	xxx_hidden_Cursor   string                 `protobuf:"bytes,3,opt,name=cursor"`
-	xxx_hidden_TenantId []byte                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
+	state               protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Topics   *[]*NotificationTopic   `protobuf:"bytes,1,rep,name=topics"`
+	xxx_hidden_Size     int32                   `protobuf:"varint,2,opt,name=size"`
+	xxx_hidden_Cursor   string                  `protobuf:"bytes,3,opt,name=cursor"`
+	xxx_hidden_TenantId []byte                  `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_Filter   *NotificationReadFilter `protobuf:"bytes,5,opt,name=filter"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1243,6 +1244,13 @@ func (x *NotificationReadRequest) GetTenantId() []byte {
 	return nil
 }
 
+func (x *NotificationReadRequest) GetFilter() *NotificationReadFilter {
+	if x != nil {
+		return x.xxx_hidden_Filter
+	}
+	return nil
+}
+
 func (x *NotificationReadRequest) SetTopics(v []*NotificationTopic) {
 	x.xxx_hidden_Topics = &v
 }
@@ -1262,10 +1270,25 @@ func (x *NotificationReadRequest) SetTenantId(v []byte) {
 	x.xxx_hidden_TenantId = v
 }
 
+func (x *NotificationReadRequest) SetFilter(v *NotificationReadFilter) {
+	x.xxx_hidden_Filter = v
+}
+
+func (x *NotificationReadRequest) HasFilter() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Filter != nil
+}
+
+func (x *NotificationReadRequest) ClearFilter() {
+	x.xxx_hidden_Filter = nil
+}
+
 type NotificationReadRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// The same topic, paging and authorization rules as List. No reader identifier
+	// Filters apply before paging. No reader identifier
 	// is accepted from the request; the server resolves it from the caller.
 	Topics []*NotificationTopic
 	// Zero selects 50; values above 100 are capped; negative values are invalid.
@@ -1273,6 +1296,7 @@ type NotificationReadRequest_builder struct {
 	// Bound to this RPC and its complete read scope. List cursors are not accepted.
 	Cursor   string
 	TenantId []byte
+	Filter   *NotificationReadFilter
 }
 
 func (b0 NotificationReadRequest_builder) Build() *NotificationReadRequest {
@@ -1283,6 +1307,7 @@ func (b0 NotificationReadRequest_builder) Build() *NotificationReadRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_Cursor = b.Cursor
 	x.xxx_hidden_TenantId = b.TenantId
+	x.xxx_hidden_Filter = b.Filter
 	return m0
 }
 
@@ -1380,27 +1405,29 @@ func (b0 NotificationReadResponse_builder) Build() *NotificationReadResponse {
 	return m0
 }
 
-type NotificationMarkRequest struct {
-	state          protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref *NotificationRef       `protobuf:"bytes,1,opt,name=ref"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+type NotificationReadFilter struct {
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Kinds      []string               `protobuf:"bytes,1,rep,name=kinds"`
+	xxx_hidden_SourceIds  [][]byte               `protobuf:"bytes,2,rep,name=source_ids,json=sourceIds"`
+	xxx_hidden_UnreadOnly bool                   `protobuf:"varint,3,opt,name=unread_only,json=unreadOnly"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
-func (x *NotificationMarkRequest) Reset() {
-	*x = NotificationMarkRequest{}
+func (x *NotificationReadFilter) Reset() {
+	*x = NotificationReadFilter{}
 	mi := &file_app_payday_notification_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *NotificationMarkRequest) String() string {
+func (x *NotificationReadFilter) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NotificationMarkRequest) ProtoMessage() {}
+func (*NotificationReadFilter) ProtoMessage() {}
 
-func (x *NotificationMarkRequest) ProtoReflect() protoreflect.Message {
+func (x *NotificationReadFilter) ProtoReflect() protoreflect.Message {
 	mi := &file_app_payday_notification_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1412,41 +1439,515 @@ func (x *NotificationMarkRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *NotificationMarkRequest) GetRef() *NotificationRef {
+func (x *NotificationReadFilter) GetKinds() []string {
 	if x != nil {
-		return x.xxx_hidden_Ref
+		return x.xxx_hidden_Kinds
 	}
 	return nil
 }
 
-func (x *NotificationMarkRequest) SetRef(v *NotificationRef) {
-	x.xxx_hidden_Ref = v
+func (x *NotificationReadFilter) GetSourceIds() [][]byte {
+	if x != nil {
+		return x.xxx_hidden_SourceIds
+	}
+	return nil
 }
 
-func (x *NotificationMarkRequest) HasRef() bool {
+func (x *NotificationReadFilter) GetUnreadOnly() bool {
+	if x != nil {
+		return x.xxx_hidden_UnreadOnly
+	}
+	return false
+}
+
+func (x *NotificationReadFilter) SetKinds(v []string) {
+	x.xxx_hidden_Kinds = v
+}
+
+func (x *NotificationReadFilter) SetSourceIds(v [][]byte) {
+	x.xxx_hidden_SourceIds = v
+}
+
+func (x *NotificationReadFilter) SetUnreadOnly(v bool) {
+	x.xxx_hidden_UnreadOnly = v
+}
+
+type NotificationReadFilter_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Empty lists are unrestricted; choices within each list use OR. Each list
+	// accepts at most 100 distinct valid selectors. Predicates combine with AND.
+	Kinds      []string
+	SourceIds  [][]byte
+	UnreadOnly bool
+}
+
+func (b0 NotificationReadFilter_builder) Build() *NotificationReadFilter {
+	m0 := &NotificationReadFilter{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Kinds = b.Kinds
+	x.xxx_hidden_SourceIds = b.SourceIds
+	x.xxx_hidden_UnreadOnly = b.UnreadOnly
+	return m0
+}
+
+type NotificationCountRequest struct {
+	state               protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Topics   *[]*NotificationTopic   `protobuf:"bytes,1,rep,name=topics"`
+	xxx_hidden_TenantId []byte                  `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_Filter   *NotificationReadFilter `protobuf:"bytes,5,opt,name=filter"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *NotificationCountRequest) Reset() {
+	*x = NotificationCountRequest{}
+	mi := &file_app_payday_notification_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationCountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationCountRequest) ProtoMessage() {}
+
+func (x *NotificationCountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_notification_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *NotificationCountRequest) GetTopics() []*NotificationTopic {
+	if x != nil {
+		if x.xxx_hidden_Topics != nil {
+			return *x.xxx_hidden_Topics
+		}
+	}
+	return nil
+}
+
+func (x *NotificationCountRequest) GetTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_TenantId
+	}
+	return nil
+}
+
+func (x *NotificationCountRequest) GetFilter() *NotificationReadFilter {
+	if x != nil {
+		return x.xxx_hidden_Filter
+	}
+	return nil
+}
+
+func (x *NotificationCountRequest) SetTopics(v []*NotificationTopic) {
+	x.xxx_hidden_Topics = &v
+}
+
+func (x *NotificationCountRequest) SetTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_TenantId = v
+}
+
+func (x *NotificationCountRequest) SetFilter(v *NotificationReadFilter) {
+	x.xxx_hidden_Filter = v
+}
+
+func (x *NotificationCountRequest) HasFilter() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_Ref != nil
+	return x.xxx_hidden_Filter != nil
 }
 
-func (x *NotificationMarkRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
+func (x *NotificationCountRequest) ClearFilter() {
+	x.xxx_hidden_Filter = nil
+}
+
+type NotificationCountRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Topics   []*NotificationTopic
+	TenantId []byte
+	Filter   *NotificationReadFilter
+}
+
+func (b0 NotificationCountRequest_builder) Build() *NotificationCountRequest {
+	m0 := &NotificationCountRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Topics = &b.Topics
+	x.xxx_hidden_TenantId = b.TenantId
+	x.xxx_hidden_Filter = b.Filter
+	return m0
+}
+
+type NotificationCountResponse struct {
+	state                  protoimpl.MessageState     `protogen:"opaque.v1"`
+	xxx_hidden_Count       uint64                     `protobuf:"varint,1,opt,name=count"`
+	xxx_hidden_SourceCount uint64                     `protobuf:"varint,2,opt,name=source_count,json=sourceCount"`
+	xxx_hidden_Topics      *[]*NotificationTopicCount `protobuf:"bytes,3,rep,name=topics"`
+	xxx_hidden_ReaderId    []byte                     `protobuf:"bytes,4,opt,name=reader_id,json=readerId"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *NotificationCountResponse) Reset() {
+	*x = NotificationCountResponse{}
+	mi := &file_app_payday_notification_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationCountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationCountResponse) ProtoMessage() {}
+
+func (x *NotificationCountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_notification_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *NotificationCountResponse) GetCount() uint64 {
+	if x != nil {
+		return x.xxx_hidden_Count
+	}
+	return 0
+}
+
+func (x *NotificationCountResponse) GetSourceCount() uint64 {
+	if x != nil {
+		return x.xxx_hidden_SourceCount
+	}
+	return 0
+}
+
+func (x *NotificationCountResponse) GetTopics() []*NotificationTopicCount {
+	if x != nil {
+		if x.xxx_hidden_Topics != nil {
+			return *x.xxx_hidden_Topics
+		}
+	}
+	return nil
+}
+
+func (x *NotificationCountResponse) GetReaderId() []byte {
+	if x != nil {
+		return x.xxx_hidden_ReaderId
+	}
+	return nil
+}
+
+func (x *NotificationCountResponse) SetCount(v uint64) {
+	x.xxx_hidden_Count = v
+}
+
+func (x *NotificationCountResponse) SetSourceCount(v uint64) {
+	x.xxx_hidden_SourceCount = v
+}
+
+func (x *NotificationCountResponse) SetTopics(v []*NotificationTopicCount) {
+	x.xxx_hidden_Topics = &v
+}
+
+func (x *NotificationCountResponse) SetReaderId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_ReaderId = v
+}
+
+type NotificationCountResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Count uint64
+	// Distinct nonempty source IDs across all requested Topics, not the sum of
+	// per-Topic source counts. Source-less notifications count only toward count.
+	SourceCount uint64
+	// Request order, including zeros. All counts share one database snapshot.
+	Topics   []*NotificationTopicCount
+	ReaderId []byte
+}
+
+func (b0 NotificationCountResponse_builder) Build() *NotificationCountResponse {
+	m0 := &NotificationCountResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Count = b.Count
+	x.xxx_hidden_SourceCount = b.SourceCount
+	x.xxx_hidden_Topics = &b.Topics
+	x.xxx_hidden_ReaderId = b.ReaderId
+	return m0
+}
+
+type NotificationTopicCount struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Topic       *NotificationTopic     `protobuf:"bytes,1,opt,name=topic"`
+	xxx_hidden_Count       uint64                 `protobuf:"varint,2,opt,name=count"`
+	xxx_hidden_SourceCount uint64                 `protobuf:"varint,3,opt,name=source_count,json=sourceCount"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *NotificationTopicCount) Reset() {
+	*x = NotificationTopicCount{}
+	mi := &file_app_payday_notification_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationTopicCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationTopicCount) ProtoMessage() {}
+
+func (x *NotificationTopicCount) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_notification_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *NotificationTopicCount) GetTopic() *NotificationTopic {
+	if x != nil {
+		return x.xxx_hidden_Topic
+	}
+	return nil
+}
+
+func (x *NotificationTopicCount) GetCount() uint64 {
+	if x != nil {
+		return x.xxx_hidden_Count
+	}
+	return 0
+}
+
+func (x *NotificationTopicCount) GetSourceCount() uint64 {
+	if x != nil {
+		return x.xxx_hidden_SourceCount
+	}
+	return 0
+}
+
+func (x *NotificationTopicCount) SetTopic(v *NotificationTopic) {
+	x.xxx_hidden_Topic = v
+}
+
+func (x *NotificationTopicCount) SetCount(v uint64) {
+	x.xxx_hidden_Count = v
+}
+
+func (x *NotificationTopicCount) SetSourceCount(v uint64) {
+	x.xxx_hidden_SourceCount = v
+}
+
+func (x *NotificationTopicCount) HasTopic() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Topic != nil
+}
+
+func (x *NotificationTopicCount) ClearTopic() {
+	x.xxx_hidden_Topic = nil
+}
+
+type NotificationTopicCount_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Topic       *NotificationTopic
+	Count       uint64
+	SourceCount uint64
+}
+
+func (b0 NotificationTopicCount_builder) Build() *NotificationTopicCount {
+	m0 := &NotificationTopicCount{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Topic = b.Topic
+	x.xxx_hidden_Count = b.Count
+	x.xxx_hidden_SourceCount = b.SourceCount
+	return m0
+}
+
+type NotificationMarkRequest struct {
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Refs     *[]*NotificationRef    `protobuf:"bytes,1,rep,name=refs"`
+	xxx_hidden_TenantId []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *NotificationMarkRequest) Reset() {
+	*x = NotificationMarkRequest{}
+	mi := &file_app_payday_notification_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationMarkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationMarkRequest) ProtoMessage() {}
+
+func (x *NotificationMarkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_notification_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *NotificationMarkRequest) GetRefs() []*NotificationRef {
+	if x != nil {
+		if x.xxx_hidden_Refs != nil {
+			return *x.xxx_hidden_Refs
+		}
+	}
+	return nil
+}
+
+func (x *NotificationMarkRequest) GetTenantId() []byte {
+	if x != nil {
+		return x.xxx_hidden_TenantId
+	}
+	return nil
+}
+
+func (x *NotificationMarkRequest) SetRefs(v []*NotificationRef) {
+	x.xxx_hidden_Refs = &v
+}
+
+func (x *NotificationMarkRequest) SetTenantId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_TenantId = v
 }
 
 type NotificationMarkRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	// The server checks current topic access and resolves the receipt's reader.
-	// Neither the receipt owner nor its timestamps are accepted from the client.
-	Ref *NotificationRef
+	// 1–100 distinct explicit refs; all must be accessible in this namespace.
+	// Concurrent arrivals are not marked by this request. Failure writes none.
+	Refs     []*NotificationRef
+	TenantId []byte
 }
 
 func (b0 NotificationMarkRequest_builder) Build() *NotificationMarkRequest {
 	m0 := &NotificationMarkRequest{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Refs = &b.Refs
+	x.xxx_hidden_TenantId = b.TenantId
+	return m0
+}
+
+type NotificationMarkResponse struct {
+	state               protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Items    *[]*NotificationReceipt `protobuf:"bytes,1,rep,name=items"`
+	xxx_hidden_ReaderId []byte                  `protobuf:"bytes,2,opt,name=reader_id,json=readerId"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *NotificationMarkResponse) Reset() {
+	*x = NotificationMarkResponse{}
+	mi := &file_app_payday_notification_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationMarkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationMarkResponse) ProtoMessage() {}
+
+func (x *NotificationMarkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_notification_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *NotificationMarkResponse) GetItems() []*NotificationReceipt {
+	if x != nil {
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
+	}
+	return nil
+}
+
+func (x *NotificationMarkResponse) GetReaderId() []byte {
+	if x != nil {
+		return x.xxx_hidden_ReaderId
+	}
+	return nil
+}
+
+func (x *NotificationMarkResponse) SetItems(v []*NotificationReceipt) {
+	x.xxx_hidden_Items = &v
+}
+
+func (x *NotificationMarkResponse) SetReaderId(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_ReaderId = v
+}
+
+type NotificationMarkResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Request order; retries preserve existing receipt IDs and first-read times.
+	Items    []*NotificationReceipt
+	ReaderId []byte
+}
+
+func (b0 NotificationMarkResponse_builder) Build() *NotificationMarkResponse {
+	m0 := &NotificationMarkResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	x.xxx_hidden_ReaderId = b.ReaderId
 	return m0
 }
 
@@ -1460,7 +1961,7 @@ type NotificationListenRequest struct {
 
 func (x *NotificationListenRequest) Reset() {
 	*x = NotificationListenRequest{}
-	mi := &file_app_payday_notification_proto_msgTypes[12]
+	mi := &file_app_payday_notification_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1472,7 +1973,7 @@ func (x *NotificationListenRequest) String() string {
 func (*NotificationListenRequest) ProtoMessage() {}
 
 func (x *NotificationListenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_notification_proto_msgTypes[12]
+	mi := &file_app_payday_notification_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +2038,7 @@ type NotificationListenResponse struct {
 
 func (x *NotificationListenResponse) Reset() {
 	*x = NotificationListenResponse{}
-	mi := &file_app_payday_notification_proto_msgTypes[13]
+	mi := &file_app_payday_notification_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1549,7 +2050,7 @@ func (x *NotificationListenResponse) String() string {
 func (*NotificationListenResponse) ProtoMessage() {}
 
 func (x *NotificationListenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_notification_proto_msgTypes[13]
+	mi := &file_app_payday_notification_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1678,7 +2179,7 @@ func (b0 NotificationListenResponse_builder) Build() *NotificationListenResponse
 type case_NotificationListenResponse_Event protoreflect.FieldNumber
 
 func (x case_NotificationListenResponse_Event) String() string {
-	md := file_app_payday_notification_proto_msgTypes[13].Descriptor()
+	md := file_app_payday_notification_proto_msgTypes[18].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -1712,7 +2213,7 @@ type NotificationListenReady struct {
 
 func (x *NotificationListenReady) Reset() {
 	*x = NotificationListenReady{}
-	mi := &file_app_payday_notification_proto_msgTypes[14]
+	mi := &file_app_payday_notification_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1724,7 +2225,7 @@ func (x *NotificationListenReady) String() string {
 func (*NotificationListenReady) ProtoMessage() {}
 
 func (x *NotificationListenReady) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_notification_proto_msgTypes[14]
+	mi := &file_app_payday_notification_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1776,7 +2277,7 @@ type NotificationInvalidation struct {
 
 func (x *NotificationInvalidation) Reset() {
 	*x = NotificationInvalidation{}
-	mi := &file_app_payday_notification_proto_msgTypes[15]
+	mi := &file_app_payday_notification_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1788,7 +2289,7 @@ func (x *NotificationInvalidation) String() string {
 func (*NotificationInvalidation) ProtoMessage() {}
 
 func (x *NotificationInvalidation) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_notification_proto_msgTypes[15]
+	mi := &file_app_payday_notification_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1852,7 +2353,7 @@ type NotificationRecord struct {
 
 func (x *NotificationRecord) Reset() {
 	*x = NotificationRecord{}
-	mi := &file_app_payday_notification_proto_msgTypes[16]
+	mi := &file_app_payday_notification_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1864,7 +2365,7 @@ func (x *NotificationRecord) String() string {
 func (*NotificationRecord) ProtoMessage() {}
 
 func (x *NotificationRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_notification_proto_msgTypes[16]
+	mi := &file_app_payday_notification_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2128,18 +2629,42 @@ const file_app_payday_notification_proto_rawDesc = "" +
 	"\ttenant_id\x18\x04 \x01(\fR\btenantId\"W\n" +
 	"\x18NotificationListResponse\x12'\n" +
 	"\x05items\x18\x01 \x03(\v2\x11.app.NotificationR\x05items\x12\x12\n" +
-	"\x04next\x18\x02 \x01(\tR\x04next\"\x92\x01\n" +
+	"\x04next\x18\x02 \x01(\tR\x04next\"\xc7\x01\n" +
 	"\x17NotificationReadRequest\x12.\n" +
 	"\x06topics\x18\x01 \x03(\v2\x16.app.NotificationTopicR\x06topics\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x05R\x04size\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1b\n" +
-	"\ttenant_id\x18\x04 \x01(\fR\btenantId\"|\n" +
+	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x123\n" +
+	"\x06filter\x18\x05 \x01(\v2\x1b.app.NotificationReadFilterR\x06filter\"|\n" +
 	"\x18NotificationReadResponse\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.app.NotificationReadItemR\x05items\x12\x12\n" +
 	"\x04next\x18\x02 \x01(\tR\x04next\x12\x1b\n" +
-	"\treader_id\x18\x03 \x01(\fR\breaderId\"A\n" +
-	"\x17NotificationMarkRequest\x12&\n" +
-	"\x03ref\x18\x01 \x01(\v2\x14.app.NotificationRefR\x03ref\"h\n" +
+	"\treader_id\x18\x03 \x01(\fR\breaderId\"n\n" +
+	"\x16NotificationReadFilter\x12\x14\n" +
+	"\x05kinds\x18\x01 \x03(\tR\x05kinds\x12\x1d\n" +
+	"\n" +
+	"source_ids\x18\x02 \x03(\fR\tsourceIds\x12\x1f\n" +
+	"\vunread_only\x18\x03 \x01(\bR\n" +
+	"unreadOnly\"\x9c\x01\n" +
+	"\x18NotificationCountRequest\x12.\n" +
+	"\x06topics\x18\x01 \x03(\v2\x16.app.NotificationTopicR\x06topics\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x123\n" +
+	"\x06filter\x18\x05 \x01(\v2\x1b.app.NotificationReadFilterR\x06filter\"\xa6\x01\n" +
+	"\x19NotificationCountResponse\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x04R\x05count\x12!\n" +
+	"\fsource_count\x18\x02 \x01(\x04R\vsourceCount\x123\n" +
+	"\x06topics\x18\x03 \x03(\v2\x1b.app.NotificationTopicCountR\x06topics\x12\x1b\n" +
+	"\treader_id\x18\x04 \x01(\fR\breaderId\"\x7f\n" +
+	"\x16NotificationTopicCount\x12,\n" +
+	"\x05topic\x18\x01 \x01(\v2\x16.app.NotificationTopicR\x05topic\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x04R\x05count\x12!\n" +
+	"\fsource_count\x18\x03 \x01(\x04R\vsourceCount\"`\n" +
+	"\x17NotificationMarkRequest\x12(\n" +
+	"\x04refs\x18\x01 \x03(\v2\x14.app.NotificationRefR\x04refs\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\fR\btenantId\"g\n" +
+	"\x18NotificationMarkResponse\x12.\n" +
+	"\x05items\x18\x01 \x03(\v2\x18.app.NotificationReceiptR\x05items\x12\x1b\n" +
+	"\treader_id\x18\x02 \x01(\fR\breaderId\"h\n" +
 	"\x19NotificationListenRequest\x12.\n" +
 	"\x06topics\x18\x01 \x03(\v2\x16.app.NotificationTopicR\x06topics\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\fR\btenantId\"\x9e\x01\n" +
@@ -2172,16 +2697,17 @@ const file_app_payday_notification_proto_rawDesc = "" +
 	"\ttopic_key\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x8a\xbb\x16#\b(\x12\fnotificationB\x02\n" +
-	"\x00H\v\"\v\x12\ttenant_id2\x9a\x03\n" +
+	"\x00H\v\"\v\x12\ttenant_id2\xe7\x03\n" +
 	"\x13NotificationService\x125\n" +
 	"\x03Add\x12\x1b.app.NotificationAddRequest\x1a\x11.app.Notification\x125\n" +
 	"\x03Get\x12\x1b.app.NotificationGetRequest\x1a\x11.app.Notification\x12C\n" +
 	"\x04List\x12\x1c.app.NotificationListRequest\x1a\x1d.app.NotificationListResponse\x12C\n" +
-	"\x04Read\x12\x1c.app.NotificationReadRequest\x1a\x1d.app.NotificationReadResponse\x12>\n" +
-	"\x04Mark\x12\x1c.app.NotificationMarkRequest\x1a\x18.app.NotificationReceipt\x12K\n" +
+	"\x04Read\x12\x1c.app.NotificationReadRequest\x1a\x1d.app.NotificationReadResponse\x12F\n" +
+	"\x05Count\x12\x1d.app.NotificationCountRequest\x1a\x1e.app.NotificationCountResponse\x12C\n" +
+	"\x04Mark\x12\x1c.app.NotificationMarkRequest\x1a\x1d.app.NotificationMarkResponse\x12K\n" +
 	"\x06Listen\x12\x1e.app.NotificationListenRequest\x1a\x1f.app.NotificationListenResponse0\x01B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_payday_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_app_payday_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_app_payday_notification_proto_goTypes = []any{
 	(*NotificationTopic)(nil),          // 0: app.NotificationTopic
 	(*Notification)(nil),               // 1: app.Notification
@@ -2194,56 +2720,69 @@ var file_app_payday_notification_proto_goTypes = []any{
 	(*NotificationListResponse)(nil),   // 8: app.NotificationListResponse
 	(*NotificationReadRequest)(nil),    // 9: app.NotificationReadRequest
 	(*NotificationReadResponse)(nil),   // 10: app.NotificationReadResponse
-	(*NotificationMarkRequest)(nil),    // 11: app.NotificationMarkRequest
-	(*NotificationListenRequest)(nil),  // 12: app.NotificationListenRequest
-	(*NotificationListenResponse)(nil), // 13: app.NotificationListenResponse
-	(*NotificationListenReady)(nil),    // 14: app.NotificationListenReady
-	(*NotificationInvalidation)(nil),   // 15: app.NotificationInvalidation
-	(*NotificationRecord)(nil),         // 16: app.NotificationRecord
-	(*anypb.Any)(nil),                  // 17: google.protobuf.Any
-	(*timestamppb.Timestamp)(nil),      // 18: google.protobuf.Timestamp
+	(*NotificationReadFilter)(nil),     // 11: app.NotificationReadFilter
+	(*NotificationCountRequest)(nil),   // 12: app.NotificationCountRequest
+	(*NotificationCountResponse)(nil),  // 13: app.NotificationCountResponse
+	(*NotificationTopicCount)(nil),     // 14: app.NotificationTopicCount
+	(*NotificationMarkRequest)(nil),    // 15: app.NotificationMarkRequest
+	(*NotificationMarkResponse)(nil),   // 16: app.NotificationMarkResponse
+	(*NotificationListenRequest)(nil),  // 17: app.NotificationListenRequest
+	(*NotificationListenResponse)(nil), // 18: app.NotificationListenResponse
+	(*NotificationListenReady)(nil),    // 19: app.NotificationListenReady
+	(*NotificationInvalidation)(nil),   // 20: app.NotificationInvalidation
+	(*NotificationRecord)(nil),         // 21: app.NotificationRecord
+	(*anypb.Any)(nil),                  // 22: google.protobuf.Any
+	(*timestamppb.Timestamp)(nil),      // 23: google.protobuf.Timestamp
 }
 var file_app_payday_notification_proto_depIdxs = []int32{
 	0,  // 0: app.Notification.topic:type_name -> app.NotificationTopic
-	17, // 1: app.Notification.payload:type_name -> google.protobuf.Any
-	18, // 2: app.Notification.date_updated:type_name -> google.protobuf.Timestamp
-	18, // 3: app.Notification.date_created:type_name -> google.protobuf.Timestamp
-	18, // 4: app.NotificationReceipt.data_read:type_name -> google.protobuf.Timestamp
-	18, // 5: app.NotificationReceipt.date_updated:type_name -> google.protobuf.Timestamp
-	18, // 6: app.NotificationReceipt.date_created:type_name -> google.protobuf.Timestamp
+	22, // 1: app.Notification.payload:type_name -> google.protobuf.Any
+	23, // 2: app.Notification.date_updated:type_name -> google.protobuf.Timestamp
+	23, // 3: app.Notification.date_created:type_name -> google.protobuf.Timestamp
+	23, // 4: app.NotificationReceipt.data_read:type_name -> google.protobuf.Timestamp
+	23, // 5: app.NotificationReceipt.date_updated:type_name -> google.protobuf.Timestamp
+	23, // 6: app.NotificationReceipt.date_created:type_name -> google.protobuf.Timestamp
 	1,  // 7: app.NotificationReadItem.notification:type_name -> app.Notification
 	2,  // 8: app.NotificationReadItem.receipt:type_name -> app.NotificationReceipt
 	0,  // 9: app.NotificationAddRequest.topic:type_name -> app.NotificationTopic
-	17, // 10: app.NotificationAddRequest.payload:type_name -> google.protobuf.Any
+	22, // 10: app.NotificationAddRequest.payload:type_name -> google.protobuf.Any
 	4,  // 11: app.NotificationGetRequest.ref:type_name -> app.NotificationRef
 	0,  // 12: app.NotificationListRequest.topics:type_name -> app.NotificationTopic
 	1,  // 13: app.NotificationListResponse.items:type_name -> app.Notification
 	0,  // 14: app.NotificationReadRequest.topics:type_name -> app.NotificationTopic
-	3,  // 15: app.NotificationReadResponse.items:type_name -> app.NotificationReadItem
-	4,  // 16: app.NotificationMarkRequest.ref:type_name -> app.NotificationRef
-	0,  // 17: app.NotificationListenRequest.topics:type_name -> app.NotificationTopic
-	14, // 18: app.NotificationListenResponse.ready:type_name -> app.NotificationListenReady
-	15, // 19: app.NotificationListenResponse.invalidated:type_name -> app.NotificationInvalidation
-	0,  // 20: app.NotificationInvalidation.topics:type_name -> app.NotificationTopic
-	18, // 21: app.NotificationRecord.date_updated:type_name -> google.protobuf.Timestamp
-	18, // 22: app.NotificationRecord.date_created:type_name -> google.protobuf.Timestamp
-	5,  // 23: app.NotificationService.Add:input_type -> app.NotificationAddRequest
-	6,  // 24: app.NotificationService.Get:input_type -> app.NotificationGetRequest
-	7,  // 25: app.NotificationService.List:input_type -> app.NotificationListRequest
-	9,  // 26: app.NotificationService.Read:input_type -> app.NotificationReadRequest
-	11, // 27: app.NotificationService.Mark:input_type -> app.NotificationMarkRequest
-	12, // 28: app.NotificationService.Listen:input_type -> app.NotificationListenRequest
-	1,  // 29: app.NotificationService.Add:output_type -> app.Notification
-	1,  // 30: app.NotificationService.Get:output_type -> app.Notification
-	8,  // 31: app.NotificationService.List:output_type -> app.NotificationListResponse
-	10, // 32: app.NotificationService.Read:output_type -> app.NotificationReadResponse
-	2,  // 33: app.NotificationService.Mark:output_type -> app.NotificationReceipt
-	13, // 34: app.NotificationService.Listen:output_type -> app.NotificationListenResponse
-	29, // [29:35] is the sub-list for method output_type
-	23, // [23:29] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	11, // 15: app.NotificationReadRequest.filter:type_name -> app.NotificationReadFilter
+	3,  // 16: app.NotificationReadResponse.items:type_name -> app.NotificationReadItem
+	0,  // 17: app.NotificationCountRequest.topics:type_name -> app.NotificationTopic
+	11, // 18: app.NotificationCountRequest.filter:type_name -> app.NotificationReadFilter
+	14, // 19: app.NotificationCountResponse.topics:type_name -> app.NotificationTopicCount
+	0,  // 20: app.NotificationTopicCount.topic:type_name -> app.NotificationTopic
+	4,  // 21: app.NotificationMarkRequest.refs:type_name -> app.NotificationRef
+	2,  // 22: app.NotificationMarkResponse.items:type_name -> app.NotificationReceipt
+	0,  // 23: app.NotificationListenRequest.topics:type_name -> app.NotificationTopic
+	19, // 24: app.NotificationListenResponse.ready:type_name -> app.NotificationListenReady
+	20, // 25: app.NotificationListenResponse.invalidated:type_name -> app.NotificationInvalidation
+	0,  // 26: app.NotificationInvalidation.topics:type_name -> app.NotificationTopic
+	23, // 27: app.NotificationRecord.date_updated:type_name -> google.protobuf.Timestamp
+	23, // 28: app.NotificationRecord.date_created:type_name -> google.protobuf.Timestamp
+	5,  // 29: app.NotificationService.Add:input_type -> app.NotificationAddRequest
+	6,  // 30: app.NotificationService.Get:input_type -> app.NotificationGetRequest
+	7,  // 31: app.NotificationService.List:input_type -> app.NotificationListRequest
+	9,  // 32: app.NotificationService.Read:input_type -> app.NotificationReadRequest
+	12, // 33: app.NotificationService.Count:input_type -> app.NotificationCountRequest
+	15, // 34: app.NotificationService.Mark:input_type -> app.NotificationMarkRequest
+	17, // 35: app.NotificationService.Listen:input_type -> app.NotificationListenRequest
+	1,  // 36: app.NotificationService.Add:output_type -> app.Notification
+	1,  // 37: app.NotificationService.Get:output_type -> app.Notification
+	8,  // 38: app.NotificationService.List:output_type -> app.NotificationListResponse
+	10, // 39: app.NotificationService.Read:output_type -> app.NotificationReadResponse
+	13, // 40: app.NotificationService.Count:output_type -> app.NotificationCountResponse
+	16, // 41: app.NotificationService.Mark:output_type -> app.NotificationMarkResponse
+	18, // 42: app.NotificationService.Listen:output_type -> app.NotificationListenResponse
+	36, // [36:43] is the sub-list for method output_type
+	29, // [29:36] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_notification_proto_init() }
@@ -2255,7 +2794,7 @@ func file_app_payday_notification_proto_init() {
 		(*notificationTopic_ResourceId)(nil),
 		(*notificationTopic_Name)(nil),
 	}
-	file_app_payday_notification_proto_msgTypes[13].OneofWrappers = []any{
+	file_app_payday_notification_proto_msgTypes[18].OneofWrappers = []any{
 		(*notificationListenResponse_Ready)(nil),
 		(*notificationListenResponse_Invalidated)(nil),
 	}
@@ -2265,7 +2804,7 @@ func file_app_payday_notification_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_notification_proto_rawDesc), len(file_app_payday_notification_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

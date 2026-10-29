@@ -185,6 +185,9 @@ func CheckOverlay(s *Schema) error {
 
 		got := fieldsOf(v.Descriptor())
 		for n, w := range want {
+			if n == 2 && s.Notify != nil && s.Notify.Global && (v.Own == pdpb.Own_OWN_NOTIFICATION || v.Own == pdpb.Own_OWN_NOTIFICATION_RECEIPT) {
+				continue
+			}
 			g, ok := got[n]
 			switch {
 			case !ok && opted[v.Own]:
@@ -208,6 +211,10 @@ func CheckOverlay(s *Schema) error {
 		if opted[v.Own] || numbered(v.Own) {
 			shipped = proto.Clone(shipped).(*pdpb.Entity)
 			shipped.SetDomain(e.GetDomain())
+		}
+		if s.Notify != nil && s.Notify.Global && (v.Own == pdpb.Own_OWN_NOTIFICATION || v.Own == pdpb.Own_OWN_NOTIFICATION_RECEIPT) {
+			shipped = proto.Clone(shipped).(*pdpb.Entity)
+			shipped.SetGlobal(&pdpb.Entity_Global{})
 		}
 		for _, p := range added(e.ProtoReflect(), shipped.ProtoReflect(), "") {
 			errs = append(errs, fmt.Sprintf(

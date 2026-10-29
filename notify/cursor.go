@@ -74,7 +74,7 @@ func (s *Service) decode(v, scope string) (*Position, error) {
 // scopeKey binds paging to the authenticated identity and its credential's
 // authority, not merely a tenant the request happened to name. Stable ordering
 // lets a caller reorder the same topic set without invalidating its cursor.
-func scopeKey(ctx context.Context, method string, tenant, reader pdid.Id, topics []Topic) string {
+func (s *Service) scopeKey(ctx context.Context, method string, tenant, reader pdid.Id, topics []Topic, filter ReadFilter) string {
 	f := frame.Must(ctx)
 	origin, _ := grpc.Method(ctx)
 	ids := func(vs []pdid.Id) []string {
@@ -98,6 +98,12 @@ func scopeKey(ctx context.Context, method string, tenant, reader pdid.Id, topics
 	}{method, origin, tenant.String(), reader.String(), f.Actor.String(), f.Tenant.String(), f.Name, f.TenantName,
 		keys, ids(f.Scope.Ids()), ids(f.Grant.TenantIds()), ids(f.Grant.SetIds()), slices.Compact(actions),
 		f.Scope.All(), f.Grant.AnyTenant(), f.Grant.AnySet(), f.Grant.AnyAction()})
+	b, _ = json.Marshal(struct {
+		Context   json.RawMessage
+		Namespace string
+		Global    bool
+		Filter    ReadFilter
+	}{b, s.namespace, s.global, filter})
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }

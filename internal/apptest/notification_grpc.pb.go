@@ -23,6 +23,7 @@ const (
 	NotificationService_Get_FullMethodName    = "/app.NotificationService/Get"
 	NotificationService_List_FullMethodName   = "/app.NotificationService/List"
 	NotificationService_Read_FullMethodName   = "/app.NotificationService/Read"
+	NotificationService_Count_FullMethodName  = "/app.NotificationService/Count"
 	NotificationService_Mark_FullMethodName   = "/app.NotificationService/Mark"
 	NotificationService_Listen_FullMethodName = "/app.NotificationService/Listen"
 )
@@ -50,9 +51,11 @@ type NotificationServiceClient interface {
 	// Read projects notifications with only the resolved reader's receipt. It
 	// creates no receipt; a missing receipt means unread for an authorized reader.
 	Read(ctx context.Context, in *NotificationReadRequest, opts ...grpc.CallOption) (*NotificationReadResponse, error)
-	// Mark records the resolved reader's first read time. Concurrent calls
-	// return the same receipt without changing its original read time.
-	Mark(ctx context.Context, in *NotificationMarkRequest, opts ...grpc.CallOption) (*NotificationReceipt, error)
+	// Count aggregates the entire authorized reader selection, without paging.
+	Count(ctx context.Context, in *NotificationCountRequest, opts ...grpc.CallOption) (*NotificationCountResponse, error)
+	// Mark atomically records this reader's first read of 1–100 distinct refs.
+	// Retries preserve receipts and their first-read times; order follows refs.
+	Mark(ctx context.Context, in *NotificationMarkRequest, opts ...grpc.CallOption) (*NotificationMarkResponse, error)
 	// Listen first sends ready once its live subscription is installed, then
 	// invalidation hints. Call Read after ready and after invalidation. There is
 	// no snapshot, message delivery acknowledgment or replay cursor on this RPC.
@@ -107,9 +110,19 @@ func (c *notificationServiceClient) Read(ctx context.Context, in *NotificationRe
 	return out, nil
 }
 
-func (c *notificationServiceClient) Mark(ctx context.Context, in *NotificationMarkRequest, opts ...grpc.CallOption) (*NotificationReceipt, error) {
+func (c *notificationServiceClient) Count(ctx context.Context, in *NotificationCountRequest, opts ...grpc.CallOption) (*NotificationCountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(NotificationReceipt)
+	out := new(NotificationCountResponse)
+	err := c.cc.Invoke(ctx, NotificationService_Count_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationServiceClient) Mark(ctx context.Context, in *NotificationMarkRequest, opts ...grpc.CallOption) (*NotificationMarkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NotificationMarkResponse)
 	err := c.cc.Invoke(ctx, NotificationService_Mark_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -159,9 +172,11 @@ type NotificationServiceServer interface {
 	// Read projects notifications with only the resolved reader's receipt. It
 	// creates no receipt; a missing receipt means unread for an authorized reader.
 	Read(context.Context, *NotificationReadRequest) (*NotificationReadResponse, error)
-	// Mark records the resolved reader's first read time. Concurrent calls
-	// return the same receipt without changing its original read time.
-	Mark(context.Context, *NotificationMarkRequest) (*NotificationReceipt, error)
+	// Count aggregates the entire authorized reader selection, without paging.
+	Count(context.Context, *NotificationCountRequest) (*NotificationCountResponse, error)
+	// Mark atomically records this reader's first read of 1–100 distinct refs.
+	// Retries preserve receipts and their first-read times; order follows refs.
+	Mark(context.Context, *NotificationMarkRequest) (*NotificationMarkResponse, error)
 	// Listen first sends ready once its live subscription is installed, then
 	// invalidation hints. Call Read after ready and after invalidation. There is
 	// no snapshot, message delivery acknowledgment or replay cursor on this RPC.
@@ -188,7 +203,10 @@ func (UnimplementedNotificationServiceServer) List(context.Context, *Notificatio
 func (UnimplementedNotificationServiceServer) Read(context.Context, *NotificationReadRequest) (*NotificationReadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Read not implemented")
 }
-func (UnimplementedNotificationServiceServer) Mark(context.Context, *NotificationMarkRequest) (*NotificationReceipt, error) {
+func (UnimplementedNotificationServiceServer) Count(context.Context, *NotificationCountRequest) (*NotificationCountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Count not implemented")
+}
+func (UnimplementedNotificationServiceServer) Mark(context.Context, *NotificationMarkRequest) (*NotificationMarkResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Mark not implemented")
 }
 func (UnimplementedNotificationServiceServer) Listen(*NotificationListenRequest, grpc.ServerStreamingServer[NotificationListenResponse]) error {
@@ -287,6 +305,24 @@ func _NotificationService_Read_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotificationService_Count_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NotificationCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).Count(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_Count_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).Count(ctx, req.(*NotificationCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NotificationService_Mark_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NotificationMarkRequest)
 	if err := dec(in); err != nil {
@@ -338,6 +374,10 @@ var NotificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Read",
 			Handler:    _NotificationService_Read_Handler,
+		},
+		{
+			MethodName: "Count",
+			Handler:    _NotificationService_Count_Handler,
 		},
 		{
 			MethodName: "Mark",

@@ -141,4 +141,6 @@ message Domains {
 message Notify {
   uint32 notification = 1;
   uint32 receipt = 2;
+  // One app-global namespace instead of tenant-scoped notification records.
+  bool global = 3;
 }

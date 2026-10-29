@@ -14,9 +14,9 @@ app's package. The generated `pd.Notifications` helper binds that service to the
 app's server stack, driver, Watch, and policy; the app registers it explicitly
 with `app.RegisterNotificationServiceServer`. Keeping a past is not a prerequisite.
 
-The [reader-state extension proposal](notify-adoption-contract.md) describes
-global apps, filtered unread queries, counts and batch marking for contract
-review. Those extensions are not implemented by the runtime described here.
+The [adoption contract](notify-adoption-contract.md) covers global apps,
+filtered reader queries, source counts and atomic batch marking, including
+the boundary between notification receipts and an application read cursor.
 
 ## Topics and readers
 
@@ -32,16 +32,21 @@ Publishing creates one notification and no per-reader rows or subscriptions.
 | `resource_id` | A payday identifier, whose domain identifies the resource's kind |
 | `name` | An app-defined, stable, nonempty, case-sensitive key |
 
-Both forms are scoped to a tenant. A named Topic `maintenance` in one tenant is
-distinct from the same name in another. A name that happens to look like a UUID
+Both forms use the app's configured notification namespace. By default this
+is a tenant: a named Topic `maintenance` in one tenant is distinct from the
+same name in another. An app declaring `notify.global: true` instead has one
+global namespace, with no synthetic Tenant row or Tenant relationship. A name that happens to look like a UUID
 is also distinct from a resource Topic containing that UUID. There is no implicit
 trimming, case folding, path syntax, or conversion between the two forms.
 Names contain 1 to 256 UTF-8 bytes; Kind contains 1 to 128 UTF-8 bytes. NUL is
 rejected in Topic names, Kind, idempotency and producer keys, and payload type
 URLs. The byte limits include the entire encoded string.
 All resource IDs are nonzero payday IDs in domains registered by the app.
-`tenant_id` is required on Add and the Topic queries; Get and Mark derive
-the tenant from the scoped notification lookup.
+`tenant_id` is required on Add, Topic queries and Mark in tenant mode. Global
+mode requires it to be absent, and public notification/receipt tenant fields
+are empty. Get derives the namespace from the authorized record. Generated
+servers fix the mode from the app declaration; a request cannot switch it.
+Changing an existing store's mode requires an explicit migration.
 
 The resource form needs no `job/` or `tenant/` prefix: `pdid` already carries a
 domain. Its shape does not establish that a resource exists or grant permission
@@ -71,6 +76,10 @@ manage open streams or write notification storage code:
 | Resolve reader | Authenticated context, tenant | A persistent reader ID, after validating any delegation |
 | Authorize reading | Authenticated context, tenant, resolved reader, Topic | Permission to read that Topic |
 
+In global mode these policy methods receive `pdid.Nil` as the tenant argument.
+Authentication and a persistent reader remain required; global does not mean
+anonymous or publicly readable.
+
 These decisions form `notify.Policy`: `Publisher`, `Reader`, and `Read`.
 The app's policy must refuse Topics it does not handle. Every read RPC requires
 a persistent resolved reader; an authenticated frame alone is insufficient.
@@ -90,8 +99,8 @@ message is not returned to the client. To distinguish an operational failure,
 return a gRPC status with an intentional, client-safe message, such as
 `Unavailable`. Context cancellation and deadlines retain their status codes.
 
-Every operation first respects the request's tenant scope. Topic policy cannot
-widen the tenant wall. `List`, `Read`, and `Listen` authorize their complete
+Every operation first respects the configured global/tenant namespace. Topic policy cannot
+widen the tenant wall. `List`, `Read`, `Count`, and `Listen` authorize their complete
 explicit Topic set before reading or subscribing. `Get` and `Mark` read the
 notification through the wall and apply the same Topic policy; an absent or
 inaccessible notification is answered as `NotFound`.
@@ -163,7 +172,8 @@ All methods belong to `NotificationService` in the app's package.
 | `Get` | Retrieves one authorized `Notification` |
 | `List` | Pages authorized `Notification` values in explicit Topics |
 | `Read` | Retrieves a page of `NotificationReadItem` values, pairing each notification with this reader's existing receipt; creates no receipt |
-| `Mark` | Returns this reader's `NotificationReceipt`, creating it lazily |
+| `Count` | Counts the complete authorized reader selection and its distinct nonempty sources, overall and per Topic |
+| `Mark` | Atomically records this reader's first read of explicit refs and returns ordered Receipts plus the reader ID |
 | `Listen` | Streams readiness and Topic invalidation hints |
 
 Publication is named `Add`, so there is no second `Publish` RPC beside it.
@@ -178,7 +188,7 @@ service is registered explicitly alongside the app's ordinary entity services.
 `Read` retrieves state; it does not mark notifications as read. `Mark` is the
 operation that creates a receipt and records the reader's first read time.
 
-`List`, `Read`, and `Listen` take 1 to 100 distinct Topics in one tenant; empty
+`List`, `Read`, `Count`, and `Listen` take 1 to 100 distinct Topics in one namespace; empty
 sets and duplicates are invalid. They do not discover every Topic a reader might
 be allowed to read. An app can provide that discovery from its own relationships
 without making reverse membership lookup a requirement of the feature.
@@ -187,15 +197,29 @@ List and Read use `(date_created, id)` in descending order. Size zero selects
 50, positive sizes above 100 are capped at 100, and negative sizes are invalid.
 The request's `cursor` carries the previous response's `next`.
 Their cursors are authenticated, opaque, and bound to the tenant,
-authenticated identity, resolved reader, RPC, normalized Topic set, query filters,
+authenticated identity, resolved reader, RPC, normalized Topic set, normalized reader filters, app namespace, scope mode,
 and order. Topic order in a request does not change its selection. Reusing a
 cursor for a different scope is `InvalidArgument`.
+
+`Read.filter` selects exact Kind values, exact source IDs and unread-only state.
+Empty kind/source lists are unrestricted; within each list choices use OR and
+across predicates they use AND. Each list allows at most 100 distinct valid
+values. Receipt absence is evaluated only for the server-resolved reader.
+Shared `List` has no reader filter. Filters are applied before paging, and are
+part of the signed cursor's scope.
+
+`Count` uses the same reader predicates without pagination. One database
+statement gives consistent total/per-Topic counts and distinct-source counts.
+Source-less notifications contribute to `count`, not `source_count`. The total
+source count deduplicates across Topics, so it need not equal the sum of the
+per-Topic source counts. Topic results follow request order and include zeros.
+All requested Topics are authorized before any counts are returned.
 
 Pages reflect current authorization rather than a point-in-time snapshot.
 Relationship changes can alter what is visible between pages. Implementations
 must narrow by tenant and authorized Topics before applying the page limit,
-then read only the current reader's receipts. Any future unread filter must
-also be applied before the limit.
+then read only the current reader's receipts. Read and Count are separate
+snapshots; invalidation requires reconciling both.
 
 ### Idempotency and transactions
 
@@ -232,7 +256,14 @@ shared Watch's `Transaction` call, as in the guide. It releases immediate hints
 only after the outer commit succeeds, including in a background worker. A
 rebound notification server alone does not own or commit that outer transaction.
 
-Concurrent `Mark` calls return the same receipt and first read time. A
+`Mark` accepts 1–100 distinct explicit refs, within one namespace, and resolves
+one reader. All refs must be accessible; a missing/inaccessible/out-of-scope ref
+rejects the whole transaction without partial receipts. Responses follow the
+request's ref order. Single-item marking uses the same RPC with one ref.
+Existing receipts retain their IDs and first-read times, including under
+concurrent and retried calls. A new notification arriving during a call is not
+marked unless explicitly named. Page cursors and creation times are not
+read-through watermarks. A
 failed transaction leaves no notification, receipt, or observable change hint.
 Hints are published after commit, including writes initiated by app workers.
 The existing change-notification outbox can support that delivery; this does
@@ -248,7 +279,7 @@ requested Topics. They carry no notification payload or another reader's
 receipt state and may be duplicated or coalesced. There is no replay cursor,
 initial snapshot, exactly-once promise, or cross-transaction ordering guarantee.
 
-The client keeps the stream open, waits for `ready`, then calls `Read` (or
+The client keeps the stream open, waits for `ready`, then calls `Read` and `Count` (or
 `List`). A hint received during that query marks the result dirty and causes
 another query after it finishes. After reconnecting, the client repeats this
 sequence. A backlog or lost broker connection ends the stream so the client

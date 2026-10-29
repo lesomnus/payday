@@ -15,6 +15,7 @@ import (
 type Notify struct {
 	Notification uint8
 	Receipt      uint8
+	Global       bool
 	At           string
 }
 
@@ -70,7 +71,7 @@ func notifyProto(n *Notify) *pdpb.Notify {
 	if n == nil {
 		return nil
 	}
-	return pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt)}.Build()
+	return pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt), Global: n.Global}.Build()
 }
 
 func pastProto(p *Past) *pdpb.Past {
@@ -97,7 +98,7 @@ func readNotify(files []*protogen.File) (*Notify, error) {
 		if err := CheckNotifyDomains(n, a.GetPast(), a.GetDomains()); err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
 		}
-		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), At: f.Desc.Path()}
+		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.GetGlobal(), At: f.Desc.Path()}
 	}
 	return found, nil
 }
@@ -110,6 +111,9 @@ func (s *Schema) checkNotify() error {
 	for _, v := range s.Entities {
 		if features[v.Own] != schema.DirNotify {
 			continue
+		}
+		if s.Notify != nil && (v.IsGlobal != s.Notify.Global || (s.Notify.Global && v.Descriptor().Fields().ByNumber(2) != nil)) {
+			return fmt.Errorf("%s scope differs from notify.global; run pd gen to restore the record", v.FullName())
 		}
 		want, ok := s.Notify.Domain(v.Own)
 		switch {

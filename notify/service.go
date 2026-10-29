@@ -26,12 +26,14 @@ import (
 // Service binds an app's generated persistence to its policy and live broker.
 // It holds no per-request reader identity or durable subscription state.
 type Service struct {
-	store  Store
-	watch  *watch.Watch
-	policy Policy
-	source Policy
-	key    []byte
-	clock  func() time.Time
+	store     Store
+	watch     *watch.Watch
+	policy    Policy
+	source    Policy
+	key       []byte
+	clock     func() time.Time
+	global    bool
+	namespace string
 }
 
 func New(store Store, w *watch.Watch, policy Policy, opts Options) (*Service, error) {
@@ -49,7 +51,7 @@ func New(store Store, w *watch.Watch, policy Policy, opts Options) (*Service, er
 	if clock == nil {
 		clock = time.Now
 	}
-	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock}, nil
+	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock, global: opts.Global, namespace: opts.Namespace}, nil
 }
 
 func bindPolicy(policy Policy, drv dialect.Driver) (Policy, error) {
@@ -99,7 +101,7 @@ func ParseTopicKey(key string) (Topic, error) {
 // Add publishes once within the server-established producer's idempotency
 // scope. Repeating the identity with different content returns AlreadyExists.
 func (s *Service) Add(ctx context.Context, req AddRequest) (Notification, error) {
-	if err := tenant(ctx, req.Tenant); err != nil {
+	if err := s.tenant(ctx, req.Tenant); err != nil {
 		return Notification{}, err
 	}
 	if err := topic(req.Topic); err != nil {
@@ -128,7 +130,7 @@ func (s *Service) Add(ctx context.Context, req AddRequest) (Notification, error)
 	var result Notification
 	err = s.transaction(ctx, "Add", func(ctx context.Context, at *Service) error {
 		st := at.store
-		if err := lock(ctx, st.Driver(), "publication", req.Tenant.String(), producer, req.IdempotencyKey); err != nil {
+		if err := lock(ctx, st.Driver(), "publication", at.namespace, req.Tenant.String(), producer, req.IdempotencyKey); err != nil {
 			return err
 		}
 		// A concurrent copy may have held the lock while authorization was
@@ -177,7 +179,7 @@ func (s *Service) get(ctx context.Context, st Store, id pdid.Id) (Notification, 
 	if err != nil {
 		return Notification{}, pdid.Nil, err
 	}
-	if err := tenant(ctx, v.Tenant); err != nil {
+	if err := s.tenant(ctx, v.Tenant); err != nil {
 		return Notification{}, pdid.Nil, notFound()
 	}
 	reader, err := s.reader(ctx, v.Tenant)
@@ -252,8 +254,15 @@ func (s *Service) page(ctx context.Context, method string, req Query) (Page, pdi
 		size = 50
 	}
 	size = min(size, 100)
-	selection := Selection{Tenant: req.Tenant, Topics: topics, Limit: size + 1}
-	binding := scopeKey(ctx, method, req.Tenant, reader, topics)
+	filter, err := normalizeFilter(req.Filter)
+	if err != nil {
+		return Page{}, pdid.Nil, err
+	}
+	if method == "List" && (len(filter.Kinds) > 0 || len(filter.Sources) > 0 || filter.UnreadOnly) {
+		return Page{}, pdid.Nil, invalid("reader filters belong to Read")
+	}
+	selection := Selection{Tenant: req.Tenant, Topics: topics, Limit: size + 1, Reader: reader, Filter: filter}
+	binding := s.scopeKey(ctx, method, req.Tenant, reader, topics, filter)
 	if req.Cursor != "" {
 		selection.Position, err = s.decode(req.Cursor, binding)
 		if err != nil {
@@ -290,52 +299,154 @@ func (s *Service) page(ctx context.Context, method string, req Query) (Page, pdi
 
 // Mark lazily records the server-resolved reader's first read. Retries retain
 // the existing receipt and time rather than turning a read into another write.
-func (s *Service) Mark(ctx context.Context, id pdid.Id) (Receipt, error) {
-	if _, ok := frame.From(ctx); !ok {
-		return Receipt{}, status.Error(codes.Unauthenticated, "who is asking?")
+func (s *Service) Mark(ctx context.Context, req MarkRequest) (Marked, error) {
+	if err := s.tenant(ctx, req.Tenant); err != nil {
+		return Marked{}, err
 	}
-	if err := identifier(id); err != nil {
-		return Receipt{}, err
+	if len(req.Refs) == 0 || len(req.Refs) > 100 {
+		return Marked{}, invalid("Mark requires 1 to 100 distinct refs")
 	}
-	var result Receipt
+	seen := make(map[pdid.Id]bool, len(req.Refs))
+	for _, id := range req.Refs {
+		if err := identifier(id); err != nil {
+			return Marked{}, err
+		}
+		if seen[id] {
+			return Marked{}, invalid("duplicate refs are invalid")
+		}
+		seen[id] = true
+	}
+	var result Marked
 	err := s.transaction(ctx, "Mark", func(ctx context.Context, at *Service) error {
-		st := at.store
-		v, reader, err := at.get(ctx, st, id)
+		reader, err := at.reader(ctx, req.Tenant)
 		if err != nil {
 			return err
 		}
-		if err := lock(ctx, st.Driver(), "receipt", v.ID.String(), reader.String()); err != nil {
-			return err
+		// Lock in ID order so overlapping batches cannot deadlock each other.
+		ordered := slices.Clone(req.Refs)
+		slices.SortFunc(ordered, func(a, b pdid.Id) int { return bytes.Compare(a.Bytes(), b.Bytes()) })
+		for _, id := range ordered {
+			if err := lock(ctx, at.store.Driver(), "receipt", at.namespace, id.String(), reader.String()); err != nil {
+				return err
+			}
 		}
-		current, currentReader, err := at.get(ctx, st, id)
+		values := make([]Notification, len(req.Refs))
+		for i, id := range req.Refs {
+			v, current, err := at.get(ctx, at.store, id)
+			if err != nil {
+				return err
+			}
+			if v.Tenant != req.Tenant {
+				return notFound()
+			}
+			if current != reader {
+				return status.Error(codes.PermissionDenied, "notification reader changed during marking")
+			}
+			values[i] = v
+		}
+		rs, err := at.store.Receipts(ctx, req.Tenant, reader, req.Refs)
 		if err != nil {
 			return err
 		}
-		if currentReader != reader {
-			return status.Error(codes.PermissionDenied, "notification reader changed during marking")
-		}
-		v = current
-		rs, err := st.Receipts(ctx, v.Tenant, reader, []pdid.Id{v.ID})
-		if err != nil {
-			return err
-		}
-		if len(rs) > 0 {
-			if len(rs) != 1 || rs[0].Tenant != v.Tenant || rs[0].Reader != reader || rs[0].Notification != v.ID {
+		byID := make(map[pdid.Id]Receipt, len(rs))
+		for _, r := range rs {
+			if r.Tenant != req.Tenant || r.Reader != reader || !seen[r.Notification] {
 				return status.Error(codes.Internal, "receipt store returned a different read scope")
 			}
-			result = rs[0]
-			return nil
+			if _, duplicate := byID[r.Notification]; duplicate {
+				return status.Error(codes.Internal, "duplicate receipt")
+			}
+			byID[r.Notification] = r
 		}
-		now := s.clock().UTC().Truncate(time.Microsecond)
-		result, err = st.InsertReceipt(ctx, Receipt{Tenant: v.Tenant, Notification: v.ID,
-			Reader: reader, DataRead: now, DateCreated: now, DateUpdated: now})
-		return err
+		now := at.clock().UTC().Truncate(time.Microsecond)
+		result = Marked{Reader: reader, Items: make([]Receipt, len(values))}
+		for i, v := range values {
+			r, ok := byID[v.ID]
+			if !ok {
+				r, err = at.store.InsertReceipt(ctx, Receipt{Tenant: req.Tenant, Notification: v.ID, Reader: reader, DataRead: now, DateCreated: now, DateUpdated: now})
+				if err != nil {
+					return err
+				}
+			}
+			result.Items[i] = r
+		}
+		return nil
 	})
-	return result, err
+	if err != nil {
+		return Marked{}, err
+	}
+	return result, nil
+}
+
+// Count evaluates the complete reader selection in the store's single aggregate
+// statement, so per-topic and distinct-source totals share one snapshot.
+func (s *Service) Count(ctx context.Context, req CountRequest) (Counts, error) {
+	topics, reader, err := s.scope(ctx, req.Tenant, req.Topics)
+	if err != nil {
+		return Counts{}, err
+	}
+	filter, err := normalizeFilter(req.Filter)
+	if err != nil {
+		return Counts{}, err
+	}
+	result, err := s.store.Count(ctx, Selection{Tenant: req.Tenant, Topics: topics, Reader: reader, Filter: filter})
+	if err != nil {
+		return Counts{}, err
+	}
+	byTopic := make(map[Topic]TopicCount, len(result.Topics))
+	for _, v := range result.Topics {
+		if !slices.Contains(topics, v.Topic) {
+			return Counts{}, status.Error(codes.Internal, "count store returned another topic")
+		}
+		if _, duplicate := byTopic[v.Topic]; duplicate {
+			return Counts{}, status.Error(codes.Internal, "duplicate topic count")
+		}
+		byTopic[v.Topic] = v
+	}
+	result.Reader = reader
+	result.Topics = make([]TopicCount, len(req.Topics))
+	for i, t := range req.Topics {
+		result.Topics[i] = byTopic[t]
+		result.Topics[i].Topic = t
+	}
+	return result, nil
+}
+
+func normalizeFilter(f ReadFilter) (ReadFilter, error) {
+	if len(f.Kinds) > 100 || len(f.Sources) > 100 {
+		return ReadFilter{}, invalid("at most 100 kinds and sources may be requested")
+	}
+	f.Kinds = slices.Clone(f.Kinds)
+	f.Sources = slices.Clone(f.Sources)
+	if len(f.Kinds) == 0 {
+		f.Kinds = nil
+	}
+	if len(f.Sources) == 0 {
+		f.Sources = nil
+	}
+	slices.Sort(f.Kinds)
+	for i, k := range f.Kinds {
+		if !text(k, 128) {
+			return ReadFilter{}, invalid("invalid kind filter")
+		}
+		if i > 0 && k == f.Kinds[i-1] {
+			return ReadFilter{}, invalid("duplicate kinds are invalid")
+		}
+	}
+	slices.SortFunc(f.Sources, func(a, b pdid.Id) int { return bytes.Compare(a.Bytes(), b.Bytes()) })
+	for i, id := range f.Sources {
+		if err := identifier(id); err != nil {
+			return ReadFilter{}, err
+		}
+		if i > 0 && id == f.Sources[i-1] {
+			return ReadFilter{}, invalid("duplicate sources are invalid")
+		}
+	}
+	return f, nil
 }
 
 func (s *Service) scope(ctx context.Context, id pdid.Id, requested []Topic) ([]Topic, pdid.Id, error) {
-	if err := tenant(ctx, id); err != nil {
+	if err := s.tenant(ctx, id); err != nil {
 		return nil, pdid.Nil, err
 	}
 	ts, err := normalize(requested)
@@ -406,10 +517,16 @@ func (s *Service) transaction(ctx context.Context, method string, run func(conte
 	return s.watch.Transaction(ctx, origin, work)
 }
 
-func tenant(ctx context.Context, id pdid.Id) error {
+func (s *Service) tenant(ctx context.Context, id pdid.Id) error {
 	f, ok := frame.From(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "who is asking?")
+	}
+	if s.global {
+		if !id.IsZero() {
+			return invalid("global notifications do not accept a tenant")
+		}
+		return nil
 	}
 	if err := identifier(id); err != nil {
 		return invalid("tenant is not a payday ID")

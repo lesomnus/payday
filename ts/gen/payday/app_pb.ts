@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0iLwoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac");
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0iPwoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEg4KBmdsb2JhbBgDIAEoCEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
 
 /**
  * App says that this file's proto package is the app's own.
@@ -221,6 +221,13 @@ export type Notify = Message<"payday.Notify"> & {
    * @generated from field: uint32 receipt = 2;
    */
   receipt: number;
+
+  /**
+   * One app-global namespace instead of tenant-scoped notification records.
+   *
+   * @generated from field: bool global = 3;
+   */
+  global: boolean;
 };
 
 /**

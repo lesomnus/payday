@@ -11178,6 +11178,8 @@ type NotificationServer struct {
 // Reusing the app driver makes a domain operation and its publication one
 // transaction. Every layer of stack must support rebinding.
 func Notifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*NotificationServer, error) {
+	options.Global = false
+	options.Namespace = "github.com/lesomnus/payday/internal/apptest"
 	rebound, err := enttx.Rebind(stack, driver)
 	if err != nil {
 		return nil, err
@@ -11202,7 +11204,7 @@ func (s *NotificationServer) Invalidate(ctx context.Context, tenant pdid.Id, top
 }
 
 func (s *NotificationServer) Add(ctx context.Context, req *apptest.NotificationAddRequest) (*apptest.Notification, error) {
-	tenant, err := pdid.From(req.GetTenantId())
+	tenant, err := notificationID(req.GetTenantId())
 	if err != nil {
 		return nil, notifyArgument(err)
 	}
@@ -11251,6 +11253,10 @@ func (s *NotificationServer) Read(ctx context.Context, req *apptest.Notification
 	if err != nil {
 		return nil, err
 	}
+	q.Filter, err = notificationFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
 	page, err := s.service.Read(ctx, q)
 	if err != nil {
 		return nil, err
@@ -11265,19 +11271,61 @@ func (s *NotificationServer) Read(ctx context.Context, req *apptest.Notification
 	}
 	return apptest.NotificationReadResponse_builder{Items: vs, Next: page.Next, ReaderId: page.Reader.Bytes()}.Build(), nil
 }
-func (s *NotificationServer) Mark(ctx context.Context, req *apptest.NotificationMarkRequest) (*apptest.NotificationReceipt, error) {
-	key, err := pdid.From(req.GetRef().GetId())
-	if err != nil {
-		return nil, notifyArgument(err)
-	}
-	v, err := s.service.Mark(ctx, key)
+func (s *NotificationServer) Count(ctx context.Context, req *apptest.NotificationCountRequest) (*apptest.NotificationCountResponse, error) {
+	q, err := notificationQuery(req.GetTenantId(), req.GetTopics(), 0, "")
 	if err != nil {
 		return nil, err
 	}
-	return notificationReceiptValue(v), nil
+	filter, err := notificationFilter(req.GetFilter())
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.service.Count(ctx, notify.CountRequest{Tenant: q.Tenant, Topics: q.Topics, Filter: filter})
+	if err != nil {
+		return nil, err
+	}
+	topics := make([]*apptest.NotificationTopicCount, len(v.Topics))
+	for i, t := range v.Topics {
+		topics[i] = apptest.NotificationTopicCount_builder{Topic: notificationTopicValue(t.Topic), Count: t.Count, SourceCount: t.SourceCount}.Build()
+	}
+	return apptest.NotificationCountResponse_builder{Count: v.Count, SourceCount: v.SourceCount, Topics: topics, ReaderId: v.Reader.Bytes()}.Build(), nil
+}
+func (s *NotificationServer) Mark(ctx context.Context, req *apptest.NotificationMarkRequest) (*apptest.NotificationMarkResponse, error) {
+	tenant, err := notificationID(req.GetTenantId())
+	if err != nil {
+		return nil, notifyArgument(err)
+	}
+	refs := make([]pdid.Id, len(req.GetRefs()))
+	for i, r := range req.GetRefs() {
+		key, err := pdid.From(r.GetId())
+		if err != nil {
+			return nil, notifyArgument(err)
+		}
+		refs[i] = key
+	}
+	v, err := s.service.Mark(ctx, notify.MarkRequest{Tenant: tenant, Refs: refs})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*apptest.NotificationReceipt, len(v.Items))
+	for i, r := range v.Items {
+		items[i] = notificationReceiptValue(r)
+	}
+	return apptest.NotificationMarkResponse_builder{Items: items, ReaderId: v.Reader.Bytes()}.Build(), nil
+}
+func notificationFilter(v *apptest.NotificationReadFilter) (notify.ReadFilter, error) {
+	out := notify.ReadFilter{Kinds: v.GetKinds(), UnreadOnly: v.GetUnreadOnly()}
+	for _, b := range v.GetSourceIds() {
+		id, err := pdid.From(b)
+		if err != nil {
+			return out, notifyArgument(err)
+		}
+		out.Sources = append(out.Sources, id)
+	}
+	return out, nil
 }
 func (s *NotificationServer) Listen(req *apptest.NotificationListenRequest, stream grpc.ServerStreamingServer[apptest.NotificationListenResponse]) error {
-	tenant, err := pdid.From(req.GetTenantId())
+	tenant, err := notificationID(req.GetTenantId())
 	if err != nil {
 		return notifyArgument(err)
 	}
@@ -11301,6 +11349,12 @@ func (s *NotificationServer) Listen(req *apptest.NotificationListenRequest, stre
 }
 
 func notifyArgument(err error) error { return status.Error(codes.InvalidArgument, err.Error()) }
+func notificationBytes(v pdid.Id) []byte {
+	if v.IsZero() {
+		return nil
+	}
+	return v.Bytes()
+}
 func notificationID(v []byte) (pdid.Id, error) {
 	if len(v) == 0 {
 		return pdid.Nil, nil
@@ -11341,7 +11395,7 @@ func notificationTopicValue(v notify.Topic) *apptest.NotificationTopic {
 	return apptest.NotificationTopic_builder{Name: &v.Name}.Build()
 }
 func notificationQuery(tenant []byte, topics []*apptest.NotificationTopic, size int32, cursor string) (notify.Query, error) {
-	key, err := pdid.From(tenant)
+	key, err := notificationID(tenant)
 	if err != nil {
 		return notify.Query{}, notifyArgument(err)
 	}
@@ -11352,14 +11406,14 @@ func notificationQuery(tenant []byte, topics []*apptest.NotificationTopic, size 
 	return notify.Query{Tenant: key, Topics: values, Size: int(size), Cursor: cursor}, nil
 }
 func notificationValue(v notify.Notification) *apptest.Notification {
-	b := apptest.Notification_builder{Id: v.ID.Bytes(), TenantId: v.Tenant.Bytes(), Topic: notificationTopicValue(v.Topic), Kind: v.Kind, Payload: v.Payload, DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}
+	b := apptest.Notification_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), Topic: notificationTopicValue(v.Topic), Kind: v.Kind, Payload: v.Payload, DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}
 	if !v.Source.IsZero() {
 		b.SourceId = v.Source.Bytes()
 	}
 	return b.Build()
 }
 func notificationReceiptValue(v notify.Receipt) *apptest.NotificationReceipt {
-	return apptest.NotificationReceipt_builder{Id: v.ID.Bytes(), TenantId: v.Tenant.Bytes(), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}.Build()
+	return apptest.NotificationReceipt_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}.Build()
 }
 
 type notificationStore struct {
@@ -11425,11 +11479,7 @@ func (s notificationStore) FindPublication(ctx context.Context, tenant pdid.Id, 
 	return v, true, err
 }
 func (s notificationStore) Select(ctx context.Context, q notify.Selection) ([]notify.Notification, error) {
-	keys := make([]string, len(q.Topics))
-	for i, v := range q.Topics {
-		keys[i] = v.Key()
-	}
-	query := s.db.NotificationRecord.Query().Where(entNotificationRecord.TenantIdEQ(q.Tenant.Uuid()), entNotificationRecord.TopicKeyIn(keys...))
+	query := s.db.NotificationRecord.Query().Where(notificationSelection(q))
 	if q.Position != nil {
 		query.Where(entNotificationRecord.Or(entNotificationRecord.DateCreatedLT(q.Position.DateCreated), entNotificationRecord.And(entNotificationRecord.DateCreatedEQ(q.Position.DateCreated), entNotificationRecord.IdLT(q.Position.ID.Uuid()))))
 	}
@@ -11446,6 +11496,66 @@ func (s notificationStore) Select(ctx context.Context, q notify.Selection) ([]no
 		values[i] = v
 	}
 	return values, nil
+}
+func notificationSelection(q notify.Selection) func(*sql.Selector) {
+	return func(s *sql.Selector) {
+		keys := make([]any, len(q.Topics))
+		for i, t := range q.Topics {
+			keys[i] = t.Key()
+		}
+		s.Where(sql.In(s.C(entNotificationRecord.FieldTopicKey), keys...))
+		s.Where(sql.EQ(s.C(entNotificationRecord.FieldTenantId), q.Tenant.Uuid()))
+		if len(q.Filter.Kinds) > 0 {
+			values := make([]any, len(q.Filter.Kinds))
+			for i, v := range q.Filter.Kinds {
+				values[i] = v
+			}
+			s.Where(sql.In(s.C(entNotificationRecord.FieldKind), values...))
+		}
+		if len(q.Filter.Sources) > 0 {
+			values := make([]any, len(q.Filter.Sources))
+			for i, v := range q.Filter.Sources {
+				values[i] = v.Uuid()
+			}
+			s.Where(sql.In(s.C(entNotificationRecord.FieldSourceId), values...))
+		}
+		if q.Filter.UnreadOnly {
+			r := sql.Table(entNotificationReceiptRecord.Table).As("receipt")
+			seen := sql.Select(r.C(entNotificationReceiptRecord.FieldNotificationId)).From(r).Where(sql.And(sql.ColumnsEQ(r.C(entNotificationReceiptRecord.FieldNotificationId), s.C(entNotificationRecord.FieldId)), sql.EQ(r.C(entNotificationReceiptRecord.FieldReaderId), q.Reader.Uuid())))
+			seen.Where(sql.EQ(r.C(entNotificationReceiptRecord.FieldTenantId), q.Tenant.Uuid()))
+			s.Where(sql.Not(sql.Exists(seen)))
+		}
+	}
+}
+func (s notificationStore) Count(ctx context.Context, q notify.Selection) (notify.Counts, error) {
+	base := sql.Dialect(s.driver.Dialect()).Select(entNotificationRecord.FieldTopicKey, entNotificationRecord.FieldSourceId).From(sql.Table(entNotificationRecord.Table))
+	notificationSelection(q)(base)
+	query, args := base.Query()
+	query = "WITH matches AS (" + query + ") SELECT topic_key,COUNT(*),COUNT(DISTINCT source_id) FROM matches GROUP BY topic_key UNION ALL SELECT NULL,COUNT(*),COUNT(DISTINCT source_id) FROM matches"
+	var rows sql.Rows
+	if err := s.driver.Query(ctx, query, args, &rows); err != nil {
+		return notify.Counts{}, err
+	}
+	defer rows.Close()
+	result := notify.Counts{}
+	for rows.Next() {
+		var key *string
+		var count, sources uint64
+		if err := rows.Scan(&key, &count, &sources); err != nil {
+			return result, err
+		}
+		if key == nil {
+			result.Count = count
+			result.SourceCount = sources
+			continue
+		}
+		topic, err := notify.ParseTopicKey(*key)
+		if err != nil {
+			return result, err
+		}
+		result.Topics = append(result.Topics, notify.TopicCount{Topic: topic, Count: count, SourceCount: sources})
+	}
+	return result, rows.Err()
 }
 func (s notificationStore) Receipts(ctx context.Context, tenant, reader pdid.Id, ids []pdid.Id) ([]notify.Receipt, error) {
 	if len(ids) == 0 {

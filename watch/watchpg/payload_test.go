@@ -1,6 +1,7 @@
 package watchpg
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -75,4 +76,30 @@ func TestInvalidationCountsTowardsThePublicationLimit(t *testing.T) {
 		Key: pdid.New(1), Signal: make([]byte, MaxWire),
 	}}})
 	require.ErrorContains(t, err, "payload limit")
+}
+
+func TestAppWideSignalsAllowAnAbsentResourceKey(t *testing.T) {
+	x := require.New(t)
+	signal := []byte(`{"topic":"n:maintenance"}`)
+	chunks, err := packets(watch.Event{Changes: []watch.Change{{
+		By: "/app/internal/Invalidate", Signal: signal,
+	}}})
+	x.NoError(err)
+	x.Len(chunks, 1)
+	output, err := decode(chunks[0])
+	x.NoError(err)
+	x.True(output.Changes[0].Key.IsZero())
+	x.Equal(signal, output.Changes[0].Signal)
+
+	for _, item := range []change{
+		{Key: pdid.Nil.String()},
+		{Key: pdid.Nil.String(), Signal: signal, Resource: []byte{8, 1}},
+		{Key: "not-an-id", Signal: signal},
+		{Key: "", Signal: signal},
+	} {
+		data, err := json.Marshal(wire{Changes: []change{item}})
+		x.NoError(err)
+		_, err = decode(string(data))
+		x.ErrorContains(err, "key")
+	}
 }

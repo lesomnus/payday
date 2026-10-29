@@ -33,9 +33,12 @@ service NotificationService {
   // creates no receipt; a missing receipt means unread for an authorized reader.
   rpc Read(NotificationReadRequest) returns (NotificationReadResponse);
 
-  // Mark records the resolved reader's first read time. Concurrent calls
-  // return the same receipt without changing its original read time.
-  rpc Mark(NotificationMarkRequest) returns (NotificationReceipt);
+  // Count aggregates the entire authorized reader selection, without paging.
+  rpc Count(NotificationCountRequest) returns (NotificationCountResponse);
+
+  // Mark atomically records this reader's first read of 1–100 distinct refs.
+  // Retries preserve receipts and their first-read times; order follows refs.
+  rpc Mark(NotificationMarkRequest) returns (NotificationMarkResponse);
 
   // Listen first sends ready once its live subscription is installed, then
   // invalidation hints. Call Read after ready and after invalidation. There is
@@ -44,7 +47,7 @@ service NotificationService {
 }
 
 // NotificationTopic identifies an interest, not its audience or receipt owner.
-// Both variants are scoped by the notification's tenant. Resource identifiers
+// Both variants use the app's configured notification scope. Resource identifiers
 // already carry their domain; names need not correspond to database resources.
 message NotificationTopic {
   // Exactly one nonempty value is required. The variants have distinct identity
@@ -149,7 +152,7 @@ message NotificationListResponse {
 }
 
 message NotificationReadRequest {
-  // The same topic, paging and authorization rules as List. No reader identifier
+  // Filters apply before paging. No reader identifier
   // is accepted from the request; the server resolves it from the caller.
   repeated NotificationTopic topics = 1;
   // Zero selects 50; values above 100 are capped; negative values are invalid.
@@ -157,6 +160,7 @@ message NotificationReadRequest {
   // Bound to this RPC and its complete read scope. List cursors are not accepted.
   string cursor = 3;
   bytes tenant_id = 4;
+  NotificationReadFilter filter = 5;
 }
 
 message NotificationReadResponse {
@@ -170,10 +174,47 @@ message NotificationReadResponse {
   bytes reader_id = 3;
 }
 
+message NotificationReadFilter {
+  // Empty lists are unrestricted; choices within each list use OR. Each list
+  // accepts at most 100 distinct valid selectors. Predicates combine with AND.
+  repeated string kinds = 1;
+  repeated bytes source_ids = 2;
+  bool unread_only = 3;
+}
+
+message NotificationCountRequest {
+  repeated NotificationTopic topics = 1;
+  bytes tenant_id = 4;
+  NotificationReadFilter filter = 5;
+}
+
+message NotificationCountResponse {
+  uint64 count = 1;
+  // Distinct nonempty source IDs across all requested Topics, not the sum of
+  // per-Topic source counts. Source-less notifications count only toward count.
+  uint64 source_count = 2;
+  // Request order, including zeros. All counts share one database snapshot.
+  repeated NotificationTopicCount topics = 3;
+  bytes reader_id = 4;
+}
+
+message NotificationTopicCount {
+  NotificationTopic topic = 1;
+  uint64 count = 2;
+  uint64 source_count = 3;
+}
+
 message NotificationMarkRequest {
-  // The server checks current topic access and resolves the receipt's reader.
-  // Neither the receipt owner nor its timestamps are accepted from the client.
-  NotificationRef ref = 1;
+  // 1–100 distinct explicit refs; all must be accessible in this namespace.
+  // Concurrent arrivals are not marked by this request. Failure writes none.
+  repeated NotificationRef refs = 1;
+  bytes tenant_id = 2;
+}
+
+message NotificationMarkResponse {
+  // Request order; retries preserve existing receipt IDs and first-read times.
+  repeated NotificationReceipt items = 1;
+  bytes reader_id = 2;
 }
 
 message NotificationListenRequest {

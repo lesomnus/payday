@@ -36,7 +36,7 @@ func EmitNotify(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	t := template.Must(template.New("notify").Funcs(functions).Parse(notifyGlue))
 	var code bytes.Buffer
 	stream := g.QualifiedGoIdent(pkgGrpc.Ident("ServerStreamingServer")) + "[" + g.QualifiedGoIdent(root.Ident("NotificationListenResponse")) + "]"
-	if err := t.Execute(&code, map[string]string{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream}); err != nil {
+	if err := t.Execute(&code, map[string]any{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream, "Global": s.Notify.Global, "Namespace": string(root)}); err != nil {
 		panic(err)
 	}
 	g.P(code.String())
@@ -86,6 +86,8 @@ type NotificationServer struct {
 // Reusing the app driver makes a domain operation and its publication one
 // transaction. Every layer of stack must support rebinding.
 func Notifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "Watch"}}, policy {{n "Policy"}}, options {{n "Options"}}) (*NotificationServer, error) {
+    options.Global={{.Global}}
+    options.Namespace={{printf "%q" .Namespace}}
     rebound, err := {{tx "Rebind"}}(stack, driver)
     if err != nil { return nil, err }
     store := notificationStore{stack:rebound, driver:driver, db:{{e "NewClient"}}({{e "Driver"}}(driver))}
@@ -106,7 +108,7 @@ func (s *NotificationServer) Invalidate(ctx {{ctx "Context"}}, tenant {{id "Id"}
 }
 
 func (s *NotificationServer) Add(ctx {{ctx "Context"}}, req *{{a "NotificationAddRequest"}}) (*{{a "Notification"}},error) {
-    tenant,err:={{id "From"}}(req.GetTenantId());if err!=nil{return nil,notifyArgument(err)}
+    tenant,err:=notificationID(req.GetTenantId());if err!=nil{return nil,notifyArgument(err)}
     topic,err:=notificationTopic(req.GetTopic());if err!=nil{return nil,err}
     source,err:=notificationID(req.GetSourceId());if err!=nil{return nil,notifyArgument(err)}
     v,err:=s.service.Add(ctx,{{n "AddRequest"}}{Tenant:tenant,Topic:topic,Kind:req.GetKind(),Source:source,Payload:req.GetPayload(),IdempotencyKey:req.GetIdempotencyKey()})
@@ -124,6 +126,7 @@ func (s *NotificationServer) List(ctx {{ctx "Context"}}, req *{{a "NotificationL
 }
 func (s *NotificationServer) Read(ctx {{ctx "Context"}}, req *{{a "NotificationReadRequest"}}) (*{{a "NotificationReadResponse"}},error) {
     q,err:=notificationQuery(req.GetTenantId(),req.GetTopics(),req.GetSize(),req.GetCursor());if err!=nil{return nil,err}
+    q.Filter,err=notificationFilter(req.GetFilter());if err!=nil{return nil,err}
     page,err:=s.service.Read(ctx,q);if err!=nil{return nil,err}
     vs:=make([]*{{a "NotificationReadItem"}},len(page.Items));for i,v:=range page.Items{
         b:={{a "NotificationReadItem_builder"}}{Notification:notificationValue(v.Notification)}
@@ -131,12 +134,29 @@ func (s *NotificationServer) Read(ctx {{ctx "Context"}}, req *{{a "NotificationR
     }
     return {{a "NotificationReadResponse_builder"}}{Items:vs,Next:page.Next,ReaderId:page.Reader.Bytes()}.Build(),nil
 }
-func (s *NotificationServer) Mark(ctx {{ctx "Context"}}, req *{{a "NotificationMarkRequest"}}) (*{{a "NotificationReceipt"}},error) {
-    key,err:={{id "From"}}(req.GetRef().GetId());if err!=nil{return nil,notifyArgument(err)}
-    v,err:=s.service.Mark(ctx,key);if err!=nil{return nil,err};return notificationReceiptValue(v),nil
+func (s *NotificationServer) Count(ctx {{ctx "Context"}}, req *{{a "NotificationCountRequest"}})(*{{a "NotificationCountResponse"}},error){
+    q,err:=notificationQuery(req.GetTenantId(),req.GetTopics(),0,"");if err!=nil{return nil,err}
+    filter,err:=notificationFilter(req.GetFilter());if err!=nil{return nil,err}
+    v,err:=s.service.Count(ctx,{{n "CountRequest"}}{Tenant:q.Tenant,Topics:q.Topics,Filter:filter});if err!=nil{return nil,err}
+    topics:=make([]*{{a "NotificationTopicCount"}},len(v.Topics))
+    for i,t:=range v.Topics{topics[i]={{a "NotificationTopicCount_builder"}}{Topic:notificationTopicValue(t.Topic),Count:t.Count,SourceCount:t.SourceCount}.Build()}
+    return {{a "NotificationCountResponse_builder"}}{Count:v.Count,SourceCount:v.SourceCount,Topics:topics,ReaderId:v.Reader.Bytes()}.Build(),nil
+}
+func (s *NotificationServer) Mark(ctx {{ctx "Context"}}, req *{{a "NotificationMarkRequest"}}) (*{{a "NotificationMarkResponse"}},error) {
+    tenant,err:=notificationID(req.GetTenantId());if err!=nil{return nil,notifyArgument(err)}
+    refs:=make([]{{id "Id"}},len(req.GetRefs()))
+    for i,r:=range req.GetRefs(){key,err:={{id "From"}}(r.GetId());if err!=nil{return nil,notifyArgument(err)};refs[i]=key}
+    v,err:=s.service.Mark(ctx,{{n "MarkRequest"}}{Tenant:tenant,Refs:refs});if err!=nil{return nil,err}
+    items:=make([]*{{a "NotificationReceipt"}},len(v.Items));for i,r:=range v.Items{items[i]=notificationReceiptValue(r)}
+    return {{a "NotificationMarkResponse_builder"}}{Items:items,ReaderId:v.Reader.Bytes()}.Build(),nil
+}
+func notificationFilter(v *{{a "NotificationReadFilter"}})({{n "ReadFilter"}},error){
+    out:={{n "ReadFilter"}}{Kinds:v.GetKinds(),UnreadOnly:v.GetUnreadOnly()}
+    for _,b:=range v.GetSourceIds(){id,err:={{id "From"}}(b);if err!=nil{return out,notifyArgument(err)};out.Sources=append(out.Sources,id)}
+    return out,nil
 }
 func (s *NotificationServer) Listen(req *{{a "NotificationListenRequest"}}, stream {{.Stream}}) error {
-    tenant,err:={{id "From"}}(req.GetTenantId());if err!=nil{return notifyArgument(err)}
+    tenant,err:=notificationID(req.GetTenantId());if err!=nil{return notifyArgument(err)}
     topics,err:=notificationTopics(req.GetTopics());if err!=nil{return err}
     return s.service.Listen(stream.Context(),{{n "ListenRequest"}}{Tenant:tenant,Topics:topics},func(event {{n "Event"}})error{
         response:={{a "NotificationListenResponse_builder"}}{}
@@ -149,6 +169,7 @@ func (s *NotificationServer) Listen(req *{{a "NotificationListenRequest"}}, stre
 }
 
 func notifyArgument(err error)error{return {{status "Error"}}({{codes "InvalidArgument"}},err.Error())}
+func notificationBytes(v {{id "Id"}})[]byte{if v.IsZero(){return nil};return v.Bytes()}
 func notificationID(v []byte)({{id "Id"}},error){if len(v)==0{return {{id "Nil"}},nil};return {{id "From"}}(v)}
 func notificationTopic(v *{{a "NotificationTopic"}})({{n "Topic"}},error){
     if v==nil{return {{n "Topic"}}{},{{status "Error"}}({{codes "InvalidArgument"}},"topic is required")}
@@ -164,16 +185,16 @@ func notificationTopicValue(v {{n "Topic"}})*{{a "NotificationTopic"}}{
     return {{a "NotificationTopic_builder"}}{Name:&v.Name}.Build()
 }
 func notificationQuery(tenant []byte,topics []*{{a "NotificationTopic"}},size int32,cursor string)({{n "Query"}},error){
-    key,err:={{id "From"}}(tenant);if err!=nil{return {{n "Query"}}{},notifyArgument(err)}
+    key,err:=notificationID(tenant);if err!=nil{return {{n "Query"}}{},notifyArgument(err)}
     values,err:=notificationTopics(topics);if err!=nil{return {{n "Query"}}{},err}
     return {{n "Query"}}{Tenant:key,Topics:values,Size:int(size),Cursor:cursor},nil
 }
 func notificationValue(v {{n "Notification"}})*{{a "Notification"}}{
-    b:={{a "Notification_builder"}}{Id:v.ID.Bytes(),TenantId:v.Tenant.Bytes(),Topic:notificationTopicValue(v.Topic),Kind:v.Kind,Payload:v.Payload,DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}
+    b:={{a "Notification_builder"}}{Id:v.ID.Bytes(),TenantId:notificationBytes(v.Tenant),Topic:notificationTopicValue(v.Topic),Kind:v.Kind,Payload:v.Payload,DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}
     if !v.Source.IsZero(){b.SourceId=v.Source.Bytes()};return b.Build()
 }
 func notificationReceiptValue(v {{n "Receipt"}})*{{a "NotificationReceipt"}}{
-    return {{a "NotificationReceipt_builder"}}{Id:v.ID.Bytes(),TenantId:v.Tenant.Bytes(),NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}.Build()
+    return {{a "NotificationReceipt_builder"}}{Id:v.ID.Bytes(),TenantId:notificationBytes(v.Tenant),NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}.Build()
 }
 
 type notificationStore struct{stack {{a "Server"}}; driver {{drv "Driver"}}; db *{{e "Client"}}}
@@ -184,7 +205,7 @@ func(s notificationStore) Rebind(driver {{drv "Driver"}})({{n "Store"}},error){
     return notificationStore{stack:stack,driver:driver,db:{{e "NewClient"}}({{e "Driver"}}(driver))},nil
 }
 func(s notificationStore) Insert(ctx {{ctx "Context"}},v {{n "Notification"}})({{n "Notification"}},error){
-    b:={{record "AddRequest_builder"}}{TenantId:v.Tenant.Bytes(),Kind:v.Kind,TopicKey:v.Topic.Key(),Producer:v.Producer,IdempotencyKey:v.IdempotencyKey,DateCreated:{{timepb "New"}}(v.DateCreated),PayloadValue:[]byte{}}
+    b:={{record "AddRequest_builder"}}{ {{if not .Global}}TenantId:v.Tenant.Bytes(),{{end}}Kind:v.Kind,TopicKey:v.Topic.Key(),Producer:v.Producer,IdempotencyKey:v.IdempotencyKey,DateCreated:{{timepb "New"}}(v.DateCreated),PayloadValue:[]byte{}}
     if !v.ID.IsZero(){b.Id=v.ID.Bytes()};if !v.Source.IsZero(){b.SourceId=v.Source.Bytes()}
     if v.Payload!=nil{b.PayloadPresent=true;b.PayloadType=v.Payload.TypeUrl;b.PayloadValue=append([]byte{},v.Payload.Value...)}
     row,err:=s.stack.{{.Record}}().Add(withNotifyWrite(ctx),b.Build());if err!=nil{return {{n "Notification"}}{},err}
@@ -199,24 +220,53 @@ func(s notificationStore) Find(ctx {{ctx "Context"}},key {{id "Id"}})({{n "Notif
     if err!=nil{return {{n "Notification"}}{},err};return notificationRow(row.Proto())
 }
 func(s notificationStore) FindPublication(ctx {{ctx "Context"}},tenant {{id "Id"}},producer,key string)({{n "Notification"}},bool,error){
-    row,err:=s.db.{{.Record}}.Query().Where({{rp "TenantIdEQ"}}(tenant.Uuid()),{{rp "ProducerEQ"}}(producer),{{rp "IdempotencyKeyEQ"}}(key)).Only(ctx)
+    row,err:=s.db.{{.Record}}.Query().Where({{if not .Global}}{{rp "TenantIdEQ"}}(tenant.Uuid()),{{end}}{{rp "ProducerEQ"}}(producer),{{rp "IdempotencyKeyEQ"}}(key)).Only(ctx)
     if {{e "IsNotFound"}}(err){return {{n "Notification"}}{},false,nil};if err!=nil{return {{n "Notification"}}{},false,err}
     v,err:=notificationRow(row.Proto());return v,true,err
 }
 func(s notificationStore) Select(ctx {{ctx "Context"}},q {{n "Selection"}})([]{{n "Notification"}},error){
-    keys:=make([]string,len(q.Topics));for i,v:=range q.Topics{keys[i]=v.Key()}
-    query:=s.db.{{.Record}}.Query().Where({{rp "TenantIdEQ"}}(q.Tenant.Uuid()),{{rp "TopicKeyIn"}}(keys...))
+    query:=s.db.{{.Record}}.Query().Where(notificationSelection(q))
     if q.Position!=nil{query.Where({{rp "Or"}}({{rp "DateCreatedLT"}}(q.Position.DateCreated),{{rp "And"}}({{rp "DateCreatedEQ"}}(q.Position.DateCreated),{{rp "IdLT"}}(q.Position.ID.Uuid()))))}
     rows,err:=query.Order({{e "Desc"}}({{rp "FieldDateCreated"}}),{{e "Desc"}}({{rp "FieldId"}})).Limit(q.Limit).All(ctx);if err!=nil{return nil,err}
     values:=make([]{{n "Notification"}},len(rows));for i,row:=range rows{v,err:=notificationRow(row.Proto());if err!=nil{return nil,err};values[i]=v};return values,nil
 }
+func notificationSelection(q {{n "Selection"}})func(*{{sql "Selector"}}){return func(s *{{sql "Selector"}}){
+    keys:=make([]any,len(q.Topics));for i,t:=range q.Topics{keys[i]=t.Key()}
+    s.Where({{sql "In"}}(s.C({{rp "FieldTopicKey"}}),keys...))
+    {{if not .Global}}s.Where({{sql "EQ"}}(s.C({{rp "FieldTenantId"}}),q.Tenant.Uuid())){{end}}
+    if len(q.Filter.Kinds)>0{values:=make([]any,len(q.Filter.Kinds));for i,v:=range q.Filter.Kinds{values[i]=v};s.Where({{sql "In"}}(s.C({{rp "FieldKind"}}),values...))}
+    if len(q.Filter.Sources)>0{values:=make([]any,len(q.Filter.Sources));for i,v:=range q.Filter.Sources{values[i]=v.Uuid()};s.Where({{sql "In"}}(s.C({{rp "FieldSourceId"}}),values...))}
+    if q.Filter.UnreadOnly{
+        r:={{sql "Table"}}({{cp "Table"}}).As("receipt")
+        seen:={{sql "Select"}}(r.C({{cp "FieldNotificationId"}})).From(r).Where({{sql "And"}}({{sql "ColumnsEQ"}}(r.C({{cp "FieldNotificationId"}}),s.C({{rp "FieldId"}})),{{sql "EQ"}}(r.C({{cp "FieldReaderId"}}),q.Reader.Uuid())))
+        {{if not .Global}}seen.Where({{sql "EQ"}}(r.C({{cp "FieldTenantId"}}),q.Tenant.Uuid())){{end}}
+        s.Where({{sql "Not"}}({{sql "Exists"}}(seen)))
+    }
+}}
+func(s notificationStore) Count(ctx {{ctx "Context"}},q {{n "Selection"}})({{n "Counts"}},error){
+    base:={{sql "Dialect"}}(s.driver.Dialect()).Select({{rp "FieldTopicKey"}},{{rp "FieldSourceId"}}).From({{sql "Table"}}({{rp "Table"}}))
+    notificationSelection(q)(base)
+    query,args:=base.Query()
+    query="WITH matches AS ("+query+") SELECT topic_key,COUNT(*),COUNT(DISTINCT source_id) FROM matches GROUP BY topic_key UNION ALL SELECT NULL,COUNT(*),COUNT(DISTINCT source_id) FROM matches"
+    var rows {{sql "Rows"}}
+    if err:=s.driver.Query(ctx,query,args,&rows);err!=nil{return {{n "Counts"}}{},err};defer rows.Close()
+    result:={{n "Counts"}}{}
+    for rows.Next(){
+        var key *string;var count,sources uint64
+        if err:=rows.Scan(&key,&count,&sources);err!=nil{return result,err}
+        if key==nil{result.Count=count;result.SourceCount=sources;continue}
+        topic,err:={{n "ParseTopicKey"}}(*key);if err!=nil{return result,err}
+        result.Topics=append(result.Topics,{{n "TopicCount"}}{Topic:topic,Count:count,SourceCount:sources})
+    }
+    return result,rows.Err()
+}
 func(s notificationStore) Receipts(ctx {{ctx "Context"}},tenant,reader {{id "Id"}},ids []{{id "Id"}})([]{{n "Receipt"}},error){
     if len(ids)==0{return nil,nil};keys:=make([]{{uuid "UUID"}},len(ids));for i,v:=range ids{keys[i]=v.Uuid()}
-    rows,err:=s.db.{{.Receipt}}.Query().Where({{cp "TenantIdEQ"}}(tenant.Uuid()),{{cp "ReaderIdEQ"}}(reader.Uuid()),{{cp "NotificationIdIn"}}(keys...)).All(ctx);if err!=nil{return nil,err}
+    rows,err:=s.db.{{.Receipt}}.Query().Where({{if not .Global}}{{cp "TenantIdEQ"}}(tenant.Uuid()),{{end}}{{cp "ReaderIdEQ"}}(reader.Uuid()),{{cp "NotificationIdIn"}}(keys...)).All(ctx);if err!=nil{return nil,err}
     values:=make([]{{n "Receipt"}},len(rows));for i,row:=range rows{v,err:=notificationReceiptRow(row.Proto());if err!=nil{return nil,err};values[i]=v};return values,nil
 }
 func(s notificationStore) InsertReceipt(ctx {{ctx "Context"}},v {{n "Receipt"}})({{n "Receipt"}},error){
-    b:={{receipt "AddRequest_builder"}}{TenantId:v.Tenant.Bytes(),NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated)}
+    b:={{receipt "AddRequest_builder"}}{ {{if not .Global}}TenantId:v.Tenant.Bytes(),{{end}}NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated)}
     if !v.ID.IsZero(){b.Id=v.ID.Bytes()}
     row,err:=s.stack.{{.Receipt}}().Add(withNotifyWrite(ctx),b.Build());if err!=nil{return {{n "Receipt"}}{},err}
     key,err:={{id "From"}}(row.GetId());if err!=nil{return {{n "Receipt"}}{},err}
@@ -239,7 +289,7 @@ func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{
 }
 func notificationRow(v *{{record ""}})({{n "Notification"}},error){
     key,err:={{id "From"}}(v.GetId());if err!=nil{return {{n "Notification"}}{},err}
-    tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Notification"}}{},err}
+    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Notification"}}{},err}{{end}}
     topic,err:={{n "ParseTopicKey"}}(v.GetTopicKey());if err!=nil{return {{n "Notification"}}{},err}
     source,err:=notificationID(v.GetSourceId());if err!=nil{return {{n "Notification"}}{},err}
     row:={{n "Notification"}}{ID:key,Tenant:tenant,Topic:topic,Source:source,Kind:v.GetKind(),Producer:v.GetProducer(),IdempotencyKey:v.GetIdempotencyKey(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()}
@@ -248,7 +298,7 @@ func notificationRow(v *{{record ""}})({{n "Notification"}},error){
 }
 func notificationReceiptRow(v *{{receipt ""}})({{n "Receipt"}},error){
     key,err:={{id "From"}}(v.GetId());if err!=nil{return {{n "Receipt"}}{},err}
-    tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Receipt"}}{},err}
+    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Receipt"}}{},err}{{end}}
     notification,err:={{id "From"}}(v.GetNotificationId());if err!=nil{return {{n "Receipt"}}{},err}
     reader,err:={{id "From"}}(v.GetReaderId());if err!=nil{return {{n "Receipt"}}{},err}
     return {{n "Receipt"}}{ID:key,Tenant:tenant,Notification:notification,Reader:reader,DataRead:v.GetDataRead().AsTime(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()},nil

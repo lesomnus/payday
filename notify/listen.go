@@ -90,7 +90,7 @@ func (s *Service) Listen(ctx context.Context, req ListenRequest, send func(Event
 }
 
 func (s *Service) reauthorize(ctx context.Context, tenantID, reader pdid.Id, topics []Topic) error {
-	if err := tenant(ctx, tenantID); err != nil {
+	if err := s.tenant(ctx, tenantID); err != nil {
 		return subscriptionError(err, "notification subscription lost tenant access")
 	}
 	current, err := s.policy.Reader(ctx, tenantID)
@@ -123,7 +123,7 @@ func subscriptionError(err error, message string) error {
 // The app calls it after its transaction commits. It is not a client operation;
 // no policy bypass or public invalidation RPC is installed by this method.
 func (s *Service) Invalidate(ctx context.Context, tenantID pdid.Id, topics []Topic) error {
-	if err := identifier(tenantID); err != nil {
+	if err := s.tenant(ctx, tenantID); err != nil {
 		return err
 	}
 	ts, err := normalize(topics)

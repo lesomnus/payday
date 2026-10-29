@@ -146,6 +146,15 @@ func (s store) Select(_ context.Context, q notify.Selection) ([]notify.Notificat
 		if v.Tenant != q.Tenant || !slices.Contains(q.Topics, v.Topic) {
 			continue
 		}
+		if len(q.Filter.Kinds) > 0 && !slices.Contains(q.Filter.Kinds, v.Kind) {
+			continue
+		}
+		if len(q.Filter.Sources) > 0 && !slices.Contains(q.Filter.Sources, v.Source) {
+			continue
+		}
+		if _, read := s.data.receipts[[2]pdid.Id{v.ID, q.Reader}]; q.Filter.UnreadOnly && read {
+			continue
+		}
 		if q.Position != nil && (v.DateCreated.After(q.Position.DateCreated) ||
 			(v.DateCreated.Equal(q.Position.DateCreated) && bytes.Compare(v.ID.Bytes(), q.Position.ID.Bytes()) >= 0)) {
 			continue
@@ -159,6 +168,44 @@ func (s store) Select(_ context.Context, q notify.Selection) ([]notify.Notificat
 		return bytes.Compare(b.ID.Bytes(), a.ID.Bytes())
 	})
 	return out[:min(len(out), q.Limit)], nil
+}
+func (s store) Count(ctx context.Context, q notify.Selection) (notify.Counts, error) {
+	q.Limit = int(^uint(0) >> 1)
+	q.Position = nil
+	rows, err := s.Select(ctx, q)
+	if err != nil {
+		return notify.Counts{}, err
+	}
+	result := notify.Counts{Count: uint64(len(rows))}
+	sources := map[pdid.Id]bool{}
+	topics := map[notify.Topic]notify.TopicCount{}
+	per := map[notify.Topic]map[pdid.Id]bool{}
+	for _, v := range rows {
+		t := topics[v.Topic]
+		t.Topic = v.Topic
+		t.Count++
+		if per[v.Topic] == nil {
+			per[v.Topic] = map[pdid.Id]bool{}
+		}
+		if !v.Source.IsZero() {
+			sources[v.Source] = true
+			per[v.Topic][v.Source] = true
+		}
+		t.SourceCount = uint64(len(per[v.Topic]))
+		topics[v.Topic] = t
+	}
+	result.SourceCount = uint64(len(sources))
+	for _, v := range topics {
+		result.Topics = append(result.Topics, v)
+	}
+	return result, nil
+}
+func markOne(s *notify.Service, ctx context.Context, tenant, id pdid.Id) (notify.Receipt, error) {
+	v, err := s.Mark(ctx, notify.MarkRequest{Tenant: tenant, Refs: []pdid.Id{id}})
+	if err != nil {
+		return notify.Receipt{}, err
+	}
+	return v.Items[0], nil
 }
 func (s store) FindPublication(_ context.Context, tenant pdid.Id, producer, key string) (notify.Notification, bool, error) {
 	for _, v := range s.data.notifications {
@@ -335,12 +382,12 @@ func TestPublicationRetryAndLazyReadStateAreIndependent(t *testing.T) {
 	}
 	_, err = f.s.Add(f.ctx, req)
 	expectCode(t, err, codes.AlreadyExists)
-	marked, err := f.s.Mark(f.ctx, first.ID)
+	marked, err := markOne(f.s, f.ctx, f.tenant, first.ID)
 	if err != nil || !marked.DataRead.Equal(f.clock) {
 		t.Fatalf("first mark: %+v, %v", marked, err)
 	}
 	f.clock = f.clock.Add(time.Hour)
-	markedAgain, err := f.s.Mark(f.ctx, first.ID)
+	markedAgain, err := markOne(f.s, f.ctx, f.tenant, first.ID)
 	if err != nil || markedAgain != marked || len(f.store.data.receipts) != 1 {
 		t.Fatalf("retry changed the receipt: %+v, %v", markedAgain, err)
 	}
@@ -359,7 +406,7 @@ func TestPublicationRetryAndLazyReadStateAreIndependent(t *testing.T) {
 	}
 	_, err = f.s.Get(f.ctx, first.ID)
 	expectCode(t, err, codes.NotFound)
-	_, err = f.s.Mark(f.ctx, first.ID)
+	_, err = markOne(f.s, f.ctx, f.tenant, first.ID)
 	expectCode(t, err, codes.NotFound)
 }
 
@@ -401,11 +448,11 @@ func TestPublicationPolicyAndPersistentReaderRemainSeparate(t *testing.T) {
 	expectCode(t, err, codes.FailedPrecondition)
 	_, err = f.s.Get(serviceContext, v.ID)
 	expectCode(t, err, codes.FailedPrecondition)
-	_, err = f.s.Mark(serviceContext, v.ID)
+	_, err = markOne(f.s, serviceContext, f.tenant, v.ID)
 	expectCode(t, err, codes.FailedPrecondition)
 	robot := pdid.New(jobDomain)
 	f.policy.reader = func(context.Context, pdid.Id) (pdid.Id, error) { return robot, nil }
-	r, err := f.s.Mark(f.ctx, v.ID)
+	r, err := markOne(f.s, f.ctx, f.tenant, v.ID)
 	if err != nil || r.Reader != robot || r.Reader == f.reader {
 		t.Fatalf("explicit server delegation was not used: %+v, %v", r, err)
 	}

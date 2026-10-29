@@ -24,6 +24,13 @@ unused in your app, in `7` to `247`, and different from the other. Choose them
 once: existing identifiers retain their domains. You do not need a `past`
 declaration to use notifications.
 
+A global app adds `global: true` inside `notify`. Its requests omit tenant IDs,
+its private records have no Tenant relationship, and its policy receives
+`pdid.Nil` for the tenant argument. Generated servers fix this mode from the
+declaration; setting `notify.Options.Global` cannot override it. Authentication
+and persistent reader identity are still required. See the
+[reader-state contract](../notify-adoption-contract.md) for global app setup.
+
 Use versions of both the payday Go module and its Buf dependency that include
 `App.notify`. For an existing app pinned to older options, run `buf dep update`
 to refresh `buf.lock` before generating; `pd gen` preserves an existing pin.
@@ -223,19 +230,61 @@ if len(page.GetItems()) == 0 {
     return nil
 }
 selected := page.GetItems()[0].GetNotification()
-receipt, err := client.Mark(ctx, app.NotificationMarkRequest_builder{
-    Ref: app.NotificationRef_builder{Id: selected.GetId()}.Build(),
+marked, err := client.Mark(ctx, app.NotificationMarkRequest_builder{
+    TenantId: tenant.Bytes(),
+    Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: selected.GetId()}.Build()},
 }.Build())
 if err != nil {
     return err
 }
-fmt.Printf("marked %x\n", receipt.GetNotificationId())
+fmt.Printf("marked %x\n", marked.GetItems()[0].GetNotificationId())
 ```
 
 The server chooses the receipt owner and `data_read`. Repeated and concurrent
 calls preserve the first read time. Cache reader projections separately from
 the shared notification. A delayed response with no receipt must not clear a
 receipt already observed for the same tenant, reader, and notification.
+
+`Mark` accepts 1–100 distinct explicit references and returns receipts in that
+order. It creates all missing receipts in one transaction or none, preserving
+existing receipt IDs and first-read times on retries. An inaccessible reference
+rejects the whole batch; a notification arriving during the call is not marked.
+
+### Unread pages and badges
+
+Filter before paging rather than discarding read rows from a client page:
+
+```go
+filter := app.NotificationReadFilter_builder{
+    Kinds: []string{"job.completed"},
+    UnreadOnly: true,
+}.Build()
+page, err := client.Read(ctx, app.NotificationReadRequest_builder{
+    TenantId: tenant.Bytes(),
+    Topics: []*app.NotificationTopic{topic},
+    Filter: filter,
+}.Build())
+if err != nil {
+    return err
+}
+counts, err := client.Count(ctx, app.NotificationCountRequest_builder{
+    TenantId: tenant.Bytes(),
+    Topics: []*app.NotificationTopic{topic},
+    Filter: filter,
+}.Build())
+if err != nil {
+    return err
+}
+fmt.Printf("%d unread notifications for %d resources\n", counts.GetCount(), counts.GetSourceCount())
+```
+
+`source_ids` can further narrow the filter. Empty selector lists mean all;
+the kind, source, unread and authorized Topic predicates combine with AND.
+Counts cover the complete selection, including per-Topic zeros. `source_count`
+deduplicates nonempty source IDs across Topics; source-less notifications count
+only toward `count`. Read and Count have independent database snapshots, so
+reconcile both after invalidation. A conversation's own read-through cursor is
+application state, not a notification page cursor.
 
 ## 6. Keep two clients current
 

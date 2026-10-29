@@ -171,6 +171,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
+        with:
+          setup_only: true
+
       - name: payday
         run: go test ./... -count=1
       - name: the app it is tried against

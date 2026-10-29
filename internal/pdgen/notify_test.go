@@ -109,3 +109,28 @@ func TestNotifyDomainCollisionsAreRefusedBeforeCopying(t *testing.T) {
 		})
 	}
 }
+
+func TestGlobalNotifyScopeIsPartOfTheGeneratedContract(t *testing.T) {
+	tenant := notificationCopies(t, 40, 41)
+	global := strings.ReplaceAll(tenant, `  bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];`, "")
+	global = regexp.MustCompile(`(?s)          \{\s*name: "tenant_id"\s*number: 2\s*\},?\n`).ReplaceAllString(global, "")
+	global = strings.ReplaceAll(global, `tenanted: {field: "tenant_id"}`, `global: {}`)
+	declaration := `option (payday.app) = {notify: {notification: 40, receipt: 41, global: true}};`
+	prefix := "import \"google/protobuf/any.proto\";\n"
+	s, err := readAs(t, "fleet", prefix+declaration+ownAll(t)+global)
+	require.NoError(t, err)
+	require.NoError(t, pdgen.CheckOwn(s))
+	for _, own := range []pdpb.Own{pdpb.Own_OWN_NOTIFICATION, pdpb.Own_OWN_NOTIFICATION_RECEIPT} {
+		require.True(t, s.Own(own).IsGlobal)
+		require.Nil(t, s.Own(own).Descriptor().Fields().ByNumber(2))
+	}
+	_, err = readAs(t, "fleet", prefix+declaration+ownAll(t)+tenant)
+	require.ErrorContains(t, err, "scope differs")
+	_, err = readAs(t, "fleet", prefix+strings.Replace(declaration, "global: true", "global: false", 1)+ownAll(t)+global)
+	require.ErrorContains(t, err, "scope differs")
+	for _, name := range []string{"NotificationRecord", "NotificationReceiptRecord"} {
+		modified := strings.Replace(global, "message "+name+" {", "message "+name+" {\nbytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];", 1)
+		_, err = readAs(t, "fleet", prefix+declaration+ownAll(t)+modified)
+		require.ErrorContains(t, err, "scope differs")
+	}
+}
