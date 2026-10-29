@@ -244,7 +244,7 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	s.Notify = notify
-	if err := CheckNotifyDomains(notifyProto(notify), pastProto(past), nil); err != nil {
+	if err := CheckNotify(notifyProto(notify), pastProto(past), nil); err != nil {
 		return nil, err
 	}
 

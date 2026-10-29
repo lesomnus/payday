@@ -5,13 +5,15 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Entity_Global, Entity_Tenanted } from "./entity_pb.js";
+import { file_payday_entity } from "./entity_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0iPwoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEg4KBmdsb2JhbBgDIAEoCEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0ilgEKBk5vdGlmeRIUCgxub3RpZmljYXRpb24YASABKA0SDwoHcmVjZWlwdBgCIAEoDRIrCgh0ZW5hbnRlZBgEIAEoCzIXLnBheWRheS5FbnRpdHkuVGVuYW50ZWRIABInCgZnbG9iYWwYBSABKAsyFS5wYXlkYXkuRW50aXR5Lkdsb2JhbEgAQgkKB3RlbmFuY3lKBAgDEARCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_payday_entity]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -223,11 +225,24 @@ export type Notify = Message<"payday.Notify"> & {
   receipt: number;
 
   /**
-   * One app-global namespace instead of tenant-scoped notification records.
+   * Uses the same tenancy choices as an Entity. By default the copied records
+   * remain tenanted through their tenant_id field; global removes that field.
    *
-   * @generated from field: bool global = 3;
+   * @generated from oneof payday.Notify.tenancy
    */
-  global: boolean;
+  tenancy: {
+    /**
+     * @generated from field: payday.Entity.Tenanted tenanted = 4;
+     */
+    value: Entity_Tenanted;
+    case: "tenanted";
+  } | {
+    /**
+     * @generated from field: payday.Entity.Global global = 5;
+     */
+    value: Entity_Global;
+    case: "global";
+  } | { case: undefined; value?: undefined };
 };
 
 /**

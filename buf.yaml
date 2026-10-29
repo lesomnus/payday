@@ -34,3 +34,7 @@ lint:
 breaking:
   use:
     - FILE
+  # Remove once main and the BSR include the Notify tenancy migration.
+  ignore_only:
+    FIELD_NO_DELETE:
+      - proto/payday/app.proto

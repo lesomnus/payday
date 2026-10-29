@@ -34,12 +34,54 @@ func TestNotifyIsReadBeforeCompilation(t *testing.T) {
 	require.Nil(t, l.Notify)
 }
 
+func TestNotifyTenancyDeclarations(t *testing.T) {
+	for _, tc := range []struct {
+		name, tenancy, wantError string
+		global                   bool
+	}{
+		{name: "default"},
+		{name: "missing tenant field", tenancy: "tenanted: {}", wantError: "notify.tenanted"},
+		{name: "tenant field", tenancy: `tenanted: {field: "tenant_id"}`},
+		{name: "global", tenancy: "global: {}", global: true},
+		{name: "both", tenancy: "global: {} tenanted: {}", wantError: "oneof"},
+		{name: "old bool", tenancy: "global: true", wantError: "unexpected token"},
+		{name: "unknown edge", tenancy: `tenanted: {via: "owner.tenant"}`, wantError: "notify.tenanted"},
+		{name: "unknown column", tenancy: `tenanted: {field: "owner_id"}`, wantError: "notify.tenanted"},
+		{name: "multiple columns", tenancy: `tenanted: {field: ["tenant_id", "other_id"]}`, wantError: "notify.tenanted"},
+		{name: "stamp", tenancy: `tenanted: {stamp: "tenant_id"}`, wantError: "notify.tenanted"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := app(t, "github.com/acme/thing")
+			past(t, root, "widget.proto", `option (payday.app) = {notify: {notification: 40, receipt: 41, `+tc.tenancy+`}};`)
+			l, err := pdcli.Discover(root)
+			if tc.wantError != "" {
+				require.ErrorContains(t, err, tc.wantError)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.global, l.Notify.Global)
+		})
+	}
+}
+
+func TestNotifyRefusesConflictingDottedTenancy(t *testing.T) {
+	for _, choices := range []string{
+		"option (payday.app).notify.global = {};\noption (payday.app).notify.tenanted = {};",
+		"option (payday.app).notify.tenanted = {};\noption (payday.app).notify.global = {};",
+	} {
+		root := app(t, "github.com/acme/thing")
+		past(t, root, "widget.proto", "option (payday.app).notify = {notification: 40, receipt: 41};\n"+choices)
+		_, err := pdcli.Discover(root)
+		require.ErrorContains(t, err, "notify.tenancy selects both global and tenanted")
+	}
+}
+
 func TestGlobalNotifyGeneratesAndRunsWithoutTenantRecords(t *testing.T) {
 	l := genApp(t)
 	at := filepath.Join(l.Root, "proto", "app", "robot.proto")
 	b, err := os.ReadFile(at)
 	require.NoError(t, err)
-	source := strings.Replace(string(b), "notify: {notification: 40, receipt: 41}", "notify: {notification: 40, receipt: 41, global: true}", 1)
+	source := strings.Replace(string(b), "notify: {notification: 40, receipt: 41}", "notify: {notification: 40, receipt: 41, global: {}}", 1)
 	require.NotEqual(t, string(b), source)
 	require.NoError(t, os.WriteFile(at, []byte(source), 0o644))
 	l, err = pdcli.Discover(l.Root)

@@ -24,12 +24,17 @@ unused in your app, in `7` to `247`, and different from the other. Choose them
 once: existing identifiers retain their domains. You do not need a `past`
 declaration to use notifications.
 
-A global app adds `global: true` inside `notify`. Its requests omit tenant IDs,
+A global app adds `global: {}` inside `notify`. Its requests omit tenant IDs,
 its private records have no Tenant relationship, and its policy receives
 `pdid.Nil` for the tenant argument. Generated servers fix this mode from the
 declaration; setting `notify.Options.Global` cannot override it. Authentication
 and persistent reader identity are still required. See the
 [reader-state contract](../notify-adoption-contract.md) for global app setup.
+
+This is the same `oneof tenancy` choice as an Entity, using the existing
+`Entity.Global` and `Entity.Tenanted` types. For explicit tenant scope, use
+`tenanted: {field: "tenant_id"}`; omission keeps that shipped declaration.
+Do not declare both choices.
 
 Use versions of both the payday Go module and its Buf dependency that include
 `App.notify`. For an existing app pinned to older options, run `buf dep update`

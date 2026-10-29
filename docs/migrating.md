@@ -3,6 +3,23 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Notifications use the entity tenancy declaration
+
+**Applies if** an app used `notify.global: true` from main after #178.
+Replace it with `notify.global: {}` and run `pd gen --ts` again. The bool's
+field number 3 is reserved; the replacement uses `Entity.Global` at field 5
+in a `oneof tenancy`, paired with `Entity.Tenanted` at field 4.
+
+Tenant-scoped apps can leave tenancy omitted, as before, or declare
+`tenanted: {field: "tenant_id"}`. Both choices in one declaration are refused,
+including when split across dotted option assignments. Unknown tenant paths,
+columns and stamps are refused before the copied records are changed.
+
+This changes the generator option, not the public notification RPCs or stored
+record shapes. A global app remains global after regeneration, and a tenanted
+app remains tenanted. Switching between those modes still requires a storage
+migration.
+
 ## payday's Tenant says its name is about no one
 
 **Applies if** an overlay of yours declares a field of the tenant personal,

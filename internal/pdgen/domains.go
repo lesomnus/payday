@@ -103,7 +103,7 @@ func Shipped(own pdpb.Own) (uint32, error) {
 // it, and what it means here is the number payday gives the entity.
 func CheckDomains(d *pdpb.Domains, past *pdpb.Past, notifications ...*pdpb.Notify) error {
 	for _, n := range notifications {
-		if err := CheckNotifyDomains(n, past, d); err != nil {
+		if err := CheckNotify(n, past, d); err != nil {
 			return err
 		}
 	}

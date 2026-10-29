@@ -164,6 +164,10 @@ func appOf(name string, b []byte) (*pdpb.App, error) {
 
 			return nil, fmt.Errorf("%s: option (payday.app): %w", name, err)
 		}
+		before, after := app.GetNotify(), v.GetNotify()
+		if (before.HasGlobal() && after.HasTenanted()) || (before.HasTenanted() && after.HasGlobal()) {
+			return nil, fmt.Errorf("%s: option (payday.app): notify.tenancy selects both global and tenanted", name)
+		}
 		proto.Merge(app, v)
 	}
 
