@@ -34,7 +34,7 @@ Publishing creates one notification and no per-reader rows or subscriptions.
 
 Both forms use the app's configured notification namespace. By default this
 is a tenant: a named Topic `maintenance` in one tenant is distinct from the
-same name in another. An app declaring `notify.global: true` instead has one
+same name in another. An app declaring `notify.global: {}` instead has one
 global namespace, with no synthetic Tenant row or Tenant relationship. A name that happens to look like a UUID
 is also distinct from a resource Topic containing that UUID. There is no implicit
 trimming, case folding, path syntax, or conversion between the two forms.

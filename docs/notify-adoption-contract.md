@@ -10,11 +10,17 @@ The [reference](notify.md) specifies the runtime and the
 ## Global scope and persistent readers
 
 The default app declaration generates tenant-scoped notifications. Setting
-`notify.global: true` generates global private records with no Tenant field or
+`notify.global: {}` generates global private records with no Tenant field or
 relationship. The same public tenant selectors remain available for tenant
 apps: required there, absent in global apps. The app declaration fixes the mode;
 a request or runtime option cannot widen a generated server's namespace.
 Changing the mode of existing storage requires an explicit migration.
+
+Notify reuses `Entity.Global` and `Entity.Tenanted` in a `oneof tenancy`.
+`global: {}` and `tenanted: {field: "tenant_id"}` are mutually exclusive;
+omission retains the shipped records' `tenant_id` tenancy. Explicit `tenanted`
+must name that field: the copied records have no `tenant` edge. Other paths,
+columns and stamps are refused because they do not exist on these records.
 
 Global records need no fake Tenant, sentinel tenant ID or nullable-Tenant
 uniqueness exception. Publication keys and lazy receipts remain unique under

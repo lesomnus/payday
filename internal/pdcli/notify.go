@@ -50,7 +50,11 @@ func (n *Notify) proto() *pdpb.Notify {
 	if n == nil {
 		return nil
 	}
-	return pdpb.Notify_builder{Notification: n.Notification, Receipt: n.Receipt, Global: n.Global}.Build()
+	b := pdpb.Notify_builder{Notification: n.Notification, Receipt: n.Receipt}
+	if n.Global {
+		b.Global = &pdpb.Entity_Global{}
+	}
+	return b.Build()
 }
 
 // NotifyDir is beside the required entity sources, in the same payday module.
@@ -83,10 +87,10 @@ func readNotify(l Layout) (*Notify, error) {
 			return fmt.Errorf("%s and %s both declare notifications; say notify once, in the file that says the package is the app's", found.At, l.rel(p))
 		}
 		n := a.GetNotify()
-		if err := pdgen.CheckNotifyDomains(n, past, a.GetDomains()); err != nil {
+		if err := pdgen.CheckNotify(n, past, a.GetDomains()); err != nil {
 			return fmt.Errorf("%s: %w", l.rel(p), err)
 		}
-		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.GetGlobal(), At: l.rel(p)}
+		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.HasGlobal(), At: l.rel(p)}
 		return nil
 	})
 	return found, err

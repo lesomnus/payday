@@ -105,7 +105,7 @@ func TestNotifyDomainCollisionsAreRefusedBeforeCopying(t *testing.T) {
 		{"domains", pdpb.Notify_builder{Notification: 40, Receipt: 41}.Build(), nil, pdpb.Domains_builder{Access: 41}.Build()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Error(t, pdgen.CheckNotifyDomains(tc.n, tc.past, tc.d))
+			require.Error(t, pdgen.CheckNotify(tc.n, tc.past, tc.d))
 		})
 	}
 }
@@ -115,9 +115,14 @@ func TestGlobalNotifyScopeIsPartOfTheGeneratedContract(t *testing.T) {
 	global := strings.ReplaceAll(tenant, `  bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];`, "")
 	global = regexp.MustCompile(`(?s)          \{\s*name: "tenant_id"\s*number: 2\s*\},?\n`).ReplaceAllString(global, "")
 	global = strings.ReplaceAll(global, `tenanted: {field: "tenant_id"}`, `global: {}`)
-	declaration := `option (payday.app) = {notify: {notification: 40, receipt: 41, global: true}};`
+	declaration := `option (payday.app) = {notify: {notification: 40, receipt: 41, global: {}}};`
 	prefix := "import \"google/protobuf/any.proto\";\n"
-	s, err := readAs(t, "fleet", prefix+declaration+ownAll(t)+global)
+	tenanted := strings.Replace(declaration, "global: {}", `tenanted: {field: "tenant_id"}`, 1)
+	s, err := readAs(t, "fleet", prefix+tenanted+ownAll(t)+tenant)
+	require.NoError(t, err)
+	require.NoError(t, pdgen.CheckOwn(s))
+	require.False(t, s.Notify.Global)
+	s, err = readAs(t, "fleet", prefix+declaration+ownAll(t)+global)
 	require.NoError(t, err)
 	require.NoError(t, pdgen.CheckOwn(s))
 	for _, own := range []pdpb.Own{pdpb.Own_OWN_NOTIFICATION, pdpb.Own_OWN_NOTIFICATION_RECEIPT} {
@@ -126,7 +131,7 @@ func TestGlobalNotifyScopeIsPartOfTheGeneratedContract(t *testing.T) {
 	}
 	_, err = readAs(t, "fleet", prefix+declaration+ownAll(t)+tenant)
 	require.ErrorContains(t, err, "scope differs")
-	_, err = readAs(t, "fleet", prefix+strings.Replace(declaration, "global: true", "global: false", 1)+ownAll(t)+global)
+	_, err = readAs(t, "fleet", prefix+tenanted+ownAll(t)+global)
 	require.ErrorContains(t, err, "scope differs")
 	for _, name := range []string{"NotificationRecord", "NotificationReceiptRecord"} {
 		modified := strings.Replace(global, "message "+name+" {", "message "+name+" {\nbytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];", 1)

@@ -397,7 +397,7 @@ type Notify struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Notification uint32                 `protobuf:"varint,1,opt,name=notification"`
 	xxx_hidden_Receipt      uint32                 `protobuf:"varint,2,opt,name=receipt"`
-	xxx_hidden_Global       bool                   `protobuf:"varint,3,opt,name=global"`
+	xxx_hidden_Tenancy      isNotify_Tenancy       `protobuf_oneof:"tenancy"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -441,11 +441,22 @@ func (x *Notify) GetReceipt() uint32 {
 	return 0
 }
 
-func (x *Notify) GetGlobal() bool {
+func (x *Notify) GetTenanted() *Entity_Tenanted {
 	if x != nil {
-		return x.xxx_hidden_Global
+		if x, ok := x.xxx_hidden_Tenancy.(*notify_Tenanted); ok {
+			return x.Tenanted
+		}
 	}
-	return false
+	return nil
+}
+
+func (x *Notify) GetGlobal() *Entity_Global {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Tenancy.(*notify_Global); ok {
+			return x.Global
+		}
+	}
+	return nil
 }
 
 func (x *Notify) SetNotification(v uint32) {
@@ -456,8 +467,77 @@ func (x *Notify) SetReceipt(v uint32) {
 	x.xxx_hidden_Receipt = v
 }
 
-func (x *Notify) SetGlobal(v bool) {
-	x.xxx_hidden_Global = v
+func (x *Notify) SetTenanted(v *Entity_Tenanted) {
+	if v == nil {
+		x.xxx_hidden_Tenancy = nil
+		return
+	}
+	x.xxx_hidden_Tenancy = &notify_Tenanted{v}
+}
+
+func (x *Notify) SetGlobal(v *Entity_Global) {
+	if v == nil {
+		x.xxx_hidden_Tenancy = nil
+		return
+	}
+	x.xxx_hidden_Tenancy = &notify_Global{v}
+}
+
+func (x *Notify) HasTenancy() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Tenancy != nil
+}
+
+func (x *Notify) HasTenanted() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Tenancy.(*notify_Tenanted)
+	return ok
+}
+
+func (x *Notify) HasGlobal() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Tenancy.(*notify_Global)
+	return ok
+}
+
+func (x *Notify) ClearTenancy() {
+	x.xxx_hidden_Tenancy = nil
+}
+
+func (x *Notify) ClearTenanted() {
+	if _, ok := x.xxx_hidden_Tenancy.(*notify_Tenanted); ok {
+		x.xxx_hidden_Tenancy = nil
+	}
+}
+
+func (x *Notify) ClearGlobal() {
+	if _, ok := x.xxx_hidden_Tenancy.(*notify_Global); ok {
+		x.xxx_hidden_Tenancy = nil
+	}
+}
+
+const Notify_Tenancy_not_set_case case_Notify_Tenancy = 0
+const Notify_Tenanted_case case_Notify_Tenancy = 4
+const Notify_Global_case case_Notify_Tenancy = 5
+
+func (x *Notify) WhichTenancy() case_Notify_Tenancy {
+	if x == nil {
+		return Notify_Tenancy_not_set_case
+	}
+	switch x.xxx_hidden_Tenancy.(type) {
+	case *notify_Tenanted:
+		return Notify_Tenanted_case
+	case *notify_Global:
+		return Notify_Global_case
+	default:
+		return Notify_Tenancy_not_set_case
+	}
 }
 
 type Notify_builder struct {
@@ -465,8 +545,13 @@ type Notify_builder struct {
 
 	Notification uint32
 	Receipt      uint32
-	// One app-global namespace instead of tenant-scoped notification records.
-	Global bool
+	// Uses the same tenancy choices as an Entity. By default the copied records
+	// remain tenanted through their tenant_id field; global removes that field.
+
+	// Fields of oneof xxx_hidden_Tenancy:
+	Tenanted *Entity_Tenanted
+	Global   *Entity_Global
+	// -- end of xxx_hidden_Tenancy
 }
 
 func (b0 Notify_builder) Build() *Notify {
@@ -475,15 +560,46 @@ func (b0 Notify_builder) Build() *Notify {
 	_, _ = b, x
 	x.xxx_hidden_Notification = b.Notification
 	x.xxx_hidden_Receipt = b.Receipt
-	x.xxx_hidden_Global = b.Global
+	if b.Tenanted != nil {
+		x.xxx_hidden_Tenancy = &notify_Tenanted{b.Tenanted}
+	}
+	if b.Global != nil {
+		x.xxx_hidden_Tenancy = &notify_Global{b.Global}
+	}
 	return m0
 }
+
+type case_Notify_Tenancy protoreflect.FieldNumber
+
+func (x case_Notify_Tenancy) String() string {
+	md := file_payday_app_proto_msgTypes[3].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isNotify_Tenancy interface {
+	isNotify_Tenancy()
+}
+
+type notify_Tenanted struct {
+	Tenanted *Entity_Tenanted `protobuf:"bytes,4,opt,name=tenanted,oneof"`
+}
+
+type notify_Global struct {
+	Global *Entity_Global `protobuf:"bytes,5,opt,name=global,oneof"`
+}
+
+func (*notify_Tenanted) isNotify_Tenancy() {}
+
+func (*notify_Global) isNotify_Tenancy() {}
 
 var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\"z\n" +
+	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\"z\n" +
 	"\x03App\x12 \n" +
 	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
 	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\x12&\n" +
@@ -493,34 +609,45 @@ const file_payday_app_proto_rawDesc = "" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
 	"\aDomains\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
-	"\x06access\x18\x02 \x01(\rR\x06access\"^\n" +
+	"\x06access\x18\x02 \x01(\rR\x06access\"\xbf\x01\n" +
 	"\x06Notify\x12\"\n" +
 	"\fnotification\x18\x01 \x01(\rR\fnotification\x12\x18\n" +
-	"\areceipt\x18\x02 \x01(\rR\areceipt\x12\x16\n" +
-	"\x06global\x18\x03 \x01(\bR\x06globalB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\areceipt\x18\x02 \x01(\rR\areceipt\x125\n" +
+	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
+	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06globalB\t\n" +
+	"\atenancyJ\x04\b\x03\x10\x04B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_payday_app_proto_goTypes = []any{
-	(*App)(nil),     // 0: payday.App
-	(*Past)(nil),    // 1: payday.Past
-	(*Domains)(nil), // 2: payday.Domains
-	(*Notify)(nil),  // 3: payday.Notify
+	(*App)(nil),             // 0: payday.App
+	(*Past)(nil),            // 1: payday.Past
+	(*Domains)(nil),         // 2: payday.Domains
+	(*Notify)(nil),          // 3: payday.Notify
+	(*Entity_Tenanted)(nil), // 4: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 5: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
 	1, // 0: payday.App.past:type_name -> payday.Past
 	2, // 1: payday.App.domains:type_name -> payday.Domains
 	3, // 2: payday.App.notify:type_name -> payday.Notify
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	5, // 4: payday.Notify.global:type_name -> payday.Entity.Global
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
 func file_payday_app_proto_init() {
 	if File_payday_app_proto != nil {
 		return
+	}
+	file_payday_entity_proto_init()
+	file_payday_app_proto_msgTypes[3].OneofWrappers = []any{
+		(*notify_Tenanted)(nil),
+		(*notify_Global)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

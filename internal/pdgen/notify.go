@@ -31,11 +31,13 @@ func (n *Notify) Domain(own pdpb.Own) (uint8, bool) {
 	return 0, false
 }
 
-// CheckNotifyDomains is shared by the source reader and the compiled-schema
-// reader. Both must refuse collisions before assigning domains to copied rows.
-func CheckNotifyDomains(n *pdpb.Notify, past *pdpb.Past, domains *pdpb.Domains) error {
+// CheckNotify is shared by the source reader and the compiled-schema reader.
+func CheckNotify(n *pdpb.Notify, past *pdpb.Past, domains *pdpb.Domains) error {
 	if n == nil {
 		return nil
+	}
+	if t := n.GetTenanted(); t != nil && (t.GetVia() != "" || t.GetStamp() != "" || len(t.GetField()) != 1 || t.GetField()[0] != "tenant_id") {
+		return fmt.Errorf("notify.tenanted: notification records use field: \"tenant_id\"; via, stamp and other fields do not exist on these records")
 	}
 	for _, v := range []struct {
 		name string
@@ -71,7 +73,11 @@ func notifyProto(n *Notify) *pdpb.Notify {
 	if n == nil {
 		return nil
 	}
-	return pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt), Global: n.Global}.Build()
+	b := pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt)}
+	if n.Global {
+		b.Global = &pdpb.Entity_Global{}
+	}
+	return b.Build()
 }
 
 func pastProto(p *Past) *pdpb.Past {
@@ -95,10 +101,10 @@ func readNotify(files []*protogen.File) (*Notify, error) {
 			return nil, fmt.Errorf("%s and %s both declare notifications; say notify once, in the file that says the package is the app's", found.At, f.Desc.Path())
 		}
 		n := a.GetNotify()
-		if err := CheckNotifyDomains(n, a.GetPast(), a.GetDomains()); err != nil {
+		if err := CheckNotify(n, a.GetPast(), a.GetDomains()); err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
 		}
-		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.GetGlobal(), At: f.Desc.Path()}
+		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.HasGlobal(), At: f.Desc.Path()}
 	}
 	return found, nil
 }
@@ -113,7 +119,7 @@ func (s *Schema) checkNotify() error {
 			continue
 		}
 		if s.Notify != nil && (v.IsGlobal != s.Notify.Global || (s.Notify.Global && v.Descriptor().Fields().ByNumber(2) != nil)) {
-			return fmt.Errorf("%s scope differs from notify.global; run pd gen to restore the record", v.FullName())
+			return fmt.Errorf("%s scope differs from notify tenancy; run pd gen to restore the record", v.FullName())
 		}
 		want, ok := s.Notify.Domain(v.Own)
 		switch {
