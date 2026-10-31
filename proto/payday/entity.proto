@@ -471,6 +471,11 @@ enum Own {
   // notification values are projections rather than these internal records.
   OWN_NOTIFICATION = 11;
   OWN_NOTIFICATION_RECEIPT = 12;
+
+  // A tenant's copy of what it is entitled to (payday#185): one row for each
+  // grant a source issued it, copied only into an app that declares
+  // `payday.Entitlements`, at the domain it chose. See the `entitle` package.
+  OWN_ENTITLEMENT = 13;
 }
 
 // Field is what payday adds to one field of an entity.

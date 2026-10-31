@@ -60,6 +60,10 @@ const (
 	// notification values are projections rather than these internal records.
 	Own_OWN_NOTIFICATION         Own = 11
 	Own_OWN_NOTIFICATION_RECEIPT Own = 12
+	// A tenant's copy of what it is entitled to (payday#185): one row for each
+	// grant a source issued it, copied only into an app that declares
+	// `payday.Entitlements`, at the domain it chose. See the `entitle` package.
+	Own_OWN_ENTITLEMENT Own = 13
 )
 
 // Enum value maps for Own.
@@ -78,6 +82,7 @@ var (
 		10: "OWN_FACT",
 		11: "OWN_NOTIFICATION",
 		12: "OWN_NOTIFICATION_RECEIPT",
+		13: "OWN_ENTITLEMENT",
 	}
 	Own_value = map[string]int32{
 		"OWN_UNSPECIFIED":          0,
@@ -93,6 +98,7 @@ var (
 		"OWN_FACT":                 10,
 		"OWN_NOTIFICATION":         11,
 		"OWN_NOTIFICATION_RECEIPT": 12,
+		"OWN_ENTITLEMENT":          13,
 	}
 )
 
@@ -2111,7 +2117,7 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\astamped\x18\x02 \x01(\bR\astamped\x12!\n" +
 	"\bpersonal\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\bpersonal\x12\x14\n" +
 	"\x05event\x18\x05 \x01(\bR\x05eventJ\x04\b\x04\x10\x05R\n" +
-	"impersonal*\xec\x01\n" +
+	"impersonal*\x81\x02\n" +
 	"\x03Own\x12\x13\n" +
 	"\x0fOWN_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -2130,7 +2136,8 @@ const file_payday_entity_proto_rawDesc = "" +
 	"\bOWN_FACT\x10\n" +
 	"\x12\x14\n" +
 	"\x10OWN_NOTIFICATION\x10\v\x12\x1c\n" +
-	"\x18OWN_NOTIFICATION_RECEIPT\x10\fB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x18OWN_NOTIFICATION_RECEIPT\x10\f\x12\x13\n" +
+	"\x0fOWN_ENTITLEMENT\x10\rB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_payday_entity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_payday_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 14)

@@ -235,6 +235,12 @@ func (e Entity) each(fn func(p string, own bool, b []byte)) error {
 		}
 	}
 
+	if e.Layout.Entitlements != nil {
+		if d, err := EntitleDir(); err == nil {
+			dirs = append(dirs, protoDir{at: d, own: true})
+		}
+	}
+
 	for _, d := range dirs {
 		err := filepath.WalkDir(d.at, func(p string, _ os.DirEntry, err error) error {
 			if err != nil || !strings.HasSuffix(p, ".proto") {
@@ -293,6 +299,10 @@ func (e Entity) free() (int, error) {
 	if n := e.Layout.Notify; n != nil {
 		taken[int(n.Notification)] = true
 		taken[int(n.Receipt)] = true
+	}
+
+	if n := e.Layout.Entitlements; n != nil {
+		taken[int(n.Domain)] = true
 	}
 
 	// One past the highest, rather than the lowest that is free, and starting

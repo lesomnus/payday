@@ -39,7 +39,8 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second, [App.notify] the third, [App.meters] the fourth.
+// second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
+// the fifth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -84,6 +85,18 @@ message App {
   // entities as well as the app's -- a seat is a Holder -- and an overlay may
   // add nothing to payday's declaration of one.
   repeated Meter meters = 4;
+
+  // Entitlements opts this app into a copy of what each of its tenants is
+  // entitled to, kept in its own database and read inside the transaction of
+  // the write it decides (payday#185):
+  //
+  //	option (payday.app) = {entitlements: {domain: 43}};
+  //
+  // `pd gen` then writes payday's `Entitlement` into the app at that domain,
+  // and takes it out again when this goes. What fills it is a source of
+  // grants -- a billing service -- speaking `payday.GrantService`, followed by
+  // `entitle.Follower`. See [Entitlements].
+  Entitlements entitlements = 5;
 }
 
 // Past is the domain of each of the two entities an app's past is kept in.
@@ -162,4 +175,33 @@ message Notify {
     Entity.Tenanted tenanted = 4;
     Entity.Global global = 5;
   }
+}
+
+// Entitlements is the domain of the one table an app's copy of its tenants'
+// entitlements is kept in: one row for each grant a source issued a tenant
+// (payday#185).
+//
+// # Why the app numbers it
+//
+// For the reason [Past] says: a table an app opts into is numbered by the app,
+// because payday cannot fix a number for it without taking that number from
+// every app that already spent it. The generator finds it by its `own:`
+// marker, never by its number.
+//
+// A domain like any other: 7..247, and one no other entity of the app's
+// declares, the past's, the notifications' and the two of [Domains] included.
+// Chosen once and never changed, since an identifier carries it for as long
+// as anything names the row.
+//
+// # Why nothing else is said here
+//
+// What a tenant may have is the source's to say and the app's to read, and
+// neither is a declaration: a key is a string the source grants and the app
+// asks for (`entitle.Has(ctx, r, "acme.export")`), and a key nobody granted
+// is a tenant not entitled to it, which is the answer it should be. A list of
+// keys here would be a second copy of the source's price book in every app it
+// sells for, and the one that went stale would be the one that answers.
+message Entitlements {
+  // Domain is the domain of `Entitlement`.
+  uint32 domain = 1;
 }

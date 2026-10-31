@@ -208,6 +208,11 @@ type Schema struct {
 	// Notify declares the domains of the optional notification storage records.
 	Notify *Notify
 
+	// Entitlements is what the app declared of its copy of its tenants'
+	// entitlements -- the domain of payday's Entitlement -- and nil for an
+	// app that declared none (payday#185).
+	Entitlements *Entitlements
+
 	// Meters are what each tenant holds that the app is paid by, as the
 	// schema declares them (payday#186), each resolved against the entity it
 	// measures. Empty for an app that declares none.
@@ -259,6 +264,16 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 	s.Domains = domains
 
+	held := pdpb.App_builder{Past: pastProto(past), Notify: notifyProto(notify)}
+	if domains != nil {
+		held.Domains = pdpb.Domains_builder{Archived: uint32(domains.Archived), Access: uint32(domains.Access)}.Build()
+	}
+	entitlements, err := readEntitlements(files, held.Build())
+	if err != nil {
+		return nil, err
+	}
+	s.Entitlements = entitlements
+
 	meters, err := readMeters(files)
 	if err != nil {
 		return nil, err
@@ -309,6 +324,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	if err := s.checkNotify(); err != nil {
+		return nil, err
+	}
+	if err := s.checkEntitlements(); err != nil {
 		return nil, err
 	}
 	if err := s.checkDomains(); err != nil {
