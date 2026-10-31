@@ -72,6 +72,7 @@ table is for finding the right one.
 | [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
 | [`meter`](../meter) | what each tenant holds, measured on a schedule and on request, and handed to the app's sink: the readings of `pd.Meters` and of the app's own meters, and the convention for flows |
+| [`entitle`](../entitle) | what each tenant is entitled to: a copy of a source's grants, read in the transaction of the write it decides -- a limit locked there -- and the follower that keeps it, through the `pd.Entitlements` and `pd.EntitlementCopy` an app that declares one is generated |
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
 | [`resource`](../resource) | the shared Batch and Watch service, and the event both of a change's delivery paths carry |
 | [`resource/resourcecel`](../resource/resourcecel) | CEL, the language a Watch filter is written in. A process imports it; a sandbox does not, and is 10 MB lighter for it |
@@ -87,7 +88,7 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
-| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)` — and for the two services payday serves on an app's behalf: `BatchService`, and the `TokenService` that `auth.Remote` asks |
+| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)` — and for the services payday serves on an app's behalf or asks of another: `BatchService`, the `TokenService` that `auth.Remote` asks, and the `GrantService` an `entitle.Follower` follows |
 
 ## 3. What is generated
 
@@ -1583,6 +1584,40 @@ it does not measure. The convention for those is a cumulative OpenTelemetry Sum
 named by its meter key with the tenant as `payday.tenant`, exported to the
 billing service's own receiver and never through the monitoring pipeline; see
 the [guide](guide/meters.md#7-flows).
+
+### Entitlements are one of them (payday#185)
+
+`entitle.Follower` keeps an app's copy of what each tenant is entitled to --
+one row of payday's `Entitlement` for each grant a source issued, copied into
+an app that declares `option (payday.app) = {entitlements: {domain: ...}}` --
+from the source's `payday.GrantService`, under the lease as
+`payday.entitle.follow`. It applies each grant the stream says as it says it,
+and compares the copy with the whole of the source's list when the stream is
+ready and every hour after.
+
+- **State and versions.** A grant is all of itself at a version, compared only
+  with other versions of itself: one the copy does not have is written, a newer
+  one is written over it, and anything else changes nothing -- so the stream,
+  the list and two processes around a failover write each once.
+- **Nothing is taken away on a guess.** A grant is taken away by ending it, and
+  a row goes only once its grant has ended and the source lists it no more; a
+  source that cannot be reached, a list that failed or one that came back short
+  takes nothing. Every grant says when it ends, which is what bounds how stale
+  the copy can be.
+- **Read in the write's transaction.** `entitle.Has` and `entitle.Limit` read
+  `pd.Entitlements(drv)` on the write's driver; `Limit` locks the key's rows
+  (`FOR UPDATE`; SQLite writes one transaction at a time), so a second write
+  deciding by the same limit waits for the first and counts what it wrote. A
+  key nobody granted is not entitled, and not an error.
+- **On the trail.** The kind is `trail: {recorded: {}}`: each write is the
+  deployment's act, `payday.entitle.apply` or `payday.entitle.forget`, filed
+  under the tenant, so a row put into the copy past the follower is what a
+  check of the rows finds.
+- **The tenant's.** Behind the wall by its edge, gone with the tenant, and a
+  grant of a tenant the app does not have is applied to nothing.
+
+What a tenant may spend -- a quota reserved per request and committed or
+released -- it is not; see the [guide](guide/entitlements.md).
 
 ### The access record (#111)
 

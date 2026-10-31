@@ -141,6 +141,9 @@ func keptBy(err error) string {
 			message += strings.ToUpper(part[:1]) + part[1:]
 		}
 
+		if features[own] == schema.DirEntitle {
+			return fmt.Sprintf("names %s, and the copy of entitlements is numbered by `entitlements:` -- `option (payday.app) = {entitlements: {domain: 43}}`", m[1])
+		}
 		if features[own] == schema.DirNotify {
 			return fmt.Sprintf("names %s, and notification records are numbered by `notify:` -- `option (payday.app) = {notify: {notification: 40, receipt: 41}}`", m[1])
 		}

@@ -96,9 +96,12 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// And of an app that keeps a past, what it accepts and the past then gets
 	// wrong, and its lock as a generation would hold it. See doctor_past.go.
 	// And of an app that declares meters, whether anything reads them, and of
-	// a reader, whether it runs. See doctor_meter.go.
+	// a reader, whether it runs. See doctor_meter.go. And of an app that
+	// declares entitlements, whether anything keeps the copy and reads it, and
+	// of a follower, whether it has a source and runs. See doctor_entitle.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
 	vs = append(vs, doctorMeters(l, schema)...)
+	vs = append(vs, doctorEntitlements(l, schema)...)
 
 	return append(vs, doctorPast(l, schema)...)
 }

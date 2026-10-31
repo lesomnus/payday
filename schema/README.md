@@ -80,3 +80,23 @@ every record field they declare is payday's; an overlay adds its own outside
 those numbers and may add indexes. The optional-feature marker is distinct
 from its domain, so generation finds a record by its role rather than a fixed
 number or the name of the app's package.
+
+## `entitle/`
+
+One table an app has when it asks for it: a tenant's copy of what it is
+entitled to, one row for each grant a source of grants issued it (payday#185).
+An app declares it on the file that says its package is the app's:
+
+```proto
+option (payday.app) = {entitlements: {domain: 43}};
+```
+
+and `pd gen` copies `entitlement.proto` into the app's package at that domain,
+and takes it out when the declaration goes. Its domain is the app's, as the
+past's are, and its fields -- 8..12 and 16..17 among them -- are payday's; an
+overlay adds at the numbers it leaves empty. It has no RPC: the `entitle`
+package reads it in the transaction of the write it decides and its follower
+writes it, each write on the trail (`trail: {recorded: {}}`). The grants
+themselves are the source's, served as `payday.GrantService`
+(`proto/payday/grant.proto`), and `docs/guide/entitlements.md` is how an app
+uses all of it.

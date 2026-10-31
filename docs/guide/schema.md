@@ -1055,6 +1055,7 @@ only test for whether it belongs on this list.
 | a meter whose key is not one or is another's, with no unit, or said in two files | two answers to what a reading is filed under, or a number nobody can price |
 | a meter of no entity, of a `global` one, or of one whose rows name two tenants | somebody's bill made of everybody's rows |
 | a meter naming a field by its name or its number alone, the two disagreeing, a value its enum does not have, or a condition on a float, bytes, an identifier, a time's value, a list or an edge's value; a sum of anything but an integer | a bill that counts another column, or nothing, or sums what is not exact -- see [meters](meters.md#1-declare-what-is-measured) |
+| entitlements with no domain, one of payday's, or one the past, the notifications, `domains:` or an entity holds; or a name the copy takes -- `Entitlement`, `EntitlementValue`, `EntitlementService`, `entitlement.proto` -- in the app's own schema | an identifier that could be two kinds of row, or two of one name in one Go package -- see [entitlements](entitlements.md#1-opt-in) |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |
@@ -1139,5 +1140,6 @@ the older payday wrote.
 | [client.md](client.md) | what a page does with what this generates |
 | [testing.md](testing.md) | asserting that a declaration means what you thought |
 | [meters.md](meters.md) | what each tenant holds, declared beside the entities and measured for a bill |
+| [entitlements.md](entitlements.md) | what each tenant is entitled to, copied from a billing service and read in the write's transaction |
 | [schema.md](../schema.md) | why payday owns these entities, and what it costs |
 | [runtime.md](../runtime.md) | what `List` and `Watch` generate, and what is refused |

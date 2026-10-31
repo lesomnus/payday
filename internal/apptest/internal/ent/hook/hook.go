@@ -57,6 +57,18 @@ func (f CellFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CellMutation", m)
 }
 
+// The EntitlementFunc type is an adapter to allow the use of ordinary
+// function as Entitlement mutator.
+type EntitlementFunc func(context.Context, *ent.EntitlementMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EntitlementFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EntitlementMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EntitlementMutation", m)
+}
+
 // The EventFunc type is an adapter to allow the use of ordinary
 // function as Event mutator.
 type EventFunc func(context.Context, *ent.EventMutation) (ent.Value, error)

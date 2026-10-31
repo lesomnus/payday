@@ -20,6 +20,8 @@ type Tx struct {
 	Audit *AuditClient
 	// Cell is the client for interacting with the Cell builders.
 	Cell *CellClient
+	// Entitlement is the client for interacting with the Entitlement builders.
+	Entitlement *EntitlementClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
 	// Fact is the client for interacting with the Fact builders.
@@ -197,6 +199,7 @@ func (tx *Tx) init() {
 	tx.Archived = NewArchivedClient(tx.config)
 	tx.Audit = NewAuditClient(tx.config)
 	tx.Cell = NewCellClient(tx.config)
+	tx.Entitlement = NewEntitlementClient(tx.config)
 	tx.Event = NewEventClient(tx.config)
 	tx.Fact = NewFactClient(tx.config)
 	tx.Fleet = NewFleetClient(tx.config)

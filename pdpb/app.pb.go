@@ -51,19 +51,21 @@ const (
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second, [App.notify] the third, [App.meters] the fourth.
+// second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
+// the fifth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
 // them from the option meant to settle it would be worse than getting none.
 type App struct {
-	state              protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Past    *Past                  `protobuf:"bytes,1,opt,name=past"`
-	xxx_hidden_Domains *Domains               `protobuf:"bytes,2,opt,name=domains"`
-	xxx_hidden_Notify  *Notify                `protobuf:"bytes,3,opt,name=notify"`
-	xxx_hidden_Meters  *[]*Meter              `protobuf:"bytes,4,rep,name=meters"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Past         *Past                  `protobuf:"bytes,1,opt,name=past"`
+	xxx_hidden_Domains      *Domains               `protobuf:"bytes,2,opt,name=domains"`
+	xxx_hidden_Notify       *Notify                `protobuf:"bytes,3,opt,name=notify"`
+	xxx_hidden_Meters       *[]*Meter              `protobuf:"bytes,4,rep,name=meters"`
+	xxx_hidden_Entitlements *Entitlements          `protobuf:"bytes,5,opt,name=entitlements"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *App) Reset() {
@@ -121,6 +123,13 @@ func (x *App) GetMeters() []*Meter {
 	return nil
 }
 
+func (x *App) GetEntitlements() *Entitlements {
+	if x != nil {
+		return x.xxx_hidden_Entitlements
+	}
+	return nil
+}
+
 func (x *App) SetPast(v *Past) {
 	x.xxx_hidden_Past = v
 }
@@ -135,6 +144,10 @@ func (x *App) SetNotify(v *Notify) {
 
 func (x *App) SetMeters(v []*Meter) {
 	x.xxx_hidden_Meters = &v
+}
+
+func (x *App) SetEntitlements(v *Entitlements) {
+	x.xxx_hidden_Entitlements = v
 }
 
 func (x *App) HasPast() bool {
@@ -158,6 +171,13 @@ func (x *App) HasNotify() bool {
 	return x.xxx_hidden_Notify != nil
 }
 
+func (x *App) HasEntitlements() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Entitlements != nil
+}
+
 func (x *App) ClearPast() {
 	x.xxx_hidden_Past = nil
 }
@@ -168,6 +188,10 @@ func (x *App) ClearDomains() {
 
 func (x *App) ClearNotify() {
 	x.xxx_hidden_Notify = nil
+}
+
+func (x *App) ClearEntitlements() {
+	x.xxx_hidden_Entitlements = nil
 }
 
 type App_builder struct {
@@ -209,6 +233,17 @@ type App_builder struct {
 	// entities as well as the app's -- a seat is a Holder -- and an overlay may
 	// add nothing to payday's declaration of one.
 	Meters []*Meter
+	// Entitlements opts this app into a copy of what each of its tenants is
+	// entitled to, kept in its own database and read inside the transaction of
+	// the write it decides (payday#185):
+	//
+	//	option (payday.app) = {entitlements: {domain: 43}};
+	//
+	// `pd gen` then writes payday's `Entitlement` into the app at that domain,
+	// and takes it out again when this goes. What fills it is a source of
+	// grants -- a billing service -- speaking `payday.GrantService`, followed by
+	// `entitle.Follower`. See [Entitlements].
+	Entitlements *Entitlements
 }
 
 func (b0 App_builder) Build() *App {
@@ -219,6 +254,7 @@ func (b0 App_builder) Build() *App {
 	x.xxx_hidden_Domains = b.Domains
 	x.xxx_hidden_Notify = b.Notify
 	x.xxx_hidden_Meters = &b.Meters
+	x.xxx_hidden_Entitlements = b.Entitlements
 	return m0
 }
 
@@ -619,16 +655,99 @@ func (*notify_Tenanted) isNotify_Tenancy() {}
 
 func (*notify_Global) isNotify_Tenancy() {}
 
+// Entitlements is the domain of the one table an app's copy of its tenants'
+// entitlements is kept in: one row for each grant a source issued a tenant
+// (payday#185).
+//
+// # Why the app numbers it
+//
+// For the reason [Past] says: a table an app opts into is numbered by the app,
+// because payday cannot fix a number for it without taking that number from
+// every app that already spent it. The generator finds it by its `own:`
+// marker, never by its number.
+//
+// A domain like any other: 7..247, and one no other entity of the app's
+// declares, the past's, the notifications' and the two of [Domains] included.
+// Chosen once and never changed, since an identifier carries it for as long
+// as anything names the row.
+//
+// # Why nothing else is said here
+//
+// What a tenant may have is the source's to say and the app's to read, and
+// neither is a declaration: a key is a string the source grants and the app
+// asks for (`entitle.Has(ctx, r, "acme.export")`), and a key nobody granted
+// is a tenant not entitled to it, which is the answer it should be. A list of
+// keys here would be a second copy of the source's price book in every app it
+// sells for, and the one that went stale would be the one that answers.
+type Entitlements struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Domain uint32                 `protobuf:"varint,1,opt,name=domain"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *Entitlements) Reset() {
+	*x = Entitlements{}
+	mi := &file_payday_app_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Entitlements) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Entitlements) ProtoMessage() {}
+
+func (x *Entitlements) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Entitlements) GetDomain() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Domain
+	}
+	return 0
+}
+
+func (x *Entitlements) SetDomain(v uint32) {
+	x.xxx_hidden_Domain = v
+}
+
+type Entitlements_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Domain is the domain of `Entitlement`.
+	Domain uint32
+}
+
+func (b0 Entitlements_builder) Build() *Entitlements {
+	m0 := &Entitlements{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Domain = b.Domain
+	return m0
+}
+
 var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\x1a\x12payday/meter.proto\"\xa1\x01\n" +
+	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\x1a\x12payday/meter.proto\"\xdb\x01\n" +
 	"\x03App\x12 \n" +
 	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
 	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\x12&\n" +
 	"\x06notify\x18\x03 \x01(\v2\x0e.payday.NotifyR\x06notify\x12%\n" +
-	"\x06meters\x18\x04 \x03(\v2\r.payday.MeterR\x06meters\"0\n" +
+	"\x06meters\x18\x04 \x03(\v2\r.payday.MeterR\x06meters\x128\n" +
+	"\fentitlements\x18\x05 \x01(\v2\x14.payday.EntitlementsR\fentitlements\"0\n" +
 	"\x04Past\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
@@ -640,30 +759,34 @@ const file_payday_app_proto_rawDesc = "" +
 	"\areceipt\x18\x02 \x01(\rR\areceipt\x125\n" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
 	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06globalB\t\n" +
-	"\atenancyJ\x04\b\x03\x10\x04B&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\atenancyJ\x04\b\x03\x10\x04\"&\n" +
+	"\fEntitlements\x12\x16\n" +
+	"\x06domain\x18\x01 \x01(\rR\x06domainB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_payday_app_proto_goTypes = []any{
 	(*App)(nil),             // 0: payday.App
 	(*Past)(nil),            // 1: payday.Past
 	(*Domains)(nil),         // 2: payday.Domains
 	(*Notify)(nil),          // 3: payday.Notify
-	(*Meter)(nil),           // 4: payday.Meter
-	(*Entity_Tenanted)(nil), // 5: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 6: payday.Entity.Global
+	(*Entitlements)(nil),    // 4: payday.Entitlements
+	(*Meter)(nil),           // 5: payday.Meter
+	(*Entity_Tenanted)(nil), // 6: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 7: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
 	1, // 0: payday.App.past:type_name -> payday.Past
 	2, // 1: payday.App.domains:type_name -> payday.Domains
 	3, // 2: payday.App.notify:type_name -> payday.Notify
-	4, // 3: payday.App.meters:type_name -> payday.Meter
-	5, // 4: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
-	6, // 5: payday.Notify.global:type_name -> payday.Entity.Global
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 3: payday.App.meters:type_name -> payday.Meter
+	4, // 4: payday.App.entitlements:type_name -> payday.Entitlements
+	6, // 5: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	7, // 6: payday.Notify.global:type_name -> payday.Entity.Global
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -683,7 +806,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

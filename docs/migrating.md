@@ -3,6 +3,22 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Entitlements, for an app that declares them
+
+**Applies if** a billing service decides what your tenants may have, and your
+app enforces it (payday#185). Nothing changes for an app that does not: no
+declaration is no copy and no code generated.
+
+Declare `option (payday.app) = {entitlements: {domain: <a domain of yours>}}`
+and regenerate; `pd gen` copies payday's `Entitlement` in and writes
+`pd.Entitlements` and `pd.EntitlementCopy`. Wire an `entitle.Follower` with a
+client of the billing service's `payday.GrantService` as its `Source` and put
+it in the spin list; read `entitle.Has` and `entitle.Limit` in the transaction
+of each write they decide. An app pinned to an older
+`buf.build/payday/payday` runs `buf dep update` first. [The
+guide](guide/entitlements.md) has all of it, and `pd doctor` says what is
+missing.
+
 ## Meters, for an app that declares them
 
 **Applies if** you want payday to measure what your tenants hold for a bill

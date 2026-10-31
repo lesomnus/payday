@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiggEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSKWAQoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSABCCQoHdGVuYW5jeUoECAMQBEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_payday_entity, file_payday_meter]);
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkirgEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMiIwoEUGFzdBINCgVldmVudBgBIAEoDRIMCgRmYWN0GAIgASgNIisKB0RvbWFpbnMSEAoIYXJjaGl2ZWQYASABKA0SDgoGYWNjZXNzGAIgASgNIpYBCgZOb3RpZnkSFAoMbm90aWZpY2F0aW9uGAEgASgNEg8KB3JlY2VpcHQYAiABKA0SKwoIdGVuYW50ZWQYBCABKAsyFy5wYXlkYXkuRW50aXR5LlRlbmFudGVkSAASJwoGZ2xvYmFsGAUgASgLMhUucGF5ZGF5LkVudGl0eS5HbG9iYWxIAEIJCgd0ZW5hbmN5SgQIAxAEIh4KDEVudGl0bGVtZW50cxIOCgZkb21haW4YASABKA1CJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_payday_entity, file_payday_meter]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -49,7 +49,8 @@ export const file_payday_app: GenFile = /*@__PURE__*/
  * say: a file either says it or does not. It is a message rather than a `bool`
  * so that something could be added to it without every app that set it having
  * to change, and [App.past] is the first thing that was, [App.domains] the
- * second, [App.notify] the third, [App.meters] the fourth.
+ * second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
+ * the fifth.
  *
  * Setting it on more than one package is refused. Two answers to "where do
  * payday's entities go" is the thing this exists to avoid, and getting two of
@@ -113,6 +114,22 @@ export type App = Message<"payday.App"> & {
    * @generated from field: repeated payday.Meter meters = 4;
    */
   meters: Meter[];
+
+  /**
+   * Entitlements opts this app into a copy of what each of its tenants is
+   * entitled to, kept in its own database and read inside the transaction of
+   * the write it decides (payday#185):
+   *
+   * 	option (payday.app) = {entitlements: {domain: 43}};
+   *
+   * `pd gen` then writes payday's `Entitlement` into the app at that domain,
+   * and takes it out again when this goes. What fills it is a source of
+   * grants -- a billing service -- speaking `payday.GrantService`, followed by
+   * `entitle.Follower`. See [Entitlements].
+   *
+   * @generated from field: payday.Entitlements entitlements = 5;
+   */
+  entitlements?: Entitlements | undefined;
 };
 
 /**
@@ -267,4 +284,48 @@ export type Notify = Message<"payday.Notify"> & {
  */
 export const NotifySchema: GenMessage<Notify> = /*@__PURE__*/
   messageDesc(file_payday_app, 3);
+
+/**
+ * Entitlements is the domain of the one table an app's copy of its tenants'
+ * entitlements is kept in: one row for each grant a source issued a tenant
+ * (payday#185).
+ *
+ * # Why the app numbers it
+ *
+ * For the reason [Past] says: a table an app opts into is numbered by the app,
+ * because payday cannot fix a number for it without taking that number from
+ * every app that already spent it. The generator finds it by its `own:`
+ * marker, never by its number.
+ *
+ * A domain like any other: 7..247, and one no other entity of the app's
+ * declares, the past's, the notifications' and the two of [Domains] included.
+ * Chosen once and never changed, since an identifier carries it for as long
+ * as anything names the row.
+ *
+ * # Why nothing else is said here
+ *
+ * What a tenant may have is the source's to say and the app's to read, and
+ * neither is a declaration: a key is a string the source grants and the app
+ * asks for (`entitle.Has(ctx, r, "acme.export")`), and a key nobody granted
+ * is a tenant not entitled to it, which is the answer it should be. A list of
+ * keys here would be a second copy of the source's price book in every app it
+ * sells for, and the one that went stale would be the one that answers.
+ *
+ * @generated from message payday.Entitlements
+ */
+export type Entitlements = Message<"payday.Entitlements"> & {
+  /**
+   * Domain is the domain of `Entitlement`.
+   *
+   * @generated from field: uint32 domain = 1;
+   */
+  domain: number;
+};
+
+/**
+ * Describes the message payday.Entitlements.
+ * Use `create(EntitlementsSchema)` to create a new message.
+ */
+export const EntitlementsSchema: GenMessage<Entitlements> = /*@__PURE__*/
+  messageDesc(file_payday_app, 4);
 

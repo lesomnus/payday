@@ -15,6 +15,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/entitlement"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -53,6 +54,8 @@ type Client struct {
 	Audit *AuditClient
 	// Cell is the client for interacting with the Cell builders.
 	Cell *CellClient
+	// Entitlement is the client for interacting with the Entitlement builders.
+	Entitlement *EntitlementClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
 	// Fact is the client for interacting with the Fact builders.
@@ -109,6 +112,7 @@ func (c *Client) init() {
 	c.Archived = NewArchivedClient(c.config)
 	c.Audit = NewAuditClient(c.config)
 	c.Cell = NewCellClient(c.config)
+	c.Entitlement = NewEntitlementClient(c.config)
 	c.Event = NewEventClient(c.config)
 	c.Fact = NewFactClient(c.config)
 	c.Fleet = NewFleetClient(c.config)
@@ -226,6 +230,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Archived:                  NewArchivedClient(cfg),
 		Audit:                     NewAuditClient(cfg),
 		Cell:                      NewCellClient(cfg),
+		Entitlement:               NewEntitlementClient(cfg),
 		Event:                     NewEventClient(cfg),
 		Fact:                      NewFactClient(cfg),
 		Fleet:                     NewFleetClient(cfg),
@@ -270,6 +275,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Archived:                  NewArchivedClient(cfg),
 		Audit:                     NewAuditClient(cfg),
 		Cell:                      NewCellClient(cfg),
+		Entitlement:               NewEntitlementClient(cfg),
 		Event:                     NewEventClient(cfg),
 		Fact:                      NewFactClient(cfg),
 		Fleet:                     NewFleetClient(cfg),
@@ -366,10 +372,10 @@ func (c *Client) InTx() bool {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
-		c.Job, c.Joint, c.Machine, c.NotificationReceiptRecord, c.NotificationRecord,
-		c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal,
-		c.Stint, c.Tally, c.Tenant, c.Thing,
+		c.Access, c.Archived, c.Audit, c.Cell, c.Entitlement, c.Event, c.Fact, c.Fleet,
+		c.Holder, c.Job, c.Joint, c.Machine, c.NotificationReceiptRecord,
+		c.NotificationRecord, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
+		c.RowSeal, c.Seal, c.Stint, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Use(hooks...)
 	}
@@ -379,10 +385,10 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Access, c.Archived, c.Audit, c.Cell, c.Event, c.Fact, c.Fleet, c.Holder,
-		c.Job, c.Joint, c.Machine, c.NotificationReceiptRecord, c.NotificationRecord,
-		c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot, c.RowSeal, c.Seal,
-		c.Stint, c.Tally, c.Tenant, c.Thing,
+		c.Access, c.Archived, c.Audit, c.Cell, c.Entitlement, c.Event, c.Fact, c.Fleet,
+		c.Holder, c.Job, c.Joint, c.Machine, c.NotificationReceiptRecord,
+		c.NotificationRecord, c.Outbox, c.Owed, c.Pairing, c.Pulse, c.Reading, c.Robot,
+		c.RowSeal, c.Seal, c.Stint, c.Tally, c.Tenant, c.Thing,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -399,6 +405,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Audit.mutate(ctx, m)
 	case *CellMutation:
 		return c.Cell.mutate(ctx, m)
+	case *EntitlementMutation:
+		return c.Entitlement.mutate(ctx, m)
 	case *EventMutation:
 		return c.Event.mutate(ctx, m)
 	case *FactMutation:
@@ -991,6 +999,155 @@ func (c *CellClient) mutate(ctx context.Context, m *CellMutation) (Value, error)
 		return (&CellDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Cell mutation op: %q", m.Op())
+	}
+}
+
+// EntitlementClient is a client for the Entitlement schema.
+type EntitlementClient struct {
+	config
+}
+
+// NewEntitlementClient returns a client for the Entitlement from the given config.
+func NewEntitlementClient(c config) *EntitlementClient {
+	return &EntitlementClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `entitlement.Hooks(f(g(h())))`.
+func (c *EntitlementClient) Use(hooks ...Hook) {
+	c.hooks.Entitlement = append(c.hooks.Entitlement, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `entitlement.Intercept(f(g(h())))`.
+func (c *EntitlementClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Entitlement = append(c.inters.Entitlement, interceptors...)
+}
+
+// Create returns a builder for creating a Entitlement entity.
+func (c *EntitlementClient) Create() *EntitlementCreate {
+	mutation := newEntitlementMutation(c.config, OpCreate)
+	return &EntitlementCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Entitlement entities.
+func (c *EntitlementClient) CreateBulk(builders ...*EntitlementCreate) *EntitlementCreateBulk {
+	return &EntitlementCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EntitlementClient) MapCreateBulk(slice any, setFunc func(*EntitlementCreate, int)) *EntitlementCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EntitlementCreateBulk{err: fmt.Errorf("calling to EntitlementClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EntitlementCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EntitlementCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Entitlement.
+func (c *EntitlementClient) Update() *EntitlementUpdate {
+	mutation := newEntitlementMutation(c.config, OpUpdate)
+	return &EntitlementUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EntitlementClient) UpdateOne(_m *Entitlement) *EntitlementUpdateOne {
+	mutation := newEntitlementMutation(c.config, OpUpdateOne, withEntitlement(_m))
+	return &EntitlementUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneId returns an update builder for the given id.
+func (c *EntitlementClient) UpdateOneId(id uuid.UUID) *EntitlementUpdateOne {
+	mutation := newEntitlementMutation(c.config, OpUpdateOne, withEntitlementId(id))
+	return &EntitlementUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Entitlement.
+func (c *EntitlementClient) Delete() *EntitlementDelete {
+	mutation := newEntitlementMutation(c.config, OpDelete)
+	return &EntitlementDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EntitlementClient) DeleteOne(_m *Entitlement) *EntitlementDeleteOne {
+	return c.DeleteOneId(_m.Id)
+}
+
+// DeleteOneId returns a builder for deleting the given entity by its id.
+func (c *EntitlementClient) DeleteOneId(id uuid.UUID) *EntitlementDeleteOne {
+	builder := c.Delete().Where(entitlement.Id(id))
+	builder.mutation.id = &id
+	builder.mutation.SetOp(OpDeleteOne)
+	return &EntitlementDeleteOne{builder}
+}
+
+// Query returns a query builder for Entitlement.
+func (c *EntitlementClient) Query() *EntitlementQuery {
+	return &EntitlementQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEntitlement},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Entitlement entity by its id.
+func (c *EntitlementClient) Get(ctx context.Context, id uuid.UUID) (*Entitlement, error) {
+	return c.Query().Where(entitlement.Id(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EntitlementClient) GetX(ctx context.Context, id uuid.UUID) *Entitlement {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTenant queries the tenant edge of a Entitlement.
+func (c *EntitlementClient) QueryTenant(_m *Entitlement) *TenantQuery {
+	query := (&TenantClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(entitlement.Table, entitlement.FieldId, id),
+			sqlgraph.To(tenant.Table, tenant.FieldId),
+			sqlgraph.Edge(sqlgraph.M2O, false, entitlement.TenantTable, entitlement.TenantColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EntitlementClient) Hooks() []Hook {
+	return c.hooks.Entitlement
+}
+
+// Interceptors returns the client interceptors.
+func (c *EntitlementClient) Interceptors() []Interceptor {
+	return c.inters.Entitlement
+}
+
+func (c *EntitlementClient) mutate(ctx context.Context, m *EntitlementMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EntitlementCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EntitlementUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EntitlementUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EntitlementDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Entitlement mutation op: %q", m.Op())
 	}
 }
 
@@ -4046,13 +4203,15 @@ func (c *ThingClient) mutate(ctx context.Context, m *ThingMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Job, Joint, Machine,
-		NotificationReceiptRecord, NotificationRecord, Outbox, Owed, Pairing, Pulse,
-		Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing []ent.Hook
+		Access, Archived, Audit, Cell, Entitlement, Event, Fact, Fleet, Holder, Job,
+		Joint, Machine, NotificationReceiptRecord, NotificationRecord, Outbox, Owed,
+		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant,
+		Thing []ent.Hook
 	}
 	inters struct {
-		Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Job, Joint, Machine,
-		NotificationReceiptRecord, NotificationRecord, Outbox, Owed, Pairing, Pulse,
-		Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing []ent.Interceptor
+		Access, Archived, Audit, Cell, Entitlement, Event, Fact, Fleet, Holder, Job,
+		Joint, Machine, NotificationReceiptRecord, NotificationRecord, Outbox, Owed,
+		Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant,
+		Thing []ent.Interceptor
 	}
 )

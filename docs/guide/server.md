@@ -934,8 +934,10 @@ once, so a loop is still written to be safe run twice; see
 [one process of many](../runtime.md#one-process-of-many-54).
 
 payday's own loops go on the same list: the outbox's `pd.Drain`, the trail's
-`trail.Sweep`, and for an app that declares meters, the `meter.Reader` that
-measures them ([meters](meters.md#4-reading-them)).
+`trail.Sweep`, for an app that declares meters, the `meter.Reader` that
+measures them ([meters](meters.md#4-reading-them)), and for one that declares
+entitlements, the `entitle.Follower` that keeps the copy
+([entitlements](entitlements.md#4-keeping-it-the-follower)).
 
 The name is the lock, so renaming a loop changes it: through a rolling upgrade
 the old build runs it under the old name and the new build under the new one,

@@ -675,6 +675,19 @@ func doctorSchema(l Layout) []Finding {
 			continue
 		}
 
+		if i := slices.IndexFunc(entitleFiles, func(p pastFile) bool { return p.Name == name }); i >= 0 {
+			if l.Entitlements != nil {
+				continue
+			}
+			vs = append(vs, Finding{
+				What: fmt.Sprintf("%s extends payday's %s, which is written into an app that declares entitlements, "+
+					"and this one declares none -- so it is never merged",
+					l.Rel(DirExt, "payday", filepath.Base(v)), entitleFiles[i].Message),
+				Fix: "option (payday.app) = {entitlements: {domain: <domain>}};",
+			})
+			continue
+		}
+
 		if i := slices.IndexFunc(notifyFiles, func(p pastFile) bool { return p.Name == name }); i >= 0 {
 			if l.Notify != nil {
 				continue
@@ -710,6 +723,9 @@ func doctorSchema(l Layout) []Finding {
 		}
 		for _, p := range notifyFiles {
 			names = append(names, strings.TrimSuffix(p.Name, ".proto")+" (with notify)")
+		}
+		for _, p := range entitleFiles {
+			names = append(names, strings.TrimSuffix(p.Name, ".proto")+" (with entitlements)")
 		}
 
 		vs = append(vs, Finding{

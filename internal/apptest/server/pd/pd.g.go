@@ -20,6 +20,7 @@ import (
 	access "github.com/lesomnus/payday/access"
 	audit "github.com/lesomnus/payday/audit"
 	batch "github.com/lesomnus/payday/batch"
+	entitle "github.com/lesomnus/payday/entitle"
 	frame "github.com/lesomnus/payday/frame"
 	gate "github.com/lesomnus/payday/gate"
 	grpcx "github.com/lesomnus/payday/grpcx"
@@ -30,6 +31,7 @@ import (
 	entArchived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	entAudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	entCell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	entEntitlement "github.com/lesomnus/payday/internal/apptest/internal/ent/entitlement"
 	entEvent "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	entFact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	entFleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -120,6 +122,7 @@ const (
 	ArchivedDomain                  pdid.Domain = 5   // "archived"
 	AuditDomain                     pdid.Domain = 3   // "audit"
 	CellDomain                      pdid.Domain = 10  // "cell"
+	EntitlementDomain               pdid.Domain = 43  // "entitlement"
 	EventDomain                     pdid.Domain = 17  // "event"
 	FactDomain                      pdid.Domain = 18  // "fact"
 	FleetDomain                     pdid.Domain = 9   // "fleet"
@@ -148,6 +151,7 @@ func init() {
 	pdid.Register("app.Archived", ArchivedDomain, "archived")
 	pdid.Register("app.Audit", AuditDomain, "audit")
 	pdid.Register("app.Cell", CellDomain, "cell")
+	pdid.Register("app.Entitlement", EntitlementDomain, "entitlement")
 	pdid.Register("app.Event", EventDomain, "event")
 	pdid.Register("app.Fact", FactDomain, "fact")
 	pdid.Register("app.Fleet", FleetDomain, "fleet")
@@ -180,6 +184,7 @@ var Domains = map[string]pdid.Domain{
 	"app.Archived":                  ArchivedDomain,
 	"app.Audit":                     AuditDomain,
 	"app.Cell":                      CellDomain,
+	"app.Entitlement":               EntitlementDomain,
 	"app.Event":                     EventDomain,
 	"app.Fact":                      FactDomain,
 	"app.Fleet":                     FleetDomain,
@@ -238,6 +243,8 @@ var IndexRenames = []rename.Index{
 	{Table: "audit", From: "audit_tenant_id_domain_date_created", To: "audit_by_tenant_domain"},
 	{Table: "audit", From: "audit_actor_id_date_created", To: "audit_by_actor"},
 	{Table: "audit", From: "audit_date_created_id", To: "audit_by_time"},
+	{Table: "entitlement", From: "entitlement_grant_id", To: "entitlement_grant"},
+	{Table: "entitlement", From: "entitlement_tenant_id_key", To: "entitlement_key"},
 	{Table: "event", From: "event_tenant_id_date_created_id", To: "event_page"},
 	{Table: "event", From: "event_subject_id_occurred_at", To: "event_subject"},
 	{Table: "event", From: "event_cause_id", To: "event_cause"},
@@ -339,6 +346,16 @@ func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
 	}
 
 	return entCell.TenantIdIn(vs...), nil
+}
+
+// EntitlementScope: a row belongs to the tenant its "tenant" reaches.
+func (wall) EntitlementScope(ctx context.Context) (predicate.Entitlement, error) {
+	vs, all, err := frame.Narrow(ctx)
+	if all || err != nil {
+		return nil, err
+	}
+
+	return entEntitlement.TenantIdIn(vs...), nil
 }
 
 // EventScope: a row belongs to the tenant its "tenant" reaches.
@@ -581,6 +598,11 @@ func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
 	}
 
 	return entCell.IdIn(vs...), nil
+}
+
+// EntitlementScope: in no set -- it declared no field 3, so this narrows nothing.
+func (x grouped) EntitlementScope(ctx context.Context) (predicate.Entitlement, error) {
+	return nil, nil
 }
 
 // EventScope: in no set -- it declared no field 3, so this narrows nothing.
@@ -5520,6 +5542,8 @@ func described(key pdid.Id) (protoreflect.MessageDescriptor, []protoreflect.Fiel
 		return describedAudit.md, describedAudit.secret, describedAudit.personal
 	case CellDomain:
 		return describedCell.md, describedCell.secret, describedCell.personal
+	case EntitlementDomain:
+		return describedEntitlement.md, describedEntitlement.secret, describedEntitlement.personal
 	case EventDomain:
 		return describedEvent.md, describedEvent.secret, describedEvent.personal
 	case FactDomain:
@@ -5597,6 +5621,9 @@ var (
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedCell = describe((*apptest.Cell)(nil),
+		[]protoreflect.FieldNumber{},
+		[]protoreflect.FieldNumber{})
+	describedEntitlement = describe((*apptest.Entitlement)(nil),
 		[]protoreflect.FieldNumber{},
 		[]protoreflect.FieldNumber{})
 	describedEvent = describe((*apptest.Event)(nil),
@@ -5770,6 +5797,33 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 
 	case CellDomain:
 		row, ok := image.(*apptest.Cell)
+		if !ok {
+			return uuid.Nil(), []byte{}, nil
+		}
+
+		b := []byte{}
+		if keep {
+			kept := row
+			v, err := proto.Marshal(kept)
+			if err != nil {
+				return uuid.Nil(), nil, err
+			}
+			b = v
+		}
+
+		if !row.HasTenant() {
+			return uuid.Nil(), b, nil
+		}
+
+		k, err := entuuid.FromBytes(row.GetTenant().GetId())
+		if err != nil {
+			return uuid.Nil(), nil, err
+		}
+
+		return k, b, nil
+
+	case EntitlementDomain:
+		row, ok := image.(*apptest.Entitlement)
 		if !ok {
 			return uuid.Nil(), []byte{}, nil
 		}
@@ -6243,6 +6297,8 @@ func left(ctx context.Context, s bare.Server, key pdid.Id, image proto.Message) 
 	switch key.Domain() {
 	case CellDomain:
 		vs, err = rowsCell(ctx, s.Db, entCell.IdEQ(uuid.UUID(key)))
+	case EntitlementDomain:
+		vs, err = rowsEntitlement(ctx, s.Db, entEntitlement.IdEQ(uuid.UUID(key)))
 	case EventDomain:
 		vs, err = rowsEvent(ctx, s.Db, entEvent.IdEQ(uuid.UUID(key)))
 	case FactDomain:
@@ -6646,6 +6702,9 @@ func Digests(ctx context.Context, db *ent.Client, d *audit.Digest, p trail.Polic
 	if err := audit.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
 		return out, fmt.Errorf("cell: %w", err)
 	}
+	if err := audit.CheckKind(ctx, d, checkedEntitlement(db), archived, &out); err != nil {
+		return out, fmt.Errorf("entitlement: %w", err)
+	}
 	if err := audit.CheckKind(ctx, d, checkedEvent(db), archived, &out); err != nil {
 		return out, fmt.Errorf("event: %w", err)
 	}
@@ -6734,6 +6793,52 @@ func checkedCell(db *ent.Client) audit.Kind {
 			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 				rows, err := rowsCell(ctx, db, entCell.IdIn(uuids(ids)...))
+				if err != nil {
+					return err
+				}
+
+				out, err = goneOf(ctx, db, ids, rows)
+				return err
+			})
+
+			return out, err
+		},
+	}
+}
+
+// checkedEntitlement is what a check of the rows reads of the entitlement kind.
+func checkedEntitlement(db *ent.Client) audit.Kind {
+	read := func(ctx context.Context, ps ...predicate.Entitlement) (audit.Page, error) {
+		var out audit.Page
+		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+			rows, err := rowsEntitlement(ctx, db, ps...)
+			if err != nil {
+				return err
+			}
+
+			recorded, err := newestDigests(ctx, db, objects(rows))
+			out = audit.Page{Rows: rows, Recorded: recorded}
+			return err
+		})
+
+		return out, err
+	}
+
+	return audit.Kind{
+		Domain: EntitlementDomain,
+		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
+			return read(ctx, entEntitlement.IdGT(uuid.UUID(after)))
+		},
+		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
+			return read(ctx, entEntitlement.IdIn(uuids(ids)...))
+		},
+		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
+			return trailObjects(ctx, db, EntitlementDomain, yield)
+		},
+		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
+			var out map[pdid.Id]*audit.Recorded
+			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
+				rows, err := rowsEntitlement(ctx, db, entEntitlement.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -7573,6 +7678,25 @@ func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audi
 	return out, nil
 }
 
+// rowsEntitlement is the rows `ps` says of the entitlement kind -- every row there is,
+// live or erased softly -- at most a page of them in identifier order, each as
+// a Get reads it.
+func rowsEntitlement(ctx context.Context, db *ent.Client, ps ...predicate.Entitlement) ([]audit.Live, error) {
+	q := db.Entitlement.Query().Where(ps...)
+
+	vs, err := q.Order(entEntitlement.ById()).Limit(audit.RowsPage).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]audit.Live, len(vs))
+	for i, v := range vs {
+		out[i] = audit.Live{Object: pdid.Id(v.Id), Row: v.Proto()}
+	}
+
+	return out, nil
+}
+
 // rowsEvent is the rows `ps` says of the event kind -- every row there is,
 // live or erased softly -- at most a page of them in identifier order, each as
 // a Get reads it.
@@ -8156,6 +8280,8 @@ func record(ctx context.Context, db *ent.Client, content audit.Contents, action 
 			switch d {
 			case CellDomain:
 				rows, err = rowsCell(ctx, db, entCell.IdIn(uuids(page)...))
+			case EntitlementDomain:
+				rows, err = rowsEntitlement(ctx, db, entEntitlement.IdIn(uuids(page)...))
 			case EventDomain:
 				rows, err = rowsEvent(ctx, db, entEvent.IdIn(uuids(page)...))
 			case FactDomain:
@@ -8306,6 +8432,8 @@ func (s trailStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Doma
 		switch d {
 		case CellDomain:
 			rows, err = rowsCell(ctx, s.db, entCell.IdIn(uuids(ids)...))
+		case EntitlementDomain:
+			rows, err = rowsEntitlement(ctx, s.db, entEntitlement.IdIn(uuids(ids)...))
 		case EventDomain:
 			rows, err = rowsEvent(ctx, s.db, entEvent.IdIn(uuids(ids)...))
 		case FactDomain:
@@ -10798,6 +10926,8 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 			switch d {
 			case CellDomain:
 				rows, err = rowsCell(ctx, s.db, entCell.IdIn(uuids(page)...))
+			case EntitlementDomain:
+				rows, err = rowsEntitlement(ctx, s.db, entEntitlement.IdIn(uuids(page)...))
 			case EventDomain:
 				rows, err = rowsEvent(ctx, s.db, entEvent.IdIn(uuids(page)...))
 			case FactDomain:
@@ -11848,6 +11978,274 @@ func MeterTenants(db *ent.Client) func(ctx context.Context, after pdid.Id, limit
 	}
 }
 
+// Entitlements is this app's copy of what its tenants are entitled to
+// (payday#185), read on `drv`: what `entitle.Has`, `entitle.Limit`,
+// `entitle.Get` and `entitle.All` read -- on the transaction of the write
+// they decide, so that a limit's lock is held until that write commits.
+//
+//	drv, tx, err := dialect.BeginTx(ctx, s.drv)
+//	...
+//	limit, err := entitle.Limit(ctx, pd.Entitlements(drv), "acme.robots")
+func Entitlements(drv dialect.Driver) entitle.Reader {
+	return entitlementReader{drv: drv, db: ent.NewClient(ent.Driver(drv))}
+}
+
+type entitlementReader struct {
+	drv dialect.Driver
+	db  *ent.Client
+}
+
+func (r entitlementReader) Driver() dialect.Driver { return r.drv }
+
+// Rows reads one tenant's rows of the copy, of one key or of all, in the
+// order of their identifiers, and locks them `FOR UPDATE` when `lock` --
+// outside SQLite, whose transactions are written one at a time.
+func (r entitlementReader) Rows(ctx context.Context, tenant pdid.Id, key string, lock bool) ([]entitle.Row, error) {
+	q := r.db.Entitlement.Query().Where(entEntitlement.TenantId(tenant.Uuid()))
+	if key != "" {
+		q = q.Where(entEntitlement.Key(key))
+	}
+	q = q.Order(entEntitlement.ById())
+	if lock && r.drv.Dialect() != dialect.SQLite {
+		q.Modify(func(s *sql.Selector) { s.ForUpdate() })
+	}
+
+	vs, err := q.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]entitle.Row, len(vs))
+	for i, v := range vs {
+		out[i] = entitlementRow(v)
+	}
+
+	return out, nil
+}
+
+// entitlementRow is a row of the copy as the `entitle` package reads one.
+func entitlementRow(v *ent.Entitlement) entitle.Row {
+	return entitle.Row{
+		Id:      pdid.Id(v.Id),
+		Tenant:  pdid.Id(v.TenantId),
+		Key:     v.Key,
+		Value:   entitlementValue(v.Value, v.Amount),
+		From:    entitlementFrom(v.ValidFrom),
+		Until:   v.ValidUntil,
+		Grant:   v.GrantId,
+		Version: v.GrantVersion,
+	}
+}
+
+// entitlementFrom is when a row's grant begins: from always, for one that
+// says no beginning.
+func entitlementFrom(v *time.Time) time.Time {
+	if v == nil {
+		return time.Time{}
+	}
+
+	return *v
+}
+
+// entitlementValue is what a row's value and amount say, by the names of
+// the enum's values: none, for a value this build does not know.
+func entitlementValue(v int32, n int64) entitle.Value {
+	switch apptest.EntitlementValue(v) {
+	case apptest.EntitlementValue_ENTITLEMENT_VALUE_OFF:
+		return entitle.Off
+	case apptest.EntitlementValue_ENTITLEMENT_VALUE_ON:
+		return entitle.On
+	case apptest.EntitlementValue_ENTITLEMENT_VALUE_LIMIT:
+		return entitle.Limited(n)
+	case apptest.EntitlementValue_ENTITLEMENT_VALUE_UNLIMITED:
+		return entitle.Unlimited
+	}
+
+	return entitle.None
+}
+
+// entitlementColumns is a value as a row holds it.
+func entitlementColumns(v entitle.Value) (apptest.EntitlementValue, int64) {
+	switch v.Kind() {
+	case entitle.KindOff:
+		return apptest.EntitlementValue_ENTITLEMENT_VALUE_OFF, 0
+	case entitle.KindOn:
+		return apptest.EntitlementValue_ENTITLEMENT_VALUE_ON, 0
+	case entitle.KindLimit:
+		n, _ := v.Number()
+		return apptest.EntitlementValue_ENTITLEMENT_VALUE_LIMIT, n
+	case entitle.KindUnlimited:
+		return apptest.EntitlementValue_ENTITLEMENT_VALUE_UNLIMITED, 0
+	}
+
+	return apptest.EntitlementValue_ENTITLEMENT_VALUE_UNSPECIFIED, 0
+}
+
+// EntitlementCopy is the copy as `entitle.Follower` keeps it, on `drv`:
+// each `In` a transaction of its own, framed as the deployment's work in
+// the tenant, and each write put on the trail with `content` -- the
+// trail's (`audit.content`, `audit.digest.key`), so that its digest is the
+// one a check of the rows makes again.
+//
+//	s.Spin = append(s.Spin, entitle.Follower{
+//		Source: pdpb.NewGrantServiceClient(conn),
+//		Copy:   pd.EntitlementCopy(drv, content),
+//	})
+func EntitlementCopy(drv dialect.Driver, content audit.Contents) entitle.Copy {
+	return entitlementCopy{drv: drv, db: ent.NewClient(ent.Driver(drv)), content: content}
+}
+
+type entitlementCopy struct {
+	drv     dialect.Driver
+	db      *ent.Client
+	content audit.Contents
+}
+
+// In runs `f` in a transaction of its own on `drv`, with the context framed
+// as the deployment's work in `tenant` -- nobody's, and of that tenant
+// alone -- and commits when `f` answers nil.
+func (c entitlementCopy) In(ctx context.Context, tenant pdid.Id, f func(ctx context.Context, s entitle.Store) error) error {
+	ctx = frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))
+
+	tdrv, tx, err := dialect.BeginTx(ctx, c.drv)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	s := entitlementStore{
+		entitlementReader: entitlementReader{drv: tdrv, db: ent.NewClient(ent.Driver(tdrv))},
+		content:           c.content,
+	}
+	if err := f(ctx, s); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// Tenants is every tenant the copy holds a row of, a page of at most
+// `limit` after `after` in the order of their identifiers: one seek per
+// tenant, the next `tenant_id` after the last, which the index on the
+// tenant and the key answers without reading the rows between.
+func (c entitlementCopy) Tenants(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+	out := []pdid.Id{}
+	last := after.Uuid()
+	for len(out) < limit {
+		v, err := c.db.Entitlement.Query().
+			Where(predicate.Entitlement(sql.FieldGT(entEntitlement.FieldTenantId, last))).
+			Order(ent.Asc(entEntitlement.FieldTenantId)).
+			First(ctx)
+		switch {
+		case ent.IsNotFound(err):
+			return out, nil
+		case err != nil:
+			return out, err
+		}
+
+		out = append(out, pdid.Id(v.TenantId))
+		last = v.TenantId
+	}
+
+	return out, nil
+}
+
+// entitlementStore is the copy in one transaction, as `entitle.Follower`
+// writes it.
+type entitlementStore struct {
+	entitlementReader
+	content audit.Contents
+}
+
+// Grant reads the row that copies `grant`, locked as [entitlementReader.Rows]
+// locks one.
+func (s entitlementStore) Grant(ctx context.Context, grant []byte) (entitle.Row, bool, error) {
+	q := s.db.Entitlement.Query().Where(entEntitlement.GrantId(grant))
+	if s.drv.Dialect() != dialect.SQLite {
+		q.Modify(func(s *sql.Selector) { s.ForUpdate() })
+	}
+
+	v, err := q.Only(ctx)
+	switch {
+	case ent.IsNotFound(err):
+		return entitle.Row{}, false, nil
+	case err != nil:
+		return entitle.Row{}, false, err
+	}
+
+	return entitlementRow(v), true, nil
+}
+
+// Tenant answers whether `tenant` is one of the app's tenants.
+func (s entitlementStore) Tenant(ctx context.Context, tenant pdid.Id) (bool, error) {
+	return s.db.Tenant.Query().Where(entTenant.Id(tenant.Uuid())).Exist(ctx)
+}
+
+// Put writes `r` -- a row of its own when its Id is zero -- and puts it on
+// the trail as `entitle.Applied`, in the same transaction.
+func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, error) {
+	value, amount := entitlementColumns(r.Value)
+	now := time.Now()
+
+	id := r.Id
+	if id.IsZero() {
+		id = pdid.New(EntitlementDomain)
+		q := s.db.Entitlement.Create().
+			SetId(id.Uuid()).
+			SetTenantId(r.Tenant.Uuid()).
+			SetKey(r.Key).
+			SetValue(int32(value)).
+			SetAmount(amount).
+			SetGrantId(r.Grant).
+			SetGrantVersion(r.Version).
+			SetValidUntil(r.Until).
+			SetDateUpdated(now).
+			SetDateCreated(now)
+		if !r.From.IsZero() {
+			q.SetValidFrom(r.From)
+		}
+		if err := q.Exec(ctx); err != nil {
+			return pdid.Nil, err
+		}
+	} else {
+		q := s.db.Entitlement.UpdateOneId(id.Uuid()).
+			SetValue(int32(value)).
+			SetAmount(amount).
+			SetGrantVersion(r.Version).
+			SetValidUntil(r.Until).
+			SetDateUpdated(now)
+		if r.From.IsZero() {
+			q.ClearValidFrom()
+		} else {
+			q.SetValidFrom(r.From)
+		}
+		if err := q.Exec(ctx); err != nil {
+			return pdid.Nil, err
+		}
+	}
+
+	if _, err := Record(ctx, s.db, s.content, entitle.Applied, []pdid.Id{id}); err != nil {
+		return pdid.Nil, err
+	}
+
+	return id, nil
+}
+
+// Forget deletes the rows `ids` and puts each on the trail as gone, as
+// `entitle.Forgot`, in the same transaction.
+func (s entitlementStore) Forget(ctx context.Context, ids []pdid.Id) error {
+	n, err := s.db.Entitlement.Delete().Where(entEntitlement.IdIn(uuids(ids)...)).Exec(ctx)
+	if err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return fmt.Errorf("forget %d rows of the copy, and %d were there", len(ids), n)
+	}
+
+	_, err = RecordErased(ctx, s.db, s.content, entitle.Forgot, ids)
+	return err
+}
+
 // personal is what a message holding a field declared `personal` is to the
 // access record: its key, those fields, and how to read the tenant it is in.
 type personal struct {
@@ -12893,6 +13291,7 @@ func Resources(s apptest.Server, drv dialect.Driver, guard batch.Guard, w *watch
 		&apptest.Archived{},
 		&apptest.Audit{},
 		&apptest.Cell{},
+		&apptest.Entitlement{},
 		&apptest.Event{},
 		&apptest.Fact{},
 		&apptest.Fleet{},

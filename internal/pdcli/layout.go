@@ -123,6 +123,12 @@ type Layout struct {
 	// copied in at numbers of the app's own rather than payday's (payday#163).
 	// Read off the same file as [Layout.Past] -- see [AppDomains].
 	Domains *AppDomains
+
+	// Entitlements is what the app declared of its copy of its tenants'
+	// entitlements, and nil for an app that declared none: whether payday's
+	// `Entitlement` is written into it, and at which domain (payday#185). See
+	// [Entitlements].
+	Entitlements *Entitlements
 }
 
 // The names under [Layout.Root]. They are constants rather than fields for the
@@ -236,6 +242,9 @@ func Discover(dir string) (Layout, error) {
 		return Layout{}, err
 	}
 	if l.Domains, err = readDomains(l); err != nil {
+		return Layout{}, err
+	}
+	if l.Entitlements, err = readEntitlements(l); err != nil {
 		return Layout{}, err
 	}
 

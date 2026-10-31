@@ -1,0 +1,134 @@
+edition = "2023";
+
+package payday;
+
+import "google/protobuf/timestamp.proto";
+import "orm.proto";
+import "payday.proto";
+import "payday/tenant.proto";
+
+option features.field_presence = IMPLICIT;
+
+// The Go package is the app's, and `pd gen` writes it in, as it does for every
+// entity payday ships. This one is copied only into an app that declares
+// entitlements -- `option (payday.app) = {entitlements: {domain: 43}}` -- and
+// its domain is the app's to choose; see `payday.Entitlements`.
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// Entitlement is one grant a source issued a tenant, as the app keeps a copy
+// of it (payday#185): what it gives of which key, for which window, and which
+// grant at which version it is a copy of.
+//
+// It is the tenant's: behind the wall by its edge, and gone with the tenant.
+// The grant itself is the source's -- `payday.GrantService` -- and so is
+// every change to it: the app writes these rows by applying what the source
+// says and nothing else (`entitle.Follower`), and reads them inside the
+// transaction of the write they decide (`entitle.Has`, `entitle.Limit`).
+//
+// No RPC, on purpose. A row a caller could write is a tenant entitled by
+// whoever could call it; one a caller could read is the source's price book
+// shown to whoever asked. An app that wants a tenant to see what it has
+// writes the read it means, through `entitle.All`.
+//
+// **The numbers declared here are payday's**, its 8..12 and 16..17 among
+// them. An overlay in `proto/ext/payday/entitlement.ext.proto` adds indexes,
+// and fields at the numbers left empty.
+message Entitlement {
+  bytes id = 1 [(orm.field) = {
+    type: TYPE_UUID
+    key: true
+    default: ""
+  }];
+  Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // Key is what it entitles the tenant to: `acme.export`, `acme.robots`. A
+  // word of the source's and the app's, about no one.
+  string key = 8 [
+    (orm.field) = {immutable: true},
+    (payday.field) = {personal: false}
+  ];
+
+  // Value is what it gives of the key: on or off, a number, or no bound.
+  EntitlementValue value = 9;
+
+  // Amount is the number of a value that is a limit, and zero for the others.
+  int64 amount = 10;
+
+  // GrantId is the grant at the source this row copies: its own identifier,
+  // as the source wrote it.
+  bytes grant_id = 11 [(orm.field) = {
+    type: TYPE_BYTES
+    immutable: true
+  }];
+
+  // GrantVersion is the version of that grant this row holds. An older one
+  // is never written over a newer.
+  uint64 grant_version = 12;
+
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_created = 15 [(orm.field) = {
+    immutable: true
+    default: ""
+  }];
+
+  // ValidFrom and ValidUntil are the grant's window: in force from the one,
+  // and no longer from the other. A grant may say no beginning, which is from
+  // always; every grant says when it ends.
+  google.protobuf.Timestamp valid_from = 16 [(orm.field) = {nullable: true}];
+  google.protobuf.Timestamp valid_until = 17 [(orm.field) = {default: ""}];
+
+  option (orm.message) = {
+    indexes: [
+      // A grant is copied once: what an older version is held to, and what a
+      // follower finds the row it applies to by.
+      {
+        name: "grant"
+        refs: [{
+          name: "grant_id"
+          number: 11
+        }]
+        unique: true
+      },
+      // What a read asks for, the tenant first: one key of one tenant.
+      {
+        name: "key"
+        refs: [
+          {
+            name: "tenant"
+            number: 2
+          },
+          {
+            name: "key"
+            number: 8
+          }
+        ]
+      }
+    ]
+  };
+  option (payday.entity) = {
+    own: OWN_ENTITLEMENT
+    domain: 0
+    erase: {
+      hard: {}
+    }
+    trail: {
+      recorded: {}
+    }
+  };
+}
+
+// EntitlementValue is which of the three a grant gives, beside the row's
+// amount. Unspecified is no row's: a grant says one.
+enum EntitlementValue {
+  ENTITLEMENT_VALUE_UNSPECIFIED = 0;
+
+  // A feature, switched off or on.
+  ENTITLEMENT_VALUE_OFF = 1;
+  ENTITLEMENT_VALUE_ON = 2;
+
+  // As much of something as the row's amount says.
+  ENTITLEMENT_VALUE_LIMIT = 3;
+
+  // No bound at all.
+  ENTITLEMENT_VALUE_UNLIMITED = 4;
+}

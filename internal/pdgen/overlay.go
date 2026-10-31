@@ -66,6 +66,7 @@ func CheckOwn(s *Schema) error {
 	gone := []string{}
 	past := []string{}
 	notifications := []string{}
+	entitlements := []string{}
 	for own := range owned {
 		switch {
 		case s.Has(own):
@@ -75,12 +76,20 @@ func CheckOwn(s *Schema) error {
 			past = append(past, own.String())
 		case features[own] == schema.DirNotify && s.Notify != nil:
 			notifications = append(notifications, own.String())
+		case features[own] == schema.DirEntitle && s.Entitlements != nil:
+			entitlements = append(entitlements, own.String())
 		}
 	}
 	sort.Strings(notifications)
 	if len(gone) == 0 && len(notifications) > 0 {
 		return fmt.Errorf("%s: %s declares notifications, and nothing in this schema carries the marker; run `pd gen` to restore the notification records",
 			strings.Join(notifications, ", "), s.Notify.At)
+	}
+	if len(gone) == 0 && len(entitlements) > 0 {
+		// A copy nothing reads is a tenant entitled to nothing, which is the
+		// quiet answer: every feature refused, every limit none.
+		return fmt.Errorf("%s: %s declares entitlements, and nothing in this schema carries the marker; run `pd gen` to restore the copy",
+			strings.Join(entitlements, ", "), s.Entitlements.At)
 	}
 
 	sort.Strings(past)
@@ -100,6 +109,7 @@ func CheckOwn(s *Schema) error {
 	}
 	gone = append(gone, past...)
 	gone = append(gone, notifications...)
+	gone = append(gone, entitlements...)
 	sort.Strings(gone)
 
 	return fmt.Errorf(

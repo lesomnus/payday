@@ -22,6 +22,7 @@ comments, which are where the detail actually lives.
 | [Keeping a past](guide/past.md) | an app's events and facts: declaring them, the messages an event holds, the lock that keeps old events readable, recording an operation and the facts it writes, reading them at a moment as known now or then, saying what happened in the reader's language, correcting them, taking a reason out, and letting them go by the tenant's window |
 | [Adding notifications](guide/notifications.md) | opt-in setup, named and resource Topics, app policies, publication, and read-state synchronization |
 | [Measuring what a tenant holds](guide/meters.md) | meters declared in the schema and what generation holds them to, the ones an app writes, the reader and its schedule, reading a tenant before it is destroyed, the sink, and the convention for flows |
+| [What a tenant is entitled to](guide/entitlements.md) | opting in, what a grant is, reading the copy in the write's transaction -- a limit locked so two writes cannot both pass it -- the follower that keeps it, a source that cannot be reached, the trail, the tenant's lifecycle, and what a source serves |
 | [Notification adoption contract](notify-adoption-contract.md) | global scope, persistent readers, unread queries/counts, atomic batch marking and app-owned read cursors |
 | [Testing](guide/testing.md) | the harness, the two seams, and golden files |
 

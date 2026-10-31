@@ -17,9 +17,10 @@ entities, or when you want to know why an identifier looks the way it does.
 ## 1. What payday owns
 
 The entities every app has: **Tenant** and **Holder**, the trail's **Audit**,
-**Archived**, **Access**, **RowSeal** and **Owed**, and the **Outbox**. And two an
-app has only when it asks for them: its past, **Event** and **Fact** --
-[below](#tables-an-app-opts-into).
+**Archived**, **Access**, **RowSeal** and **Owed**, and the **Outbox**. And some an
+app has only when it asks for them: its past, **Event** and **Fact**; its
+notifications' records; and a tenant's copy of what it is entitled to,
+**Entitlement** -- [below](#tables-an-app-opts-into).
 
 They are owned because everything that reads a request reads them. The wall
 narrows by tenant, the trail stamps who acted, a rate limit counts against
@@ -105,6 +106,18 @@ entities. The generator finds both by their `own:` marker, never by number. Any
 table payday later offers to opt into is numbered the same way;
 [§5](#domains-come-from-the-schema) has the ranges, and the two tables every app
 has that an app may number all the same.
+
+The notifications' two records are opted into so (`notify:`), and so is the
+copy of what each tenant is entitled to (payday#185) -- one table, `Entitlement`,
+at the domain the app gives it:
+
+```proto
+option (payday.app) = {entitlements: {domain: 43}};
+```
+
+copied from `payday/schema/entitle/entitlement.proto` and taken out when the
+declaration goes, as the past's are. What fills it is a source of grants, and
+the [guide](guide/entitlements.md) is how.
 
 ## 2. Overlays: adding, never overriding
 

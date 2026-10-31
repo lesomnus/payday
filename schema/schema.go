@@ -30,12 +30,12 @@ import (
 	"github.com/lesomnus/payday/pdpb"
 )
 
-//go:embed payday/*.proto past/*.proto notify/*.proto
+//go:embed payday/*.proto past/*.proto notify/*.proto entitle/*.proto
 var files embed.FS
 
 // FS is payday's entities as they ship, for whatever copies them: those every
 // app has in `payday/`, and those an app has only when it declares them in
-// `past/` and `notify/`.
+// `past/`, `notify/` and `entitle/`.
 func FS() fs.FS { return files }
 
 // The directories of [FS], by what is in them.
@@ -53,6 +53,12 @@ const (
 	// DirNotify holds the records and app-local notification contract copied
 	// only into an app that enables App.notify.
 	DirNotify = "notify"
+
+	// DirEntitle is the one table an app has only when it declares
+	// entitlements -- `option (payday.app) = {entitlements: {domain: 43}}` --
+	// at the domain it chose (payday#185): a tenant's copy of what it is
+	// entitled to. Its `domain:` is zero until `pd gen` writes the app's.
+	DirEntitle = "entitle"
 )
 
 // Field is what payday declared at one number.
@@ -110,12 +116,13 @@ func OwnedOptions() (map[pdpb.Own]Options, error) {
 }
 
 // Opted answers with the markers of payday's entities that an app has only
-// when it declares their feature -- its past or notifications -- and
-// [Owned] answers about these as it does about every other.
+// when it declares their feature -- its past, notifications or entitlements --
+// and [Owned] answers about these as it does about every other.
 //
 // Read off the directory they ship in rather than written out, the way
 // [Owned] is read off what ships: an entity is optional because it is in
-// [DirPast] or [DirNotify], so one added there is optional by having been added.
+// [DirPast], [DirNotify] or [DirEntitle], so one added there is optional by
+// having been added.
 func Opted() (map[pdpb.Own]bool, error) {
 	once.Do(load)
 	return opted, fail
@@ -140,7 +147,7 @@ func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, map[pdpb.Own]st
 	// Compiled as one, since the past imports the tenant -- `payday/tenant.proto`,
 	// which resolves out of the same files.
 	names := []string{}
-	for _, d := range []string{DirOwn, DirPast, DirNotify} {
+	for _, d := range []string{DirOwn, DirPast, DirNotify, DirEntitle} {
 		es, err := files.ReadDir(d)
 		if err != nil {
 			return nil, nil, nil, err
