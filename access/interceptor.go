@@ -411,10 +411,21 @@ func (c Config) now() time.Time {
 // as the frame in `ctx` made it. A subject with no tenant of its own is the
 // call's. It is what the interceptor writes, and what the generated recorder
 // writes at a write's commit.
+//
+// A call an account makes as itself names the **account** as who made it
+// (payday#184), since there is no holder to name: the row's actor is the
+// account and its actor's tenant is Nil -- which no membership's row has, a
+// holder being always some tenant's -- so a review tells one from the other by
+// that column. Whose data it carried is filed as anybody's is, under the
+// tenant the row it was in is held by, and what was in no tenant's row under
+// none: the deployment's own record, which an operator reads.
 func Records(ctx context.Context, method string, kind Kind, result string, subjects []Subject, d *pdpb.AccessDetail, at time.Time) []Record {
 	var actor, held pdid.Id
 	if f, ok := frame.From(ctx); ok {
 		actor, held = f.Actor, f.Tenant
+		if f.AsAccount() {
+			actor, held = f.Account, pdid.Nil
+		}
 	}
 
 	tenants := []pdid.Id{}

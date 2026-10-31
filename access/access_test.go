@@ -74,6 +74,44 @@ func TestARowIsEachTenantsWhoseDataTheCallCarried(t *testing.T) {
 	}
 }
 
+// TestACallAnAccountMakesAsItselfNamesTheAccount (payday#184): there is no
+// holder to name, so the row's actor is the account, and its actor's tenant
+// is none -- which no membership's row has, a holder being always some
+// tenant's. Whose data it carried is filed under the tenant its row is in, as
+// anybody's is, and what was in no tenant's row under none: the deployment's
+// own record.
+func TestACallAnAccountMakesAsItselfNamesTheAccount(t *testing.T) {
+	x := require.New(t)
+
+	acc, acme := pdid.New(2), pdid.New(1)
+	ctx := frame.Into(t.Context(), frame.OfAccount(acc, frame.Whole(), nil))
+
+	a, b := pdid.New(2), pdid.New(2)
+	rs := access.Records(ctx, "/app.InvitationService/List", access.Read, "ok", []access.Subject{
+		{Id: a, Tenant: acme},
+		{Id: b},
+	}, nil, time.Now())
+
+	x.Len(rs, 2)
+	x.Equal(acme, rs[0].Tenant)
+	x.Equal([]pdid.Id{a}, rs[0].Subjects)
+	x.True(rs[1].Tenant.IsZero(), "in no tenant's row, so in no tenant's record")
+	x.Equal([]pdid.Id{b}, rs[1].Subjects)
+	for _, r := range rs {
+		x.Equal(acc, r.Actor)
+		x.True(r.ActorTenant.IsZero())
+	}
+
+	// And a membership's call names the membership, as it always did: the
+	// account it is of is not who made it.
+	h, t1 := pdid.New(2), pdid.New(1)
+	ctx = frame.Into(t.Context(), frame.New(h, t1, frame.Whole()).WithAccount(acc))
+	rs = access.Records(ctx, "/app.RobotService/List", access.Read, "ok", []access.Subject{{Id: a}}, nil, time.Now())
+	x.Len(rs, 1)
+	x.Equal(h, rs[0].Actor)
+	x.Equal(t1, rs[0].ActorTenant)
+}
+
 func TestARowNamesAThousandAndCountsTheRest(t *testing.T) {
 	x := require.New(t)
 
