@@ -3,6 +3,7 @@ edition = "2023";
 package payday;
 
 import "payday/entity.proto";
+import "payday/meter.proto";
 
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/pdpb";
@@ -38,7 +39,7 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second, [App.notify] the third.
+// second, [App.notify] the third, [App.meters] the fourth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -73,6 +74,16 @@ message App {
   // Notify opts this app into notifications and assigns its internal records
   // domains of the app's own. Topic and reader policy remain the app's.
   Notify notify = 3;
+
+  // Meters are what each tenant holds that the app is paid by, which payday
+  // measures for it (payday#186): `pd gen` holds each to the entity it names
+  // and writes the query that measures it, and `meter.Reader` reads them all,
+  // tenant by tenant, and hands the readings to the app's sink. See [Meter].
+  //
+  // Here and not on the entity, because a meter may count payday's own
+  // entities as well as the app's -- a seat is a Holder -- and an overlay may
+  // add nothing to payday's declaration of one.
+  repeated Meter meters = 4;
 }
 
 // Past is the domain of each of the two entities an app's past is kept in.

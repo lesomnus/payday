@@ -51,7 +51,7 @@ const (
 // say: a file either says it or does not. It is a message rather than a `bool`
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
-// second, [App.notify] the third.
+// second, [App.notify] the third, [App.meters] the fourth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -61,6 +61,7 @@ type App struct {
 	xxx_hidden_Past    *Past                  `protobuf:"bytes,1,opt,name=past"`
 	xxx_hidden_Domains *Domains               `protobuf:"bytes,2,opt,name=domains"`
 	xxx_hidden_Notify  *Notify                `protobuf:"bytes,3,opt,name=notify"`
+	xxx_hidden_Meters  *[]*Meter              `protobuf:"bytes,4,rep,name=meters"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -111,6 +112,15 @@ func (x *App) GetNotify() *Notify {
 	return nil
 }
 
+func (x *App) GetMeters() []*Meter {
+	if x != nil {
+		if x.xxx_hidden_Meters != nil {
+			return *x.xxx_hidden_Meters
+		}
+	}
+	return nil
+}
+
 func (x *App) SetPast(v *Past) {
 	x.xxx_hidden_Past = v
 }
@@ -121,6 +131,10 @@ func (x *App) SetDomains(v *Domains) {
 
 func (x *App) SetNotify(v *Notify) {
 	x.xxx_hidden_Notify = v
+}
+
+func (x *App) SetMeters(v []*Meter) {
+	x.xxx_hidden_Meters = &v
 }
 
 func (x *App) HasPast() bool {
@@ -186,6 +200,15 @@ type App_builder struct {
 	// Notify opts this app into notifications and assigns its internal records
 	// domains of the app's own. Topic and reader policy remain the app's.
 	Notify *Notify
+	// Meters are what each tenant holds that the app is paid by, which payday
+	// measures for it (payday#186): `pd gen` holds each to the entity it names
+	// and writes the query that measures it, and `meter.Reader` reads them all,
+	// tenant by tenant, and hands the readings to the app's sink. See [Meter].
+	//
+	// Here and not on the entity, because a meter may count payday's own
+	// entities as well as the app's -- a seat is a Holder -- and an overlay may
+	// add nothing to payday's declaration of one.
+	Meters []*Meter
 }
 
 func (b0 App_builder) Build() *App {
@@ -195,6 +218,7 @@ func (b0 App_builder) Build() *App {
 	x.xxx_hidden_Past = b.Past
 	x.xxx_hidden_Domains = b.Domains
 	x.xxx_hidden_Notify = b.Notify
+	x.xxx_hidden_Meters = &b.Meters
 	return m0
 }
 
@@ -599,11 +623,12 @@ var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\"z\n" +
+	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\x1a\x12payday/meter.proto\"\xa1\x01\n" +
 	"\x03App\x12 \n" +
 	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
 	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\x12&\n" +
-	"\x06notify\x18\x03 \x01(\v2\x0e.payday.NotifyR\x06notify\"0\n" +
+	"\x06notify\x18\x03 \x01(\v2\x0e.payday.NotifyR\x06notify\x12%\n" +
+	"\x06meters\x18\x04 \x03(\v2\r.payday.MeterR\x06meters\"0\n" +
 	"\x04Past\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
@@ -623,20 +648,22 @@ var file_payday_app_proto_goTypes = []any{
 	(*Past)(nil),            // 1: payday.Past
 	(*Domains)(nil),         // 2: payday.Domains
 	(*Notify)(nil),          // 3: payday.Notify
-	(*Entity_Tenanted)(nil), // 4: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 5: payday.Entity.Global
+	(*Meter)(nil),           // 4: payday.Meter
+	(*Entity_Tenanted)(nil), // 5: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 6: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
 	1, // 0: payday.App.past:type_name -> payday.Past
 	2, // 1: payday.App.domains:type_name -> payday.Domains
 	3, // 2: payday.App.notify:type_name -> payday.Notify
-	4, // 3: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
-	5, // 4: payday.Notify.global:type_name -> payday.Entity.Global
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 3: payday.App.meters:type_name -> payday.Meter
+	5, // 4: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	6, // 5: payday.Notify.global:type_name -> payday.Entity.Global
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -645,6 +672,7 @@ func file_payday_app_proto_init() {
 		return
 	}
 	file_payday_entity_proto_init()
+	file_payday_meter_proto_init()
 	file_payday_app_proto_msgTypes[3].OneofWrappers = []any{
 		(*notify_Tenanted)(nil),
 		(*notify_Global)(nil),

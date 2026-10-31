@@ -7,13 +7,15 @@ import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Entity_Global, Entity_Tenanted } from "./entity_pb.js";
 import { file_payday_entity } from "./entity_pb.js";
+import type { Meter } from "./meter_pb.js";
+import { file_payday_meter } from "./meter_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiYwoDQXBwEhoKBHBhc3QYASABKAsyDC5wYXlkYXkuUGFzdBIgCgdkb21haW5zGAIgASgLMg8ucGF5ZGF5LkRvbWFpbnMSHgoGbm90aWZ5GAMgASgLMg4ucGF5ZGF5Lk5vdGlmeSIjCgRQYXN0Eg0KBWV2ZW50GAEgASgNEgwKBGZhY3QYAiABKA0iKwoHRG9tYWlucxIQCghhcmNoaXZlZBgBIAEoDRIOCgZhY2Nlc3MYAiABKA0ilgEKBk5vdGlmeRIUCgxub3RpZmljYXRpb24YASABKA0SDwoHcmVjZWlwdBgCIAEoDRIrCgh0ZW5hbnRlZBgEIAEoCzIXLnBheWRheS5FbnRpdHkuVGVuYW50ZWRIABInCgZnbG9iYWwYBSABKAsyFS5wYXlkYXkuRW50aXR5Lkdsb2JhbEgAQgkKB3RlbmFuY3lKBAgDEARCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_payday_entity]);
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkiggEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSKWAQoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSABCCQoHdGVuYW5jeUoECAMQBEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_payday_entity, file_payday_meter]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -47,7 +49,7 @@ export const file_payday_app: GenFile = /*@__PURE__*/
  * say: a file either says it or does not. It is a message rather than a `bool`
  * so that something could be added to it without every app that set it having
  * to change, and [App.past] is the first thing that was, [App.domains] the
- * second, [App.notify] the third.
+ * second, [App.notify] the third, [App.meters] the fourth.
  *
  * Setting it on more than one package is refused. Two answers to "where do
  * payday's entities go" is the thing this exists to avoid, and getting two of
@@ -97,6 +99,20 @@ export type App = Message<"payday.App"> & {
    * @generated from field: payday.Notify notify = 3;
    */
   notify?: Notify | undefined;
+
+  /**
+   * Meters are what each tenant holds that the app is paid by, which payday
+   * measures for it (payday#186): `pd gen` holds each to the entity it names
+   * and writes the query that measures it, and `meter.Reader` reads them all,
+   * tenant by tenant, and hands the readings to the app's sink. See [Meter].
+   *
+   * Here and not on the entity, because a meter may count payday's own
+   * entities as well as the app's -- a seat is a Holder -- and an overlay may
+   * add nothing to payday's declaration of one.
+   *
+   * @generated from field: repeated payday.Meter meters = 4;
+   */
+  meters: Meter[];
 };
 
 /**
