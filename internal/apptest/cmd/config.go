@@ -38,4 +38,20 @@ type Config struct {
 	// Here anyway, because a block payday ships and its own app does not
 	// compose is one nobody has checked composes.
 	Audit config.AuditConfig `yaml:"audit"`
+
+	// Grants is the source of what each tenant is entitled to (payday#185):
+	// a `payday.GrantService`, which a billing service serves. Empty is
+	// none, which is this app -- nothing here is sold -- and its copy then
+	// holds whatever was last applied to it, which is nothing.
+	Grants GrantsConfig `yaml:"grants"`
+}
+
+// GrantsConfig is where the source of grants is, and how it is reached.
+type GrantsConfig struct {
+	// Addr is its address, as gRPC dials one.
+	Addr string `yaml:"addr"`
+
+	// Tls is how the connection is secured: nothing written down is
+	// plaintext, which `config.DialConfig` warns of.
+	Tls config.DialConfig `yaml:"tls"`
 }

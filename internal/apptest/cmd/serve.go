@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/entitle"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/meter"
@@ -103,6 +104,13 @@ type Server struct {
 	// its own, since what it holds is in this one's memory.
 	Access *access.Writer
 
+	// Entitlements is this app's copy of what each tenant is entitled to
+	// (payday#185), kept by Follower when the deployment names a source of
+	// grants (`grants.addr`). A write that a limit decides reads it in its
+	// own transaction: `entitle.Limit(ctx, pd.Entitlements(drv), key)`.
+	Entitlements entitle.Copy
+	Follower     *entitle.Follower
+
 	// Meters reads what each tenant holds that this app would be paid by
 	// (payday#186): every tenant, at midnight UTC and as the process starts,
 	// and one tenant when the app asks -- which an app that destroys tenants
@@ -120,6 +128,10 @@ type Server struct {
 	// It is a slice rather than a method because a server with nothing to run
 	// should write nothing at all; see `payday/spin`.
 	Spin []any
+
+	// grants is the connection to the source of grants, closed with the
+	// server.
+	grants *grpc.ClientConn
 }
 
 // Build opens the database and stacks the servers.
@@ -261,6 +273,32 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	}
 	s.Spin = append(s.Spin, s.Meters)
 
+	// What each tenant is entitled to, copied from the source of grants
+	// (payday#185) by a loop a lease runs in one process. Its writes go on
+	// the trail with the deployment's content, so a check of the rows reads
+	// them as it reads any kind. Without a source the copy is kept by
+	// nothing, and answers what it holds.
+	s.Entitlements = pd.EntitlementCopy(drv, content)
+	if c.Grants.Addr != "" {
+		creds, err := c.Grants.Tls.Credentials()
+		if err != nil {
+			db.Close()
+			return nil, err
+		}
+		conn, err := grpc.NewClient(c.Grants.Addr, grpc.WithTransportCredentials(creds))
+		if err != nil {
+			db.Close()
+			return nil, err
+		}
+		s.grants = conn
+
+		s.Follower = &entitle.Follower{
+			Source: pdpb.NewGrantServiceClient(conn),
+			Copy:   s.Entitlements,
+		}
+		s.Spin = append(s.Spin, s.Follower)
+	}
+
 	// And the trail's retention, which is the one loop here that is a
 	// **mechanism** rather than a tidy-up: nothing else applies a window, so an
 	// outage of it is a deployment keeping records it said it would not.
@@ -298,7 +336,13 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Close() error { return s.Db.Close() }
+func (s *Server) Close() error {
+	if s.grants != nil {
+		s.grants.Close()
+	}
+
+	return s.Db.Close()
+}
 
 // loggedReadings is the meters' sink of an app that bills nobody: each
 // reading, said in the log at debug.

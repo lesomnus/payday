@@ -12,6 +12,7 @@ import (
 	archived "github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	audit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	cell "github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	entitlement "github.com/lesomnus/payday/internal/apptest/internal/ent/entitlement"
 	event "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	fleet "github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -397,6 +398,7 @@ type Scope interface {
 	AccessScope(ctx context.Context) (predicate.Access, error)
 	ArchivedScope(ctx context.Context) (predicate.Archived, error)
 	AuditScope(ctx context.Context) (predicate.Audit, error)
+	EntitlementScope(ctx context.Context) (predicate.Entitlement, error)
 	EventScope(ctx context.Context) (predicate.Event, error)
 	FactScope(ctx context.Context) (predicate.Fact, error)
 	HolderScope(ctx context.Context) (predicate.Holder, error)
@@ -460,6 +462,9 @@ func (Unscoped) ArchivedScope(_ context.Context) (predicate.Archived, error) {
 	return nil, nil
 }
 func (Unscoped) AuditScope(_ context.Context) (predicate.Audit, error) {
+	return nil, nil
+}
+func (Unscoped) EntitlementScope(_ context.Context) (predicate.Entitlement, error) {
 	return nil, nil
 }
 func (Unscoped) EventScope(_ context.Context) (predicate.Event, error) {
@@ -776,6 +781,26 @@ func (ss Scopes) AuditScope(ctx context.Context) (predicate.Audit, error) {
 	}
 
 	return audit.And(ps...), nil
+}
+
+func (ss Scopes) EntitlementScope(ctx context.Context) (predicate.Entitlement, error) {
+	ps := make([]predicate.Entitlement, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.EntitlementScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return entitlement.And(ps...), nil
 }
 
 func (ss Scopes) EventScope(ctx context.Context) (predicate.Event, error) {
@@ -1205,7 +1230,10 @@ func (s Server) Access() apptest.AccessServiceServer   { return AccessServiceSer
 func (s Server) Archived() apptest.ArchivedServiceServer {
 	return ArchivedServiceServer{Store: s.Store}
 }
-func (s Server) Audit() apptest.AuditServiceServer   { return AuditServiceServer{Store: s.Store} }
+func (s Server) Audit() apptest.AuditServiceServer { return AuditServiceServer{Store: s.Store} }
+func (s Server) Entitlement() apptest.EntitlementServiceServer {
+	return EntitlementServiceServer{Store: s.Store}
+}
 func (s Server) Event() apptest.EventServiceServer   { return EventServiceServer{Store: s.Store} }
 func (s Server) Fact() apptest.FactServiceServer     { return FactServiceServer{Store: s.Store} }
 func (s Server) Holder() apptest.HolderServiceServer { return HolderServiceServer{Store: s.Store} }

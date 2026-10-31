@@ -17,6 +17,7 @@ import { AccessSchema } from './app/payday/access_pb.js'
 import { ArchivedSchema } from './app/payday/archived_pb.js'
 import { AuditSchema } from './app/payday/audit_pb.js'
 import { CellSchema, FleetSchema, JointSchema, PairingSchema, ReadingSchema, RobotSchema } from './app/robot_pb.js'
+import { EntitlementSchema } from './app/payday/entitlement_pb.js'
 import { EventSchema } from './app/payday/event_pb.js'
 import { FactSchema } from './app/payday/fact_pb.js'
 import { HolderSchema } from './app/payday/holder_pb.js'
@@ -36,6 +37,7 @@ import { AccessService } from './app/payday/access_svc_pb.js'
 import { ArchivedService } from './app/payday/archived_svc_pb.js'
 import { AuditService } from './app/payday/audit_svc_pb.js'
 import { CellService, FleetService, JointService, PairingService, ReadingService, RobotService } from './app/robot_svc_pb.js'
+import { EntitlementService } from './app/payday/entitlement_svc_pb.js'
 import { EventService } from './app/payday/event_svc_pb.js'
 import { FactService } from './app/payday/fact_svc_pb.js'
 import { HolderService } from './app/payday/holder_svc_pb.js'
@@ -93,6 +95,18 @@ export const Cell = {
 	key: "id",
 	ids: ["id"],
 	service: CellService,
+} as const satisfies EntityDesc
+
+/** app.Entitlement, as the store holds it. */
+export const Entitlement = {
+	typeName: "app.Entitlement",
+	schema: EntitlementSchema,
+	domain: 43,
+	version: "dateUpdated",
+	refs: [{ field: "tenant", to: "app.Tenant" }],
+	key: "id",
+	ids: ["id"],
+	service: EntitlementService,
 } as const satisfies EntityDesc
 
 /** app.Event, as the store holds it. */
@@ -339,5 +353,5 @@ export const Thing = {
 } as const satisfies EntityDesc
 
 /** Every entity of this app, which is what a store is opened over. */
-export const entities = [Access, Archived, Audit, Cell, Event, Fact, Fleet, Holder, Job, Joint, Machine, NotificationReceiptRecord, NotificationRecord, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing] as const
+export const entities = [Access, Archived, Audit, Cell, Entitlement, Event, Fact, Fleet, Holder, Job, Joint, Machine, NotificationReceiptRecord, NotificationRecord, Outbox, Owed, Pairing, Pulse, Reading, Robot, RowSeal, Seal, Stint, Tally, Tenant, Thing] as const
 

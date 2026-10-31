@@ -1256,7 +1256,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\ttenant_id\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16!\b\vB\x02\n" +
 	"\x00\"\x19\n" +
-	"\frobot.tenant\x1a\ttenant_idB\xee\x04\xca\xc7\x16\xb7\x04\n" +
+	"\frobot.tenant\x1a\ttenant_idB\xf2\x04\xca\xc7\x16\xbb\x04\n" +
 	"\x04\b\x11\x10\x12\x1a\x04\b(\x10)\"\"\n" +
 	"\x0eapptest.robots\x12\a{robot}\x1a\a\n" +
 	"\x05Robot\"B\n" +
@@ -1291,7 +1291,7 @@ const file_app_robot_proto_rawDesc = "" +
 	"\x10apptest.readings\x12\t{reading}\x1a\t\n" +
 	"\aReading\"!\n" +
 	"\rapptest.seats\x12\x06{seat}\x1a\b\n" +
-	"\x06HolderZ+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x06Holder*\x02\b+Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_app_robot_proto_goTypes = []any{

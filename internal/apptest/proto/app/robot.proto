@@ -33,6 +33,9 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 option (payday.app) = {
   past: {event: 17, fact: 18}
   notify: {notification: 40, receipt: 41}
+  // A tenant's copy of what it is entitled to (payday#185), at a domain of
+  // the app's own.
+  entitlements: {domain: 43}
   meters: [
     // Every robot a tenant holds: rows behind an edge to the tenant, of
     // which an erased one is not among them.

@@ -13,6 +13,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/archived"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
+	"github.com/lesomnus/payday/internal/apptest/internal/ent/entitlement"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/fleet"
@@ -101,6 +102,7 @@ func checkColumn(t, c string) error {
 			archived.Table:                  archived.ValidColumn,
 			audit.Table:                     audit.ValidColumn,
 			cell.Table:                      cell.ValidColumn,
+			entitlement.Table:               entitlement.ValidColumn,
 			event.Table:                     event.ValidColumn,
 			fact.Table:                      fact.ValidColumn,
 			fleet.Table:                     fleet.ValidColumn,

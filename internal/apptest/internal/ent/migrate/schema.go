@@ -173,6 +173,46 @@ var (
 			},
 		},
 	}
+	// EntitlementColumns holds the columns for the "entitlement" table.
+	EntitlementColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUuid, Unique: true},
+		{Name: "key", Type: field.TypeString},
+		{Name: "value", Type: field.TypeInt32},
+		{Name: "amount", Type: field.TypeInt64},
+		{Name: "grant_id", Type: field.TypeBytes},
+		{Name: "grant_version", Type: field.TypeUint64},
+		{Name: "date_updated", Type: field.TypeTime},
+		{Name: "date_created", Type: field.TypeTime, Nullable: true},
+		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
+		{Name: "valid_until", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeUuid},
+	}
+	// EntitlementTable holds the schema information for the "entitlement" table.
+	EntitlementTable = &schema.Table{
+		Name:       "entitlement",
+		Columns:    EntitlementColumns,
+		PrimaryKey: []*schema.Column{EntitlementColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "entitlement_tenant_tenant",
+				Columns:    []*schema.Column{EntitlementColumns[10]},
+				RefColumns: []*schema.Column{TenantColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "entitlement_grant",
+				Unique:  true,
+				Columns: []*schema.Column{EntitlementColumns[4]},
+			},
+			{
+				Name:    "entitlement_key",
+				Unique:  false,
+				Columns: []*schema.Column{EntitlementColumns[10], EntitlementColumns[1]},
+			},
+		},
+	}
 	// EventColumns holds the columns for the "event" table.
 	EventColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
@@ -814,6 +854,7 @@ var (
 		ArchivedTable,
 		AuditTable,
 		CellTable,
+		EntitlementTable,
 		EventTable,
 		FactTable,
 		FleetTable,
@@ -851,6 +892,10 @@ func init() {
 	CellTable.ForeignKeys[0].RefTable = TenantTable
 	CellTable.Annotation = &entsql.Annotation{
 		Table: "cell",
+	}
+	EntitlementTable.ForeignKeys[0].RefTable = TenantTable
+	EntitlementTable.Annotation = &entsql.Annotation{
+		Table: "entitlement",
 	}
 	EventTable.ForeignKeys[0].RefTable = TenantTable
 	EventTable.Annotation = &entsql.Annotation{

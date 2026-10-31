@@ -39,6 +39,7 @@ type Server interface {
 	Access() AccessServiceServer
 	Archived() ArchivedServiceServer
 	Audit() AuditServiceServer
+	Entitlement() EntitlementServiceServer
 	Event() EventServiceServer
 	Fact() FactServiceServer
 	Holder() HolderServiceServer
@@ -71,6 +72,7 @@ func RegisterServer(g grpc.ServiceRegistrar, s Server) {
 	RegisterAccessServiceServer(g, s.Access())
 	RegisterArchivedServiceServer(g, s.Archived())
 	RegisterAuditServiceServer(g, s.Audit())
+	RegisterEntitlementServiceServer(g, s.Entitlement())
 	RegisterEventServiceServer(g, s.Event())
 	RegisterFactServiceServer(g, s.Fact())
 	RegisterHolderServiceServer(g, s.Holder())
@@ -99,6 +101,7 @@ type UnimplementedServer struct {
 	AccessServer                    AccessServiceServer
 	ArchivedServer                  ArchivedServiceServer
 	AuditServer                     AuditServiceServer
+	EntitlementServer               EntitlementServiceServer
 	EventServer                     EventServiceServer
 	FactServer                      FactServiceServer
 	HolderServer                    HolderServiceServer
@@ -127,7 +130,10 @@ func (UnimplementedServer) Access() AccessServiceServer   { return Unimplemented
 func (UnimplementedServer) Archived() ArchivedServiceServer {
 	return UnimplementedArchivedServiceServer{}
 }
-func (UnimplementedServer) Audit() AuditServiceServer   { return UnimplementedAuditServiceServer{} }
+func (UnimplementedServer) Audit() AuditServiceServer { return UnimplementedAuditServiceServer{} }
+func (UnimplementedServer) Entitlement() EntitlementServiceServer {
+	return UnimplementedEntitlementServiceServer{}
+}
 func (UnimplementedServer) Event() EventServiceServer   { return UnimplementedEventServiceServer{} }
 func (UnimplementedServer) Fact() FactServiceServer     { return UnimplementedFactServiceServer{} }
 func (UnimplementedServer) Holder() HolderServiceServer { return UnimplementedHolderServiceServer{} }
@@ -159,6 +165,7 @@ type StaticServer struct {
 	AccessServer                    AccessServiceServer
 	ArchivedServer                  ArchivedServiceServer
 	AuditServer                     AuditServiceServer
+	EntitlementServer               EntitlementServiceServer
 	EventServer                     EventServiceServer
 	FactServer                      FactServiceServer
 	HolderServer                    HolderServiceServer
@@ -173,22 +180,23 @@ type StaticServer struct {
 	PulseServer                     PulseServiceServer
 }
 
-func (s StaticServer) Tenant() TenantServiceServer     { return s.TenantServer }
-func (s StaticServer) Job() JobServiceServer           { return s.JobServer }
-func (s StaticServer) Thing() ThingServiceServer       { return s.ThingServer }
-func (s StaticServer) Cell() CellServiceServer         { return s.CellServer }
-func (s StaticServer) Robot() RobotServiceServer       { return s.RobotServer }
-func (s StaticServer) Pairing() PairingServiceServer   { return s.PairingServer }
-func (s StaticServer) Joint() JointServiceServer       { return s.JointServer }
-func (s StaticServer) Fleet() FleetServiceServer       { return s.FleetServer }
-func (s StaticServer) Reading() ReadingServiceServer   { return s.ReadingServer }
-func (s StaticServer) Machine() MachineServiceServer   { return s.MachineServer }
-func (s StaticServer) Access() AccessServiceServer     { return s.AccessServer }
-func (s StaticServer) Archived() ArchivedServiceServer { return s.ArchivedServer }
-func (s StaticServer) Audit() AuditServiceServer       { return s.AuditServer }
-func (s StaticServer) Event() EventServiceServer       { return s.EventServer }
-func (s StaticServer) Fact() FactServiceServer         { return s.FactServer }
-func (s StaticServer) Holder() HolderServiceServer     { return s.HolderServer }
+func (s StaticServer) Tenant() TenantServiceServer           { return s.TenantServer }
+func (s StaticServer) Job() JobServiceServer                 { return s.JobServer }
+func (s StaticServer) Thing() ThingServiceServer             { return s.ThingServer }
+func (s StaticServer) Cell() CellServiceServer               { return s.CellServer }
+func (s StaticServer) Robot() RobotServiceServer             { return s.RobotServer }
+func (s StaticServer) Pairing() PairingServiceServer         { return s.PairingServer }
+func (s StaticServer) Joint() JointServiceServer             { return s.JointServer }
+func (s StaticServer) Fleet() FleetServiceServer             { return s.FleetServer }
+func (s StaticServer) Reading() ReadingServiceServer         { return s.ReadingServer }
+func (s StaticServer) Machine() MachineServiceServer         { return s.MachineServer }
+func (s StaticServer) Access() AccessServiceServer           { return s.AccessServer }
+func (s StaticServer) Archived() ArchivedServiceServer       { return s.ArchivedServer }
+func (s StaticServer) Audit() AuditServiceServer             { return s.AuditServer }
+func (s StaticServer) Entitlement() EntitlementServiceServer { return s.EntitlementServer }
+func (s StaticServer) Event() EventServiceServer             { return s.EventServer }
+func (s StaticServer) Fact() FactServiceServer               { return s.FactServer }
+func (s StaticServer) Holder() HolderServiceServer           { return s.HolderServer }
 func (s StaticServer) NotificationRecord() NotificationRecordServiceServer {
 	return s.NotificationRecordServer
 }
@@ -217,6 +225,7 @@ type Client interface {
 	Access() AccessServiceClient
 	Archived() ArchivedServiceClient
 	Audit() AuditServiceClient
+	Entitlement() EntitlementServiceClient
 	Event() EventServiceClient
 	Fact() FactServiceClient
 	Holder() HolderServiceClient
@@ -246,6 +255,7 @@ func NewClient(c *grpc.ClientConn) Client {
 		_Access:                    NewAccessServiceClient(c),
 		_Archived:                  NewArchivedServiceClient(c),
 		_Audit:                     NewAuditServiceClient(c),
+		_Entitlement:               NewEntitlementServiceClient(c),
 		_Event:                     NewEventServiceClient(c),
 		_Fact:                      NewFactServiceClient(c),
 		_Holder:                    NewHolderServiceClient(c),
@@ -275,6 +285,7 @@ type client struct {
 	_Access                    AccessServiceClient
 	_Archived                  ArchivedServiceClient
 	_Audit                     AuditServiceClient
+	_Entitlement               EntitlementServiceClient
 	_Event                     EventServiceClient
 	_Fact                      FactServiceClient
 	_Holder                    HolderServiceClient
@@ -302,6 +313,7 @@ func (c *client) Machine() MachineServiceClient                       { return c
 func (c *client) Access() AccessServiceClient                         { return c._Access }
 func (c *client) Archived() ArchivedServiceClient                     { return c._Archived }
 func (c *client) Audit() AuditServiceClient                           { return c._Audit }
+func (c *client) Entitlement() EntitlementServiceClient               { return c._Entitlement }
 func (c *client) Event() EventServiceClient                           { return c._Event }
 func (c *client) Fact() FactServiceClient                             { return c._Fact }
 func (c *client) Holder() HolderServiceClient                         { return c._Holder }

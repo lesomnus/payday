@@ -24,6 +24,9 @@ export const AuditDomain = 3
 /** The domain identifiers of app.Cell carry. */
 export const CellDomain = 10
 
+/** The domain identifiers of app.Entitlement carry. */
+export const EntitlementDomain = 43
+
 /** The domain identifiers of app.Event carry. */
 export const EventDomain = 17
 
@@ -93,6 +96,7 @@ pdid.register("app.Access", AccessDomain, "access")
 pdid.register("app.Archived", ArchivedDomain, "archived")
 pdid.register("app.Audit", AuditDomain, "audit")
 pdid.register("app.Cell", CellDomain, "cell")
+pdid.register("app.Entitlement", EntitlementDomain, "entitlement")
 pdid.register("app.Event", EventDomain, "event")
 pdid.register("app.Fact", FactDomain, "fact")
 pdid.register("app.Fleet", FleetDomain, "fleet")

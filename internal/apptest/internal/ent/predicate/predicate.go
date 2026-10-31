@@ -18,6 +18,9 @@ type Audit func(*sql.Selector)
 // Cell is the predicate function for cell builders.
 type Cell func(*sql.Selector)
 
+// Entitlement is the predicate function for entitlement builders.
+type Entitlement func(*sql.Selector)
+
 // Event is the predicate function for event builders.
 type Event func(*sql.Selector)
 
