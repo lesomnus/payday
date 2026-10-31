@@ -3,6 +3,38 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## `pd gen` stops at another module, `--check` says what it removed, and an app names its toolchain
+
+**Applies if** your app holds a module of its own below it, if your go.mod
+names no `toolchain`, or if `pd gen --check` fails after this upgrade
+(payday#189). Nothing regenerates.
+
+- **`pd gen` leaves another module's generated Go alone.** It removes the
+  generated Go it did not write -- the messages where `go_package` used to put
+  them -- and it no longer looks below a directory with a go.mod of its own.
+  An ordering that put another module's generation after `pd gen`, and its
+  check after `pd gen --check`, can go.
+- **`pd gen --check` fails on what it removes.** It compared only the files a
+  generation writes, so it passed after removing generated Go from anywhere
+  else in the app's module, or a contract more than one directory below
+  `proto/`. Those are now "no longer generated". A tree `pd gen` wrote has
+  none; one that fails held them, and the check has removed them -- commit
+  that.
+- **An app names the Go it is built with.** `pd new` writes payday's own
+  toolchain line, `toolchain go1.27.3`, which payday's CI builds and tests
+  with. With none, a CI that reads the Go from go.mod (setup-go's
+  `go-version-file`) builds with exactly what the go line names -- payday's,
+  go1.27.0 -- and govulncheck fails on advisories against that standard
+  library. Add one: `go mod edit -toolchain=go1.27.3`.
+
+What the apps on payday change:
+
+- **levyan** keeps its API in a module of its own at `api/`, which `pd gen` and
+  `pd gen --check` no longer touch: `scripts/gen.sh` and CI no longer have to
+  run that module's generation after them. It names its toolchain already.
+- **loft** names its toolchain already, and changes nothing.
+- **roster** names no toolchain: add one.
+
 ## Accounts, for an app whose holders are memberships of one
 
 **Applies if** your people sign in once and belong to several tenants -- an
