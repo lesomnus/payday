@@ -53,6 +53,11 @@ func TestTheReferenceAppIsWell(t *testing.T) {
 	x.NotContains(v, "named for something about a person")
 	x.NotContains(v, "past.lock")
 	x.NotContains(v, "hands it no registry")
+
+	// And it declares meters (payday#186), which its server reads, with a
+	// sink, in its spin list.
+	x.NotContains(v, "nothing reads them")
+	x.NotContains(v, "meter.Reader")
 }
 
 // TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a
