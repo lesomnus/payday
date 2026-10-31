@@ -7,6 +7,7 @@
 package pdpb
 
 import (
+	ormpb "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -52,7 +53,7 @@ const (
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
 // second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
-// the fifth.
+// the fifth, [App.accounts] the sixth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -64,6 +65,7 @@ type App struct {
 	xxx_hidden_Notify       *Notify                `protobuf:"bytes,3,opt,name=notify"`
 	xxx_hidden_Meters       *[]*Meter              `protobuf:"bytes,4,rep,name=meters"`
 	xxx_hidden_Entitlements *Entitlements          `protobuf:"bytes,5,opt,name=entitlements"`
+	xxx_hidden_Accounts     *Accounts              `protobuf:"bytes,6,opt,name=accounts"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -130,6 +132,13 @@ func (x *App) GetEntitlements() *Entitlements {
 	return nil
 }
 
+func (x *App) GetAccounts() *Accounts {
+	if x != nil {
+		return x.xxx_hidden_Accounts
+	}
+	return nil
+}
+
 func (x *App) SetPast(v *Past) {
 	x.xxx_hidden_Past = v
 }
@@ -148,6 +157,10 @@ func (x *App) SetMeters(v []*Meter) {
 
 func (x *App) SetEntitlements(v *Entitlements) {
 	x.xxx_hidden_Entitlements = v
+}
+
+func (x *App) SetAccounts(v *Accounts) {
+	x.xxx_hidden_Accounts = v
 }
 
 func (x *App) HasPast() bool {
@@ -178,6 +191,13 @@ func (x *App) HasEntitlements() bool {
 	return x.xxx_hidden_Entitlements != nil
 }
 
+func (x *App) HasAccounts() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Accounts != nil
+}
+
 func (x *App) ClearPast() {
 	x.xxx_hidden_Past = nil
 }
@@ -192,6 +212,10 @@ func (x *App) ClearNotify() {
 
 func (x *App) ClearEntitlements() {
 	x.xxx_hidden_Entitlements = nil
+}
+
+func (x *App) ClearAccounts() {
+	x.xxx_hidden_Accounts = nil
 }
 
 type App_builder struct {
@@ -244,6 +268,20 @@ type App_builder struct {
 	// grants -- a billing service -- speaking `payday.GrantService`, followed by
 	// `entitle.Follower`. See [Entitlements].
 	Entitlements *Entitlements
+	// Accounts says this app's holders are memberships of accounts an identity
+	// provider keeps, and which holder field names the account (payday#184):
+	//
+	//	option (payday.app) = {accounts: {field: {name: "account", number: 9}}};
+	//
+	// `pd gen` then writes what answers an account's memberships and a holder's
+	// account, the resolver's half that turns an account and the tenant a call
+	// names into one of them, and the frame of a call an account makes as
+	// itself -- the methods marked `(payday.method) = {account: {}}`. See
+	// [Accounts].
+	//
+	// Here rather than on the holder, because the holder is payday's entity and
+	// an overlay may add nothing to payday's declaration of one.
+	Accounts *Accounts
 }
 
 func (b0 App_builder) Build() *App {
@@ -255,6 +293,105 @@ func (b0 App_builder) Build() *App {
 	x.xxx_hidden_Notify = b.Notify
 	x.xxx_hidden_Meters = &b.Meters
 	x.xxx_hidden_Entitlements = b.Entitlements
+	x.xxx_hidden_Accounts = b.Accounts
+	return m0
+}
+
+// Accounts is the holder field that names the account a holder is a
+// membership of (payday#184).
+//
+// # What payday keeps, and what it does not
+//
+// The **reference**: which account a membership is of, the frame of a call an
+// account makes outside any tenant, and resolving a call to one membership.
+// Not the account. Its names, its addresses, how it signs in and whether it
+// may are the identity provider's, and a copy of them in every app is one more
+// place a person has to be erased from. So an account is an identifier here
+// and nothing else.
+//
+// # Why the app numbers the field
+//
+// For the reason the past's two entities are numbered by the app: the field
+// is on payday's Holder, an app adds it with an overlay at a number of its own
+// (3, 8..12, 16 and up), and an app that kept the reference before payday did
+// has spent a number on it already. A deployment keeps its column, and payday
+// is told where it is.
+type Accounts struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Field *ormpb.Ref             `protobuf:"bytes,1,opt,name=field"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Accounts) Reset() {
+	*x = Accounts{}
+	mi := &file_payday_app_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Accounts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Accounts) ProtoMessage() {}
+
+func (x *Accounts) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Accounts) GetField() *ormpb.Ref {
+	if x != nil {
+		return x.xxx_hidden_Field
+	}
+	return nil
+}
+
+func (x *Accounts) SetField(v *ormpb.Ref) {
+	x.xxx_hidden_Field = v
+}
+
+func (x *Accounts) HasField() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Field != nil
+}
+
+func (x *Accounts) ClearField() {
+	x.xxx_hidden_Field = nil
+}
+
+type Accounts_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Field is the holder's field that holds the account's identifier, named by
+	// both its name and its number, which have to agree: a field renamed under
+	// a declaration that followed the name would resolve calls by another
+	// column, with nothing failing.
+	//
+	// It is a `bytes` field of `TYPE_UUID` the app's overlay adds to the holder,
+	// and may be nullable -- a holder that is no account's membership, made
+	// before accounts were or for a deployment's own use, is one nobody signs
+	// in as through an account. It is not `personal`: it is an identifier, as an
+	// edge is, and who moved a membership from one account to another is the
+	// record.
+	Field *ormpb.Ref
+}
+
+func (b0 Accounts_builder) Build() *Accounts {
+	m0 := &Accounts{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Field = b.Field
 	return m0
 }
 
@@ -285,7 +422,7 @@ type Past struct {
 
 func (x *Past) Reset() {
 	*x = Past{}
-	mi := &file_payday_app_proto_msgTypes[1]
+	mi := &file_payday_app_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +434,7 @@ func (x *Past) String() string {
 func (*Past) ProtoMessage() {}
 
 func (x *Past) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[1]
+	mi := &file_payday_app_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +522,7 @@ type Domains struct {
 
 func (x *Domains) Reset() {
 	*x = Domains{}
-	mi := &file_payday_app_proto_msgTypes[2]
+	mi := &file_payday_app_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -397,7 +534,7 @@ func (x *Domains) String() string {
 func (*Domains) ProtoMessage() {}
 
 func (x *Domains) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[2]
+	mi := &file_payday_app_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +601,7 @@ type Notify struct {
 
 func (x *Notify) Reset() {
 	*x = Notify{}
-	mi := &file_payday_app_proto_msgTypes[3]
+	mi := &file_payday_app_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +613,7 @@ func (x *Notify) String() string {
 func (*Notify) ProtoMessage() {}
 
 func (x *Notify) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[3]
+	mi := &file_payday_app_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +769,7 @@ func (b0 Notify_builder) Build() *Notify {
 type case_Notify_Tenancy protoreflect.FieldNumber
 
 func (x case_Notify_Tenancy) String() string {
-	md := file_payday_app_proto_msgTypes[3].Descriptor()
+	md := file_payday_app_proto_msgTypes[4].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -688,7 +825,7 @@ type Entitlements struct {
 
 func (x *Entitlements) Reset() {
 	*x = Entitlements{}
-	mi := &file_payday_app_proto_msgTypes[4]
+	mi := &file_payday_app_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -700,7 +837,7 @@ func (x *Entitlements) String() string {
 func (*Entitlements) ProtoMessage() {}
 
 func (x *Entitlements) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[4]
+	mi := &file_payday_app_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,13 +878,16 @@ var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
 	"\n" +
-	"\x10payday/app.proto\x12\x06payday\x1a\x13payday/entity.proto\x1a\x12payday/meter.proto\"\xdb\x01\n" +
+	"\x10payday/app.proto\x12\x06payday\x1a\rorm/ref.proto\x1a\x13payday/entity.proto\x1a\x12payday/meter.proto\"\x89\x02\n" +
 	"\x03App\x12 \n" +
 	"\x04past\x18\x01 \x01(\v2\f.payday.PastR\x04past\x12)\n" +
 	"\adomains\x18\x02 \x01(\v2\x0f.payday.DomainsR\adomains\x12&\n" +
 	"\x06notify\x18\x03 \x01(\v2\x0e.payday.NotifyR\x06notify\x12%\n" +
 	"\x06meters\x18\x04 \x03(\v2\r.payday.MeterR\x06meters\x128\n" +
-	"\fentitlements\x18\x05 \x01(\v2\x14.payday.EntitlementsR\fentitlements\"0\n" +
+	"\fentitlements\x18\x05 \x01(\v2\x14.payday.EntitlementsR\fentitlements\x12,\n" +
+	"\baccounts\x18\x06 \x01(\v2\x10.payday.AccountsR\baccounts\"*\n" +
+	"\bAccounts\x12\x1e\n" +
+	"\x05field\x18\x01 \x01(\v2\b.orm.RefR\x05field\"0\n" +
 	"\x04Past\x12\x14\n" +
 	"\x05event\x18\x01 \x01(\rR\x05event\x12\x12\n" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
@@ -763,30 +903,34 @@ const file_payday_app_proto_rawDesc = "" +
 	"\fEntitlements\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domainB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_payday_app_proto_goTypes = []any{
 	(*App)(nil),             // 0: payday.App
-	(*Past)(nil),            // 1: payday.Past
-	(*Domains)(nil),         // 2: payday.Domains
-	(*Notify)(nil),          // 3: payday.Notify
-	(*Entitlements)(nil),    // 4: payday.Entitlements
-	(*Meter)(nil),           // 5: payday.Meter
-	(*Entity_Tenanted)(nil), // 6: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 7: payday.Entity.Global
+	(*Accounts)(nil),        // 1: payday.Accounts
+	(*Past)(nil),            // 2: payday.Past
+	(*Domains)(nil),         // 3: payday.Domains
+	(*Notify)(nil),          // 4: payday.Notify
+	(*Entitlements)(nil),    // 5: payday.Entitlements
+	(*Meter)(nil),           // 6: payday.Meter
+	(*ormpb.Ref)(nil),       // 7: orm.Ref
+	(*Entity_Tenanted)(nil), // 8: payday.Entity.Tenanted
+	(*Entity_Global)(nil),   // 9: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
-	1, // 0: payday.App.past:type_name -> payday.Past
-	2, // 1: payday.App.domains:type_name -> payday.Domains
-	3, // 2: payday.App.notify:type_name -> payday.Notify
-	5, // 3: payday.App.meters:type_name -> payday.Meter
-	4, // 4: payday.App.entitlements:type_name -> payday.Entitlements
-	6, // 5: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
-	7, // 6: payday.Notify.global:type_name -> payday.Entity.Global
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2, // 0: payday.App.past:type_name -> payday.Past
+	3, // 1: payday.App.domains:type_name -> payday.Domains
+	4, // 2: payday.App.notify:type_name -> payday.Notify
+	6, // 3: payday.App.meters:type_name -> payday.Meter
+	5, // 4: payday.App.entitlements:type_name -> payday.Entitlements
+	1, // 5: payday.App.accounts:type_name -> payday.Accounts
+	7, // 6: payday.Accounts.field:type_name -> orm.Ref
+	8, // 7: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	9, // 8: payday.Notify.global:type_name -> payday.Entity.Global
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -796,7 +940,7 @@ func file_payday_app_proto_init() {
 	}
 	file_payday_entity_proto_init()
 	file_payday_meter_proto_init()
-	file_payday_app_proto_msgTypes[3].OneofWrappers = []any{
+	file_payday_app_proto_msgTypes[4].OneofWrappers = []any{
 		(*notify_Tenanted)(nil),
 		(*notify_Global)(nil),
 	}
@@ -806,7 +950,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

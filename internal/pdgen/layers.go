@@ -136,6 +136,17 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("}")
 	g.P("")
 
+	// In an app whose holders are memberships of accounts, what the gate
+	// answers every service in: refused to a call an account makes as itself,
+	// but for the methods that are its own. Every accessor below answers in
+	// it, and [emitGateAccounts] writes one for each service the gate says
+	// nothing else of.
+	wrap := ""
+	if s.Accounts != nil {
+		wrap = "accounts"
+	}
+	served := map[string]bool{"Tenant": true, "Holder": true}
+
 	// Tenant: neither putting one up nor taking one down is asked for from
 	// inside one.
 	g.P("type gateTenant struct {")
@@ -143,7 +154,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("TenantServiceServer"))
 	g.P("}")
 	g.P("")
-	ruled(g, p, root, "Gate", "Tenant", "s, s.Next().Tenant()")
+	ruled(g, p, root, "Gate", "Tenant", "s, s.Next().Tenant()", wrap)
 	g.P("// admit refuses every row: no tenant is served by an Add, nor by an")
 	g.P("// AddMany if the entity had one. A tenant is put up by whoever runs the")
 	g.P("// deployment, through a server this layer is not in front of.")
@@ -166,7 +177,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("HolderServiceServer"))
 	g.P("}")
 	g.P("")
-	ruled(g, p, root, "Gate", "Holder", "s, s.Next().Holder()")
+	ruled(g, p, root, "Gate", "Holder", "s, s.Next().Holder()", wrap)
 	g.P("// admit is the one thing about a holder this layer still says, and it is here")
 	g.P("// because it is the one that is not a predicate: the row does not exist yet,")
 	g.P("// so there is nothing to narrow. Reading one, changing one and erasing one")
@@ -206,6 +217,10 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	holder := s.Own(pdpb.Own_OWN_HOLDER)
 	stamps(g, holder)
 
+	// And which account it is a membership of, in an app that has accounts:
+	// what a call is resolved by, which no request says. See [accountRefused].
+	accountRefused(g, s, holder, "add")
+
 	readThrough(g, root, "req.GetTenant()", s.Own(pdpb.Own_OWN_TENANT), "	")
 	g.P("")
 
@@ -220,7 +235,9 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 
 	emitAdmitPatch(g, holder, s, root)
 
-	emitAdmit(g, s, p, root)
+	emitAdmit(g, s, p, root, wrap, served)
+
+	emitGateAccounts(g, s, root, served)
 }
 
 // ruled writes the accessor of a layer's server for one entity, with the
@@ -238,13 +255,21 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 // The rule is a method of the layer's server as it was before the rule was
 // put on, so that it has everything the layer holds and calls nothing that
 // would ask it again.
-func ruled(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath, recv string, name string, fields string) {
+//
+// `wrap` is what the accessor answers the server in, when it is something:
+// the gate's question of a call an account makes as itself, which is asked
+// before anything the gate says of the service (see [emitGateAccounts]).
+func ruled(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath, recv string, name string, fields string, wrap ...string) {
 	svc := root.Ident(name + "ServiceServer")
 
 	g.P("func (s ", recv, ") ", name, "() ", svc, " {")
 	g.P("	v := ", strings.ToLower(recv), name, "{", fields, "}")
 	g.P("	v.", name, "ServiceServer = ", p.Bare.Ident(name+"WithAddRule"), "(v.", name, "ServiceServer, v.admit)")
-	g.P("	return v")
+	if len(wrap) > 0 && wrap[0] != "" {
+		g.P("	return ", wrap[0], name, "{v}")
+	} else {
+		g.P("	return v")
+	}
 	g.P("}")
 	g.P("")
 }
@@ -311,7 +336,7 @@ func ruled(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath, recv 
 //
 // An edge to a **global** entity is not checked, because there is nothing to
 // see past: a global row belongs to no tenant and is readable by everybody.
-func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath, wrap string, served map[string]bool) {
 	for _, v := range s.Sorted() {
 		// The tenant is refused outright above and the holder's gate is written
 		// out there too, with whatever an overlay added to it: a gate here as
@@ -352,12 +377,13 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		}
 
 		name := v.GoName()
+		served[name] = true
 		g.P("type gate", name, " struct {")
 		g.P("	Gate")
 		g.P("	", root.Ident(name+"ServiceServer"))
 		g.P("}")
 		g.P("")
-		ruled(g, p, root, "Gate", name, "s, s.Next()."+name+"()")
+		ruled(g, p, root, "Gate", name, "s, s.Next()."+name+"()", wrap)
 
 		if walled {
 			g.P("// admit refuses a ", name, " put into a ", to.GoName(), " this caller cannot see.")
@@ -456,6 +482,10 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 		return
 	}
 
+	// The holder of an app with accounts says which one it is a membership
+	// of, and no request moves that; see [accountRefused].
+	refuse := s.Accounts != nil && v.Own == pdpb.Own_OWN_HOLDER
+
 	moves := []move{}
 	for e := range v.Edges() {
 		if e.IsImmutable() {
@@ -469,7 +499,7 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 
 		moves = append(moves, move{at: e.Name(), number: e.Number(), to: to})
 	}
-	if len(moves) == 0 {
+	if len(moves) == 0 && !refuse {
 		return
 	}
 
@@ -481,8 +511,17 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 	g.P("// write points **at**. An edge is a read -- a `Select` walks it -- so one")
 	g.P("// moved out of the caller's scope is a way through the wall one hop later,")
 	g.P("// exactly as it would have been at `Add`.")
+	if refuse {
+		g.P("//")
+		g.P("// And a request that moves which account a holder is a membership of,")
+		g.P("// which is what a call is resolved by: taking over another account's")
+		g.P("// membership is one Patch away otherwise.")
+	}
 	g.P("func (s gate", name, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"PatchRequest"),
 		") (*", root.Ident(name), ", error) {")
+	if refuse {
+		accountRefused(g, s, v, "patch")
+	}
 	for _, m := range moves {
 		seen(g, root, m.at, m.to)
 	}
@@ -490,7 +529,7 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 	g.P("}")
 	g.P("")
 
-	emitAdmitApply(g, v, moves, root)
+	emitAdmitApply(g, v, s, moves, root, refuse)
 }
 
 // move is an edge a write can point somewhere else, and what it points at.
@@ -516,7 +555,7 @@ type move struct {
 // server behind answers the same document with, rather than passed on: one
 // this layer cannot read is one it can say nothing about. Clearing an edge
 // points it at nothing, which there is nothing to ask about.
-func emitAdmitApply(g *protogen.GeneratedFile, v *Entity, moves []move, root protogen.GoImportPath) {
+func emitAdmitApply(g *protogen.GeneratedFile, v *Entity, s *Schema, moves []move, root protogen.GoImportPath, refuse bool) {
 	name := v.GoName()
 	entity := "gate" + name + "Entity"
 
@@ -545,6 +584,10 @@ func emitAdmitApply(g *protogen.GeneratedFile, v *Entity, moves []move, root pro
 	g.P("")
 	g.P("		return nil, ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ", \"%s\", err)")
 	g.P("	}")
+	if refuse {
+		g.P("")
+		accountRefused(g, s, v, "apply")
+	}
 	for _, m := range moves {
 		g.P("	if w, ok := plan.WriteTo(", m.number, "); ok {")
 		g.P("		if k, ok := w.Op.(", pkgOrmpatch.Ident("SetEdge"), "); ok {")

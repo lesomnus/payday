@@ -227,15 +227,24 @@ func EmitWall(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("// wall is what [Wall] answers with. It writes out every entity, including")
 	g.P("// the ones that are not behind the wall, so that an entity added to the")
 	g.P("// schema cannot arrive without a decision having been made about it.")
+	g.P("//")
+	g.P("// Each says first what a call an account makes as itself reads of it")
+	g.P("// (payday#184), which is in no tenant: what the layer serving its method")
+	g.P("// declared, and otherwise none -- of a global entity too, whose rows are")
+	g.P("// behind no wall and are not therefore an account's.")
 	g.P("type wall struct{}")
 	g.P("")
 	g.P("var _ ", p.Bare.Ident("Scope"), " = wall{}")
 	g.P("")
 
+	emitNothing(g)
+
 	for _, v := range s.Sorted() {
 		g.P("// ", v.GoName(), "Scope: ", why(v, s))
 		g.P("func (wall) ", v.GoName(), "Scope(ctx ", pkgCtx.Ident("Context"),
 			") (", pred.Ident(v.GoName()), ", error) {")
+
+		accountBranch(g, s, v, p)
 
 		if v.IsGlobal {
 			g.P("	return nil, nil")
@@ -342,6 +351,11 @@ func EmitGrouped(g *protogen.GeneratedFile, s *Schema, p Paths) {
 			g.P("")
 			continue
 		}
+
+		// A call an account makes as itself is in no set, as it is in no
+		// tenant, and reads what its layer declared -- the wall's own answer,
+		// so that the two met are that answer and not none of it.
+		accountBranch(g, s, v, p)
 
 		// Never `x.of` directly. It answers about the actor, and what the
 		// credential allows of that is the other half; see [frame.NarrowSet].

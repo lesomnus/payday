@@ -1,0 +1,43 @@
+edition = "2023";
+
+package payday;
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// Method is what payday has to be told about an RPC an app declares itself.
+//
+// It is on the RPCs an app writes -- in an overlay of an entity's contract, or
+// a service of its own -- and nowhere else: the RPCs a contract is generated
+// with are payday's to describe, and an overlay may not redeclare one.
+message Method {
+  // Account says this method is called by an **account**, as itself, outside
+  // any tenant (payday#184):
+  //
+  //	rpc Accept(InvitationAcceptRequest) returns (Invitation) {
+  //	  option (payday.method) = {account: {}};
+  //	}
+  //
+  // An app whose holders are memberships of accounts (`option (payday.app) =
+  // {accounts: ...}`) serves every call as one membership of one tenant, and
+  // this is the exception: what an account asks before it is anybody's member,
+  // or across all of its tenants at once -- the invitations addressed to it,
+  // the cards it pays with. Such a call is served with a frame that holds the
+  // account where a holder would be, and no tenant.
+  //
+  // # What it opens, which is very little
+  //
+  // A call framed as an account reaches the methods marked this and no other:
+  // the gate refuses the rest, whatever a policy says. And what it reads
+  // through the walled servers is **nothing**, global rows included, until the
+  // layer serving it says what it reads (`pd.AccountReads`), since there is no
+  // tenant to narrow by. `pd doctor` reports a method marked this whose layer
+  // declares nothing.
+  //
+  // A method nobody marked is served as a membership, which is every method
+  // an app has until it marks one.
+  Account account = 1;
+
+  // Account is an RPC an account calls as itself. See [Method.account].
+  message Account {}
+}
