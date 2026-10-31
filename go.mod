@@ -2,6 +2,11 @@ module github.com/lesomnus/payday
 
 go 1.27.0
 
+// The Go payday is built and tested with -- CI's setup-go reads this line --
+// and the one `pd new` writes into an app, which a test holds to it
+// (internal/pdcli/template/go.mod.tmpl). Renovate moves the two together.
+toolchain go1.27.3
+
 require (
 	cel.dev/cel-go v0.32.0
 	connectrpc.com/cors v0.1.0

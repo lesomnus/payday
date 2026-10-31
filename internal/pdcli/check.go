@@ -78,7 +78,7 @@ func (g Gen) Check(ctx context.Context) ([]Changed, error) {
 	return vs, nil
 }
 
-// generated is every place a generation writes.
+// generated is every directory a generation writes whole.
 //
 // It is written out rather than derived from what the last run produced,
 // because a file left behind by an entity that was removed from the schema is
@@ -93,16 +93,19 @@ func generated(l Layout) []string {
 	}
 }
 
-// hashes is the content of everything a generation writes, by path.
+// hashes is the content of everything a generation writes or removes, by path.
+//
+// **Or removes.** What a generation takes away is a change to the tree as much
+// as what it writes, and a check that hashed only where it writes passed after
+// taking a file from anywhere else: a stale message package, or another
+// module's generated Go, which the sweep used to delete as well (payday#189).
+// So beside the directories above, it reads the same lists the steps that
+// remove read -- [sweepable] and [contractsIn] -- and a file they take is "no
+// longer generated" here.
 func (g Gen) hashes() (map[string]string, error) {
 	vs := map[string]string{}
 
-	add := func(p string) error {
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-
+	put := func(p string, b []byte) error {
 		rel, err := filepath.Rel(g.Out, p)
 		if err != nil {
 			return err
@@ -111,6 +114,14 @@ func (g Gen) hashes() (map[string]string, error) {
 		vs[filepath.ToSlash(rel)] = hash(b)
 
 		return nil
+	}
+	add := func(p string) error {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		return put(p, b)
 	}
 
 	for _, d := range generated(g.Layout) {
@@ -137,12 +148,10 @@ func (g Gen) hashes() (map[string]string, error) {
 	}
 
 	// And the generated files that sit beside the app's own rather than in a
-	// directory of their own. Under `proto/` that is exactly the `.g.proto`,
-	// which is the whole of why they are named that way.
+	// directory of their own: the messages, where `go_package` puts them.
 	for _, pat := range []string{
 		filepath.Join(g.Layout.PkgDir(), "*.pb.go"),
 		filepath.Join(g.Layout.PkgDir(), "*.g.go"),
-		filepath.Join(DirProto, "*", "*.g.proto"),
 	} {
 		ps, err := filepath.Glob(filepath.Join(g.Out, pat))
 		if err != nil {
@@ -155,6 +164,20 @@ func (g Gen) hashes() (map[string]string, error) {
 				return nil, err
 			}
 		}
+	}
+
+	// Under `proto/` that is exactly the contracts, which is the whole of why
+	// they are named `.g.proto` -- at every depth, as they are removed. This
+	// was a pattern one directory down, and a schema in `proto/<pkg>/v1/` has
+	// its contracts two down.
+	if err := contractsIn(g.Out, add); err != nil {
+		return nil, err
+	}
+
+	// And generated Go anywhere else in the app's module, which is what the
+	// sweep takes: in step, all of it is the messages above.
+	if err := sweepable(g.Out, put); err != nil {
+		return nil, err
 	}
 
 	return vs, nil

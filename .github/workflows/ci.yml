@@ -376,6 +376,17 @@ jobs:
           go mod tidy
           go build ./...
 
+      # And that it is still on payday's toolchain, which is the line `pd new`
+      # wrote: nothing above writes one, and `go get -tool` takes out one that
+      # is no newer than the go line it raises. Without it the app's own CI
+      # builds with exactly what its go line names (payday#189).
+      - name: on payday's toolchain
+        working-directory: widget
+        run: |
+          want="$(go mod edit -json "${GITHUB_WORKSPACE}/payday/go.mod" | jq -er .Toolchain)"
+          have="$(go mod edit -json | jq -r '.Toolchain // "none"')"
+          test "${have}" = "${want}" || { echo "the app is on toolchain ${have}, and payday on ${want}" >&2; exit 1; }
+
       # And that a second run writes what the first did, which is the promise
       # `pd gen --check` makes to every app.
       - run: go tool pd gen --check .

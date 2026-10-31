@@ -2,6 +2,17 @@ module {{.Module}}
 
 go 1.26.4
 
+// The Go this app is built with, which to begin with is payday's: the
+// toolchain payday is built and tested with. setup-go's go-version-file reads
+// this line, and a go command older than it fetches it (GOTOOLCHAIN=auto).
+//
+// It is written here because nothing else writes it. `go get -tool` raises the
+// go line above to payday's and adds no toolchain, and an app with none is
+// built with exactly what its go line names -- go1.27.0 when levyan was made,
+// whose standard library govulncheck had advisories against (payday#189).
+// From here on it is the app's, and Renovate moves it.
+toolchain go1.27.3
+
 // The generators, as tools of this module.
 //
 // They are pinned here rather than by payday because a plugin is a Go program
@@ -9,9 +20,10 @@ go 1.26.4
 // and `pd doctor` is what says when one is missing rather than `buf generate`
 // failing over an executable nobody has heard of.
 //
-// `go mod tidy` fills in the requires. Nothing is pinned in this file on
-// purpose: a template that carried version numbers would be a template that is
-// out of date the week after it was written.
+// `go mod tidy` fills in the requires. Nothing but the toolchain is pinned in
+// this file, on purpose: a template that carried version numbers would be a
+// template that is out of date the week after it was written. The toolchain is
+// not, because it is payday's own and moves when payday's does.
 tool (
 	github.com/protobuf-orm/ent/cmd/ent
 	github.com/lesomnus/payday/cmd/pd
