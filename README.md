@@ -18,6 +18,9 @@ it is generated rather than remembered.
 - [**Measuring what a tenant holds**](docs/guide/meters.md) — meters declared in
   the schema and held to it, measured tenant by tenant and handed to a billing
   service's client; and the convention for what happens over time.
+- [**What a tenant is entitled to**](docs/guide/entitlements.md) — a copy of a
+  billing service's grants in the app's own database, kept by a loop that
+  follows it, and read inside the transaction of the write it decides.
 - [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
   `add`, `patch` and `erase` for every entity, from a `Connector` that says how
   to reach the deployment; the output formats, and a command for an RPC of your
@@ -128,6 +131,7 @@ app.
 | [`audit`](audit) | the trail, written in the transaction that changed something |
 | [`watch`](watch) · [`spin`](spin) | publishing what changed, and the loops that do it |
 | [`meter`](meter) | what each tenant holds, measured and handed to a billing service's client |
+| [`entitle`](entitle) | what each tenant is entitled to, copied from a source of grants and read in the write's transaction |
 | [`batch`](batch) | several writes as one transaction |
 | [`web`](web) | the port a browser reaches |
 | [`version`](version) | refusing a server whose payday moved |
