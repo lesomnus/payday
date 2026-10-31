@@ -42,6 +42,8 @@ type Holder struct {
 	Profile *apptest.Profile `json:"profile,omitempty"`
 	// Directory holds the value of the "directory" field.
 	Directory string `json:"directory,omitempty"`
+	// Account holds the value of the "account" field.
+	Account *uuid.UUID `json:"account,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
 	// RobotId holds the value of the "robot_id" field.
@@ -96,7 +98,7 @@ func (*Holder) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case holder.FieldDateUpdated, holder.FieldDateErased, holder.FieldDateCreated:
 			values[i] = new(sql.NullTime)
-		case holder.FieldRobotId:
+		case holder.FieldAccount, holder.FieldRobotId:
 			values[i] = new(sql.Null[uuid.UUID])
 		case holder.FieldId, holder.FieldTenantId:
 			values[i] = new(uuid.UUID)
@@ -185,6 +187,13 @@ func (_m *Holder) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field directory", values[i])
 			} else if value.Valid {
 				_m.Directory = value.String
+			}
+		case holder.FieldAccount:
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field account", values[i])
+			} else if value.Valid {
+				_m.Account = new(uuid.UUID)
+				*_m.Account = value.V
 			}
 		case holder.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -275,6 +284,11 @@ func (_m *Holder) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("directory=")
 	builder.WriteString(_m.Directory)
+	builder.WriteString(", ")
+	if v := _m.Account; v != nil {
+		builder.WriteString("account=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))

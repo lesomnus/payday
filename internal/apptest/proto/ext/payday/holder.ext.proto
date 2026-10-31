@@ -36,4 +36,35 @@ message Holder {
   // edge like this one was a foreign key with nothing consulted: a holder
   // pointed at another tenant's robot, and read it back through itself.
   Robot robot = 11 [(orm.edge) = {nullable: true}];
+
+  // The account this holder is a membership of (payday#184): one of an
+  // identity provider's directory, which signs in once and is a member of
+  // every tenant it has a holder in. The app option names it, `accounts:`, and
+  // the generated gate refuses it to a request, so that only the deployment
+  // says which account a membership is of. Null on a holder that is no
+  // account's -- the seed's admin, which signs in as itself.
+  bytes account = 12 [(orm.field) = {
+    type: TYPE_UUID
+    nullable: true
+  }];
+
+  // By account, since every call an account makes is resolved by it: without
+  // the index each one reads every holder there is (`pd gen` warns).
+  option (orm.message) = {
+    indexes: [
+      {
+        name: "by_account"
+        refs: [
+          {
+            name: "account"
+            number: 12
+          },
+          {
+            name: "tenant"
+            number: 2
+          }
+        ]
+      }
+    ]
+  };
 }

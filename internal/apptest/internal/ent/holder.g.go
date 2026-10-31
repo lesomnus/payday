@@ -40,5 +40,8 @@ func (e *Holder) Proto() *apptest.Holder {
 		r.SetId(v[:])
 		x.SetRobot(r)
 	}
+	if e.Account != nil {
+		x.SetAccount(e.Account[:])
+	}
 	return x
 }

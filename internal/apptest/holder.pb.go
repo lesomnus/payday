@@ -48,6 +48,7 @@ type Holder struct {
 	xxx_hidden_Profile     *Profile               `protobuf:"bytes,9,opt,name=profile"`
 	xxx_hidden_Directory   string                 `protobuf:"bytes,10,opt,name=directory"`
 	xxx_hidden_Robot       *Robot                 `protobuf:"bytes,11,opt,name=robot"`
+	xxx_hidden_Account     []byte                 `protobuf:"bytes,12,opt,name=account"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -168,6 +169,13 @@ func (x *Holder) GetRobot() *Robot {
 	return nil
 }
 
+func (x *Holder) GetAccount() []byte {
+	if x != nil {
+		return x.xxx_hidden_Account
+	}
+	return nil
+}
+
 func (x *Holder) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -221,6 +229,13 @@ func (x *Holder) SetDirectory(v string) {
 
 func (x *Holder) SetRobot(v *Robot) {
 	x.xxx_hidden_Robot = v
+}
+
+func (x *Holder) SetAccount(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Account = v
 }
 
 func (x *Holder) HasTenant() bool {
@@ -350,6 +365,13 @@ type Holder_builder struct {
 	// edge like this one was a foreign key with nothing consulted: a holder
 	// pointed at another tenant's robot, and read it back through itself.
 	Robot *Robot
+	// The account this holder is a membership of (payday#184): one of an
+	// identity provider's directory, which signs in once and is a member of
+	// every tenant it has a holder in. The app option names it, `accounts:`, and
+	// the generated gate refuses it to a request, so that only the deployment
+	// says which account a membership is of. Null on a holder that is no
+	// account's -- the seed's admin, which signs in as itself.
+	Account []byte
 }
 
 func (b0 Holder_builder) Build() *Holder {
@@ -369,6 +391,7 @@ func (b0 Holder_builder) Build() *Holder {
 	x.xxx_hidden_Profile = b.Profile
 	x.xxx_hidden_Directory = b.Directory
 	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_Account = b.Account
 	return m0
 }
 
@@ -376,7 +399,7 @@ var File_app_payday_holder_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xbe\x06\n" +
+	"\x17app/payday/holder.proto\x12\x03app\x1a\x11app/profile.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\x89\a\n" +
 	"\x06Holder\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1c\n" +
@@ -394,17 +417,22 @@ const file_app_payday_holder_proto_rawDesc = "" +
 	"\tdirectory\x18\n" +
 	" \x01(\tB\b\xaa\xc1\x16\x04\x10\x01\x18\x00R\tdirectory\x12(\n" +
 	"\x05robot\x18\v \x01(\v2\n" +
-	".app.RobotB\x06\xf2\x82\x16\x028\x01R\x05robot\x1a9\n" +
+	".app.RobotB\x06\xf2\x82\x16\x028\x01R\x05robot\x12\"\n" +
+	"\aaccount\x18\f \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\aaccount\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9c\x01\xca\xfc\x15S\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc3\x01\xca\xfc\x15z\x12\x02\x10\x01\x1a\x1f\x12\x04slug\x1a\t\n" +
 	"\x05alias\x10\x04\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x020\x01\x1a,\x12\x04page\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
-	"\x02id\x10\x01\x8a\xbb\x16A\b\x0229\n" +
+	"\x02id\x10\x01\x1a%\x12\n" +
+	"by_account\x1a\v\n" +
+	"\aaccount\x10\f\x1a\n" +
+	"\n" +
+	"\x06tenant\x10\x02\x8a\xbb\x16A\b\x0229\n" +
 	"\x10\n" +
 	"\x0e\n" +
 	"\fdate_created\n" +

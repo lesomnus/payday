@@ -74,6 +74,19 @@ type Server struct {
 	// session handler needs a store, and a store is a table in this database.
 	Auth auth.Handler
 
+	// Accounts says which credentials name an **account** rather than a holder
+	// (payday#184): one of an identity provider's directory, which signs in
+	// once and is a member of every tenant it has a holder in. Such a call is
+	// served as its membership of the tenant it names in [TenantHeader], or its
+	// only one, and `HolderService.Memberships` as the account itself; see
+	// `pd.AccountResolver`.
+	//
+	// Nil is none, which is what this app is until a deployment says what its
+	// sessions are: payday keeps none, so which credentials name accounts is
+	// the app's to say -- a session minted for an account, a token an identity
+	// provider issued. Every credential is then a holder's, as before.
+	Accounts func(auth.Identity) bool
+
 	// Policy is what a caller may do and which tenants they may see, and nil is
 	// the answer payday gives on its own: their own tenant and nothing more.
 	//
@@ -381,9 +394,14 @@ func (s *Server) Grpc(ctx context.Context, c Config, opts ...grpc.ServerOption) 
 		h = auth.Plain()
 	}
 
+	//
+	// And a credential that names an account is served as one of its
+	// memberships, or as the account for the methods that are its own; any
+	// other is a holder's, resolved as it always was. See [Server.Accounts].
+	r := pd.AccountResolver(s.Ent, TenantHeader, s.Accounts, Resolver(s.Ungated))
 	chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
-		WithUnary(auth.InterceptorUnary(h, Resolver(s.Ungated), auth.PublicDefault)).
-		WithStream(auth.InterceptorStream(h, Resolver(s.Ungated), auth.PublicDefault)).
+		WithUnary(auth.InterceptorUnary(h, r, auth.PublicDefault)).
+		WithStream(auth.InterceptorStream(h, r, auth.PublicDefault)).
 		WithUnary(grpcx.LimitUnary(c.Server.Limiter(), gate.ByTenant(), pd.Cost)).
 		With(s.accessed().Interceptor()).
 		With(gate.Interceptor(s.Policy)).
