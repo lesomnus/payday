@@ -53,6 +53,7 @@ import (
 	entTenant "github.com/lesomnus/payday/internal/apptest/internal/ent/tenant"
 	entThing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	bare "github.com/lesomnus/payday/internal/apptest/server/bare"
+	meter "github.com/lesomnus/payday/meter"
 	notify "github.com/lesomnus/payday/notify"
 	past "github.com/lesomnus/payday/past"
 	pderr "github.com/lesomnus/payday/pderr"
@@ -247,6 +248,7 @@ var IndexRenames = []rename.Index{
 	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
+	{Table: "machine", From: "machine_tenant_id", To: "machine_by_tenant"},
 	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_notification_id_reader_id", To: "notificationreceiptrecord_receipt"},
 	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_tenant_id_reader_id_notification_id", To: "notificationreceiptrecord_reader"},
 	{Table: "notificationrecord", From: "notificationrecord_tenant_id_producer_idempotency_key", To: "notificationrecord_publication"},
@@ -11674,6 +11676,176 @@ func notificationReceiptRow(v *apptest.NotificationReceiptRecord) (notify.Receip
 		return notify.Receipt{}, err
 	}
 	return notify.Receipt{ID: key, Tenant: tenant, Notification: notification, Reader: reader, DataRead: v.GetDataRead().AsTime(), DateCreated: v.GetDateCreated().AsTime(), DateUpdated: v.GetDateUpdated().AsTime()}, nil
+}
+
+// Meters are the meters this app's schema declares (payday#186), each
+// measured on `db`: what `meter.Reader.Meters` is, with the app's own meters
+// beside them. Built on a client of a replica, they are measured there.
+//
+// Each is the rows of one entity that one tenant holds -- erased rows are
+// not held -- narrowed by what its declaration says, counted or summed in
+// one statement.
+func Meters(db *ent.Client) []meter.Meter {
+	return []meter.Meter{
+		{
+			Key:  "apptest.robots",
+			Unit: "{robot}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Robot.Query().Where(
+					entRobot.TenantIdIn(vs...),
+					entRobot.DateErasedIsNil(),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.robots.attested",
+			Unit: "{robot}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Robot.Query().Where(
+					entRobot.TenantIdIn(vs...),
+					entRobot.DateErasedIsNil(),
+					entRobot.DateAttestedNotNil(),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.machines.working",
+			Unit: "{machine}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Machine.Query().Where(
+					entMachine.TenantIdIn(vs...),
+					entMachine.DateErasedIsNil(),
+					entMachine.ModeNotIn(int32(0) /* MODE_UNSPECIFIED */, int32(1) /* MODE_IDLE */),
+					entMachine.RunningEQ(true),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.machines.spare",
+			Unit: "{machine}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Machine.Query().Where(
+					entMachine.TenantIdIn(vs...),
+					entMachine.DateErasedIsNil(),
+					entMachine.RobotIdIsNil(),
+					entMachine.ModelNotIn("prototype"),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.machines.new",
+			Unit: "{machine}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Machine.Query().Where(
+					entMachine.TenantIdIn(vs...),
+					entMachine.DateErasedIsNil(),
+					entMachine.HoursIn(0),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.machines.cycles",
+			Unit: "{cycle}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Machine.Query().Where(
+					entMachine.TenantIdIn(vs...),
+					entMachine.DateErasedIsNil(),
+					entMachine.MakerIdNotNil(),
+				)
+				n, err := q.Aggregate(meterSum(entMachine.FieldCycles)).Int(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.joints",
+			Unit: "{joint}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Joint.Query().Where(
+					entJoint.HasRobotWith(entRobot.TenantIdIn(vs...)),
+					entJoint.DateErasedIsNil(),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.readings",
+			Unit: "{reading}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Reading.Query().Where(
+					entReading.TenantIdIn(vs...),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+		{
+			Key:  "apptest.seats",
+			Unit: "{seat}",
+			Measure: func(ctx context.Context, tenant pdid.Id) (int64, error) {
+				vs := []uuid.UUID{tenant.Uuid()}
+				q := db.Holder.Query().Where(
+					entHolder.TenantIdIn(vs...),
+					entHolder.DateErasedIsNil(),
+				)
+				n, err := q.Count(ctx)
+				return int64(n), err
+			},
+		},
+	}
+}
+
+// meterSum is the sum of a column over the rows a query reads, as a whole
+// number: zero for no rows, which SUM says is NULL, and BIGINT on both
+// databases -- PostgreSQL's SUM of a bigint is a numeric, and a sum past
+// what a bigint holds is refused by the cast rather than rounded.
+func meterSum(column string) ent.AggregateFunc {
+	return func(s *sql.Selector) string {
+		return "CAST(COALESCE(" + sql.Sum(s.C(column)) + ", 0) AS BIGINT)"
+	}
+}
+
+// MeterTenants is every tenant there is, a page of at most `limit` after
+// `after` in the order of their identifiers: what `meter.Reader.Tenants` is.
+//
+// Every one, closed or not: a tenant holds what it holds until it is
+// destroyed, and is billed for it.
+func MeterTenants(db *ent.Client) func(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+	return func(ctx context.Context, after pdid.Id, limit int) ([]pdid.Id, error) {
+		vs, err := db.Tenant.Query().
+			Where(entTenant.IdGT(after.Uuid())).
+			Order(entTenant.ById()).
+			Limit(limit).
+			Ids(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		out := make([]pdid.Id, len(vs))
+		for i, v := range vs {
+			out[i] = pdid.Id(v)
+		}
+
+		return out, nil
+	}
 }
 
 // personal is what a message holding a field declared `personal` is to the

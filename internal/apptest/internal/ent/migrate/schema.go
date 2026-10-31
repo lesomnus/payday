@@ -437,6 +437,13 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "machine_by_tenant",
+				Unique:  false,
+				Columns: []*schema.Column{MachineColumns[18]},
+			},
+		},
 	}
 	// NotificationreceiptrecordColumns holds the columns for the "notificationreceiptrecord" table.
 	NotificationreceiptrecordColumns = []*schema.Column{

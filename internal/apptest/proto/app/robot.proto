@@ -25,9 +25,100 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // 6, as in every app whose own entities never held those (payday#163). pdcli's
 // TestARenumberedAppKeepsItsTrailAndItsAccessRecord runs a copy of this app
 // that gives them 240 and 241.
+//
+// And it says what each tenant holds that it would be paid by (payday#186):
+// one meter of every shape a declaration takes, so that each query `pd gen`
+// writes for one is compiled and run, on SQLite and on PostgreSQL --
+// `cmd/meter_test.go` holds each to what it counts.
 option (payday.app) = {
   past: {event: 17, fact: 18}
   notify: {notification: 40, receipt: 41}
+  meters: [
+    // Every robot a tenant holds: rows behind an edge to the tenant, of
+    // which an erased one is not among them.
+    {
+      key: "apptest.robots"
+      unit: "{robot}"
+      count: {of: "Robot"}
+    },
+    // The ones attested: a time that may be null, and is not.
+    {
+      key: "apptest.robots.attested"
+      unit: "{robot}"
+      count: {
+        of: "Robot"
+        where: [{field: {name: "date_attested", number: 31}, set: true}]
+      }
+    },
+    // Machines at work: an enum's values left out by their names -- not
+    // MODE_RUN and MODE_SERVICE named in, which pdcli's lock tests rename
+    // and remove to provoke the past's lock, and a meter would refuse first
+    // -- and a bool.
+    {
+      key: "apptest.machines.working"
+      unit: "{machine}"
+      count: {
+        of: "Machine"
+        where: [
+          {field: {name: "mode", number: 19}, not_in: ["MODE_UNSPECIFIED", "MODE_IDLE"]},
+          {field: {name: "running", number: 11}, in: ["true"]}
+        ]
+      }
+    },
+    // Machines no robot is on that are not prototypes: an edge that may be
+    // null and is, and a string's values left out.
+    {
+      key: "apptest.machines.spare"
+      unit: "{machine}"
+      count: {
+        of: "Machine"
+        where: [
+          {field: {name: "robot", number: 18}, set: false},
+          {field: {name: "model", number: 8}, not_in: ["prototype"]}
+        ]
+      }
+    },
+    // Machines that have not run an hour: an integer's value.
+    {
+      key: "apptest.machines.new"
+      unit: "{machine}"
+      count: {
+        of: "Machine"
+        where: [{field: {name: "hours", number: 9}, in: ["0"]}]
+      }
+    },
+    // The cycles of the machines whose maker is known: a sum, of a count
+    // with no sign.
+    {
+      key: "apptest.machines.cycles"
+      unit: "{cycle}"
+      sum: {
+        of: "Machine"
+        field: {name: "cycles", number: 16}
+        where: [{field: {name: "maker_id", number: 17}, set: true}]
+      }
+    },
+    // Joints, which reach their tenant through a robot: a `via` of two
+    // steps, whose first may be absent.
+    {
+      key: "apptest.joints"
+      unit: "{joint}"
+      count: {of: "Joint"}
+    },
+    // Readings, whose tenant is stamped on them and which go hard.
+    {
+      key: "apptest.readings"
+      unit: "{reading}"
+      count: {of: "Reading"}
+    },
+    // And the seats: payday's own Holder, which is why meters are said here
+    // and not on the entity they count.
+    {
+      key: "apptest.seats"
+      unit: "{seat}"
+      count: {of: "Holder"}
+    }
+  ]
 };
 
 // Cell was added to answer one question: what does adding an entity cost?

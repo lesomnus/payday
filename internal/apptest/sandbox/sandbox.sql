@@ -58,6 +58,7 @@ CREATE INDEX `fact_superseded` ON `fact` (`superseded_by`);
 CREATE UNIQUE INDEX `fleet_alias` ON `fleet` (`alias`) WHERE date_erased IS NULL;
 CREATE INDEX `holder_page` ON `holder` (`tenant_id`, `date_created`, `id`);
 CREATE UNIQUE INDEX `holder_slug` ON `holder` (`alias`, `tenant_id`) WHERE date_erased IS NULL;
+CREATE INDEX `machine_by_tenant` ON `machine` (`tenant_id`);
 CREATE INDEX `notificationreceiptrecord_reader` ON `notificationreceiptrecord` (`tenant_id`, `reader_id`, `notification_id`);
 CREATE UNIQUE INDEX `notificationreceiptrecord_receipt` ON `notificationreceiptrecord` (`notification_id`, `reader_id`);
 CREATE INDEX `notificationrecord_page` ON `notificationrecord` (`tenant_id`, `topic_key`, `date_created`, `id`);
