@@ -99,9 +99,13 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// a reader, whether it runs. See doctor_meter.go. And of an app that
 	// declares entitlements, whether anything keeps the copy and reads it, and
 	// of a follower, whether it has a source and runs. See doctor_entitle.go.
+	// And of an app whose holders are memberships of accounts, whether each
+	// method an account calls as itself says what it reads, and whether a
+	// resolver serves a call as one. See doctor_account.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
 	vs = append(vs, doctorMeters(l, schema)...)
 	vs = append(vs, doctorEntitlements(l, schema)...)
+	vs = append(vs, doctorAccounts(l, schema)...)
 
 	return append(vs, doctorPast(l, schema)...)
 }

@@ -63,6 +63,12 @@ func TestTheReferenceAppIsWell(t *testing.T) {
 	// source and a copy, in its spin list.
 	x.NotContains(v, "nothing keeps the copy")
 	x.NotContains(v, "entitle.Follower")
+
+	// And its holders are memberships of accounts (payday#184): the one
+	// method an account calls as itself says what it reads, and its server
+	// resolves a call by them.
+	x.NotContains(v, "declare nothing they read")
+	x.NotContains(v, "no resolver serves a call as one")
 }
 
 // TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a
