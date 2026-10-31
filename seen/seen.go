@@ -33,6 +33,12 @@
 // proof about the next. What the sink learns is about the row and not about
 // who is asking, so every frame in the transaction shares it.
 //
+// Nothing the gate learns is kept for a call an account makes as itself
+// (payday#184). What it reads is what the layer serving it declared, which is
+// in the context and not in the frame, and a layer may say it again within the
+// call: one frame, two questions, and an answer to the wider one is no proof
+// about the narrower.
+//
 // The read the gate remembers goes through every scope the stack narrows by:
 // the wall, and the set at field 3 when the app declared one. So what it found
 // is that the row was inside both.
@@ -132,9 +138,11 @@ func Visible(ctx context.Context, drv dialect.Driver, entity string, ref Ref, as
 	}
 
 	f, ok := frame.From(ctx)
-	if !ok {
+	if !ok || f.AsAccount() {
 		// Nobody vouched for this, so there is no "who" to remember an answer
-		// for -- and the read is about to refuse it anyway.
+		// for -- and the read is about to refuse it anyway. Or an account's
+		// own call, whose reads are what its layer declared rather than its
+		// frame; see the package comment.
 		return ask()
 	}
 

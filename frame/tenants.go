@@ -115,6 +115,11 @@ func Scope(ctx context.Context) (Tenants, error) {
 // which is a query that matches nothing; `all` means "do not narrow", which is
 // a query with no such predicate. Collapsing them would make the safe answer
 // and the open one the same value.
+//
+// A call an account makes as itself is the empty list, always: its scope is
+// [Nothing] and nothing gives it another ([Frame.WithScope]). What it reads is
+// what the layer serving it declared, which the generated wall asks before it
+// asks this.
 func Narrow(ctx context.Context) (vs []uuid.UUID, all bool, err error) {
 	s, err := Scope(ctx)
 	if err != nil || s.All() {
@@ -163,6 +168,13 @@ func NarrowSet(ctx context.Context, of Sets) (vs []uuid.UUID, all bool, err erro
 		// no frame is one nobody vouched for, and there is no scope that means
 		// "everything, because nobody asked".
 		return nil, false, status.Error(codes.Unauthenticated, "who is asking?")
+	}
+	if f.AsAccount() {
+		// In no tenant, so in no set of one -- and not asked of `of`, which is
+		// written about the actor's memberships, and this actor is none. What
+		// such a call reads, the layer serving it said, and the generated
+		// scope asks that first.
+		return nil, false, nil
 	}
 
 	given, all := []uuid.UUID(nil), true

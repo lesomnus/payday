@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder.proto.
  */
 export const file_app_payday_holder: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIr4FCgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIVCgVhbGlhcxgEIAEoCUIGqsEWAhgBEhQKBG5hbWUYBSABKAlCBqrBFgIYARIUCgRkZXNjGAYgASgJQgaqwRYCGAESLwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeUIGqsEWAhgBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIbCgtpZHBfc3ViamVjdBgIIAEoCUIGqsEWAhgBEiUKB3Byb2ZpbGUYCSABKAsyDC5hcHAuUHJvZmlsZUIGqsEWAhgBEhsKCWRpcmVjdG9yeRgKIAEoCUIIqsEWBBABGAASIQoFcm9ib3QYCyABKAsyCi5hcHAuUm9ib3RCBvKCFgI4ARotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOpwByvwVUxICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAEaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABirsWQQgCMjkKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50GggKBmxhYmVscyAUKGQ6AEgCQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_profile, file_app_robot, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChdhcHAvcGF5ZGF5L2hvbGRlci5wcm90bxIDYXBwIoAGCgZIb2xkZXISFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIVCgVhbGlhcxgEIAEoCUIGqsEWAhgBEhQKBG5hbWUYBSABKAlCBqrBFgIYARIUCgRkZXNjGAYgASgJQgaqwRYCGAESLwoGbGFiZWxzGAcgAygLMhcuYXBwLkhvbGRlci5MYWJlbHNFbnRyeUIGqsEWAhgBEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOAoLZGF0ZV9lcmFzZWQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDkgEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIbCgtpZHBfc3ViamVjdBgIIAEoCUIGqsEWAhgBEiUKB3Byb2ZpbGUYCSABKAsyDC5hcHAuUHJvZmlsZUIGqsEWAhgBEhsKCWRpcmVjdG9yeRgKIAEoCUIIqsEWBBABGAASIQoFcm9ib3QYCyABKAsyCi5hcHAuUm9ib3RCBvKCFgI4ARIZCgdhY2NvdW50GAwgASgMQgjqghYEEEA4ARotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBOsMByvwVehICEAEaHxIEc2x1ZxoJCgVhbGlhcxAEGgoKBnRlbmFudBACMAEaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABGiUSCmJ5X2FjY291bnQaCwoHYWNjb3VudBAMGgoKBnRlbmFudBACirsWQQgCMjkKEAoOCgxkYXRlX2NyZWF0ZWQKBgoECgJpZBoFCgNyZWYaCAoGdGVuYW50GggKBmxhYmVscyAUKGQ6AEgCQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_profile, file_app_robot, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Holder is who a request is from.
@@ -155,6 +155,18 @@ export type Holder = Message<"app.Holder"> & {
    * @generated from field: app.Robot robot = 11;
    */
   robot?: Robot | undefined;
+
+  /**
+   * The account this holder is a membership of (payday#184): one of an
+   * identity provider's directory, which signs in once and is a member of
+   * every tenant it has a holder in. The app option names it, `accounts:`, and
+   * the generated gate refuses it to a request, so that only the deployment
+   * says which account a membership is of. Null on a holder that is no
+   * account's -- the seed's admin, which signs in as itself.
+   *
+   * @generated from field: bytes account = 12;
+   */
+  account: Uint8Array;
 };
 
 /**

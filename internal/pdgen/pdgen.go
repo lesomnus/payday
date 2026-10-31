@@ -218,6 +218,11 @@ type Schema struct {
 	// measures. Empty for an app that declares none.
 	Meters []*Meter
 
+	// Accounts is what the app declared of the accounts its holders are
+	// memberships of (payday#184), resolved against the holder, and nil for
+	// an app that declared none.
+	Accounts *Accounts
+
 	// Domains is what the app declared of the domains of payday's Archived and
 	// Access, and nil for an app that declared none (payday#163): the two are
 	// in [Schema.Entities] wherever they are, found by their marker, and this
@@ -275,6 +280,15 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	s.Entitlements = entitlements
 
 	meters, err := readMeters(files)
+	if err != nil {
+		return nil, err
+	}
+
+	accounts, err := readAccounts(files)
+	if err != nil {
+		return nil, err
+	}
+	methods, err := readAccountMethods(files)
 	if err != nil {
 		return nil, err
 	}
@@ -351,6 +365,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	if err := s.checkMeters(meters); err != nil {
+		return nil, err
+	}
+	if err := s.checkAccounts(accounts, methods, files); err != nil {
 		return nil, err
 	}
 
@@ -1616,6 +1633,7 @@ func Warnings(s *Schema) []string {
 		vs = append(vs, checkListIndex(v)...)
 	}
 	vs = append(vs, checkMeterIndex(s)...)
+	vs = append(vs, checkAccountIndex(s)...)
 
 	return vs
 }

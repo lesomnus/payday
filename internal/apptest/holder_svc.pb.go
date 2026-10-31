@@ -7,6 +7,7 @@
 package apptest
 
 import (
+	_ "github.com/lesomnus/payday/pdpb"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -35,6 +36,7 @@ type HolderAddRequest struct {
 	xxx_hidden_Profile     *Profile               `protobuf:"bytes,9,opt,name=profile"`
 	xxx_hidden_Directory   string                 `protobuf:"bytes,10,opt,name=directory"`
 	xxx_hidden_Robot       *RobotRef              `protobuf:"bytes,11,opt,name=robot"`
+	xxx_hidden_Account     []byte                 `protobuf:"bytes,12,opt,name=account"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -143,12 +145,19 @@ func (x *HolderAddRequest) GetRobot() *RobotRef {
 	return nil
 }
 
+func (x *HolderAddRequest) GetAccount() []byte {
+	if x != nil {
+		return x.xxx_hidden_Account
+	}
+	return nil
+}
+
 func (x *HolderAddRequest) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
 }
 
 func (x *HolderAddRequest) SetTenant(v *TenantRef) {
@@ -191,6 +200,14 @@ func (x *HolderAddRequest) SetRobot(v *RobotRef) {
 	x.xxx_hidden_Robot = v
 }
 
+func (x *HolderAddRequest) SetAccount(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Account = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
+}
+
 func (x *HolderAddRequest) HasId() bool {
 	if x == nil {
 		return false
@@ -226,6 +243,13 @@ func (x *HolderAddRequest) HasRobot() bool {
 	return x.xxx_hidden_Robot != nil
 }
 
+func (x *HolderAddRequest) HasAccount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *HolderAddRequest) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -247,6 +271,11 @@ func (x *HolderAddRequest) ClearRobot() {
 	x.xxx_hidden_Robot = nil
 }
 
+func (x *HolderAddRequest) ClearAccount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_Account = nil
+}
+
 type HolderAddRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -261,6 +290,7 @@ type HolderAddRequest_builder struct {
 	Profile     *Profile
 	Directory   string
 	Robot       *RobotRef
+	Account     []byte
 }
 
 func (b0 HolderAddRequest_builder) Build() *HolderAddRequest {
@@ -268,7 +298,7 @@ func (b0 HolderAddRequest_builder) Build() *HolderAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Tenant = b.Tenant
@@ -281,6 +311,10 @@ func (b0 HolderAddRequest_builder) Build() *HolderAddRequest {
 	x.xxx_hidden_Profile = b.Profile
 	x.xxx_hidden_Directory = b.Directory
 	x.xxx_hidden_Robot = b.Robot
+	if b.Account != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		x.xxx_hidden_Account = b.Account
+	}
 	return m0
 }
 
@@ -665,6 +699,7 @@ type HolderSelect struct {
 	xxx_hidden_Profile     bool                   `protobuf:"varint,9,opt,name=profile"`
 	xxx_hidden_Directory   bool                   `protobuf:"varint,10,opt,name=directory"`
 	xxx_hidden_Robot       *RobotSelect           `protobuf:"bytes,11,opt,name=robot"`
+	xxx_hidden_Account     bool                   `protobuf:"varint,12,opt,name=account"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -787,9 +822,16 @@ func (x *HolderSelect) GetRobot() *RobotSelect {
 	return nil
 }
 
+func (x *HolderSelect) GetAccount() bool {
+	if x != nil {
+		return x.xxx_hidden_Account
+	}
+	return false
+}
+
 func (x *HolderSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
 }
 
 func (x *HolderSelect) SetTenant(v *TenantSelect) {
@@ -798,56 +840,61 @@ func (x *HolderSelect) SetTenant(v *TenantSelect) {
 
 func (x *HolderSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
 }
 
 func (x *HolderSelect) SetName(v bool) {
 	x.xxx_hidden_Name = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
 }
 
 func (x *HolderSelect) SetDesc(v bool) {
 	x.xxx_hidden_Desc = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
 }
 
 func (x *HolderSelect) SetLabels(v bool) {
 	x.xxx_hidden_Labels = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
 }
 
 func (x *HolderSelect) SetDateUpdated(v bool) {
 	x.xxx_hidden_DateUpdated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
 }
 
 func (x *HolderSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
 }
 
 func (x *HolderSelect) SetDateCreated(v bool) {
 	x.xxx_hidden_DateCreated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *HolderSelect) SetIdpSubject(v bool) {
 	x.xxx_hidden_IdpSubject = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
 }
 
 func (x *HolderSelect) SetProfile(v bool) {
 	x.xxx_hidden_Profile = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
 }
 
 func (x *HolderSelect) SetDirectory(v bool) {
 	x.xxx_hidden_Directory = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
 }
 
 func (x *HolderSelect) SetRobot(v *RobotSelect) {
 	x.xxx_hidden_Robot = v
+}
+
+func (x *HolderSelect) SetAccount(v bool) {
+	x.xxx_hidden_Account = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
 }
 
 func (x *HolderSelect) HasAll() bool {
@@ -941,6 +988,13 @@ func (x *HolderSelect) HasRobot() bool {
 	return x.xxx_hidden_Robot != nil
 }
 
+func (x *HolderSelect) HasAccount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
 func (x *HolderSelect) ClearAll() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_All = false
@@ -1004,6 +1058,11 @@ func (x *HolderSelect) ClearRobot() {
 	x.xxx_hidden_Robot = nil
 }
 
+func (x *HolderSelect) ClearAccount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Account = false
+}
+
 type HolderSelect_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1020,6 +1079,7 @@ type HolderSelect_builder struct {
 	Profile     *bool
 	Directory   *bool
 	Robot       *RobotSelect
+	Account     *bool
 }
 
 func (b0 HolderSelect_builder) Build() *HolderSelect {
@@ -1027,51 +1087,55 @@ func (b0 HolderSelect_builder) Build() *HolderSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
 		x.xxx_hidden_Alias = *b.Alias
 	}
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
 		x.xxx_hidden_Name = *b.Name
 	}
 	if b.Desc != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
 		x.xxx_hidden_Desc = *b.Desc
 	}
 	if b.Labels != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
 		x.xxx_hidden_Labels = *b.Labels
 	}
 	if b.DateUpdated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
 		x.xxx_hidden_DateUpdated = *b.DateUpdated
 	}
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	if b.DateCreated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_DateCreated = *b.DateCreated
 	}
 	if b.IdpSubject != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
 		x.xxx_hidden_IdpSubject = *b.IdpSubject
 	}
 	if b.Profile != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
 		x.xxx_hidden_Profile = *b.Profile
 	}
 	if b.Directory != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
 		x.xxx_hidden_Directory = *b.Directory
 	}
 	x.xxx_hidden_Robot = b.Robot
+	if b.Account != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
+		x.xxx_hidden_Account = *b.Account
+	}
 	return m0
 }
 
@@ -1090,6 +1154,8 @@ type HolderPatchRequest struct {
 	xxx_hidden_Directory        *string                `protobuf:"bytes,20,opt,name=directory"`
 	xxx_hidden_Robot            *RobotRef              `protobuf:"bytes,22,opt,name=robot"`
 	xxx_hidden_RobotNull        bool                   `protobuf:"varint,23,opt,name=robot_null,json=robotNull"`
+	xxx_hidden_Account          []byte                 `protobuf:"bytes,24,opt,name=account"`
+	xxx_hidden_AccountNull      bool                   `protobuf:"varint,25,opt,name=account_null,json=accountNull"`
 	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
 	XXX_presence                [1]uint32
 	unknownFields               protoimpl.UnknownFields
@@ -1227,23 +1293,37 @@ func (x *HolderPatchRequest) GetRobotNull() bool {
 	return false
 }
 
+func (x *HolderPatchRequest) GetAccount() []byte {
+	if x != nil {
+		return x.xxx_hidden_Account
+	}
+	return nil
+}
+
+func (x *HolderPatchRequest) GetAccountNull() bool {
+	if x != nil {
+		return x.xxx_hidden_AccountNull
+	}
+	return false
+}
+
 func (x *HolderPatchRequest) SetRef(v *HolderRef) {
 	x.xxx_hidden_Ref = v
 }
 
 func (x *HolderPatchRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *HolderPatchRequest) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *HolderPatchRequest) SetDesc(v string) {
 	x.xxx_hidden_Desc = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *HolderPatchRequest) SetLabels(v map[string]string) {
@@ -1256,12 +1336,12 @@ func (x *HolderPatchRequest) SetDateUpdated(v *timestamppb.Timestamp) {
 
 func (x *HolderPatchRequest) SetDateUpdatedForce(v bool) {
 	x.xxx_hidden_DateUpdatedForce = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *HolderPatchRequest) SetIdpSubject(v string) {
 	x.xxx_hidden_IdpSubject = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
 }
 
 func (x *HolderPatchRequest) SetProfile(v *Profile) {
@@ -1270,12 +1350,12 @@ func (x *HolderPatchRequest) SetProfile(v *Profile) {
 
 func (x *HolderPatchRequest) SetProfileNull(v bool) {
 	x.xxx_hidden_ProfileNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
 }
 
 func (x *HolderPatchRequest) SetDirectory(v string) {
 	x.xxx_hidden_Directory = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *HolderPatchRequest) SetRobot(v *RobotRef) {
@@ -1284,7 +1364,20 @@ func (x *HolderPatchRequest) SetRobot(v *RobotRef) {
 
 func (x *HolderPatchRequest) SetRobotNull(v bool) {
 	x.xxx_hidden_RobotNull = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
+}
+
+func (x *HolderPatchRequest) SetAccount(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Account = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *HolderPatchRequest) SetAccountNull(v bool) {
+	x.xxx_hidden_AccountNull = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
 }
 
 func (x *HolderPatchRequest) HasRef() bool {
@@ -1371,6 +1464,20 @@ func (x *HolderPatchRequest) HasRobotNull() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
 }
 
+func (x *HolderPatchRequest) HasAccount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
+func (x *HolderPatchRequest) HasAccountNull() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
 func (x *HolderPatchRequest) ClearRef() {
 	x.xxx_hidden_Ref = nil
 }
@@ -1427,6 +1534,16 @@ func (x *HolderPatchRequest) ClearRobotNull() {
 	x.xxx_hidden_RobotNull = false
 }
 
+func (x *HolderPatchRequest) ClearAccount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Account = nil
+}
+
+func (x *HolderPatchRequest) ClearAccountNull() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_AccountNull = false
+}
+
 type HolderPatchRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1463,6 +1580,12 @@ type HolderPatchRequest_builder struct {
 	// "leave it alone", so no value could have meant NULL. It wins
 	// outright: setting both this and robot clears.
 	RobotNull *bool
+	Account   []byte
+	// Clear account instead of writing it.
+	// It takes a field of its own because an unset value already means
+	// "leave it alone", so no value could have meant NULL. It wins
+	// outright: setting both this and account clears.
+	AccountNull *bool
 }
 
 func (b0 HolderPatchRequest_builder) Build() *HolderPatchRequest {
@@ -1471,40 +1594,48 @@ func (b0 HolderPatchRequest_builder) Build() *HolderPatchRequest {
 	_, _ = b, x
 	x.xxx_hidden_Ref = b.Ref
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_Alias = b.Alias
 	}
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_Name = b.Name
 	}
 	if b.Desc != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_Desc = b.Desc
 	}
 	x.xxx_hidden_Labels = b.Labels
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	if b.DateUpdatedForce != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_DateUpdatedForce = *b.DateUpdatedForce
 	}
 	if b.IdpSubject != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
 		x.xxx_hidden_IdpSubject = b.IdpSubject
 	}
 	x.xxx_hidden_Profile = b.Profile
 	if b.ProfileNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
 		x.xxx_hidden_ProfileNull = *b.ProfileNull
 	}
 	if b.Directory != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_Directory = b.Directory
 	}
 	x.xxx_hidden_Robot = b.Robot
 	if b.RobotNull != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
 		x.xxx_hidden_RobotNull = *b.RobotNull
+	}
+	if b.Account != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
+		x.xxx_hidden_Account = b.Account
+	}
+	if b.AccountNull != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		x.xxx_hidden_AccountNull = *b.AccountNull
 	}
 	return m0
 }
@@ -2262,11 +2393,114 @@ func (b0 HolderWatchItem_builder) Build() *HolderWatchItem {
 	return m0
 }
 
+type HolderMembershipsRequest struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HolderMembershipsRequest) Reset() {
+	*x = HolderMembershipsRequest{}
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HolderMembershipsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HolderMembershipsRequest) ProtoMessage() {}
+
+func (x *HolderMembershipsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type HolderMembershipsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 HolderMembershipsRequest_builder) Build() *HolderMembershipsRequest {
+	m0 := &HolderMembershipsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
+type HolderMembershipsResponse struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Items *[]*Holder             `protobuf:"bytes,1,rep,name=items"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *HolderMembershipsResponse) Reset() {
+	*x = HolderMembershipsResponse{}
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HolderMembershipsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HolderMembershipsResponse) ProtoMessage() {}
+
+func (x *HolderMembershipsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HolderMembershipsResponse) GetItems() []*Holder {
+	if x != nil {
+		if x.xxx_hidden_Items != nil {
+			return *x.xxx_hidden_Items
+		}
+	}
+	return nil
+}
+
+func (x *HolderMembershipsResponse) SetItems(v []*Holder) {
+	x.xxx_hidden_Items = &v
+}
+
+type HolderMembershipsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Each with its tenant: who the account is in each tenant it is in.
+	Items []*Holder
+}
+
+func (b0 HolderMembershipsResponse_builder) Build() *HolderMembershipsResponse {
+	m0 := &HolderMembershipsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Items = &b.Items
+	return m0
+}
+
 var File_app_payday_holder_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xec\x03\n" +
+	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\"\x86\x04\n" +
 	"\x10HolderAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -2280,7 +2514,8 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\aprofile\x18\t \x01(\v2\f.app.ProfileR\aprofile\x12#\n" +
 	"\tdirectory\x18\n" +
 	" \x01(\tB\x05\xaa\x01\x02\b\x02R\tdirectory\x12#\n" +
-	"\x05robot\x18\v \x01(\v2\r.app.RobotRefR\x05robot\x1a9\n" +
+	"\x05robot\x18\v \x01(\v2\r.app.RobotRefR\x05robot\x12\x18\n" +
+	"\aaccount\x18\f \x01(\fR\aaccount\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"_\n" +
@@ -2293,7 +2528,7 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x03key\"O\n" +
 	"\x0fHolderRefBySlug\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\x89\x03\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\"\xa3\x03\n" +
 	"\fHolderSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x14\n" +
@@ -2310,7 +2545,8 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\aprofile\x18\t \x01(\bR\aprofile\x12\x1c\n" +
 	"\tdirectory\x18\n" +
 	" \x01(\bR\tdirectory\x12&\n" +
-	"\x05robot\x18\v \x01(\v2\x10.app.RobotSelectR\x05robot\"\xa7\x04\n" +
+	"\x05robot\x18\v \x01(\v2\x10.app.RobotSelectR\x05robot\x12\x18\n" +
+	"\aaccount\x18\f \x01(\bR\aaccount\"\xe4\x04\n" +
 	"\x12HolderPatchRequest\x12 \n" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x12\n" +
@@ -2327,7 +2563,9 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\tdirectory\x18\x14 \x01(\tR\tdirectory\x12#\n" +
 	"\x05robot\x18\x16 \x01(\v2\r.app.RobotRefR\x05robot\x12\x1d\n" +
 	"\n" +
-	"robot_null\x18\x17 \x01(\bR\trobotNull\x1a9\n" +
+	"robot_null\x18\x17 \x01(\bR\trobotNull\x12\x18\n" +
+	"\aaccount\x18\x18 \x01(\fR\aaccount\x12!\n" +
+	"\faccount_null\x18\x19 \x01(\bR\vaccountNull\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +
@@ -2359,7 +2597,10 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x0fHolderWatchItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12!\n" +
 	"\x05value\x18\x02 \x01(\v2\v.app.HolderR\x05value\x12\x1d\n" +
-	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action2\xed\x02\n" +
+	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\"\x1a\n" +
+	"\x18HolderMembershipsRequest\">\n" +
+	"\x19HolderMembershipsResponse\x12!\n" +
+	"\x05items\x18\x01 \x03(\v2\v.app.HolderR\x05items2\xc3\x03\n" +
 	"\rHolderService\x12)\n" +
 	"\x03Add\x12\x15.app.HolderAddRequest\x1a\v.app.Holder\x12)\n" +
 	"\x03Get\x12\x15.app.HolderGetRequest\x1a\v.app.Holder\x12-\n" +
@@ -2367,82 +2608,89 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x05Apply\x12\x17.app.HolderApplyRequest\x1a\v.app.Holder\x121\n" +
 	"\x05Erase\x12\x0e.app.HolderRef\x1a\x18.app.HolderEraseResponse\x127\n" +
 	"\x04List\x12\x16.app.HolderListRequest\x1a\x17.app.HolderListResponse\x12<\n" +
-	"\x05Watch\x12\x17.app.HolderWatchRequest\x1a\x18.app.HolderWatchResponse0\x01B-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
+	"\x05Watch\x12\x17.app.HolderWatchRequest\x1a\x18.app.HolderWatchResponse0\x01\x12T\n" +
+	"\vMemberships\x12\x1d.app.HolderMembershipsRequest\x1a\x1e.app.HolderMembershipsResponse\"\x06\xea\xcd\x16\x02\n" +
+	"\x00B-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_payday_holder_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_app_payday_holder_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_app_payday_holder_svc_g_proto_goTypes = []any{
-	(*HolderAddRequest)(nil),      // 0: app.HolderAddRequest
-	(*HolderGetRequest)(nil),      // 1: app.HolderGetRequest
-	(*HolderRef)(nil),             // 2: app.HolderRef
-	(*HolderRefBySlug)(nil),       // 3: app.HolderRefBySlug
-	(*HolderSelect)(nil),          // 4: app.HolderSelect
-	(*HolderPatchRequest)(nil),    // 5: app.HolderPatchRequest
-	(*HolderApplyRequest)(nil),    // 6: app.HolderApplyRequest
-	(*HolderEraseResponse)(nil),   // 7: app.HolderEraseResponse
-	(*HolderListRequest)(nil),     // 8: app.HolderListRequest
-	(*HolderListResponse)(nil),    // 9: app.HolderListResponse
-	(*HolderFilter)(nil),          // 10: app.HolderFilter
-	(*HolderWatchRequest)(nil),    // 11: app.HolderWatchRequest
-	(*HolderWatchResponse)(nil),   // 12: app.HolderWatchResponse
-	(*HolderWatchItem)(nil),       // 13: app.HolderWatchItem
-	nil,                           // 14: app.HolderAddRequest.LabelsEntry
-	nil,                           // 15: app.HolderPatchRequest.LabelsEntry
-	nil,                           // 16: app.HolderFilter.LabelsEntry
-	(*TenantRef)(nil),             // 17: app.TenantRef
-	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
-	(*Profile)(nil),               // 19: app.Profile
-	(*RobotRef)(nil),              // 20: app.RobotRef
-	(*TenantSelect)(nil),          // 21: app.TenantSelect
-	(*RobotSelect)(nil),           // 22: app.RobotSelect
-	(*patchpb.Patch)(nil),         // 23: patch.Patch
-	(*Holder)(nil),                // 24: app.Holder
+	(*HolderAddRequest)(nil),          // 0: app.HolderAddRequest
+	(*HolderGetRequest)(nil),          // 1: app.HolderGetRequest
+	(*HolderRef)(nil),                 // 2: app.HolderRef
+	(*HolderRefBySlug)(nil),           // 3: app.HolderRefBySlug
+	(*HolderSelect)(nil),              // 4: app.HolderSelect
+	(*HolderPatchRequest)(nil),        // 5: app.HolderPatchRequest
+	(*HolderApplyRequest)(nil),        // 6: app.HolderApplyRequest
+	(*HolderEraseResponse)(nil),       // 7: app.HolderEraseResponse
+	(*HolderListRequest)(nil),         // 8: app.HolderListRequest
+	(*HolderListResponse)(nil),        // 9: app.HolderListResponse
+	(*HolderFilter)(nil),              // 10: app.HolderFilter
+	(*HolderWatchRequest)(nil),        // 11: app.HolderWatchRequest
+	(*HolderWatchResponse)(nil),       // 12: app.HolderWatchResponse
+	(*HolderWatchItem)(nil),           // 13: app.HolderWatchItem
+	(*HolderMembershipsRequest)(nil),  // 14: app.HolderMembershipsRequest
+	(*HolderMembershipsResponse)(nil), // 15: app.HolderMembershipsResponse
+	nil,                               // 16: app.HolderAddRequest.LabelsEntry
+	nil,                               // 17: app.HolderPatchRequest.LabelsEntry
+	nil,                               // 18: app.HolderFilter.LabelsEntry
+	(*TenantRef)(nil),                 // 19: app.TenantRef
+	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
+	(*Profile)(nil),                   // 21: app.Profile
+	(*RobotRef)(nil),                  // 22: app.RobotRef
+	(*TenantSelect)(nil),              // 23: app.TenantSelect
+	(*RobotSelect)(nil),               // 24: app.RobotSelect
+	(*patchpb.Patch)(nil),             // 25: patch.Patch
+	(*Holder)(nil),                    // 26: app.Holder
 }
 var file_app_payday_holder_svc_g_proto_depIdxs = []int32{
-	17, // 0: app.HolderAddRequest.tenant:type_name -> app.TenantRef
-	14, // 1: app.HolderAddRequest.labels:type_name -> app.HolderAddRequest.LabelsEntry
-	18, // 2: app.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	19, // 3: app.HolderAddRequest.profile:type_name -> app.Profile
-	20, // 4: app.HolderAddRequest.robot:type_name -> app.RobotRef
+	19, // 0: app.HolderAddRequest.tenant:type_name -> app.TenantRef
+	16, // 1: app.HolderAddRequest.labels:type_name -> app.HolderAddRequest.LabelsEntry
+	20, // 2: app.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	21, // 3: app.HolderAddRequest.profile:type_name -> app.Profile
+	22, // 4: app.HolderAddRequest.robot:type_name -> app.RobotRef
 	2,  // 5: app.HolderGetRequest.ref:type_name -> app.HolderRef
 	4,  // 6: app.HolderGetRequest.select:type_name -> app.HolderSelect
 	3,  // 7: app.HolderRef.slug:type_name -> app.HolderRefBySlug
-	17, // 8: app.HolderRefBySlug.tenant:type_name -> app.TenantRef
-	21, // 9: app.HolderSelect.tenant:type_name -> app.TenantSelect
-	22, // 10: app.HolderSelect.robot:type_name -> app.RobotSelect
+	19, // 8: app.HolderRefBySlug.tenant:type_name -> app.TenantRef
+	23, // 9: app.HolderSelect.tenant:type_name -> app.TenantSelect
+	24, // 10: app.HolderSelect.robot:type_name -> app.RobotSelect
 	2,  // 11: app.HolderPatchRequest.ref:type_name -> app.HolderRef
-	15, // 12: app.HolderPatchRequest.labels:type_name -> app.HolderPatchRequest.LabelsEntry
-	18, // 13: app.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	19, // 14: app.HolderPatchRequest.profile:type_name -> app.Profile
-	20, // 15: app.HolderPatchRequest.robot:type_name -> app.RobotRef
+	17, // 12: app.HolderPatchRequest.labels:type_name -> app.HolderPatchRequest.LabelsEntry
+	20, // 13: app.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	21, // 14: app.HolderPatchRequest.profile:type_name -> app.Profile
+	22, // 15: app.HolderPatchRequest.robot:type_name -> app.RobotRef
 	2,  // 16: app.HolderApplyRequest.ref:type_name -> app.HolderRef
-	23, // 17: app.HolderApplyRequest.patch:type_name -> patch.Patch
+	25, // 17: app.HolderApplyRequest.patch:type_name -> patch.Patch
 	10, // 18: app.HolderListRequest.filters:type_name -> app.HolderFilter
-	24, // 19: app.HolderListResponse.items:type_name -> app.Holder
+	26, // 19: app.HolderListResponse.items:type_name -> app.Holder
 	2,  // 20: app.HolderFilter.ref:type_name -> app.HolderRef
-	17, // 21: app.HolderFilter.tenant:type_name -> app.TenantRef
-	16, // 22: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
+	19, // 21: app.HolderFilter.tenant:type_name -> app.TenantRef
+	18, // 22: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
 	10, // 23: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
 	13, // 24: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
-	24, // 25: app.HolderWatchItem.value:type_name -> app.Holder
-	0,  // 26: app.HolderService.Add:input_type -> app.HolderAddRequest
-	1,  // 27: app.HolderService.Get:input_type -> app.HolderGetRequest
-	5,  // 28: app.HolderService.Patch:input_type -> app.HolderPatchRequest
-	6,  // 29: app.HolderService.Apply:input_type -> app.HolderApplyRequest
-	2,  // 30: app.HolderService.Erase:input_type -> app.HolderRef
-	8,  // 31: app.HolderService.List:input_type -> app.HolderListRequest
-	11, // 32: app.HolderService.Watch:input_type -> app.HolderWatchRequest
-	24, // 33: app.HolderService.Add:output_type -> app.Holder
-	24, // 34: app.HolderService.Get:output_type -> app.Holder
-	24, // 35: app.HolderService.Patch:output_type -> app.Holder
-	24, // 36: app.HolderService.Apply:output_type -> app.Holder
-	7,  // 37: app.HolderService.Erase:output_type -> app.HolderEraseResponse
-	9,  // 38: app.HolderService.List:output_type -> app.HolderListResponse
-	12, // 39: app.HolderService.Watch:output_type -> app.HolderWatchResponse
-	33, // [33:40] is the sub-list for method output_type
-	26, // [26:33] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	26, // 25: app.HolderWatchItem.value:type_name -> app.Holder
+	26, // 26: app.HolderMembershipsResponse.items:type_name -> app.Holder
+	0,  // 27: app.HolderService.Add:input_type -> app.HolderAddRequest
+	1,  // 28: app.HolderService.Get:input_type -> app.HolderGetRequest
+	5,  // 29: app.HolderService.Patch:input_type -> app.HolderPatchRequest
+	6,  // 30: app.HolderService.Apply:input_type -> app.HolderApplyRequest
+	2,  // 31: app.HolderService.Erase:input_type -> app.HolderRef
+	8,  // 32: app.HolderService.List:input_type -> app.HolderListRequest
+	11, // 33: app.HolderService.Watch:input_type -> app.HolderWatchRequest
+	14, // 34: app.HolderService.Memberships:input_type -> app.HolderMembershipsRequest
+	26, // 35: app.HolderService.Add:output_type -> app.Holder
+	26, // 36: app.HolderService.Get:output_type -> app.Holder
+	26, // 37: app.HolderService.Patch:output_type -> app.Holder
+	26, // 38: app.HolderService.Apply:output_type -> app.Holder
+	7,  // 39: app.HolderService.Erase:output_type -> app.HolderEraseResponse
+	9,  // 40: app.HolderService.List:output_type -> app.HolderListResponse
+	12, // 41: app.HolderService.Watch:output_type -> app.HolderWatchResponse
+	15, // 42: app.HolderService.Memberships:output_type -> app.HolderMembershipsResponse
+	35, // [35:43] is the sub-list for method output_type
+	27, // [27:35] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_holder_svc_g_proto_init() }
@@ -2464,7 +2712,7 @@ func file_app_payday_holder_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_holder_svc_g_proto_rawDesc), len(file_app_payday_holder_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

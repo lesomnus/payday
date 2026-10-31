@@ -4,12 +4,14 @@
 
 import type { GenExtension, GenFile } from "@bufbuild/protobuf/codegenv2";
 import { extDesc, fileDesc } from "@bufbuild/protobuf/codegenv2";
-import type { FieldOptions, FileOptions, MessageOptions } from "@bufbuild/protobuf/wkt";
+import type { FieldOptions, FileOptions, MessageOptions, MethodOptions } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_descriptor } from "@bufbuild/protobuf/wkt";
 import type { App } from "./payday/app_pb.js";
 import { file_payday_app } from "./payday/app_pb.js";
 import type { Entity, Field } from "./payday/entity_pb.js";
 import { file_payday_entity } from "./payday/entity_pb.js";
+import type { Method } from "./payday/method_pb.js";
+import { file_payday_method } from "./payday/method_pb.js";
 import type { EventMessage } from "./payday/past_pb.js";
 import { file_payday_past } from "./payday/past_pb.js";
 
@@ -17,7 +19,7 @@ import { file_payday_past } from "./payday/past_pb.js";
  * Describes the file payday.proto.
  */
 export const file_payday: GenFile = /*@__PURE__*/
-  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6RAoFZmllbGQSHS5nb29nbGUucHJvdG9idWYuRmllbGRPcHRpb25zGJXoAiABKAsyDS5wYXlkYXkuRmllbGRSBWZpZWxkOj0KA2FwcBIcLmdvb2dsZS5wcm90b2J1Zi5GaWxlT3B0aW9ucxj56AIgASgLMgsucGF5ZGF5LkFwcFIDYXBwQiFaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGJiCGVkaXRpb25zcOgH", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_past]);
+  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6RAoFZmllbGQSHS5nb29nbGUucHJvdG9idWYuRmllbGRPcHRpb25zGJXoAiABKAsyDS5wYXlkYXkuRmllbGRSBWZpZWxkOj0KA2FwcBIcLmdvb2dsZS5wcm90b2J1Zi5GaWxlT3B0aW9ucxj56AIgASgLMgsucGF5ZGF5LkFwcFIDYXBwOkgKBm1ldGhvZBIeLmdvb2dsZS5wcm90b2J1Zi5NZXRob2RPcHRpb25zGN3pAiABKAsyDi5wYXlkYXkuTWV0aG9kUgZtZXRob2RCIVofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_method, file_payday_past]);
 
 /**
  * @generated from extension: payday.Entity entity = 46001;
@@ -47,4 +49,10 @@ export const field: GenExtension<FieldOptions, Field> = /*@__PURE__*/
  */
 export const app: GenExtension<FileOptions, App> = /*@__PURE__*/
   extDesc(file_payday, 3);
+
+/**
+ * @generated from extension: payday.Method method = 46301;
+ */
+export const method: GenExtension<MethodOptions, Method> = /*@__PURE__*/
+  extDesc(file_payday, 4);
 

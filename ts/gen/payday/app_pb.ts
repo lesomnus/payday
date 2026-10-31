@@ -5,6 +5,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Ref } from "../orm/ref_pb.js";
+import { file_orm_ref } from "../orm/ref_pb.js";
 import type { Entity_Global, Entity_Tenanted } from "./entity_pb.js";
 import { file_payday_entity } from "./entity_pb.js";
 import type { Meter } from "./meter_pb.js";
@@ -15,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXkirgEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMiIwoEUGFzdBINCgVldmVudBgBIAEoDRIMCgRmYWN0GAIgASgNIisKB0RvbWFpbnMSEAoIYXJjaGl2ZWQYASABKA0SDgoGYWNjZXNzGAIgASgNIpYBCgZOb3RpZnkSFAoMbm90aWZpY2F0aW9uGAEgASgNEg8KB3JlY2VpcHQYAiABKA0SKwoIdGVuYW50ZWQYBCABKAsyFy5wYXlkYXkuRW50aXR5LlRlbmFudGVkSAASJwoGZ2xvYmFsGAUgASgLMhUucGF5ZGF5LkVudGl0eS5HbG9iYWxIAEIJCgd0ZW5hbmN5SgQIAxAEIh4KDEVudGl0bGVtZW50cxIOCgZkb21haW4YASABKA1CJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_payday_entity, file_payday_meter]);
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXki0gEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMSIgoIYWNjb3VudHMYBiABKAsyEC5wYXlkYXkuQWNjb3VudHMiIwoIQWNjb3VudHMSFwoFZmllbGQYASABKAsyCC5vcm0uUmVmIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSKWAQoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSABCCQoHdGVuYW5jeUoECAMQBCIeCgxFbnRpdGxlbWVudHMSDgoGZG9tYWluGAEgASgNQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref, file_payday_entity, file_payday_meter]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -50,7 +52,7 @@ export const file_payday_app: GenFile = /*@__PURE__*/
  * so that something could be added to it without every app that set it having
  * to change, and [App.past] is the first thing that was, [App.domains] the
  * second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
- * the fifth.
+ * the fifth, [App.accounts] the sixth.
  *
  * Setting it on more than one package is refused. Two answers to "where do
  * payday's entities go" is the thing this exists to avoid, and getting two of
@@ -130,6 +132,25 @@ export type App = Message<"payday.App"> & {
    * @generated from field: payday.Entitlements entitlements = 5;
    */
   entitlements?: Entitlements | undefined;
+
+  /**
+   * Accounts says this app's holders are memberships of accounts an identity
+   * provider keeps, and which holder field names the account (payday#184):
+   *
+   * 	option (payday.app) = {accounts: {field: {name: "account", number: 9}}};
+   *
+   * `pd gen` then writes what answers an account's memberships and a holder's
+   * account, the resolver's half that turns an account and the tenant a call
+   * names into one of them, and the frame of a call an account makes as
+   * itself -- the methods marked `(payday.method) = {account: {}}`. See
+   * [Accounts].
+   *
+   * Here rather than on the holder, because the holder is payday's entity and
+   * an overlay may add nothing to payday's declaration of one.
+   *
+   * @generated from field: payday.Accounts accounts = 6;
+   */
+  accounts?: Accounts | undefined;
 };
 
 /**
@@ -138,6 +159,55 @@ export type App = Message<"payday.App"> & {
  */
 export const AppSchema: GenMessage<App> = /*@__PURE__*/
   messageDesc(file_payday_app, 0);
+
+/**
+ * Accounts is the holder field that names the account a holder is a
+ * membership of (payday#184).
+ *
+ * # What payday keeps, and what it does not
+ *
+ * The **reference**: which account a membership is of, the frame of a call an
+ * account makes outside any tenant, and resolving a call to one membership.
+ * Not the account. Its names, its addresses, how it signs in and whether it
+ * may are the identity provider's, and a copy of them in every app is one more
+ * place a person has to be erased from. So an account is an identifier here
+ * and nothing else.
+ *
+ * # Why the app numbers the field
+ *
+ * For the reason the past's two entities are numbered by the app: the field
+ * is on payday's Holder, an app adds it with an overlay at a number of its own
+ * (3, 8..12, 16 and up), and an app that kept the reference before payday did
+ * has spent a number on it already. A deployment keeps its column, and payday
+ * is told where it is.
+ *
+ * @generated from message payday.Accounts
+ */
+export type Accounts = Message<"payday.Accounts"> & {
+  /**
+   * Field is the holder's field that holds the account's identifier, named by
+   * both its name and its number, which have to agree: a field renamed under
+   * a declaration that followed the name would resolve calls by another
+   * column, with nothing failing.
+   *
+   * It is a `bytes` field of `TYPE_UUID` the app's overlay adds to the holder,
+   * and may be nullable -- a holder that is no account's membership, made
+   * before accounts were or for a deployment's own use, is one nobody signs
+   * in as through an account. It is not `personal`: it is an identifier, as an
+   * edge is, and who moved a membership from one account to another is the
+   * record.
+   *
+   * @generated from field: orm.Ref field = 1;
+   */
+  field?: Ref | undefined;
+};
+
+/**
+ * Describes the message payday.Accounts.
+ * Use `create(AccountsSchema)` to create a new message.
+ */
+export const AccountsSchema: GenMessage<Accounts> = /*@__PURE__*/
+  messageDesc(file_payday_app, 1);
 
 /**
  * Past is the domain of each of the two entities an app's past is kept in.
@@ -182,7 +252,7 @@ export type Past = Message<"payday.Past"> & {
  * Use `create(PastSchema)` to create a new message.
  */
 export const PastSchema: GenMessage<Past> = /*@__PURE__*/
-  messageDesc(file_payday_app, 1);
+  messageDesc(file_payday_app, 2);
 
 /**
  * Domains is the domain of each of the two entities of payday's that an app may
@@ -237,7 +307,7 @@ export type Domains = Message<"payday.Domains"> & {
  * Use `create(DomainsSchema)` to create a new message.
  */
 export const DomainsSchema: GenMessage<Domains> = /*@__PURE__*/
-  messageDesc(file_payday_app, 2);
+  messageDesc(file_payday_app, 3);
 
 /**
  * Notify numbers the two records copied into an app that enables notifications.
@@ -283,7 +353,7 @@ export type Notify = Message<"payday.Notify"> & {
  * Use `create(NotifySchema)` to create a new message.
  */
 export const NotifySchema: GenMessage<Notify> = /*@__PURE__*/
-  messageDesc(file_payday_app, 3);
+  messageDesc(file_payday_app, 4);
 
 /**
  * Entitlements is the domain of the one table an app's copy of its tenants'
@@ -327,5 +397,5 @@ export type Entitlements = Message<"payday.Entitlements"> & {
  * Use `create(EntitlementsSchema)` to create a new message.
  */
 export const EntitlementsSchema: GenMessage<Entitlements> = /*@__PURE__*/
-  messageDesc(file_payday_app, 4);
+  messageDesc(file_payday_app, 5);
 

@@ -181,8 +181,24 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
     ]
   };
 `
-	x.Contains(string(b), "message Holder {\n")
-	x.NoError(os.WriteFile(at, []byte(strings.Replace(string(b), "message Holder {\n", option, 1)), 0o644))
+	const idp = `{name: "idp", refs: [{name: "idp_subject", number: 8}, {name: "tenant", number: 2}], unique: true},`
+
+	// Into the option the overlay declares already, when it declares one: a
+	// message says an option once, and a second would be a schema nothing
+	// compiles. The reference app's holder declares one, for the index its
+	// accounts are resolved by (payday#184).
+	src := string(b)
+	x.Contains(src, "message Holder {\n")
+	if i := strings.Index(src, "  option (orm.message) = {\n"); i >= 0 {
+		head, rest := src[:i], src[i:]
+		rest = strings.Replace(rest, "  option (orm.message) = {\n", "  option (orm.message) = {\n    rpc: {crud: false}\n", 1)
+		x.Contains(rest, "    indexes: [\n")
+		rest = strings.Replace(rest, "    indexes: [\n", "    indexes: [\n      "+idp+"\n", 1)
+		src = head + rest
+	} else {
+		src = strings.Replace(src, "message Holder {\n", option, 1)
+	}
+	x.NoError(os.WriteFile(at, []byte(src), 0o644))
 	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
 
 	b, err = os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder.proto"))

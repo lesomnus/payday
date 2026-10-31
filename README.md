@@ -21,6 +21,9 @@ it is generated rather than remembered.
 - [**What a tenant is entitled to**](docs/guide/entitlements.md) — a copy of a
   billing service's grants in the app's own database, kept by a loop that
   follows it, and read inside the transaction of the write it decides.
+- [**One sign-in, many tenants**](docs/guide/accounts.md) — holders that are
+  memberships of an identity provider's account, a call served as the one it
+  names, and the few an account makes as itself, outside every tenant.
 - [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
   `add`, `patch` and `erase` for every entity, from a `Connector` that says how
   to reach the deployment; the output formats, and a command for an RPC of your
@@ -128,6 +131,7 @@ app.
 | [`frame`](frame) | who a request is from, and what they may see |
 | [`auth`](auth) | reading a credential: a header, a certificate, a token |
 | [`gate`](gate) | what a caller may do, and the seam a deployment injects |
+| [`account`](account) | a call of an account served as one of its memberships, or as itself |
 | [`audit`](audit) | the trail, written in the transaction that changed something |
 | [`watch`](watch) · [`spin`](spin) | publishing what changed, and the loops that do it |
 | [`meter`](meter) | what each tenant holds, measured and handed to a billing service's client |

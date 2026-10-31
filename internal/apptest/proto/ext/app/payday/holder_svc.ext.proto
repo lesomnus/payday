@@ -1,0 +1,29 @@
+edition = "2023";
+
+package app;
+
+import "payday.proto";
+
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// What this app adds to the generated contract of payday's Holder.
+service HolderService {
+  // Memberships answers the holders of the calling account: one for each
+  // tenant it is a member of, with the tenant.
+  //
+  // It is the one method an account calls as itself here (payday#184): what a
+  // page asks before a tenant is chosen, which no membership can answer --
+  // each sees its own tenant and nothing of the others. So it is served with
+  // no tenant and the account where a holder would be, and reads what its
+  // layer declares (`server/core`, `pd.AccountReads`) and nothing else.
+  rpc Memberships(HolderMembershipsRequest) returns (HolderMembershipsResponse) {
+    option (payday.method) = {account: {}};
+  }
+}
+
+message HolderMembershipsRequest {}
+
+message HolderMembershipsResponse {
+  // Each with its tenant: who the account is in each tenant it is in.
+  repeated Holder items = 1;
+}

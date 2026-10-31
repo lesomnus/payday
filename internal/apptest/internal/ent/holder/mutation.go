@@ -28,6 +28,7 @@ type Mutation struct {
 	idp_subject   *string
 	profile       **apptest.Profile
 	directory     *string
+	account       *uuid.UUID
 	clearedFields map[string]struct{}
 	exprs         map[string]sql.Querier
 	tenant        *uuid.UUID
@@ -318,6 +319,42 @@ func (m *Mutation) ResetDirectory() {
 	delete(m.exprs, FieldDirectory)
 }
 
+// SetAccount sets the "account" field.
+func (m *Mutation) SetAccount(u uuid.UUID) {
+	m.account = &u
+	delete(m.clearedFields, FieldAccount)
+	delete(m.exprs, FieldAccount)
+}
+
+// Account returns the value of the "account" field in the mutation.
+func (m *Mutation) Account() (r uuid.UUID, exists bool) {
+	v := m.account
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearAccount clears the value of the "account" field.
+func (m *Mutation) ClearAccount() {
+	m.account = nil
+	delete(m.exprs, FieldAccount)
+	m.clearedFields[FieldAccount] = struct{}{}
+}
+
+// AccountCleared returns if the "account" field was cleared in this mutation.
+func (m *Mutation) AccountCleared() bool {
+	_, ok := m.clearedFields[FieldAccount]
+	return ok
+}
+
+// ResetAccount resets all changes to the "account" field.
+func (m *Mutation) ResetAccount() {
+	m.account = nil
+	delete(m.clearedFields, FieldAccount)
+	delete(m.exprs, FieldAccount)
+}
+
 // SetTenantId sets the "tenant_id" field.
 func (m *Mutation) SetTenantId(u uuid.UUID) {
 	m.tenant = &u
@@ -458,7 +495,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.alias != nil || m.exprs[FieldAlias] != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -488,6 +525,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.directory != nil || m.exprs[FieldDirectory] != nil {
 		fields = append(fields, FieldDirectory)
+	}
+	if m.account != nil || m.exprs[FieldAccount] != nil {
+		fields = append(fields, FieldAccount)
 	}
 	if m.tenant != nil {
 		fields = append(fields, FieldTenantId)
@@ -529,6 +569,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.Profile()
 	case FieldDirectory:
 		return m.Directory()
+	case FieldAccount:
+		return m.Account()
 	case FieldTenantId:
 		return m.TenantId()
 	case FieldRobotId:
@@ -652,6 +694,16 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDirectory(v)
 		return nil
+	case FieldAccount:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccount(v)
+		return nil
 	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
 		if !ok {
@@ -714,6 +766,8 @@ func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
 		m.ResetProfile()
 	case FieldDirectory:
 		m.ResetDirectory()
+	case FieldAccount:
+		m.ResetAccount()
 	case FieldTenantId:
 		return fmt.Errorf("field %s cannot be assigned an expression: it holds an edge, which is set through the edge", name)
 	case FieldRobotId:
@@ -766,6 +820,9 @@ func (m *Mutation) ExprFields() []string {
 	if _, ok := m.exprs[FieldDirectory]; ok {
 		fields = append(fields, FieldDirectory)
 	}
+	if _, ok := m.exprs[FieldAccount]; ok {
+		fields = append(fields, FieldAccount)
+	}
 	return fields
 }
 
@@ -807,6 +864,9 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldProfile) {
 		fields = append(fields, FieldProfile)
 	}
+	if m.FieldCleared(FieldAccount) {
+		fields = append(fields, FieldAccount)
+	}
 	if m.FieldCleared(FieldRobotId) {
 		fields = append(fields, FieldRobotId)
 	}
@@ -835,6 +895,9 @@ func (m *Mutation) ClearField(name string) error {
 		return nil
 	case FieldProfile:
 		m.ClearProfile()
+		return nil
+	case FieldAccount:
+		m.ClearAccount()
 		return nil
 	case FieldRobotId:
 		m.ClearRobotId()
@@ -876,6 +939,9 @@ func (m *Mutation) ResetField(name string) error {
 		return nil
 	case FieldDirectory:
 		m.ResetDirectory()
+		return nil
+	case FieldAccount:
+		m.ResetAccount()
 		return nil
 	case FieldTenantId:
 		m.ResetTenantId()

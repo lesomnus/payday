@@ -18,7 +18,9 @@ import (
 	fmt "fmt"
 	log "github.com/lesomnus/otx/log"
 	access "github.com/lesomnus/payday/access"
+	account "github.com/lesomnus/payday/account"
 	audit "github.com/lesomnus/payday/audit"
+	auth "github.com/lesomnus/payday/auth"
 	batch "github.com/lesomnus/payday/batch"
 	entitle "github.com/lesomnus/payday/entitle"
 	frame "github.com/lesomnus/payday/frame"
@@ -255,6 +257,7 @@ var IndexRenames = []rename.Index{
 	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
 	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
+	{Table: "holder", From: "holder_account_tenant_id", To: "holder_by_account"},
 	{Table: "machine", From: "machine_tenant_id", To: "machine_by_tenant"},
 	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_notification_id_reader_id", To: "notificationreceiptrecord_receipt"},
 	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_tenant_id_reader_id_notification_id", To: "notificationreceiptrecord_reader"},
@@ -309,12 +312,31 @@ func Wall() bare.Scope { return wall{} }
 // wall is what [Wall] answers with. It writes out every entity, including
 // the ones that are not behind the wall, so that an entity added to the
 // schema cannot arrive without a decision having been made about it.
+//
+// Each says first what a call an account makes as itself reads of it
+// (payday#184), which is in no tenant: what the layer serving its method
+// declared, and otherwise none -- of a global entity too, whose rows are
+// behind no wall and are not therefore an account's.
 type wall struct{}
 
 var _ bare.Scope = wall{}
 
+// nothing is the predicate that matches no row: what a call an account makes
+// as itself reads of an entity it did not say it reads (payday#184).
+func nothing[P ~func(*sql.Selector)]() P {
+	return P(func(s *sql.Selector) { s.Where(sql.False()) })
+}
+
 // AccessScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id -- which is the trail.
 func (wall) AccessScope(ctx context.Context) (predicate.Access, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Access == nil {
+			return nothing[predicate.Access](), nil
+		}
+
+		return r.Access(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -325,11 +347,27 @@ func (wall) AccessScope(ctx context.Context) (predicate.Access, error) {
 
 // ArchivedScope: declared `global`, so it is not behind the wall at all.
 func (wall) ArchivedScope(ctx context.Context) (predicate.Archived, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Archived == nil {
+			return nothing[predicate.Archived](), nil
+		}
+
+		return r.Archived(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // AuditScope: a row is readable by every tenant it names -- tenant_id, actor_tenant_id, counterpart_tenant_id -- which is the trail.
 func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Audit == nil {
+			return nothing[predicate.Audit](), nil
+		}
+
+		return r.Audit(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -340,6 +378,14 @@ func (wall) AuditScope(ctx context.Context) (predicate.Audit, error) {
 
 // CellScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Cell == nil {
+			return nothing[predicate.Cell](), nil
+		}
+
+		return r.Cell(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -350,6 +396,14 @@ func (wall) CellScope(ctx context.Context) (predicate.Cell, error) {
 
 // EntitlementScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) EntitlementScope(ctx context.Context) (predicate.Entitlement, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Entitlement == nil {
+			return nothing[predicate.Entitlement](), nil
+		}
+
+		return r.Entitlement(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -360,6 +414,14 @@ func (wall) EntitlementScope(ctx context.Context) (predicate.Entitlement, error)
 
 // EventScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) EventScope(ctx context.Context) (predicate.Event, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Event == nil {
+			return nothing[predicate.Event](), nil
+		}
+
+		return r.Event(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -370,6 +432,14 @@ func (wall) EventScope(ctx context.Context) (predicate.Event, error) {
 
 // FactScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) FactScope(ctx context.Context) (predicate.Fact, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Fact == nil {
+			return nothing[predicate.Fact](), nil
+		}
+
+		return r.Fact(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -380,11 +450,27 @@ func (wall) FactScope(ctx context.Context) (predicate.Fact, error) {
 
 // FleetScope: declared `global`, so it is not behind the wall at all.
 func (wall) FleetScope(ctx context.Context) (predicate.Fleet, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Fleet == nil {
+			return nothing[predicate.Fleet](), nil
+		}
+
+		return r.Fleet(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // HolderScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Holder == nil {
+			return nothing[predicate.Holder](), nil
+		}
+
+		return r.Holder(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -395,6 +481,14 @@ func (wall) HolderScope(ctx context.Context) (predicate.Holder, error) {
 
 // JobScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) JobScope(ctx context.Context) (predicate.Job, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Job == nil {
+			return nothing[predicate.Job](), nil
+		}
+
+		return r.Job(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -405,6 +499,14 @@ func (wall) JobScope(ctx context.Context) (predicate.Job, error) {
 
 // JointScope: a row belongs to the tenant its "robot.tenant" reaches.
 func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Joint == nil {
+			return nothing[predicate.Joint](), nil
+		}
+
+		return r.Joint(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -415,6 +517,14 @@ func (wall) JointScope(ctx context.Context) (predicate.Joint, error) {
 
 // MachineScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) MachineScope(ctx context.Context) (predicate.Machine, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Machine == nil {
+			return nothing[predicate.Machine](), nil
+		}
+
+		return r.Machine(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -425,6 +535,14 @@ func (wall) MachineScope(ctx context.Context) (predicate.Machine, error) {
 
 // NotificationReceiptRecordScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
 func (wall) NotificationReceiptRecordScope(ctx context.Context) (predicate.NotificationReceiptRecord, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.NotificationReceiptRecord == nil {
+			return nothing[predicate.NotificationReceiptRecord](), nil
+		}
+
+		return r.NotificationReceiptRecord(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -435,6 +553,14 @@ func (wall) NotificationReceiptRecordScope(ctx context.Context) (predicate.Notif
 
 // NotificationRecordScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
 func (wall) NotificationRecordScope(ctx context.Context) (predicate.NotificationRecord, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.NotificationRecord == nil {
+			return nothing[predicate.NotificationRecord](), nil
+		}
+
+		return r.NotificationRecord(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -445,16 +571,40 @@ func (wall) NotificationRecordScope(ctx context.Context) (predicate.Notification
 
 // OutboxScope: declared `global`, so it is not behind the wall at all.
 func (wall) OutboxScope(ctx context.Context) (predicate.Outbox, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Outbox == nil {
+			return nothing[predicate.Outbox](), nil
+		}
+
+		return r.Outbox(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // OwedScope: declared `global`, so it is not behind the wall at all.
 func (wall) OwedScope(ctx context.Context) (predicate.Owed, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Owed == nil {
+			return nothing[predicate.Owed](), nil
+		}
+
+		return r.Owed(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // PairingScope: a row belongs to the tenant its "lead.tenant" reaches.
 func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Pairing == nil {
+			return nothing[predicate.Pairing](), nil
+		}
+
+		return r.Pairing(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -465,12 +615,28 @@ func (wall) PairingScope(ctx context.Context) (predicate.Pairing, error) {
 
 // PulseScope: declared `global`, so it is not behind the wall at all.
 func (wall) PulseScope(ctx context.Context) (predicate.Pulse, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Pulse == nil {
+			return nothing[predicate.Pulse](), nil
+		}
+
+		return r.Pulse(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // ReadingScope: a row belongs to the tenant its "robot.tenant" reaches, read off "tenant_id" -- which the
 // server stamped when the row was written and no step of that path can move.
 func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Reading == nil {
+			return nothing[predicate.Reading](), nil
+		}
+
+		return r.Reading(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -481,6 +647,14 @@ func (wall) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 
 // RobotScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Robot == nil {
+			return nothing[predicate.Robot](), nil
+		}
+
+		return r.Robot(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -491,6 +665,14 @@ func (wall) RobotScope(ctx context.Context) (predicate.Robot, error) {
 
 // RowSealScope: a row belongs to the tenant its "tenant_id" names, which it holds without an edge.
 func (wall) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.RowSeal == nil {
+			return nothing[predicate.RowSeal](), nil
+		}
+
+		return r.RowSeal(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -501,11 +683,27 @@ func (wall) RowSealScope(ctx context.Context) (predicate.RowSeal, error) {
 
 // SealScope: declared `global`, so it is not behind the wall at all.
 func (wall) SealScope(ctx context.Context) (predicate.Seal, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Seal == nil {
+			return nothing[predicate.Seal](), nil
+		}
+
+		return r.Seal(ctx, a)
+	}
+
 	return nil, nil
 }
 
 // StintScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) StintScope(ctx context.Context) (predicate.Stint, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Stint == nil {
+			return nothing[predicate.Stint](), nil
+		}
+
+		return r.Stint(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -516,6 +714,14 @@ func (wall) StintScope(ctx context.Context) (predicate.Stint, error) {
 
 // TallyScope: a row belongs to the tenant its "tenant" reaches.
 func (wall) TallyScope(ctx context.Context) (predicate.Tally, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Tally == nil {
+			return nothing[predicate.Tally](), nil
+		}
+
+		return r.Tally(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -526,6 +732,14 @@ func (wall) TallyScope(ctx context.Context) (predicate.Tally, error) {
 
 // TenantScope: a tenant is inside itself, which is what a tenant being a wall comes down to.
 func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Tenant == nil {
+			return nothing[predicate.Tenant](), nil
+		}
+
+		return r.Tenant(ctx, a)
+	}
+
 	vs, all, err := frame.Narrow(ctx)
 	if all || err != nil {
 		return nil, err
@@ -536,6 +750,14 @@ func (wall) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 
 // ThingScope: declared `global`, so it is not behind the wall at all.
 func (wall) ThingScope(ctx context.Context) (predicate.Thing, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Thing == nil {
+			return nothing[predicate.Thing](), nil
+		}
+
+		return r.Thing(ctx, a)
+	}
+
 	return nil, nil
 }
 
@@ -592,6 +814,14 @@ func (x grouped) AuditScope(ctx context.Context) (predicate.Audit, error) {
 
 // CellScope: it is the set, so the sets a caller may see are the rows they may see.
 func (x grouped) CellScope(ctx context.Context) (predicate.Cell, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Cell == nil {
+			return nothing[predicate.Cell](), nil
+		}
+
+		return r.Cell(ctx, a)
+	}
+
 	vs, all, err := frame.NarrowSet(ctx, x.of)
 	if all || err != nil {
 		return nil, err
@@ -677,6 +907,14 @@ func (x grouped) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 
 // RobotScope: in the Cell its "cell" names.
 func (x grouped) RobotScope(ctx context.Context) (predicate.Robot, error) {
+	if a, r, ok := accountReads(ctx); ok {
+		if r.Robot == nil {
+			return nothing[predicate.Robot](), nil
+		}
+
+		return r.Robot(ctx, a)
+	}
+
 	vs, all, err := frame.NarrowSet(ctx, x.of)
 	if all || err != nil {
 		return nil, err
@@ -4306,7 +4544,7 @@ type gateTenant struct {
 func (s Gate) Tenant() apptest.TenantServiceServer {
 	v := gateTenant{s, s.Next().Tenant()}
 	v.TenantServiceServer = bare.TenantWithAddRule(v.TenantServiceServer, v.admit)
-	return v
+	return accountsTenant{v}
 }
 
 // admit refuses every row: no tenant is served by an Add, nor by an
@@ -4330,7 +4568,7 @@ type gateHolder struct {
 func (s Gate) Holder() apptest.HolderServiceServer {
 	v := gateHolder{s, s.Next().Holder()}
 	v.HolderServiceServer = bare.HolderWithAddRule(v.HolderServiceServer, v.admit)
-	return v
+	return accountsHolder{v}
 }
 
 // admit is the one thing about a holder this layer still says, and it is here
@@ -4363,6 +4601,10 @@ func (s gateHolder) admit(ctx context.Context, req *apptest.HolderAddRequest) (*
 
 	if req.GetDirectory() != "" {
 		return nil, pderr.Invalidf("directory", "is established by this deployment and not asserted by a request")
+	}
+
+	if req.HasAccount() {
+		return nil, pderr.Invalidf("account", "is the account this membership is of, and is written by the deployment through the server it holds, never by a request")
 	}
 
 	if err := seen.Visible(ctx, s.Gate.drv, "Tenant", req.GetTenant(), func() error {
@@ -4402,7 +4644,15 @@ func (s gateHolder) admit(ctx context.Context, req *apptest.HolderAddRequest) (*
 // write points **at**. An edge is a read -- a `Select` walks it -- so one
 // moved out of the caller's scope is a way through the wall one hop later,
 // exactly as it would have been at `Add`.
+//
+// And a request that moves which account a holder is a membership of,
+// which is what a call is resolved by: taking over another account's
+// membership is one Patch away otherwise.
 func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	if req.HasAccount() || req.GetAccountNull() {
+		return nil, pderr.Invalidf("account", "is the account this membership is of, and is written by the deployment through the server it holds, never by a request")
+	}
+
 	if ref := req.GetRobot(); ref != nil {
 		if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
 			_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
@@ -4445,6 +4695,11 @@ func (s gateHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) 
 
 		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
+
+	if _, ok := plan.WriteTo(12); ok {
+		return nil, pderr.Invalidf("account", "is the account this membership is of, and is written by the deployment through the server it holds, never by a request")
+	}
+
 	if w, ok := plan.WriteTo(11); ok {
 		if k, ok := w.Op.(ormpatch.SetEdge); ok {
 			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
@@ -4478,7 +4733,7 @@ type gateCell struct {
 func (s Gate) Cell() apptest.CellServiceServer {
 	v := gateCell{s, s.Next().Cell()}
 	v.CellServiceServer = bare.CellWithAddRule(v.CellServiceServer, v.admit)
-	return v
+	return accountsCell{v}
 }
 
 // admit refuses a Cell put into a Tenant this caller cannot see.
@@ -4522,7 +4777,7 @@ type gateEvent struct {
 func (s Gate) Event() apptest.EventServiceServer {
 	v := gateEvent{s, s.Next().Event()}
 	v.EventServiceServer = bare.EventWithAddRule(v.EventServiceServer, v.admit)
-	return v
+	return accountsEvent{v}
 }
 
 // admit refuses a Event put into a Tenant this caller cannot see.
@@ -4566,7 +4821,7 @@ type gateFact struct {
 func (s Gate) Fact() apptest.FactServiceServer {
 	v := gateFact{s, s.Next().Fact()}
 	v.FactServiceServer = bare.FactWithAddRule(v.FactServiceServer, v.admit)
-	return v
+	return accountsFact{v}
 }
 
 // admit refuses a Fact put into a Tenant this caller cannot see.
@@ -4614,7 +4869,7 @@ type gateJob struct {
 func (s Gate) Job() apptest.JobServiceServer {
 	v := gateJob{s, s.Next().Job()}
 	v.JobServiceServer = bare.JobWithAddRule(v.JobServiceServer, v.admit)
-	return v
+	return accountsJob{v}
 }
 
 // admit refuses a Job put into a Tenant this caller cannot see.
@@ -4658,7 +4913,7 @@ type gateJoint struct {
 func (s Gate) Joint() apptest.JointServiceServer {
 	v := gateJoint{s, s.Next().Joint()}
 	v.JointServiceServer = bare.JointWithAddRule(v.JointServiceServer, v.admit)
-	return v
+	return accountsJoint{v}
 }
 
 // admit refuses a Joint put into a Robot this caller cannot see.
@@ -4702,7 +4957,7 @@ type gateMachine struct {
 func (s Gate) Machine() apptest.MachineServiceServer {
 	v := gateMachine{s, s.Next().Machine()}
 	v.MachineServiceServer = bare.MachineWithAddRule(v.MachineServiceServer, v.admit)
-	return v
+	return accountsMachine{v}
 }
 
 // admit refuses a Machine put into a Tenant this caller cannot see.
@@ -4835,7 +5090,7 @@ type gatePairing struct {
 func (s Gate) Pairing() apptest.PairingServiceServer {
 	v := gatePairing{s, s.Next().Pairing()}
 	v.PairingServiceServer = bare.PairingWithAddRule(v.PairingServiceServer, v.admit)
-	return v
+	return accountsPairing{v}
 }
 
 // admit refuses a Pairing put into a Robot this caller cannot see.
@@ -4894,7 +5149,7 @@ type gateReading struct {
 func (s Gate) Reading() apptest.ReadingServiceServer {
 	v := gateReading{s, s.Next().Reading()}
 	v.ReadingServiceServer = bare.ReadingWithAddRule(v.ReadingServiceServer, v.admit)
-	return v
+	return accountsReading{v}
 }
 
 // admit refuses a Reading put into a Robot this caller cannot see.
@@ -4938,7 +5193,7 @@ type gateRobot struct {
 func (s Gate) Robot() apptest.RobotServiceServer {
 	v := gateRobot{s, s.Next().Robot()}
 	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
-	return v
+	return accountsRobot{v}
 }
 
 // admit refuses a Robot put into a Tenant this caller cannot see.
@@ -5075,7 +5330,7 @@ type gateStint struct {
 func (s Gate) Stint() apptest.StintServiceServer {
 	v := gateStint{s, s.Next().Stint()}
 	v.StintServiceServer = bare.StintWithAddRule(v.StintServiceServer, v.admit)
-	return v
+	return accountsStint{v}
 }
 
 // admit refuses a Stint put into a Tenant this caller cannot see.
@@ -5109,6 +5364,909 @@ func (s gateStint) admit(ctx context.Context, req *apptest.StintAddRequest) (*ap
 	}
 
 	return req, nil
+}
+
+// accountsTenant is TenantService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsTenant struct{ apptest.TenantServiceServer }
+
+func (s accountsTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.Add(ctx, req)
+}
+
+func (s accountsTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.Get(ctx, req)
+}
+
+func (s accountsTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.Patch(ctx, req)
+}
+
+func (s accountsTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.Apply(ctx, req)
+}
+
+func (s accountsTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.Erase(ctx, req)
+}
+
+func (s accountsTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.TenantService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.TenantServiceServer.List(ctx, req)
+}
+
+// accountsJob is JobService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsJob struct{ apptest.JobServiceServer }
+
+func (s accountsJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Add(ctx, req)
+}
+
+func (s accountsJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Get(ctx, req)
+}
+
+func (s accountsJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Patch(ctx, req)
+}
+
+func (s accountsJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Apply(ctx, req)
+}
+
+func (s accountsJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Erase(ctx, req)
+}
+
+func (s Gate) Thing() apptest.ThingServiceServer {
+	return accountsThing{s.Next().Thing()}
+}
+
+// accountsThing is ThingService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsThing struct{ apptest.ThingServiceServer }
+
+func (s accountsThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.Add(ctx, req)
+}
+
+func (s accountsThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.Get(ctx, req)
+}
+
+func (s accountsThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.Patch(ctx, req)
+}
+
+func (s accountsThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.Apply(ctx, req)
+}
+
+func (s accountsThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.Erase(ctx, req)
+}
+
+func (s accountsThing) List(ctx context.Context, req *apptest.ThingListRequest) (*apptest.ThingListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.ThingService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ThingServiceServer.List(ctx, req)
+}
+
+// accountsCell is CellService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsCell struct{ apptest.CellServiceServer }
+
+func (s accountsCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	if err := gate.AsAccount(ctx, apptest.CellService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.CellServiceServer.Add(ctx, req)
+}
+
+func (s accountsCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
+	if err := gate.AsAccount(ctx, apptest.CellService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.CellServiceServer.Get(ctx, req)
+}
+
+func (s accountsCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	if err := gate.AsAccount(ctx, apptest.CellService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.CellServiceServer.Patch(ctx, req)
+}
+
+func (s accountsCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	if err := gate.AsAccount(ctx, apptest.CellService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.CellServiceServer.Apply(ctx, req)
+}
+
+func (s accountsCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.CellService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.CellServiceServer.Erase(ctx, req)
+}
+
+// accountsRobot is RobotService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsRobot struct{ apptest.RobotServiceServer }
+
+func (s accountsRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Add(ctx, req)
+}
+
+func (s accountsRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_AddMany_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.AddMany(ctx, req)
+}
+
+func (s accountsRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Get(ctx, req)
+}
+
+func (s accountsRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Patch(ctx, req)
+}
+
+func (s accountsRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Apply(ctx, req)
+}
+
+func (s accountsRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Erase(ctx, req)
+}
+
+func (s accountsRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.List(ctx, req)
+}
+
+func (s accountsRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
+	if err := gate.AsAccount(out.Context(), apptest.RobotService_Watch_FullMethodName, AccountMethod); err != nil {
+		return err
+	}
+
+	return s.RobotServiceServer.Watch(req, out)
+}
+
+func (s accountsRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
+	if err := gate.AsAccount(ctx, apptest.RobotService_Move_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Move(ctx, req)
+}
+
+// accountsPairing is PairingService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsPairing struct{ apptest.PairingServiceServer }
+
+func (s accountsPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	if err := gate.AsAccount(ctx, apptest.PairingService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Add(ctx, req)
+}
+
+func (s accountsPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+	if err := gate.AsAccount(ctx, apptest.PairingService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Get(ctx, req)
+}
+
+func (s accountsPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	if err := gate.AsAccount(ctx, apptest.PairingService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Patch(ctx, req)
+}
+
+func (s accountsPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+	if err := gate.AsAccount(ctx, apptest.PairingService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Apply(ctx, req)
+}
+
+func (s accountsPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.PairingService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.PairingServiceServer.Erase(ctx, req)
+}
+
+// accountsJoint is JointService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsJoint struct{ apptest.JointServiceServer }
+
+func (s accountsJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	if err := gate.AsAccount(ctx, apptest.JointService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JointServiceServer.Add(ctx, req)
+}
+
+func (s accountsJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
+	if err := gate.AsAccount(ctx, apptest.JointService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JointServiceServer.Get(ctx, req)
+}
+
+func (s accountsJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	if err := gate.AsAccount(ctx, apptest.JointService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JointServiceServer.Patch(ctx, req)
+}
+
+func (s accountsJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
+	if err := gate.AsAccount(ctx, apptest.JointService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JointServiceServer.Apply(ctx, req)
+}
+
+func (s accountsJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.JointService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JointServiceServer.Erase(ctx, req)
+}
+
+func (s Gate) Fleet() apptest.FleetServiceServer {
+	return accountsFleet{s.Next().Fleet()}
+}
+
+// accountsFleet is FleetService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsFleet struct{ apptest.FleetServiceServer }
+
+func (s accountsFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
+	if err := gate.AsAccount(ctx, apptest.FleetService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FleetServiceServer.Add(ctx, req)
+}
+
+func (s accountsFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
+	if err := gate.AsAccount(ctx, apptest.FleetService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FleetServiceServer.Get(ctx, req)
+}
+
+func (s accountsFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+	if err := gate.AsAccount(ctx, apptest.FleetService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FleetServiceServer.Patch(ctx, req)
+}
+
+func (s accountsFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
+	if err := gate.AsAccount(ctx, apptest.FleetService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FleetServiceServer.Apply(ctx, req)
+}
+
+func (s accountsFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.FleetService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FleetServiceServer.Erase(ctx, req)
+}
+
+// accountsReading is ReadingService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsReading struct{ apptest.ReadingServiceServer }
+
+func (s accountsReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Add(ctx, req)
+}
+
+func (s accountsReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_AddMany_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.AddMany(ctx, req)
+}
+
+func (s accountsReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Get(ctx, req)
+}
+
+func (s accountsReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Patch(ctx, req)
+}
+
+func (s accountsReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Apply(ctx, req)
+}
+
+func (s accountsReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.ReadingService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.ReadingServiceServer.Erase(ctx, req)
+}
+
+// accountsMachine is MachineService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsMachine struct{ apptest.MachineServiceServer }
+
+func (s accountsMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+	if err := gate.AsAccount(ctx, apptest.MachineService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.MachineServiceServer.Add(ctx, req)
+}
+
+func (s accountsMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+	if err := gate.AsAccount(ctx, apptest.MachineService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.MachineServiceServer.Get(ctx, req)
+}
+
+func (s accountsMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	if err := gate.AsAccount(ctx, apptest.MachineService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.MachineServiceServer.Patch(ctx, req)
+}
+
+func (s accountsMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	if err := gate.AsAccount(ctx, apptest.MachineService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.MachineServiceServer.Apply(ctx, req)
+}
+
+func (s accountsMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.MachineService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.MachineServiceServer.Erase(ctx, req)
+}
+
+func (s Gate) Access() apptest.AccessServiceServer {
+	return accountsAccess{s.Next().Access()}
+}
+
+// accountsAccess is AccessService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsAccess struct{ apptest.AccessServiceServer }
+
+func (s accountsAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+	if err := gate.AsAccount(ctx, apptest.AccessService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AccessServiceServer.Get(ctx, req)
+}
+
+func (s accountsAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.AccessService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AccessServiceServer.List(ctx, req)
+}
+
+func (s Gate) Audit() apptest.AuditServiceServer {
+	return accountsAudit{s.Next().Audit()}
+}
+
+// accountsAudit is AuditService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsAudit struct{ apptest.AuditServiceServer }
+
+func (s accountsAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.Add(ctx, req)
+}
+
+func (s accountsAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.Get(ctx, req)
+}
+
+func (s accountsAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.Patch(ctx, req)
+}
+
+func (s accountsAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.Apply(ctx, req)
+}
+
+func (s accountsAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.Erase(ctx, req)
+}
+
+func (s accountsAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.AuditService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.AuditServiceServer.List(ctx, req)
+}
+
+// accountsEvent is EventService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsEvent struct{ apptest.EventServiceServer }
+
+func (s accountsEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+	if err := gate.AsAccount(ctx, apptest.EventService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.EventServiceServer.Add(ctx, req)
+}
+
+func (s accountsEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.EventService_AddMany_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.EventServiceServer.AddMany(ctx, req)
+}
+
+func (s accountsEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+	if err := gate.AsAccount(ctx, apptest.EventService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.EventServiceServer.Get(ctx, req)
+}
+
+func (s accountsEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.EventService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.EventServiceServer.List(ctx, req)
+}
+
+// accountsFact is FactService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsFact struct{ apptest.FactServiceServer }
+
+func (s accountsFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.Add(ctx, req)
+}
+
+func (s accountsFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_AddMany_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.AddMany(ctx, req)
+}
+
+func (s accountsFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.Get(ctx, req)
+}
+
+func (s accountsFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.Patch(ctx, req)
+}
+
+func (s accountsFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.Apply(ctx, req)
+}
+
+func (s accountsFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.FactService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.FactServiceServer.List(ctx, req)
+}
+
+// accountsHolder is HolderService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsHolder struct{ apptest.HolderServiceServer }
+
+func (s accountsHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Add(ctx, req)
+}
+
+func (s accountsHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Get(ctx, req)
+}
+
+func (s accountsHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Patch(ctx, req)
+}
+
+func (s accountsHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
+func (s accountsHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Erase(ctx, req)
+}
+
+func (s accountsHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_List_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.List(ctx, req)
+}
+
+func (s accountsHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
+	if err := gate.AsAccount(out.Context(), apptest.HolderService_Watch_FullMethodName, AccountMethod); err != nil {
+		return err
+	}
+
+	return s.HolderServiceServer.Watch(req, out)
+}
+
+func (s accountsHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.HolderService_Memberships_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Memberships(ctx, req)
+}
+
+func (s Gate) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
+	return accountsNotificationReceiptRecord{s.Next().NotificationReceiptRecord()}
+}
+
+// accountsNotificationReceiptRecord is NotificationReceiptRecordService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsNotificationReceiptRecord struct {
+	apptest.NotificationReceiptRecordServiceServer
+}
+
+func (s accountsNotificationReceiptRecord) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
+	if err := gate.AsAccount(ctx, apptest.NotificationReceiptRecordService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.NotificationReceiptRecordServiceServer.Add(ctx, req)
+}
+
+func (s accountsNotificationReceiptRecord) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
+	if err := gate.AsAccount(ctx, apptest.NotificationReceiptRecordService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.NotificationReceiptRecordServiceServer.Get(ctx, req)
+}
+
+func (s Gate) NotificationRecord() apptest.NotificationRecordServiceServer {
+	return accountsNotificationRecord{s.Next().NotificationRecord()}
+}
+
+// accountsNotificationRecord is NotificationRecordService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsNotificationRecord struct {
+	apptest.NotificationRecordServiceServer
+}
+
+func (s accountsNotificationRecord) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+	if err := gate.AsAccount(ctx, apptest.NotificationRecordService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.NotificationRecordServiceServer.Add(ctx, req)
+}
+
+func (s accountsNotificationRecord) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+	if err := gate.AsAccount(ctx, apptest.NotificationRecordService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.NotificationRecordServiceServer.Get(ctx, req)
+}
+
+func (s Gate) Seal() apptest.SealServiceServer {
+	return accountsSeal{s.Next().Seal()}
+}
+
+// accountsSeal is SealService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsSeal struct{ apptest.SealServiceServer }
+
+func (s accountsSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	if err := gate.AsAccount(ctx, apptest.SealService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.SealServiceServer.Add(ctx, req)
+}
+
+func (s accountsSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+	if err := gate.AsAccount(ctx, apptest.SealService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.SealServiceServer.Get(ctx, req)
+}
+
+func (s accountsSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	if err := gate.AsAccount(ctx, apptest.SealService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.SealServiceServer.Patch(ctx, req)
+}
+
+func (s accountsSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+	if err := gate.AsAccount(ctx, apptest.SealService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.SealServiceServer.Apply(ctx, req)
+}
+
+func (s accountsSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.SealService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.SealServiceServer.Erase(ctx, req)
+}
+
+// accountsStint is StintService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsStint struct{ apptest.StintServiceServer }
+
+func (s accountsStint) Add(ctx context.Context, req *apptest.StintAddRequest) (*apptest.Stint, error) {
+	if err := gate.AsAccount(ctx, apptest.StintService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.StintServiceServer.Add(ctx, req)
+}
+
+func (s accountsStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*apptest.Stint, error) {
+	if err := gate.AsAccount(ctx, apptest.StintService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.StintServiceServer.Get(ctx, req)
+}
+
+func (s accountsStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+	if err := gate.AsAccount(ctx, apptest.StintService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.StintServiceServer.Patch(ctx, req)
+}
+
+func (s accountsStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+	if err := gate.AsAccount(ctx, apptest.StintService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.StintServiceServer.Apply(ctx, req)
+}
+
+func (s accountsStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.StintService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.StintServiceServer.Erase(ctx, req)
 }
 
 // Audit is the layer that refuses a trail row written by hand.
@@ -9437,6 +10595,11 @@ func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerS
 		apptest.HolderService_Watch_FullMethodName, req, out, s.HolderServiceServer.Watch)
 }
 
+func (s interceptHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Memberships_FullMethodName, req, s.HolderServiceServer.Memberships)
+}
+
 func (s Intercept) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
 	return interceptNotificationReceiptRecord{s, s.Next().NotificationReceiptRecord()}
 }
@@ -12246,6 +13409,184 @@ func (s entitlementStore) Forget(ctx context.Context, ids []pdid.Id) error {
 	return err
 }
 
+// AccountMethods are the methods an account calls as itself, outside any
+// tenant (payday#184), by the names gRPC knows them by: the ones the schema
+// marks `(payday.method) = {account: {}}`.
+var AccountMethods = []string{
+	apptest.HolderService_Memberships_FullMethodName,
+}
+
+var accountMethods = func() map[string]bool {
+	vs := make(map[string]bool, len(AccountMethods))
+	for _, v := range AccountMethods {
+		vs[v] = true
+	}
+
+	return vs
+}()
+
+// AccountMethod reports whether `method` is one of [AccountMethods]: what a
+// call an account makes as itself may be of (`frame.OfAccount`), and what
+// [Gate] holds every such call to.
+func AccountMethod(method string) bool { return accountMethods[method] }
+
+// HolderAccount is the account `v` is a membership of, as the holder carries
+// it in `account`, and false for one that names none -- or was read
+// without the field.
+func HolderAccount(v *apptest.Holder) (pdid.Id, bool) {
+	a, err := pdid.From(v.GetAccount())
+	if err != nil || a.IsZero() {
+		return pdid.Nil, false
+	}
+
+	return a, true
+}
+
+// Memberships answers an account's memberships out of `db`, past the wall:
+// the holders that name it in `account` and are still there, oldest
+// first. It is what [AccountResolver] resolves a call by -- working out who is
+// calling happens before there is anybody to be walled by -- and what an
+// app asks for the tenants an account is in.
+//
+// Hand it the deployment's own client and nothing a caller reaches: what it
+// answers is every tenant's.
+func Memberships(db *ent.Client) account.Memberships { return memberships{db} }
+
+type memberships struct{ db *ent.Client }
+
+func (m memberships) Of(ctx context.Context, of pdid.Id, in account.Selector, limit int) ([]account.Membership, error) {
+	if of.IsZero() {
+		// Nobody's: a holder that names no account is no account's membership.
+		return nil, nil
+	}
+
+	q := m.db.Holder.Query().Where(entHolder.Account(of.Uuid()))
+	q = q.Where(entHolder.DateErasedIsNil())
+	if !in.Id.IsZero() {
+		q = q.Where(entHolder.TenantId(in.Id.Uuid()))
+	}
+	if in.Alias != "" {
+		q = q.Where(entHolder.HasTenantWith(entTenant.Alias(in.Alias)))
+	}
+	q = q.Order(entHolder.ByDateCreated(), entHolder.ById())
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+
+	vs, err := q.Select(entHolder.FieldId, entHolder.FieldTenantId).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]account.Membership, len(vs))
+	for i, v := range vs {
+		out[i] = account.Membership{Holder: pdid.Id(v.Id), Tenant: pdid.Id(v.TenantId)}
+	}
+
+	return out, nil
+}
+
+// AccountResolver is the resolver of an app whose holders are memberships of
+// accounts, in front of the one it has: a credential `names` says is an
+// account's is served as its membership of the tenant the call names in
+// `header` -- by alias or identifier -- or its only one, and as the account
+// itself for [AccountMethods]; any other is `next`'s, which is also asked
+// about the membership a call was resolved to. See `account.Resolver`.
+//
+// `db` is the deployment's own client, past the wall, for the reason
+// [Memberships] gives.
+func AccountResolver(db *ent.Client, header string, names func(auth.Identity) bool, next auth.Resolver) account.Resolver {
+	return account.Resolver{
+		Header:      header,
+		Names:       names,
+		Methods:     AccountMethod,
+		Memberships: Memberships(db),
+		Next:        next,
+	}
+}
+
+// Reads is what a method an account calls as itself reads through the walled
+// servers (payday#184): for each entity it names, which of its rows the
+// account may see -- a predicate, as the wall's are, given the account -- and
+// of every entity it does not name, none. Global ones too: a row behind no
+// wall is not therefore the account's.
+//
+// A row read is read with whatever its edges point at, as under a tenant's
+// frame: declare the rows, and select of them what the method answers with.
+type Reads struct {
+	Access                    func(ctx context.Context, account pdid.Id) (predicate.Access, error)
+	Archived                  func(ctx context.Context, account pdid.Id) (predicate.Archived, error)
+	Audit                     func(ctx context.Context, account pdid.Id) (predicate.Audit, error)
+	Cell                      func(ctx context.Context, account pdid.Id) (predicate.Cell, error)
+	Entitlement               func(ctx context.Context, account pdid.Id) (predicate.Entitlement, error)
+	Event                     func(ctx context.Context, account pdid.Id) (predicate.Event, error)
+	Fact                      func(ctx context.Context, account pdid.Id) (predicate.Fact, error)
+	Fleet                     func(ctx context.Context, account pdid.Id) (predicate.Fleet, error)
+	Holder                    func(ctx context.Context, account pdid.Id) (predicate.Holder, error)
+	Job                       func(ctx context.Context, account pdid.Id) (predicate.Job, error)
+	Joint                     func(ctx context.Context, account pdid.Id) (predicate.Joint, error)
+	Machine                   func(ctx context.Context, account pdid.Id) (predicate.Machine, error)
+	NotificationReceiptRecord func(ctx context.Context, account pdid.Id) (predicate.NotificationReceiptRecord, error)
+	NotificationRecord        func(ctx context.Context, account pdid.Id) (predicate.NotificationRecord, error)
+	Outbox                    func(ctx context.Context, account pdid.Id) (predicate.Outbox, error)
+	Owed                      func(ctx context.Context, account pdid.Id) (predicate.Owed, error)
+	Pairing                   func(ctx context.Context, account pdid.Id) (predicate.Pairing, error)
+	Pulse                     func(ctx context.Context, account pdid.Id) (predicate.Pulse, error)
+	Reading                   func(ctx context.Context, account pdid.Id) (predicate.Reading, error)
+	Robot                     func(ctx context.Context, account pdid.Id) (predicate.Robot, error)
+	RowSeal                   func(ctx context.Context, account pdid.Id) (predicate.RowSeal, error)
+	Seal                      func(ctx context.Context, account pdid.Id) (predicate.Seal, error)
+	Stint                     func(ctx context.Context, account pdid.Id) (predicate.Stint, error)
+	Tally                     func(ctx context.Context, account pdid.Id) (predicate.Tally, error)
+	Tenant                    func(ctx context.Context, account pdid.Id) (predicate.Tenant, error)
+	Thing                     func(ctx context.Context, account pdid.Id) (predicate.Thing, error)
+}
+
+// readsKey is where [AccountReads] keeps what it was told.
+type readsKey struct{}
+
+// AccountReads answers with `ctx` reading what `r` says, for the call an
+// account makes as itself to `method` -- which has to be one of
+// [AccountMethods]. It is the layer serving that method's to call, before it
+// reads, and what the wall reads for that call instead of a tenant:
+//
+//	ctx, err := pd.AccountReads(ctx, app.InvitationService_Accept_FullMethodName, pd.Reads{
+//		Invitation: func(ctx context.Context, account pdid.Id) (predicate.Invitation, error) {
+//			return invitation.Account(account.Uuid()), nil
+//		},
+//	})
+//
+// A method that reads nothing through the walled servers declares that too,
+// with an empty Reads: `pd doctor` reports a method an account calls as
+// itself that declares nothing, since without a declaration it reads
+// nothing and is very likely a method somebody forgot to finish.
+//
+// For a call served as a membership it changes nothing: that call reads
+// what its tenant's wall says.
+func AccountReads(ctx context.Context, method string, r Reads) (context.Context, error) {
+	if !AccountMethod(method) {
+		return ctx, status.Errorf(codes.Internal, "%s is no method an account calls as itself, and what such a call reads is said for the method it is", method)
+	}
+
+	return context.WithValue(ctx, readsKey{}, &r), nil
+}
+
+// accountReads is the account a call is framed as and what its layer said it
+// reads -- nothing, when it said nothing -- and false for any other call.
+func accountReads(ctx context.Context) (pdid.Id, *Reads, bool) {
+	a, ok := frame.AccountOf(ctx)
+	if !ok {
+		return pdid.Nil, nil, false
+	}
+
+	r, _ := ctx.Value(readsKey{}).(*Reads)
+	if r == nil {
+		r = &Reads{}
+	}
+
+	return a, r, true
+}
+
 // personal is what a message holding a field declared `personal` is to the
 // access record: its key, those fields, and how to read the tenant it is in.
 type personal struct {
@@ -13036,6 +14377,8 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.HolderRef{}
 	case apptest.HolderService_List_FullMethodName:
 		v = &apptest.HolderListRequest{}
+	case apptest.HolderService_Memberships_FullMethodName:
+		v = &apptest.HolderMembershipsRequest{}
 	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
 		v = &apptest.NotificationReceiptRecordAddRequest{}
 	case apptest.NotificationReceiptRecordService_Get_FullMethodName:
@@ -13236,6 +14579,8 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Holder().Erase(ctx, v.(*apptest.HolderRef))
 	case apptest.HolderService_List_FullMethodName:
 		res, err = s.Holder().List(ctx, v.(*apptest.HolderListRequest))
+	case apptest.HolderService_Memberships_FullMethodName:
+		res, err = s.Holder().Memberships(ctx, v.(*apptest.HolderMembershipsRequest))
 	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
 		res, err = s.NotificationReceiptRecord().Add(ctx, v.(*apptest.NotificationReceiptRecordAddRequest))
 	case apptest.NotificationReceiptRecordService_Get_FullMethodName:

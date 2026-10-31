@@ -5,6 +5,7 @@ package payday;
 import "google/protobuf/descriptor.proto";
 import "payday/app.proto";
 import "payday/entity.proto";
+import "payday/method.proto";
 import "payday/past.proto";
 
 option go_package = "github.com/lesomnus/payday/pdpb";
@@ -32,4 +33,11 @@ extend google.protobuf.FieldOptions {
 // that an app with a single package says nothing at all.
 extend google.protobuf.FileOptions {
   App app = 46201;
+}
+
+// And the method block, above the file one: what payday is told about an RPC an
+// app declares itself -- that an account calls it as itself (payday#184). See
+// [Method].
+extend google.protobuf.MethodOptions {
+  Method method = 46301;
 }

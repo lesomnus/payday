@@ -352,6 +352,7 @@ var (
 		{Name: "idp_subject", Type: field.TypeString},
 		{Name: "profile", Type: field.TypeJson, Nullable: true},
 		{Name: "directory", Type: field.TypeString},
+		{Name: "account", Type: field.TypeUuid, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},
 		{Name: "robot_id", Type: field.TypeUuid, Nullable: true},
 	}
@@ -363,13 +364,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "holder_tenant_tenant",
-				Columns:    []*schema.Column{HolderColumns[11]},
+				Columns:    []*schema.Column{HolderColumns[12]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "holder_robot_robot",
-				Columns:    []*schema.Column{HolderColumns[12]},
+				Columns:    []*schema.Column{HolderColumns[13]},
 				RefColumns: []*schema.Column{RobotColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -378,7 +379,7 @@ var (
 			{
 				Name:    "holder_slug",
 				Unique:  true,
-				Columns: []*schema.Column{HolderColumns[1], HolderColumns[11]},
+				Columns: []*schema.Column{HolderColumns[1], HolderColumns[12]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "date_erased IS NULL",
 				},
@@ -386,7 +387,12 @@ var (
 			{
 				Name:    "holder_page",
 				Unique:  false,
-				Columns: []*schema.Column{HolderColumns[11], HolderColumns[7], HolderColumns[0]},
+				Columns: []*schema.Column{HolderColumns[12], HolderColumns[7], HolderColumns[0]},
+			},
+			{
+				Name:    "holder_by_account",
+				Unique:  false,
+				Columns: []*schema.Column{HolderColumns[11], HolderColumns[12]},
 			},
 		},
 	}

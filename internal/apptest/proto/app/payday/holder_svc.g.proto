@@ -7,6 +7,7 @@ import "app/profile.proto";
 import "app/robot_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
+import "payday.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -35,6 +36,17 @@ service HolderService {
   // once in that first message and once as a change that happened while it was
   // being read -- and that is harmless for the same reason.
   rpc Watch(HolderWatchRequest) returns (stream HolderWatchResponse);
+  // Memberships answers the holders of the calling account: one for each
+  // tenant it is a member of, with the tenant.
+  //
+  // It is the one method an account calls as itself here (payday#184): what a
+  // page asks before a tenant is chosen, which no membership can answer --
+  // each sees its own tenant and nothing of the others. So it is served with
+  // no tenant and the account where a holder would be, and reads what its
+  // layer declares (`server/core`, `pd.AccountReads`) and nothing else.
+  rpc Memberships(HolderMembershipsRequest) returns (HolderMembershipsResponse) {
+    option (payday.method) = {account: {}};
+  }
 }
 
 message HolderAddRequest {
@@ -49,6 +61,7 @@ message HolderAddRequest {
   Profile profile = 9;
   string directory = 10 [features.field_presence = IMPLICIT];
   RobotRef robot = 11;
+  bytes account = 12;
 }
 
 message HolderGetRequest {
@@ -82,6 +95,7 @@ message HolderSelect {
   bool profile = 9;
   bool directory = 10;
   RobotSelect robot = 11;
+  bool account = 12;
 }
 
 message HolderPatchRequest {
@@ -118,6 +132,12 @@ message HolderPatchRequest {
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and robot clears.
   bool robot_null = 23;
+  bytes account = 24;
+  // Clear account instead of writing it.
+  // It takes a field of its own because an unset value already means
+  // "leave it alone", so no value could have meant NULL. It wins
+  // outright: setting both this and account clears.
+  bool account_null = 25;
 }
 
 message HolderApplyRequest {
@@ -222,4 +242,11 @@ message HolderWatchItem {
   // Empty in the first message, which is not something anybody asked for -- it
   // is what is already there.
   string action = 3 [features.field_presence = IMPLICIT];
+}
+
+message HolderMembershipsRequest {}
+
+message HolderMembershipsResponse {
+  // Each with its tenant: who the account is in each tenant it is in.
+  repeated Holder items = 1;
 }

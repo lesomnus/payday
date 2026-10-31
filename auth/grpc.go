@@ -229,12 +229,22 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// subject can delete them. Neither is this package's to choose.
 				// Emitting the line at all, for every call, at a level a
 				// deployment keeps, is. See `docs/guide/permissions.md`.
-				log.From(ctx).InfoContext(ctx, "authenticated",
+				//
+				// And the account, in an app whose holders are memberships of
+				// one (payday#184): which account a membership's call came
+				// from is what ties a person's calls across their tenants
+				// together, and a call the account made as itself has no
+				// tenant to say instead.
+				attrs := []any{
 					slog.String("auth.method", id.Method),
 					slog.String("actor.name", f.Name),
 					slog.String("actor.id", f.Actor.String()),
 					slog.String("actor.tenant", f.Tenant.String()),
-				)
+				}
+				if !f.Account.IsZero() {
+					attrs = append(attrs, slog.String("actor.account", f.Account.String()))
+				}
+				log.From(ctx).InfoContext(ctx, "authenticated", attrs...)
 
 				// What the credential allows is checked here, once, and not
 				// by whatever is about to run. It is not a rule about the

@@ -90,6 +90,11 @@ func Actor(ctx context.Context) (*frame.Frame, error) {
 // A call with no frame is not counted. It is one that got past authentication
 // without being anybody, which means it is public, and public calls are the
 // health check and the reflection listing.
+//
+// A call an account makes as itself is in no tenant (`frame.OfAccount`), so it
+// is counted against the account: by the tenant it would be every such call of
+// every account in one count, and one account asking often would be all of
+// theirs.
 func ByTenant() func(ctx context.Context, method string) string {
 	return func(ctx context.Context, _ string) string {
 		f, ok := frame.From(ctx)
@@ -97,6 +102,9 @@ func ByTenant() func(ctx context.Context, method string) string {
 			return ""
 		}
 
+		if f.AsAccount() {
+			return "account:" + f.Account.String()
+		}
 		if f.Tenant.IsZero() && f.TenantName != "" {
 			return "name:" + f.TenantName
 		}
@@ -121,6 +129,13 @@ type Call struct {
 
 	// Action is the RPC gRPC dispatched, by the name it knows it by.
 	Action string
+
+	// Account is the account the call is from, in an app whose holders are
+	// memberships of accounts (payday#184): the one a membership's call came
+	// from, or the one making a call as itself -- and then AsAccount says so,
+	// Actor is the account too, and Tenant is Nil. See [frame.OfAccount].
+	Account   pdid.Id
+	AsAccount bool
 }
 
 // Policy is what a deployment consults about a caller, and is the seam for
@@ -139,5 +154,21 @@ type Policy interface {
 
 	// Where answers which tenants this caller may see. It is asked once per
 	// call and read from the frame by everything after.
+	//
+	// It is not asked about a call an account makes as itself
+	// ([Call.AsAccount]), which sees no tenant whatever the answer would be:
+	// what it reads is said by the layer serving its method, and a policy
+	// that could answer every tenant for it would be one line away from
+	// handing the deployment to somebody who is nobody's member.
 	Where(ctx context.Context, c Call) (frame.Tenants, error)
+}
+
+// ErrNotAsAccount is the answer to a call an account makes as itself, to a
+// method that is not one it may make that way.
+//
+// PermissionDenied rather than NotFound: what is refused is the method, which
+// the caller named, and saying so tells them nothing about any row.
+func ErrNotAsAccount(method string) error {
+	return status.Errorf(codes.PermissionDenied,
+		"%s: an account calls this as one of its memberships, which a call made as the account itself is not", method)
 }

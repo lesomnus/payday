@@ -75,6 +75,12 @@ func Resolver(s app.Server) auth.Resolver {
 	})
 }
 
+// TenantHeader is the metadata a call names its tenant in -- by alias, with or
+// without its `@`, or by identifier -- for a credential that names an account
+// in several (payday#184). A call that names none is served as the account's
+// only membership; see [Server.Accounts].
+const TenantHeader = "apptest-tenant"
+
 // refOf is the claim as a reference: an identifier when the credential named
 // one, and otherwise the pair that names a holder inside a tenant.
 func refOf(id auth.Identity) (*app.HolderRef, error) {

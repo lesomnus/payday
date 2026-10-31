@@ -34,6 +34,8 @@ const (
 	FieldProfile = "profile"
 	// FieldDirectory holds the string denoting the directory field in the database.
 	FieldDirectory = "directory"
+	// FieldAccount holds the string denoting the account field in the database.
+	FieldAccount = "account"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
 	// FieldRobotId holds the string denoting the robot_id field in the database.
@@ -73,6 +75,7 @@ var Columns = []string{
 	FieldIdpSubject,
 	FieldProfile,
 	FieldDirectory,
+	FieldAccount,
 	FieldTenantId,
 	FieldRobotId,
 }
@@ -140,6 +143,11 @@ func ByIdpSubject(opts ...sql.OrderTermOption) OrderOption {
 // ByDirectory orders the results by the directory field.
 func ByDirectory(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDirectory, opts...).ToFunc()
+}
+
+// ByAccount orders the results by the account field.
+func ByAccount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAccount, opts...).ToFunc()
 }
 
 // ByTenantId orders the results by the tenant_id field.

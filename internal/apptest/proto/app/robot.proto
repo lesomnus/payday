@@ -30,7 +30,17 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // one meter of every shape a declaration takes, so that each query `pd gen`
 // writes for one is compiled and run, on SQLite and on PostgreSQL --
 // `cmd/meter_test.go` holds each to what it counts.
+//
+// And its holders are memberships of accounts (payday#184): an account signs
+// in once and is a member of every tenant it has a holder in, named by
+// `Holder.account` -- 12, a number of this app's, as loft's is 9 --
+// and `HolderService.Memberships` is the one method an account calls as
+// itself. `cmd/account_test.go` holds the resolver, the gate and the wall to
+// it.
 option (payday.app) = {
+  accounts: {
+    field: {name: "account", number: 12}
+  }
   past: {event: 17, fact: 18}
   notify: {notification: 40, receipt: 41}
   // A tenant's copy of what it is entitled to (payday#185), at a domain of

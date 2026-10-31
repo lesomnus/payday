@@ -70,7 +70,24 @@ func Decide(ctx context.Context, p Policy, method string) (context.Context, erro
 		return ctx, nil
 	}
 
-	c := Call{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, Row: f.Row, Action: method}
+	c := Call{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, Row: f.Row, Action: method, Account: f.Account, AsAccount: f.AsAccount()}
+	if f.AsAccount() {
+		// A call an account makes as itself, which is of the methods its
+		// frame was made for and no other -- before a policy is asked, since
+		// no answer of one widens it -- and which sees no tenant. Where is not
+		// asked: what such a call reads is the layer's to say, by method, and
+		// the wall reads that rather than a scope.
+		if !f.Calls(method) {
+			return nil, ErrNotAsAccount(method)
+		}
+		if p != nil {
+			if err := p.May(ctx, c); err != nil {
+				return nil, err
+			}
+		}
+
+		return frame.Into(ctx, f.WithScope(frame.Nothing)), nil
+	}
 	if p != nil {
 		if err := p.May(ctx, c); err != nil {
 			return nil, err

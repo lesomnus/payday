@@ -113,6 +113,22 @@ func TestAnotherFrameIsAnotherQuestion(t *testing.T) {
 	x.Equal(4, a.n)
 }
 
+// An account's own call reads what the layer serving it declared, which a
+// layer may say again within the call (payday#184): one frame, and an answer to
+// what it declared first is no proof about what it declares after.
+func TestNothingIsRememberedForAnAccountsOwnCall(t *testing.T) {
+	x := require.New(t)
+	drv := begun(t, driver{})
+	ctx := frame.Into(t.Context(), frame.OfAccount(pdid.New(2), frame.Whole(), nil))
+
+	robot := pdid.New(7)
+	a := &asks{}
+	for range 3 {
+		x.NoError(seen.Visible(ctx, drv, "Robot", byKey(robot), a.visible))
+	}
+	x.Equal(3, a.n)
+}
+
 // A reference by alias names whichever row holds the alias now, and a write in
 // the same transaction can give it to another.
 func TestOnlyARowNamedByItsKeyIsRemembered(t *testing.T) {

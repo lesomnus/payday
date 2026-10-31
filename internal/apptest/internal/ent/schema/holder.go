@@ -39,6 +39,9 @@ func (Holder) Fields() []ent.Field {
 		field.Json("profile", &apptest.Profile{}).ValueScanner(entpb.ValueScanner[*apptest.Profile]{}).
 			Optional(),
 		field.String("directory"),
+		field.Uuid("account").
+			Nillable().
+			Optional(),
 		field.Uuid("tenant_id").
 			Immutable(),
 		field.Uuid("robot_id").
@@ -67,6 +70,8 @@ func (Holder) Indexes() []ent.Index {
 			Annotations(entsql.IndexWhere("date_erased IS NULL")),
 		index.Fields("tenant_id", "date_created", "id").
 			StorageKey("holder_page"),
+		index.Fields("account", "tenant_id").
+			StorageKey("holder_by_account"),
 	}
 }
 

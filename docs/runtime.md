@@ -48,6 +48,7 @@ table is for finding the right one.
 | [`auth/authoidc`](../auth/authoidc) | reads the token an external provider issued — signature, issuer, audience, expiry — and turns its claims into an identity |
 | [`auth/authsession`](../auth/authsession) | the browser's half: a `POST /session` that sets an opaque cookie, and the handler that reads it back. The app supplies a `Verify` and a `Store` |
 | [`gate`](../gate) | what the caller may **do**, as against what they may see. Most of the rule is stated here and enforced in the query |
+| [`account`](../account) | for an app whose holders are memberships of accounts: a call resolved to the membership of the tenant it names, or the account's only one, and served as the account itself for the methods that are its own. With `pd.AccountResolver`, `pd.Memberships` and `pd.AccountReads` an app is generated |
 | [`seen`](../seen) | what a transaction has already asked about the rows it names, so the gate and the sink ask each question once rather than once per write |
 | [`audit`](../audit) | the trail. A recorder inside the transaction, and a layer serving the trail's own RPCs |
 | [`access`](../access) | the access record: who read or wrote whose personal data, from where, and how it ended. An interceptor, and the writer it hands rows to |
@@ -88,7 +89,7 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
-| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)` — and for the services payday serves on an app's behalf or asks of another: `BatchService`, the `TokenService` that `auth.Remote` asks, and the `GrantService` an `entitle.Follower` follows |
+| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)`, `(payday.method)` — and for the services payday serves on an app's behalf or asks of another: `BatchService`, the `TokenService` that `auth.Remote` asks, and the `GrantService` an `entitle.Follower` follows |
 
 ## 3. What is generated
 

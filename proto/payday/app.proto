@@ -2,6 +2,7 @@ edition = "2023";
 
 package payday;
 
+import "orm/ref.proto";
 import "payday/entity.proto";
 import "payday/meter.proto";
 
@@ -40,7 +41,7 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // so that something could be added to it without every app that set it having
 // to change, and [App.past] is the first thing that was, [App.domains] the
 // second, [App.notify] the third, [App.meters] the fourth, [App.entitlements]
-// the fifth.
+// the fifth, [App.accounts] the sixth.
 //
 // Setting it on more than one package is refused. Two answers to "where do
 // payday's entities go" is the thing this exists to avoid, and getting two of
@@ -97,6 +98,55 @@ message App {
   // grants -- a billing service -- speaking `payday.GrantService`, followed by
   // `entitle.Follower`. See [Entitlements].
   Entitlements entitlements = 5;
+
+  // Accounts says this app's holders are memberships of accounts an identity
+  // provider keeps, and which holder field names the account (payday#184):
+  //
+  //	option (payday.app) = {accounts: {field: {name: "account", number: 9}}};
+  //
+  // `pd gen` then writes what answers an account's memberships and a holder's
+  // account, the resolver's half that turns an account and the tenant a call
+  // names into one of them, and the frame of a call an account makes as
+  // itself -- the methods marked `(payday.method) = {account: {}}`. See
+  // [Accounts].
+  //
+  // Here rather than on the holder, because the holder is payday's entity and
+  // an overlay may add nothing to payday's declaration of one.
+  Accounts accounts = 6;
+}
+
+// Accounts is the holder field that names the account a holder is a
+// membership of (payday#184).
+//
+// # What payday keeps, and what it does not
+//
+// The **reference**: which account a membership is of, the frame of a call an
+// account makes outside any tenant, and resolving a call to one membership.
+// Not the account. Its names, its addresses, how it signs in and whether it
+// may are the identity provider's, and a copy of them in every app is one more
+// place a person has to be erased from. So an account is an identifier here
+// and nothing else.
+//
+// # Why the app numbers the field
+//
+// For the reason the past's two entities are numbered by the app: the field
+// is on payday's Holder, an app adds it with an overlay at a number of its own
+// (3, 8..12, 16 and up), and an app that kept the reference before payday did
+// has spent a number on it already. A deployment keeps its column, and payday
+// is told where it is.
+message Accounts {
+  // Field is the holder's field that holds the account's identifier, named by
+  // both its name and its number, which have to agree: a field renamed under
+  // a declaration that followed the name would resolve calls by another
+  // column, with nothing failing.
+  //
+  // It is a `bytes` field of `TYPE_UUID` the app's overlay adds to the holder,
+  // and may be nullable -- a holder that is no account's membership, made
+  // before accounts were or for a deployment's own use, is one nobody signs
+  // in as through an account. It is not `personal`: it is an identifier, as an
+  // edge is, and who moved a membership from one account to another is the
+  // record.
+  orm.Ref field = 1;
 }
 
 // Past is the domain of each of the two entities an app's past is kept in.

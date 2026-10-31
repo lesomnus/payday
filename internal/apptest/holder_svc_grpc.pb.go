@@ -19,13 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HolderService_Add_FullMethodName   = "/app.HolderService/Add"
-	HolderService_Get_FullMethodName   = "/app.HolderService/Get"
-	HolderService_Patch_FullMethodName = "/app.HolderService/Patch"
-	HolderService_Apply_FullMethodName = "/app.HolderService/Apply"
-	HolderService_Erase_FullMethodName = "/app.HolderService/Erase"
-	HolderService_List_FullMethodName  = "/app.HolderService/List"
-	HolderService_Watch_FullMethodName = "/app.HolderService/Watch"
+	HolderService_Add_FullMethodName         = "/app.HolderService/Add"
+	HolderService_Get_FullMethodName         = "/app.HolderService/Get"
+	HolderService_Patch_FullMethodName       = "/app.HolderService/Patch"
+	HolderService_Apply_FullMethodName       = "/app.HolderService/Apply"
+	HolderService_Erase_FullMethodName       = "/app.HolderService/Erase"
+	HolderService_List_FullMethodName        = "/app.HolderService/List"
+	HolderService_Watch_FullMethodName       = "/app.HolderService/Watch"
+	HolderService_Memberships_FullMethodName = "/app.HolderService/Memberships"
 )
 
 // HolderServiceClient is the client API for HolderService service.
@@ -56,6 +57,15 @@ type HolderServiceClient interface {
 	// once in that first message and once as a change that happened while it was
 	// being read -- and that is harmless for the same reason.
 	Watch(ctx context.Context, in *HolderWatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[HolderWatchResponse], error)
+	// Memberships answers the holders of the calling account: one for each
+	// tenant it is a member of, with the tenant.
+	//
+	// It is the one method an account calls as itself here (payday#184): what a
+	// page asks before a tenant is chosen, which no membership can answer --
+	// each sees its own tenant and nothing of the others. So it is served with
+	// no tenant and the account where a holder would be, and reads what its
+	// layer declares (`server/core`, `pd.AccountReads`) and nothing else.
+	Memberships(ctx context.Context, in *HolderMembershipsRequest, opts ...grpc.CallOption) (*HolderMembershipsResponse, error)
 }
 
 type holderServiceClient struct {
@@ -145,6 +155,16 @@ func (c *holderServiceClient) Watch(ctx context.Context, in *HolderWatchRequest,
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HolderService_WatchClient = grpc.ServerStreamingClient[HolderWatchResponse]
 
+func (c *holderServiceClient) Memberships(ctx context.Context, in *HolderMembershipsRequest, opts ...grpc.CallOption) (*HolderMembershipsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HolderMembershipsResponse)
+	err := c.cc.Invoke(ctx, HolderService_Memberships_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HolderServiceServer is the server API for HolderService service.
 // All implementations must embed UnimplementedHolderServiceServer
 // for forward compatibility.
@@ -173,6 +193,15 @@ type HolderServiceServer interface {
 	// once in that first message and once as a change that happened while it was
 	// being read -- and that is harmless for the same reason.
 	Watch(*HolderWatchRequest, grpc.ServerStreamingServer[HolderWatchResponse]) error
+	// Memberships answers the holders of the calling account: one for each
+	// tenant it is a member of, with the tenant.
+	//
+	// It is the one method an account calls as itself here (payday#184): what a
+	// page asks before a tenant is chosen, which no membership can answer --
+	// each sees its own tenant and nothing of the others. So it is served with
+	// no tenant and the account where a holder would be, and reads what its
+	// layer declares (`server/core`, `pd.AccountReads`) and nothing else.
+	Memberships(context.Context, *HolderMembershipsRequest) (*HolderMembershipsResponse, error)
 	mustEmbedUnimplementedHolderServiceServer()
 }
 
@@ -203,6 +232,9 @@ func (UnimplementedHolderServiceServer) List(context.Context, *HolderListRequest
 }
 func (UnimplementedHolderServiceServer) Watch(*HolderWatchRequest, grpc.ServerStreamingServer[HolderWatchResponse]) error {
 	return status.Error(codes.Unimplemented, "method Watch not implemented")
+}
+func (UnimplementedHolderServiceServer) Memberships(context.Context, *HolderMembershipsRequest) (*HolderMembershipsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Memberships not implemented")
 }
 func (UnimplementedHolderServiceServer) mustEmbedUnimplementedHolderServiceServer() {}
 func (UnimplementedHolderServiceServer) testEmbeddedByValue()                       {}
@@ -344,6 +376,24 @@ func _HolderService_Watch_Handler(srv interface{}, stream grpc.ServerStream) err
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type HolderService_WatchServer = grpc.ServerStreamingServer[HolderWatchResponse]
 
+func _HolderService_Memberships_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HolderMembershipsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HolderServiceServer).Memberships(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HolderService_Memberships_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HolderServiceServer).Memberships(ctx, req.(*HolderMembershipsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HolderService_ServiceDesc is the grpc.ServiceDesc for HolderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -374,6 +424,10 @@ var HolderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _HolderService_List_Handler,
+		},
+		{
+			MethodName: "Memberships",
+			Handler:    _HolderService_Memberships_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
