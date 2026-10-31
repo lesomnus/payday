@@ -71,6 +71,7 @@ table is for finding the right one.
 | [`rename`](../rename) | the indexes an earlier build stored under another name, moved to this build's before a migration looks for them |
 | [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
+| [`meter`](../meter) | what each tenant holds, measured on a schedule and on request, and handed to the app's sink: the readings of `pd.Meters` and of the app's own meters, and the convention for flows |
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
 | [`resource`](../resource) | the shared Batch and Watch service, and the event both of a change's delivery paths carry |
 | [`resource/resourcecel`](../resource/resourcecel) | CEL, the language a Watch filter is written in. A process imports it; a sandbox does not, and is 10 MB lighter for it |
@@ -1552,6 +1553,36 @@ that fails keeps all it would have taken, being one transaction.
   PostgreSQL two expiries of one tenant take turns on a transaction's advisory
   lock -- so the moment around a failover in which a lease runs a loop in two
   processes takes nothing twice (`payday.past.expire`).
+
+### Meters are one of them (payday#186)
+
+`meter.Reader` measures every tenant's meters -- the ones the schema declares,
+`pd.Meters`, and the app's own -- and hands each tenant's readings to the sink
+the app wires: the billing service's client. A pass as it starts and at each
+multiple of its `Every` since the Unix epoch, under the lease as
+`payday.meter.read`; and one tenant whenever the app asks, which it does before
+it destroys a tenant, so that the last period is measured while its source is
+there.
+
+- **The app writes no rows for it.** A reading is a tenant, a meter, the moment
+  and the value, handed over and kept by the sink, which keeps one of each
+  tenant, meter and moment -- so a reading handed over twice, by a retry or by
+  two processes around a failover, counts once. Nothing outside the app reads
+  its tables, and nothing inside keeps a second copy of what they say.
+- **It logs and goes on, and tries again.** What the sink did not take is
+  handed it again as it was, a tenant a meter failed for is measured again,
+  and a pass that could not list the tenants goes on from the last -- a minute
+  later and longer each time, until the next pass, which lets what is left go
+  with an error in the log. A process that stops loses what it had not handed
+  over, and the next pass measures again.
+- **It reads what it is built on**, which is how a deployment measures from a
+  replica: `pd.Meters` and `pd.MeterTenants` on a client of it.
+
+What happens over time rather than what is held -- bytes sent, calls made --
+it does not measure. The convention for those is a cumulative OpenTelemetry Sum
+named by its meter key with the tenant as `payday.tenant`, exported to the
+billing service's own receiver and never through the monitoring pipeline; see
+the [guide](guide/meters.md#7-flows).
 
 ### The access record (#111)
 

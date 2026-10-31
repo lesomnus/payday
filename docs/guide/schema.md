@@ -1052,6 +1052,9 @@ only test for whether it belongs on this list.
 | a field of one name at two numbers, or of two types, across the event messages of one domain's kinds | one name read as two fields by whatever reads the domain's events |
 | an event message, a field, a kind or an enum value that the past's lock holds, gone or changed -- a kind moved to another message among them | every row written before it, no longer read or read as something else |
 | `event: true` on anything but a `bytes` column of `TYPE_UUID` -- a list, an edge, the key -- in an app with no past, or on payday's Event beside its cause | an event the expiry keeps by a column it cannot ask, or takes while the schema said a row named it |
+| a meter whose key is not one or is another's, with no unit, or said in two files | two answers to what a reading is filed under, or a number nobody can price |
+| a meter of no entity, of a `global` one, or of one whose rows name two tenants | somebody's bill made of everybody's rows |
+| a meter naming a field by its name or its number alone, the two disagreeing, a value its enum does not have, or a condition on a float, bytes, an identifier, a time's value, a list or an edge's value; a sum of anything but an integer | a bill that counts another column, or nothing, or sums what is not exact -- see [meters](meters.md#1-declare-what-is-measured) |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |
@@ -1061,6 +1064,9 @@ index covers -- behind the wall, an index that begins with the tenant. `pd gen`
 prints it; it used to be dropped with the rest of what the plugins said of a
 generation that succeeded, which is how an app could go on generating dozens of
 them without a word.
+
+And another: a meter of an entity no index serves by tenant, since a pass reads
+one tenant's rows at a time and each is then a scan of the whole table.
 
 ---
 
@@ -1132,5 +1138,6 @@ the older payday wrote.
 | [server.md](server.md) | the stack that serves it |
 | [client.md](client.md) | what a page does with what this generates |
 | [testing.md](testing.md) | asserting that a declaration means what you thought |
+| [meters.md](meters.md) | what each tenant holds, declared beside the entities and measured for a bill |
 | [schema.md](../schema.md) | why payday owns these entities, and what it costs |
 | [runtime.md](../runtime.md) | what `List` and `Watch` generate, and what is refused |

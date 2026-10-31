@@ -3,6 +3,19 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Meters, for an app that declares them
+
+**Applies if** you want payday to measure what your tenants hold for a bill
+(payday#186). Nothing changes for an app that does not: no meters declared is
+no meter code generated.
+
+Declare them in `option (payday.app) = {meters: [...]}` and regenerate; `pd
+gen` writes `pd.Meters` and `pd.MeterTenants`. Wire a `meter.Reader` with your
+billing service's client as its `Sink`, put it in the spin list, and call its
+`Read` for a tenant before you destroy one. An app pinned to an older
+`buf.build/payday/payday` runs `buf dep update` first. [The guide](guide/meters.md)
+has all of it, and `pd doctor` says what is missing.
+
 ## Notifications use the entity tenancy declaration
 
 **Applies if** an app used `notify.global: true` from main after #178.
