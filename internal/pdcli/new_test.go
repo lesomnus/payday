@@ -5,6 +5,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"go/version"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 
 	"github.com/lesomnus/payday/internal/pdcli"
 )
@@ -66,6 +68,49 @@ func TestTheTemplateIsWhatAPersonWrites(t *testing.T) {
 	} {
 		x.Contains(vs, want)
 	}
+}
+
+// TestAnAppStartsOnPaydaysToolchain.
+//
+// Which Go builds an app is its go.mod's toolchain line -- setup-go reads it,
+// and a go command older than it fetches it -- and nothing writes one but this
+// template: `go get -tool` raises the go line to payday's and adds none, and
+// `go mod tidy` leaves it so. levyan was made without one, and its CI built it
+// with exactly what the go line named, go1.27.0; govulncheck failed the first
+// run on advisories against that standard library (payday#189).
+//
+// It is payday's toolchain, the one payday's own go.mod names and its CI builds
+// and tests with, and not the Go `pd new` happens to run with. That one is the
+// machine's: go1.27.0 as likely as any, and another line from every machine
+// that writes an app.
+func TestAnAppStartsOnPaydaysToolchain(t *testing.T) {
+	x := require.New(t)
+
+	read := func(p string) *modfile.File {
+		b, err := os.ReadFile(p)
+		x.NoError(err)
+
+		f, err := modfile.Parse(p, b, nil)
+		x.NoError(err)
+
+		return f
+	}
+
+	payday := read(filepath.Join("..", "..", "go.mod"))
+	x.NotNil(payday.Toolchain, "payday's go.mod names no toolchain, so there is none to start an app on")
+
+	dir := filepath.Join(t.TempDir(), "app")
+	x.NoError((pdcli.New{Dir: dir, Module: "github.com/acme/thing"}).Write())
+
+	app := read(filepath.Join(dir, "go.mod"))
+	x.NotNil(app.Toolchain, "pd new writes no toolchain line")
+	x.Equal(payday.Toolchain.Name, app.Toolchain.Name)
+
+	// And one that `go get -tool` keeps. It raises the app's go line to
+	// payday's, and removes a toolchain line that is no newer than that.
+	x.Positive(version.Compare(app.Toolchain.Name, "go"+payday.Go.Version),
+		"%s is no newer than payday's go line, %s, so the first `go get -tool` takes it out of the app",
+		app.Toolchain.Name, payday.Go.Version)
 }
 
 // TestTheEnginesAreNotInTheSandbox.
