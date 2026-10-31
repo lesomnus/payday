@@ -20,6 +20,7 @@ import (
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/meter"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/resource"
 	"github.com/lesomnus/payday/trail"
@@ -101,6 +102,13 @@ type Server struct {
 	// download's at once. Its loop is in [Server.Spin], and each process runs
 	// its own, since what it holds is in this one's memory.
 	Access *access.Writer
+
+	// Meters reads what each tenant holds that this app would be paid by
+	// (payday#186): every tenant, at midnight UTC and as the process starts,
+	// and one tenant when the app asks -- which an app that destroys tenants
+	// does first. Its loop is in [Server.Spin], and a lease runs it in one
+	// process of the deployment.
+	Meters *meter.Reader
 
 	// Downloads are the methods that hand personal data out to be kept
 	// somewhere else, which say what for or are refused; see
@@ -241,6 +249,18 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		s.Spin = append(s.Spin, pd.Drain(client, b, c.Watch.Every()))
 	}
 
+	// What each tenant holds, measured for a bill (payday#186). This app bills
+	// nobody, so its readings are said in the log; one that is paid hands them
+	// to the billing service's client, and that is the line that differs. The
+	// schema's meters are measured on the client that answers requests here; a
+	// deployment with a replica builds them on a client of that instead.
+	s.Meters = &meter.Reader{
+		Tenants: pd.MeterTenants(client),
+		Meters:  pd.Meters(client),
+		Sink:    loggedReadings{},
+	}
+	s.Spin = append(s.Spin, s.Meters)
+
 	// And the trail's retention, which is the one loop here that is a
 	// **mechanism** rather than a tidy-up: nothing else applies a window, so an
 	// outage of it is a deployment keeping records it said it would not.
@@ -279,6 +299,19 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 }
 
 func (s *Server) Close() error { return s.Db.Close() }
+
+// loggedReadings is the meters' sink of an app that bills nobody: each
+// reading, said in the log at debug.
+type loggedReadings struct{}
+
+func (loggedReadings) Send(ctx context.Context, rs []meter.Reading) error {
+	for _, r := range rs {
+		log.From(ctx).DebugContext(ctx, "meter: a reading",
+			"tenant", r.Tenant, "meter", r.Meter, "measured_at", r.MeasuredAt, "value", r.Value, "unit", r.Unit)
+	}
+
+	return nil
+}
 
 // Grpc builds the server every call arrives at.
 //

@@ -91,6 +91,17 @@ message Machine {
 
   option (orm.message) = {
     rpc: {crud: true}
+    indexes: [
+      // What a meter of one tenant's machines reads by (payday#186): without
+      // it, measuring each tenant is a scan of every tenant's machines, and
+      // `pd gen` asked for it by name.
+      {
+        name: "by_tenant"
+        refs: [
+          {name: "tenant", number: 2}
+        ]
+      }
+    ]
   };
   option (payday.entity) = {
     domain: 19

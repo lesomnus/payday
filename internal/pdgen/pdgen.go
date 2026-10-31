@@ -208,6 +208,11 @@ type Schema struct {
 	// Notify declares the domains of the optional notification storage records.
 	Notify *Notify
 
+	// Meters are what each tenant holds that the app is paid by, as the
+	// schema declares them (payday#186), each resolved against the entity it
+	// measures. Empty for an app that declares none.
+	Meters []*Meter
+
 	// Domains is what the app declared of the domains of payday's Archived and
 	// Access, and nil for an app that declared none (payday#163): the two are
 	// in [Schema.Entities] wherever they are, found by their marker, and this
@@ -253,6 +258,11 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	s.Domains = domains
+
+	meters, err := readMeters(files)
+	if err != nil {
+		return nil, err
+	}
 
 	// Before the field options, which would refuse a `(payday.field)` in an
 	// event message with advice for a message an entity holds; see
@@ -320,6 +330,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	if err := s.checkHeader(); err != nil {
+		return nil, err
+	}
+	if err := s.checkMeters(meters); err != nil {
 		return nil, err
 	}
 
@@ -1584,6 +1597,7 @@ func Warnings(s *Schema) []string {
 	for _, v := range s.Sorted() {
 		vs = append(vs, checkListIndex(v)...)
 	}
+	vs = append(vs, checkMeterIndex(s)...)
 
 	return vs
 }

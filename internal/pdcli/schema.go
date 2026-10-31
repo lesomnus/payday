@@ -95,7 +95,10 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// kind kept off the trail that holds a secret. See doctor_trail.go.
 	// And of an app that keeps a past, what it accepts and the past then gets
 	// wrong, and its lock as a generation would hold it. See doctor_past.go.
+	// And of an app that declares meters, whether anything reads them, and of
+	// a reader, whether it runs. See doctor_meter.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
+	vs = append(vs, doctorMeters(l, schema)...)
 
 	return append(vs, doctorPast(l, schema)...)
 }

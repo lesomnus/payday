@@ -1256,8 +1256,42 @@ const file_app_robot_proto_rawDesc = "" +
 	"\ttenant_id\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16!\b\vB\x02\n" +
 	"\x00\"\x19\n" +
-	"\frobot.tenant\x1a\ttenant_idBB\xca\xc7\x16\f\n" +
-	"\x04\b\x11\x10\x12\x1a\x04\b(\x10)Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\frobot.tenant\x1a\ttenant_idB\xee\x04\xca\xc7\x16\xb7\x04\n" +
+	"\x04\b\x11\x10\x12\x1a\x04\b(\x10)\"\"\n" +
+	"\x0eapptest.robots\x12\a{robot}\x1a\a\n" +
+	"\x05Robot\"B\n" +
+	"\x17apptest.robots.attested\x12\a{robot}\x1a\x1e\n" +
+	"\x05Robot\x12\x15\n" +
+	"\x11\n" +
+	"\rdate_attested\x10\x1f \x01\"n\n" +
+	"\x18apptest.machines.working\x12\t{machine}\x1aG\n" +
+	"\aMachine\x12'\n" +
+	"\b\n" +
+	"\x04mode\x10\x13\x1a\x10MODE_UNSPECIFIED\x1a\tMODE_IDLE\x12\x13\n" +
+	"\v\n" +
+	"\arunning\x10\v\x12\x04true\"U\n" +
+	"\x16apptest.machines.spare\x12\t{machine}\x1a0\n" +
+	"\aMachine\x12\r\n" +
+	"\t\n" +
+	"\x05robot\x10\x12 \x00\x12\x16\n" +
+	"\t\n" +
+	"\x05model\x10\b\x1a\tprototype\"<\n" +
+	"\x14apptest.machines.new\x12\t{machine}\x1a\x19\n" +
+	"\aMachine\x12\x0e\n" +
+	"\t\n" +
+	"\x05hours\x10\t\x12\x010\"K\n" +
+	"\x17apptest.machines.cycles\x12\a{cycle}\"'\n" +
+	"\aMachine\x12\n" +
+	"\n" +
+	"\x06cycles\x10\x10\x1a\x10\n" +
+	"\f\n" +
+	"\bmaker_id\x10\x11 \x01\"\"\n" +
+	"\x0eapptest.joints\x12\a{joint}\x1a\a\n" +
+	"\x05Joint\"(\n" +
+	"\x10apptest.readings\x12\t{reading}\x1a\t\n" +
+	"\aReading\"!\n" +
+	"\rapptest.seats\x12\x06{seat}\x1a\b\n" +
+	"\x06HolderZ+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_robot_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_app_robot_proto_goTypes = []any{

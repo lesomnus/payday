@@ -10,6 +10,7 @@ import (
 	schema "github.com/protobuf-orm/ent/schema"
 	edge "github.com/protobuf-orm/ent/schema/edge"
 	field "github.com/protobuf-orm/ent/schema/field"
+	index "github.com/protobuf-orm/ent/schema/index"
 	entpb "github.com/protobuf-orm/protoc-gen-orm-ent/runtime/entpb"
 )
 
@@ -68,6 +69,13 @@ func (Machine) Edges() []ent.Edge {
 		edge.To("robot", Robot.Type).
 			Unique().
 			Field("robot_id"),
+	}
+}
+
+func (Machine) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("tenant_id").
+			StorageKey("machine_by_tenant"),
 	}
 }
 

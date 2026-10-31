@@ -933,6 +933,10 @@ A lease is at most one at a time but for a moment around a failover, not exactly
 once, so a loop is still written to be safe run twice; see
 [one process of many](../runtime.md#one-process-of-many-54).
 
+payday's own loops go on the same list: the outbox's `pd.Drain`, the trail's
+`trail.Sweep`, and for an app that declares meters, the `meter.Reader` that
+measures them ([meters](meters.md#4-reading-them)).
+
 The name is the lock, so renaming a loop changes it: through a rolling upgrade
 the old build runs it under the old name and the new build under the new one,
 both at once. Say what it was called for as long as an upgrade can run the two

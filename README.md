@@ -15,6 +15,9 @@ it is generated rather than remembered.
   writes that need no invalidation rule, and what persists across a reload.
 - [**Adding notifications**](docs/guide/notifications.md) — named and resource
   Topics, app-defined readers, and read state that stays current across clients.
+- [**Measuring what a tenant holds**](docs/guide/meters.md) — meters declared in
+  the schema and held to it, measured tenant by tenant and handed to a billing
+  service's client; and the convention for what happens over time.
 - [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
   `add`, `patch` and `erase` for every entity, from a `Connector` that says how
   to reach the deployment; the output formats, and a command for an RPC of your
@@ -124,6 +127,7 @@ app.
 | [`gate`](gate) | what a caller may do, and the seam a deployment injects |
 | [`audit`](audit) | the trail, written in the transaction that changed something |
 | [`watch`](watch) · [`spin`](spin) | publishing what changed, and the loops that do it |
+| [`meter`](meter) | what each tenant holds, measured and handed to a billing service's client |
 | [`batch`](batch) | several writes as one transaction |
 | [`web`](web) | the port a browser reaches |
 | [`version`](version) | refusing a server whose payday moved |
