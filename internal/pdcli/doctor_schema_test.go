@@ -58,6 +58,11 @@ func TestTheReferenceAppIsWell(t *testing.T) {
 	// sink, in its spin list.
 	x.NotContains(v, "nothing reads them")
 	x.NotContains(v, "meter.Reader")
+
+	// And entitlements (payday#185), whose copy a follower keeps, with a
+	// source and a copy, in its spin list.
+	x.NotContains(v, "nothing keeps the copy")
+	x.NotContains(v, "entitle.Follower")
 }
 
 // TestDoctorAsksWhatAFieldOfAnEntityThatHoldsPeopleIs: an entity with a
