@@ -287,6 +287,16 @@ a `frame.Grant` narrowed to X (§6), and the wall does the rest. The audit trail
 still records the concrete tenant, which is what an admin scope of `*` would
 have thrown away.
 
+### A call an account makes as itself
+
+In an app whose holders are memberships of accounts, a few methods are called by
+the account outside every tenant: the schema marks them, `(payday.method) =
+{account: {}}`. Such a call is in no tenant, so it is the one caller the wall
+has nothing to narrow by -- and it **sees nothing**, global rows too, until the
+layer serving its method declares what it reads. It reaches no method but the
+ones marked, whatever a policy says, and a policy's `Where` is not asked about
+it. [One sign-in, many tenants](accounts.md) is the whole of it.
+
 ### What the deployment does for itself
 
 Some work has to go around the wall — putting the first tenant in, before there

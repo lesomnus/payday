@@ -3,6 +3,80 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## Accounts, for an app whose holders are memberships of one
+
+**Applies if** your people sign in once and belong to several tenants -- an
+account with a holder in each -- and most of all if you built that layer
+yourself, as loft did (payday#184). An app that declares no accounts changes
+nothing; its wall answers a call framed as an account with nothing, which no
+call of its own is.
+
+Run `buf dep update` first: the option is in `buf.build/payday/payday`'s
+`payday/method.proto` and `App.accounts`. Then, for an app that has the layer
+already -- each step keeps what it does and moves where it is said:
+
+1. **Name the field you have.** Keep its number and its column:
+
+   ```proto
+   option (payday.app) = {accounts: {field: {name: "account", number: 9}}};
+   ```
+
+   and give it an index that begins with it, which `pd gen` asks for: every
+   call an account makes is resolved by it.
+
+2. **Mark the methods an account calls as itself** with `option (payday.method)
+   = {account: {}}`, on the RPCs of your own that they are -- loft's
+   `InvitationService.Claim`, `Accept` and `Deny`. A list of them in Go
+   (`cmd.AccountMethods`) goes; `pd.AccountMethods` is it. A generated method
+   cannot be marked: an account's side of a generated `List` -- loft's
+   invitations addressed to an account -- becomes an RPC of its own beside it,
+   marked, and the page calls that.
+
+3. **Resolve with `pd.AccountResolver`.** Your resolver's branch for a
+   credential that names an account -- choosing its membership by your header,
+   or its only one, and the account itself for its own methods -- is that,
+   wired in front of the branch for holders that you keep:
+
+   ```go
+   accounts := pd.AccountResolver(db, WorkspaceHeader, func(id auth.Identity) bool {
+   	return id.Method == authsession.Method
+   }, holders)
+   ```
+
+   What you check around it stays yours: an agreement owed before the call, a
+   workspace closed after it. A call pinned to one tenant by the host it came
+   to is a credential bound to it -- set `Identity.TenantId` to the pinned one
+   before you ask -- and the resolver then refuses a header naming another and
+   the account's own methods, as yours did.
+
+4. **The frame is payday's.** A call an account makes as itself is
+   `frame.OfAccount` -- the account in `Actor` and `Account`, no tenant -- and a
+   membership's carries its account in `frame.Frame.Account`. A message of your
+   own put in `Row` to say so goes: a policy reads `gate.Call.AsAccount` and
+   `Call.Account` (loft's `policy.levelOf`), and a layer reads
+   `frame.Must(ctx).Account` (loft's `accountOf`). A policy's `Where` is not
+   asked for such a call, and a rate limit's key of your own for it
+   (`LimitKey`) is `gate.ByTenant` now.
+
+5. **Say what each of those methods reads.** With nothing said, the walled
+   servers answer such a call with nothing -- global entities too -- and `pd
+   doctor` reports the method. A layer that reads through them declares the
+   predicates (`pd.AccountReads(ctx, method, pd.Reads{...})`); one that reads
+   past them, by queries of its own, and writes as the deployment, says it reads
+   nothing through them with an empty `pd.Reads{}` beside the queries that are
+   its wall.
+
+6. **A request may no longer say which account a holder is a membership of.**
+   The generated gate refuses an `Add`, a `Patch` or an `Apply` of a holder that
+   sets the field. A layer stacked above the gate that makes a membership --
+   loft's `PartyService.Invite` -- writes it through the server the deployment
+   holds instead, as an accepted invitation already does; one below the gate
+   writes past it and is not asked.
+
+The access record already named the account as the actor of such a call, for
+an app whose frame put it there; it now does by the frame's own word, with Nil
+for its tenant. [The guide](guide/accounts.md) has all of it.
+
 ## Entitlements, for an app that declares them
 
 **Applies if** a billing service decides what your tenants may have, and your

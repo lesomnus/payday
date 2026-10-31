@@ -1007,6 +1007,19 @@ Implementing it is [a layer](server.md#3-writing-a-layer), which is also what
 puts it on the trail: an RPC nothing listed is audited for the same reason an
 `Add` is.
 
+In an app whose holders are memberships of accounts, an RPC of your own is also
+where an account's own call is declared -- one it makes outside every tenant,
+before it is anybody's member:
+
+```proto
+rpc Accept(InvitationAcceptRequest) returns (Invitation) {
+  option (payday.method) = {account: {}};
+}
+```
+
+`option (payday.app) = {accounts: ...}` names the holder field that says which
+account a membership is of; [one sign-in, many tenants](accounts.md) has both.
+
 ---
 
 ## 8. What generation refuses
@@ -1056,6 +1069,7 @@ only test for whether it belongs on this list.
 | a meter of no entity, of a `global` one, or of one whose rows name two tenants | somebody's bill made of everybody's rows |
 | a meter naming a field by its name or its number alone, the two disagreeing, a value its enum does not have, or a condition on a float, bytes, an identifier, a time's value, a list or an edge's value; a sum of anything but an integer | a bill that counts another column, or nothing, or sums what is not exact -- see [meters](meters.md#1-declare-what-is-measured) |
 | entitlements with no domain, one of payday's, or one the past, the notifications, `domains:` or an entity holds; or a name the copy takes -- `Entitlement`, `EntitlementValue`, `EntitlementService`, `entitlement.proto` -- in the app's own schema | an identifier that could be two kinds of row, or two of one name in one Go package -- see [entitlements](entitlements.md#1-opt-in) |
+| accounts naming a holder field by its name or its number alone, the two disagreeing, or a field that is no account's identifier -- not `bytes` of `TYPE_UUID`, an edge, the key, `personal` or `secret`; accounts said in two files; `(payday.method) = {account: {}}` in an app with no accounts, or a `(payday.method)` that says nothing | a call resolved to a membership by another column, or by none -- see [accounts](accounts.md#1-say-which-holder-field-names-the-account) |
 | two `go_package`, or two proto packages | two Go packages is two ent schemas, and the wall is an edge |
 | generated code from a different payday | a wall written by one version, read by another |
 | the database not matching the schema | a server up on a table that is not there |
@@ -1141,5 +1155,6 @@ the older payday wrote.
 | [testing.md](testing.md) | asserting that a declaration means what you thought |
 | [meters.md](meters.md) | what each tenant holds, declared beside the entities and measured for a bill |
 | [entitlements.md](entitlements.md) | what each tenant is entitled to, copied from a billing service and read in the write's transaction |
+| [accounts.md](accounts.md) | holders that are memberships of accounts, and the methods an account calls as itself |
 | [schema.md](../schema.md) | why payday owns these entities, and what it costs |
 | [runtime.md](../runtime.md) | what `List` and `Watch` generate, and what is refused |
