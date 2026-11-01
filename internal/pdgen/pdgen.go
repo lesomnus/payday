@@ -233,6 +233,12 @@ type Schema struct {
 	// full name: what a row of the past's Event holds, one message per kind of
 	// operation. Empty for nearly every app, and refused in one with no past.
 	Events []*Event
+
+	// Payloads are the app's notification payloads -- `option
+	// (payday.notification)` -- by full name: the messages a notification may
+	// carry, and the only ones `NotificationService.Add` takes (payday#193).
+	// Refused in an app that declares no notifications.
+	Payloads []*Payload
 }
 
 // Read gathers what the schema declared and refuses what it did not.
@@ -302,7 +308,15 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 	s.Events = events
 
-	if err := checkFieldOptions(g, files); err != nil {
+	// And before them for the same reason: a payload's field may say
+	// `personal: false`, which no other message but an entity's may.
+	payloads, carried, err := readPayloads(g, files)
+	if err != nil {
+		return nil, err
+	}
+	s.Payloads = payloads
+
+	if err := checkFieldOptions(g, files, carried); err != nil {
 		return nil, err
 	}
 
@@ -328,6 +342,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		}
 	}
 	if err := s.checkEvents(); err != nil {
+		return nil, err
+	}
+	if err := s.checkPayloads(); err != nil {
 		return nil, err
 	}
 	if len(s.Entities) == 0 {
@@ -387,12 +404,18 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 // (payday#115). So it is refused, and the refusal says where it goes: on the
 // column of the entity that holds the message, which is the whole of what
 // the trail can withhold.
-func checkFieldOptions(g *graph.Graph, files []*protogen.File) error {
+//
+// A notification payload, and what it holds, is passed over: `held` is them,
+// and [readPayloads] has held each of their fields to what one may say.
+func checkFieldOptions(g *graph.Graph, files []*protogen.File, held map[protoreflect.FullName]bool) error {
 	var walk func(ms []*protogen.Message) error
 	walk = func(ms []*protogen.Message) error {
 		for _, m := range ms {
 			e, entity := g.Entities[m.Desc.FullName()]
 			for _, f := range m.Fields {
+				if held[m.Desc.FullName()] {
+					break
+				}
 				opts := f.Desc.Options()
 				if opts == nil || !proto.HasExtension(opts, pdpb.E_Field) {
 					continue

@@ -40,10 +40,21 @@ func EmitNotify(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	var code bytes.Buffer
 	stream := g.QualifiedGoIdent(pkgGrpc.Ident("ServerStreamingServer")) + "[" + g.QualifiedGoIdent(root.Ident("NotificationListenResponse")) + "]"
 	if err := t.Execute(&code, map[string]any{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream, "Global": s.Notify.Global, "Namespace": string(root),
-		"Keep": s.Notify.KeepDays, "Forever": s.Notify.Forever, "At": s.Notify.At}); err != nil {
+		"Keep": s.Notify.KeepDays, "Forever": s.Notify.Forever, "At": s.Notify.At, "Payloads": payloadNames(s)}); err != nil {
 		panic(err)
 	}
 	g.P(code.String())
+}
+
+// payloadNames are the full names of the app's notification payloads, which
+// are the messages Add takes a payload of (payday#193).
+func payloadNames(s *Schema) []string {
+	vs := make([]string, len(s.Payloads))
+	for i, v := range s.Payloads {
+		vs[i] = string(v.FullName())
+	}
+
+	return vs
 }
 
 // emitAuditNotify closes the internal records even when the public service was
@@ -102,6 +113,9 @@ type NotificationServer struct {
 func Notifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "Watch"}}, policy {{n "Policy"}}, options {{n "Options"}}) (*NotificationServer, error) {
     options.Global={{.Global}}
     options.Namespace={{printf "%q" .Namespace}}
+    // The messages a notification may carry, which the schema declares
+    // (payday#193): what Add takes a payload of, and nothing else.
+    options.Payloads=[]string{ {{range .Payloads}}{{printf "%q" .}},{{end}} }
     rebound, err := {{tx "Rebind"}}(stack, driver)
     if err != nil { return nil, err }
     store := notificationStore{stack:rebound, driver:driver, db:{{e "NewClient"}}({{e "Driver"}}(driver))}

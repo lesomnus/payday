@@ -105,13 +105,15 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// with a column of payday's that an earlier build named otherwise,
 	// whether its migration moves it first. See doctor_rename.go. And of an
 	// app that keeps its notifications for so many days, whether anything
-	// erases them after. See doctor_notify.go.
+	// erases them after. See doctor_notify.go. And of a notification payload,
+	// what of it may be free text or about somebody. See doctor_payload.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
 	vs = append(vs, doctorMeters(l, schema)...)
 	vs = append(vs, doctorEntitlements(l, schema)...)
 	vs = append(vs, doctorAccounts(l, schema)...)
 	vs = append(vs, doctorRenames(l, pdgen.ColumnRenames(schema))...)
 	vs = append(vs, doctorNotify(l, schema)...)
+	vs = append(vs, doctorPayloads(schema)...)
 
 	return append(vs, doctorPast(l, schema)...)
 }
