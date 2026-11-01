@@ -675,7 +675,80 @@ created on one replica and a policy invalidation from another must reach the
 replica holding the reader's stream. `Listen` remains a live hint mechanism;
 durable state and current policy are consulted again after reconnecting.
 
-## 9. Run the examples against the sample app
+## 9. Notifications an account reads as itself
+
+In an app whose holders are memberships of accounts ([accounts](accounts.md)),
+a call is served as one membership, in one tenant. An account that is nobody's
+member yet -- the one an invitation is addressed to -- reads nothing of any
+tenant's. Give it a namespace of its own, which no tenant holds (payday#195):
+
+```proto
+option (payday.app) = {
+  accounts: {field: {name: "account", number: 9}}
+  notify: {notification: 40, receipt: 41, keep: {days: 90}, accounts: {}}
+};
+```
+
+`pd gen` copies `NotificationAccountService` beside `NotificationService`, its
+methods each the account's own, and writes `pd.AccountNotifications`. Give it a
+policy of its own -- asked with `pdid.Nil` for the tenant and a frame of the
+account -- and register it beside the tenant service:
+
+```go
+type accountPolicy struct{}
+
+func (accountPolicy) Publisher(_ context.Context, tenant pdid.Id, _ notify.Topic) (string, error) {
+    return "deployment", nil // only the app's own code publishes here
+}
+
+func (accountPolicy) Reader(ctx context.Context, _ pdid.Id) (pdid.Id, error) {
+    a, ok := frame.AccountOf(ctx)
+    if !ok {
+        return pdid.Nil, status.Error(codes.FailedPrecondition, "an account reads these as itself")
+    }
+    return a, nil
+}
+
+func (accountPolicy) Read(_ context.Context, _, reader pdid.Id, topic notify.Topic) error {
+    if topic.Resource == reader || topic.Name == "everyone" {
+        return nil // what is addressed to it, and what every account reads
+    }
+    return status.Error(codes.PermissionDenied, "not this account's")
+}
+
+accountNotifications, err := pd.AccountNotifications(stack, drv, w, accountPolicy{}, notify.Options{
+    CursorKey: cursorKey,
+})
+if err != nil {
+    return err
+}
+app.RegisterNotificationAccountServiceServer(grpcServer, accountNotifications)
+```
+
+Publishing is the app's own code -- there is no RPC to publish into a
+namespace no tenant holds. When an invitation is sent, the code that sends it
+publishes to the invited account's own Topic:
+
+```go
+topic := new(app.NotificationTopic)
+topic.SetResourceId(invitee.Bytes())
+
+_, err := accountNotifications.Add(ctx, app.NotificationAddRequest_builder{
+    Topic:          topic,
+    Kind:           "invitation.received",
+    SourceId:       invitation.Bytes(),
+    IdempotencyKey: invitation.String(),
+}.Build())
+```
+
+The account reads it with `NotificationAccountService`'s `Read`, `Count`,
+`Mark` and `Listen`, naming no tenant, whatever workspace its page is in:
+those calls are framed as the account itself. A page that shows both opens
+both streams. Allow the account's methods in your method policy as any
+account method is. [The reference](../notify.md#an-accounts-own-notifications)
+has the namespace's rules and what it costs.
+
+## 10. Run the examples against the sample app
 
 The sample app's
 [notification tests](../../internal/apptest/cmd/notify_test.go) exercise actual

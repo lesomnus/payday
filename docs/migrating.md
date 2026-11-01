@@ -3,6 +3,49 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An account reads its own notifications, as itself
+
+**Applies if** your app declares accounts and wants an account -- not one of
+its memberships -- to read notifications: the invitation an account is about
+to accept, before it is anybody's member (payday#195). Nothing changes for an
+app that does not ask for it.
+
+1. **Run `buf dep update`**: `Notify.accounts` is in `buf.build/payday/payday`.
+2. **Declare the account namespace**, beside the app's own `accounts`:
+
+   ```proto
+   notify: {notification: 40, receipt: 41, keep: {days: 90}, accounts: {}}
+   ```
+
+   `pd gen` refuses it in an app that declares no accounts, copies
+   `notification_account.proto` -- `NotificationAccountService`, each of its
+   methods the account's own -- and writes `pd.AccountNotifications`.
+3. **Serve it with a policy of its own**, asked with `pdid.Nil` for the tenant
+   and a frame of the account, and register it beside the tenant service:
+
+   ```go
+   accounts, err := pd.AccountNotifications(stack, drv, w, accountPolicy, notify.Options{CursorKey: key})
+   app.RegisterNotificationAccountServiceServer(g, accounts)
+   ```
+
+   Allow its methods in your method policy, as any method an account calls as
+   itself. They read through notify's own store, so they declare nothing with
+   `pd.AccountReads`, and `pd doctor` does not ask them to.
+4. **Publish from your own code** with `accounts.Add`, naming no tenant; there
+   is no RPC to publish there.
+
+`notify.Options.Accounts` is what `pd.AccountNotifications` sets;
+`pd.Notifications` clears it, so a tenant's server is never the account
+namespace's. [The reference](notify.md#an-accounts-own-notifications) has the
+namespace's rules, and why it is a second service.
+
+What the apps on payday change:
+
+- **loft** may serve its invitations this way when it adopts notifications:
+  `InvitationService.Claim`, `Accept` and `Deny` already are an account's own,
+  and the account namespace is where the notification of one goes.
+- **cxz** is global and declares no accounts, and changes nothing.
+
 ## A notification's payload is a message the schema declares, of identifiers
 
 **Applies if** your app publishes notifications with a payload (payday#193).

@@ -321,6 +321,15 @@ method of every service called with an account's frame, the reads with nothing
 declared and with something, the access record, and the gate's refusal of the
 field.
 
+## Notifications an account reads as itself
+
+An account that is nobody's member reads no tenant's notifications. An app
+that wants it to -- the invitation it is about to accept -- declares an account
+namespace beside the tenants' (`notify: {..., accounts: {}}`), which an
+account reads through `NotificationAccountService` as itself. [Adding
+notifications](notifications.md#9-notifications-an-account-reads-as-itself)
+has the setup.
+
 ## What payday does not do
 
 - **Keep the account.** It is the identity provider's.

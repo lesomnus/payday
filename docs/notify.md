@@ -13,6 +13,9 @@ its own Protobuf package: `app.NotificationService`, with `app` standing for the
 app's package. The generated `pd.Notifications` helper binds that service to the
 app's server stack, driver, Watch, and policy; the app registers it explicitly
 with `app.RegisterNotificationServiceServer`. Keeping a past is not a prerequisite.
+An app with accounts may add a namespace an account reads as itself,
+`NotificationAccountService` and `pd.AccountNotifications`
+([below](#an-accounts-own-notifications)).
 
 The [adoption contract](notify-adoption-contract.md) covers global apps,
 filtered reader queries, source counts and atomic batch marking, including
@@ -106,8 +109,9 @@ notification through the wall and apply the same Topic policy; an absent or
 inaccessible notification is answered as `NotFound`.
 
 The generated storage paths are private. Application calls use
-`NotificationService`, whose policy checks also cover identifier lookup and
-receipt writes. The generated Sink seals the notification record even when an
+`NotificationService` -- and `NotificationAccountService`, for an account
+namespace -- whose policy checks also cover identifier lookup and receipt
+writes. The generated Sink seals the notification record even when an
 outer Audit layer is omitted, and the receipt record has no RPC at all: `Mark`
 writes it, past the servers. Use the normal generated stack and recording
 hooks for the rest; bypassing it through another exposed store would remove
@@ -559,6 +563,9 @@ including when no notification row has changed.
 - Unknown payloads remain readable as opaque values and cannot break a page.
 - Opting out leaves no notification entities, RPCs, runtime wiring, or dependency
   on the past. Opting in works inside the app process and database.
+- With an account namespace: an account in no tenant reads what is addressed to
+  it as itself; it reads no tenant's notification, no tenant reads its
+  namespace, and nobody but an account calling as itself reads there.
 
 This combines recognizable mechanisms with a deliberate storage choice.
 [ntfy](https://docs.ntfy.sh/publish/) demonstrates app-defined Topic keys and
