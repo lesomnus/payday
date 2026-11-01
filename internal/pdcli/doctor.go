@@ -694,7 +694,7 @@ func doctorSchema(l Layout) []Finding {
 			}
 			vs = append(vs, Finding{
 				What: fmt.Sprintf("%s extends payday's %s, but this app declares no notify feature, so the overlay is never merged", l.Rel(DirExt, "payday", filepath.Base(v)), notifyFiles[i].Message),
-				Fix:  "option (payday.app) = {notify: {notification: <domain>, receipt: <domain>}};",
+				Fix:  "option (payday.app) = {notify: {notification: <domain>, receipt: <domain>, keep: {days: <days>}}};",
 			})
 			continue
 		}

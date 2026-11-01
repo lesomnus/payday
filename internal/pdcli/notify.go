@@ -26,6 +26,13 @@ type Notify struct {
 	Receipt      uint32
 	Global       bool
 	At           string
+
+	// KeepDays is how many days a notification is kept, zero for forever,
+	// which Forever says why of; RetryDays how long its producers retry, when
+	// the declaration says (payday#194).
+	KeepDays  uint32
+	RetryDays uint32
+	Forever   string
 }
 
 var notifyFiles = []pastFile{
@@ -53,6 +60,15 @@ func (n *Notify) proto() *pdpb.Notify {
 	b := pdpb.Notify_builder{Notification: n.Notification, Receipt: n.Receipt}
 	if n.Global {
 		b.Global = &pdpb.Entity_Global{}
+	}
+	k := pdpb.Notify_Keep_builder{RetryDays: n.RetryDays}
+	switch {
+	case n.KeepDays > 0:
+		k.Days = &n.KeepDays
+		b.Keep = k.Build()
+	case n.Forever != "":
+		k.Forever = pdpb.Notify_Keep_Forever_builder{Why: n.Forever}.Build()
+		b.Keep = k.Build()
 	}
 	return b.Build()
 }
@@ -90,7 +106,8 @@ func readNotify(l Layout) (*Notify, error) {
 		if err := pdgen.CheckNotify(n, past, a.GetDomains()); err != nil {
 			return fmt.Errorf("%s: %w", l.rel(p), err)
 		}
-		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.HasGlobal(), At: l.rel(p)}
+		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.HasGlobal(), At: l.rel(p),
+			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy()}
 		return nil
 	})
 	return found, err

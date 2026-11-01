@@ -30,13 +30,17 @@ func EmitNotify(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 		"codes": q(pkgCodes), "id": q(pkgPdid), "pb": q(pkgAnypb),
 		"timepb": q(protogen.GoImportPath("google.golang.org/protobuf/types/known/timestamppb")),
 		"bytes":  q(protogen.GoImportPath("bytes")), "uuid": q(protogen.GoImportPath("uuid")),
+		"time": q(pkgTime), "frame": q(pkgFrame), "audit": q(pkgAudit),
+		// A backtick, which the template is a raw string of and so cannot hold.
+		"bt":      func() string { return "`" },
 		"record":  func(suffix string) string { return g.QualifiedGoIdent(root.Ident(n.GoName() + suffix)) },
 		"receipt": func(suffix string) string { return g.QualifiedGoIdent(root.Ident(r.GoName() + suffix)) },
 	}
 	t := template.Must(template.New("notify").Funcs(functions).Parse(notifyGlue))
 	var code bytes.Buffer
 	stream := g.QualifiedGoIdent(pkgGrpc.Ident("ServerStreamingServer")) + "[" + g.QualifiedGoIdent(root.Ident("NotificationListenResponse")) + "]"
-	if err := t.Execute(&code, map[string]any{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream, "Global": s.Notify.Global, "Namespace": string(root)}); err != nil {
+	if err := t.Execute(&code, map[string]any{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream, "Global": s.Notify.Global, "Namespace": string(root),
+		"Keep": s.Notify.KeepDays, "Forever": s.Notify.Forever, "At": s.Notify.At}); err != nil {
 		panic(err)
 	}
 	g.P(code.String())
@@ -289,6 +293,32 @@ func(s notificationStore) InsertReceipt(ctx {{ctx "Context"}},v {{n "Receipt"}})
     saved,err:=s.db.{{.Receipt}}.Query().Where({{cp "IdEQ"}}(key.Uuid())).Only(ctx);if err!=nil{return {{n "Receipt"}}{},err}
     return notificationReceiptRow(saved.Proto())
 }
+// Hold takes a share lock of each notification of ids that is there, on
+// PostgreSQL and in the order of their identifiers: what Mark asks before it
+// reads them, so that an expiry erasing one waits for the receipt being
+// written of it (notify.Store.Hold).
+func(s notificationStore) Hold(ctx {{ctx "Context"}},ids []{{id "Id"}})error{
+    keys:=make([]{{uuid "UUID"}},len(ids));for i,v:=range ids{keys[i]=v.Uuid()}
+    _,err:=notificationsLocked(ctx,s.driver,keys,false);return err
+}
+// notificationsLocked answers which of keys are notifications that are there,
+// having locked each -- to share, or to update -- in the order of their
+// identifiers, which is the order Mark and an expiry both lock in, so neither
+// waits on the other while it holds what the other wants. On SQLite, which
+// has one writer at a time, nothing is locked and every key is answered.
+func notificationsLocked(ctx {{ctx "Context"}},driver {{drv "Driver"}},keys []{{uuid "UUID"}},update bool)(map[{{uuid "UUID"}}]bool,error){
+    out:=make(map[{{uuid "UUID"}}]bool,len(keys))
+    if driver.Dialect()!={{drv "Postgres"}}{for _,k:=range keys{out[k]=true};return out,nil}
+    if len(keys)==0{return out,nil}
+    args:=make([]any,len(keys));for i,k:=range keys{args[i]=k}
+    q:={{sql "Dialect"}}(driver.Dialect()).Select({{rp "FieldId"}}).From({{sql "Table"}}({{rp "Table"}})).Where({{sql "In"}}({{rp "FieldId"}},args...)).OrderBy({{rp "FieldId"}})
+    if update{q.ForUpdate()}else{q.ForShare()}
+    query,qargs:=q.Query()
+    var rows {{sql "Rows"}}
+    if err:=driver.Query(ctx,query,qargs,&rows);err!=nil{return nil,err};defer rows.Close()
+    for rows.Next(){var k {{uuid "UUID"}};if err:=rows.Scan(&k);err!=nil{return nil,err};out[k]=true}
+    return out,rows.Err()
+}
 func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{n "Hint"}},bool,error){
     switch change.Key.Domain(){
     case {{.Record}}Domain:
@@ -307,6 +337,65 @@ func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{
     default:return {{n "Hint"}}{},false,nil
     }
 }
+{{if .Keep}}
+// NotificationKeep is how long a notification is kept from its publication,
+// as {{.At}} declares: {{.Keep}} days. [NotificationExpirer] erases what is
+// older, with every receipt of it and its idempotency key.
+const NotificationKeep = {{.Keep}} * 24 * {{time "Hour"}}
+
+// NotificationExpirer is the loop that erases the notifications older than
+// [NotificationKeep], with every receipt of each (payday#194): a
+// {{bt}}spin.Spinner{{bt}} called {{bt}}payday.notify.expire{{bt}}, for the spin list.
+//
+//	s.Spin = append(s.Spin, pd.NotificationExpirer(drv, w, content))
+//
+// {{bt}}driver{{bt}} is the deployment's own: an expiry is the deployment acting on
+// itself, and nobody's in a tenant. {{bt}}content{{bt}} is the trail's, as the recorder
+// is given it: each notification erased is a line of the trail saying it went
+// ([RecordErased]), filed under the tenant it was in. {{bt}}changes{{bt}} is told which
+// topics a batch took from, once it commits, so that a stream showing one
+// drops it.
+func NotificationExpirer(driver {{drv "Driver"}}, changes *{{w "Watch"}}, content {{audit "Contents"}}) {{n "Expirer"}} {
+    return {{n "Expirer"}}{Keep:NotificationKeep,Watch:changes,Erase:func(ctx {{ctx "Context"}},before {{time "Time"}},limit int)([]{{n "Notification"}},error){
+        return notificationErase(ctx,driver,content,before,limit)
+    }}
+}
+
+// notificationErase is one batch of an expiry, in a transaction of its own:
+// the oldest {{bt}}limit{{bt}} notifications published before {{bt}}before{{bt}}, every receipt
+// of them, and a line of the trail for each notification.
+func notificationErase(ctx {{ctx "Context"}},driver {{drv "Driver"}},content {{audit "Contents"}},before {{time "Time"}},limit int)([]{{n "Notification"}},error){
+    tdrv,tx,err:={{drv "BeginTx"}}(ctx,driver);if err!=nil{return nil,err}
+    defer tx.Rollback()
+    db:={{e "NewClient"}}({{e "Driver"}}(tdrv))
+    rows,err:=db.{{.Record}}.Query().Where({{rp "DateCreatedLT"}}(before)).Order({{e "Asc"}}({{rp "FieldDateCreated"}}),{{e "Asc"}}({{rp "FieldId"}})).Limit(limit).All(ctx)
+    if err!=nil||len(rows)==0{return nil,err}
+    // Locked to update before anything goes, in the order Mark holds what it
+    // reads: so this waits for a Mark writing a receipt of one, and the
+    // receipts' delete below finds what it wrote. An expiry run beside this
+    // one has taken what this finds is no longer there.
+    keys:=make([]{{uuid "UUID"}},len(rows));for i,row:=range rows{keys[i]=row.Id}
+    held,err:=notificationsLocked(ctx,tdrv,keys,true);if err!=nil{return nil,err}
+    var out []{{n "Notification"}};var gone []{{uuid "UUID"}};var tenants []{{id "Id"}};erased:=map[{{id "Id"}}][]{{id "Id"}}{}
+    for _,row:=range rows{
+        if !held[row.Id]{continue}
+        v,err:=notificationRow(row.Proto());if err!=nil{return nil,err}
+        out=append(out,v);gone=append(gone,row.Id)
+        if _,ok:=erased[v.Tenant];!ok{tenants=append(tenants,v.Tenant)}
+        erased[v.Tenant]=append(erased[v.Tenant],v.ID)
+    }
+    if len(gone)==0{return nil,nil}
+    if _,err:=db.{{.Record}}.Delete().Where({{rp "IdIn"}}(gone...)).Exec(ctx);err!=nil{return nil,err}
+    if _,err:=db.{{.Receipt}}.Delete().Where({{cp "NotificationIdIn"}}(gone...)).Exec(ctx);err!=nil{return nil,err}
+    for _,tenant:=range tenants{
+        // The deployment's work in the namespace the notifications were in,
+        // which is what the trail files an erasure of no row under.
+        in:={{frame "Into"}}(ctx,{{frame "New"}}({{id "Nil"}},tenant,{{frame "Grant"}}{}).WithScope({{frame "Only"}}(tenant)))
+        if _,err:=RecordErased(in,db,content,{{n "ExpireName"}},erased[tenant]);err!=nil{return nil,err}
+    }
+    return out,tx.Commit()
+}
+{{end}}
 func notificationRow(v *{{record ""}})({{n "Notification"}},error){
     key,err:={{id "From"}}(v.GetId());if err!=nil{return {{n "Notification"}}{},err}
     {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Notification"}}{},err}{{end}}

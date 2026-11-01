@@ -16,16 +16,16 @@ import (
 
 func TestNotifyIsReadBeforeCompilation(t *testing.T) {
 	for _, option := range []string{
-		`option (payday.app) = {notify: {notification: 40, receipt: 41}};`,
-		`option (payday.app).notify = {notification: 40, receipt: 41};`,
-		"option (payday.app).notify.notification = 40;\noption (payday.app).notify.receipt = 41;",
-		`option (payday.app) = {past: {event: 17, fact: 16}, notify: {notification: 40, receipt: 41}, domains: {archived: 42}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 30}}};`,
+		`option (payday.app).notify = {notification: 40, receipt: 41, keep: {days: 30}};`,
+		"option (payday.app).notify.notification = 40;\noption (payday.app).notify.receipt = 41;\noption (payday.app).notify.keep.days = 30;",
+		`option (payday.app) = {past: {event: 17, fact: 16}, notify: {notification: 40, receipt: 41, keep: {days: 30}}, domains: {archived: 42}};`,
 	} {
 		root := app(t, "github.com/acme/thing")
 		past(t, root, "widget.proto", option)
 		l, err := pdcli.Discover(root)
 		require.NoError(t, err)
-		require.Equal(t, &pdcli.Notify{Notification: 40, Receipt: 41, At: "proto/app/widget.proto"}, l.Notify)
+		require.Equal(t, &pdcli.Notify{Notification: 40, Receipt: 41, At: "proto/app/widget.proto", KeepDays: 30}, l.Notify)
 	}
 	root := app(t, "github.com/acme/thing")
 	past(t, root, "widget.proto", `option (payday.app) = {past: {event: 17, fact: 16}};`)
@@ -52,7 +52,7 @@ func TestNotifyTenancyDeclarations(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := app(t, "github.com/acme/thing")
-			past(t, root, "widget.proto", `option (payday.app) = {notify: {notification: 40, receipt: 41, `+tc.tenancy+`}};`)
+			past(t, root, "widget.proto", `option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 30}, `+tc.tenancy+`}};`)
 			l, err := pdcli.Discover(root)
 			if tc.wantError != "" {
 				require.ErrorContains(t, err, tc.wantError)
@@ -70,7 +70,7 @@ func TestNotifyRefusesConflictingDottedTenancy(t *testing.T) {
 		"option (payday.app).notify.tenanted = {};\noption (payday.app).notify.global = {};",
 	} {
 		root := app(t, "github.com/acme/thing")
-		past(t, root, "widget.proto", "option (payday.app).notify = {notification: 40, receipt: 41};\n"+choices)
+		past(t, root, "widget.proto", "option (payday.app).notify = {notification: 40, receipt: 41, keep: {days: 30}};\n"+choices)
 		_, err := pdcli.Discover(root)
 		require.ErrorContains(t, err, "notify.tenancy selects both global and tenanted")
 	}
@@ -81,7 +81,7 @@ func TestGlobalNotifyGeneratesAndRunsWithoutTenantRecords(t *testing.T) {
 	at := filepath.Join(l.Root, "proto", "app", "robot.proto")
 	b, err := os.ReadFile(at)
 	require.NoError(t, err)
-	source := strings.Replace(string(b), "notify: {notification: 40, receipt: 41}", "notify: {notification: 40, receipt: 41, global: {}}", 1)
+	source := strings.Replace(string(b), "    receipt: 41\n", "    receipt: 41\n    global: {}\n", 1)
 	require.NotEqual(t, string(b), source)
 	require.NoError(t, os.WriteFile(at, []byte(source), 0o644))
 	l, err = pdcli.Discover(l.Root)
@@ -172,6 +172,16 @@ func TestGeneratedGlobalNotification(t *testing.T){
     for range 6{wg.Go(func(){got,err:=service.Mark(ctx,mark);if err==nil && !proto.Equal(result,got){err=status.Error(codes.Internal,"different receipt")};failures<-err})};wg.Wait()
     for range 6{require.NoError(t,<-failures)}
     counts,err=service.Count(ctx,query);require.NoError(t,err);require.Zero(t,counts.GetCount())
+    // An expiry in a namespace of no tenant: what is older than it keeps goes
+    // with its receipt, and what is not stays.
+    before,err:=pd.Notifications(server.Walled,server.Drv,server.Watch,globalNotifyPolicy{&revoked},notify.Options{CursorKey:bytes.Repeat([]byte{3},32),Clock:func()time.Time{return time.Now().Add(-pd.NotificationKeep-time.Hour)}})
+    require.NoError(t,err)
+    stale,err:=before.Add(ctx,app.NotificationAddRequest_builder{Topic:topic,Kind:"done",IdempotencyKey:"stale"}.Build());require.NoError(t,err)
+    _,err=before.Mark(ctx,app.NotificationMarkRequest_builder{Refs:[]*app.NotificationRef{app.NotificationRef_builder{Id:stale.GetId()}.Build()}}.Build());require.NoError(t,err)
+    require.Equal(t,2,server.Ent.NotificationReceiptRecord.Query().CountX(t.Context()))
+    erased,err:=pd.NotificationExpirer(server.Drv,server.Watch,server.Contents).Pass(t.Context());require.NoError(t,err);require.Equal(t,1,erased)
+    require.Equal(t,1,server.Ent.NotificationRecord.Query().CountX(t.Context()))
+    require.Equal(t,1,server.Ent.NotificationReceiptRecord.Query().CountX(t.Context()))
     require.Zero(t,server.Ent.Tenant.Query().CountX(t.Context()))
     add.SetTenantId(pdid.New(pd.TenantDomain).Bytes())
     _,err=service.Add(ctx,add);require.Equal(t,codes.InvalidArgument,status.Code(err))
@@ -197,9 +207,14 @@ func TestNotifyDeclarationsAreRefusedBeforeCompilation(t *testing.T) {
 		`option (payday.app) = {notify: {notification: 40, receipt: 40}};`,
 		`option (payday.app) = {notify: {notification: 2, receipt: 41}};`,
 		`option (payday.app) = {notify: {notification: 40, receipt: 256}};`,
-		`option (payday.app) = {past: {event: 40, fact: 16}, notify: {notification: 40, receipt: 41}};`,
-		`option (payday.app) = {notify: {notification: 40, receipt: 41}, domains: {access: 41}};`,
+		`option (payday.app) = {past: {event: 40, fact: 16}, notify: {notification: 40, receipt: 41, keep: {days: 30}}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 30}}, domains: {access: 41}};`,
 		`option (payday.app) = {notify: {notificaton: 40, receipt: 41}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 0}}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 7, retry_days: 8}}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {forever: {}}}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 7, forever: {why: "both"}}}};`,
 	} {
 		root := app(t, "github.com/acme/thing")
 		past(t, root, "widget.proto", option)

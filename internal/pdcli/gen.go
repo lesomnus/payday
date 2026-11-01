@@ -320,7 +320,7 @@ until the next one -- the past's lock apart, below.
   -- ` + "`option (payday.app) = {past: {event: 17, fact: 16}};`" + ` -- numbered as it
   declares, and go when the declaration does.
 - ` + "`notification.proto`" + ` and ` + "`notification_receipt.proto`" + ` are here only
-  when the app declares ` + "`option (payday.app) = {notify: {notification: 40, receipt: 41}};`" + `.
+  when the app declares ` + "`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 90}}};`" + `.
   Their domains come from that declaration; the public notification contract is
   copied beside the internal records and disappears with them on opt-out.
 - ` + "`entitlement.proto`" + ` is here only when the app declares

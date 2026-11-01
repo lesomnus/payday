@@ -145,7 +145,7 @@ func keptBy(err error) string {
 			return fmt.Sprintf("names %s, and the copy of entitlements is numbered by `entitlements:` -- `option (payday.app) = {entitlements: {domain: 43}}`", m[1])
 		}
 		if features[own] == schema.DirNotify {
-			return fmt.Sprintf("names %s, and notification records are numbered by `notify:` -- `option (payday.app) = {notify: {notification: 40, receipt: 41}}`", m[1])
+			return fmt.Sprintf("names %s, and notification records are numbered by `notify:` -- `option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 90}}}`", m[1])
 		}
 		if features[own] == schema.DirPast {
 			return fmt.Sprintf(
