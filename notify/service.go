@@ -331,6 +331,9 @@ func (s *Service) Mark(ctx context.Context, req MarkRequest) (Marked, error) {
 				return err
 			}
 		}
+		if err := at.store.Hold(ctx, ordered); err != nil {
+			return err
+		}
 		values := make([]Notification, len(req.Refs))
 		for i, id := range req.Refs {
 			v, current, err := at.get(ctx, at.store, id)

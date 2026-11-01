@@ -233,6 +233,7 @@ func (s store) InsertReceipt(ctx context.Context, v notify.Receipt) (notify.Rece
 	s.data.receipts[[2]pdid.Id{v.Notification, v.Reader}] = v
 	return v, s.owner.receiptError
 }
+func (s store) Hold(context.Context, []pdid.Id) error { return nil }
 func (s store) Change(_ context.Context, change watch.Change) (notify.Hint, bool, error) {
 	if change.By != "test-hint" {
 		return notify.Hint{}, false, nil
