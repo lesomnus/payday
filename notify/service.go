@@ -35,6 +35,7 @@ type Service struct {
 	clock     func() time.Time
 	global    bool
 	namespace string
+	payloads  map[string]bool
 }
 
 func New(store Store, w *watch.Watch, policy Policy, opts Options) (*Service, error) {
@@ -52,7 +53,11 @@ func New(store Store, w *watch.Watch, policy Policy, opts Options) (*Service, er
 	if clock == nil {
 		clock = time.Now
 	}
-	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock, global: opts.Global, namespace: opts.Namespace}, nil
+	payloads := make(map[string]bool, len(opts.Payloads))
+	for _, v := range opts.Payloads {
+		payloads[v] = true
+	}
+	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock, global: opts.Global, namespace: opts.Namespace, payloads: payloads}, nil
 }
 
 func bindPolicy(policy Policy, drv dialect.Driver) (Policy, error) {
@@ -118,6 +123,14 @@ func (s *Service) Add(ctx context.Context, req AddRequest) (Notification, error)
 	}
 	if req.Payload != nil && (!utf8.ValidString(req.Payload.GetTypeUrl()) || strings.ContainsRune(req.Payload.GetTypeUrl(), 0)) {
 		return Notification{}, invalid("payload type URL must be UTF-8 without NUL")
+	}
+	if req.Payload != nil && !s.payloads[payloadName(req.Payload.GetTypeUrl())] {
+		// A notification carries identifiers, not a person's data, and a
+		// payload is held to that by being a message the schema declares it
+		// may carry (payday#193). An undeclared one is held to nothing.
+		return Notification{}, status.Errorf(codes.InvalidArgument,
+			"payload type %q is no notification payload this app declares: say `option (payday.notification) = {};` on the message",
+			payloadName(req.Payload.GetTypeUrl()))
 	}
 	producer, err := s.policy.Publisher(ctx, req.Tenant, req.Topic)
 	if err != nil {
@@ -604,6 +617,12 @@ func normalize(ts []Topic) ([]Topic, error) {
 	}
 	slices.SortFunc(out, func(a, b Topic) int { return strings.Compare(a.Key(), b.Key()) })
 	return out, nil
+}
+
+// payloadName is the full name of the message an Any's type URL names: what
+// follows its last slash, as anypb resolves it.
+func payloadName(url string) string {
+	return url[strings.LastIndexByte(url, '/')+1:]
 }
 
 func identifier(id pdid.Id) error {

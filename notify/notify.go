@@ -243,6 +243,12 @@ type Options struct {
 	Global bool
 	// Namespace binds cursors to one app; generated servers set it.
 	Namespace string
+	// Payloads are the full names of the messages a notification may carry:
+	// the app's messages that say `option (payday.notification) = {}`, which
+	// generated servers set (payday#193). Add refuses a payload of any other
+	// type, so every payload is one the schema declares and holds to carrying
+	// identifiers. None refuses every payload.
+	Payloads []string
 	// CursorKey authenticates cursors. All app replicas use the same secret of
 	// at least 32 bytes; changing it invalidates outstanding cursors.
 	CursorKey []byte
