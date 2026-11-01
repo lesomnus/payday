@@ -3,6 +3,46 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A notification receipt is kept off the trail
+
+**Applies if** your app declares `notify` (payday#197). Regenerate.
+
+A receipt is `notify`'s own write: `Mark` writes it through the ent client, in
+its transaction, past the generated servers, and the receipt's kind says
+`trail: {off: {why: ...}}`. [The reference](notify.md#a-receipt-is-kept-off-the-trail)
+has why, and what it costs.
+
+- **The receipt record has no RPC.** `NotificationReceiptRecordService` is
+  empty: its `Add` and `Get`, which refused every caller, are gone, and so are
+  `NotificationReceiptRecordAddRequest`, `...GetRequest`, `...Ref`,
+  `...RefByReceipt`, `...Select` and their generated helpers. Nothing reached
+  them; code that named them goes.
+- **No receipt written from now on is on the trail.** One written before is,
+  and stays until the trail's retention takes it. `pd.Digests` no longer reads
+  receipts, and lists them among the kinds it leaves out, with why. A
+  recorder of your own that kept receipts off the trail has nothing left to
+  keep off.
+- **A receipt's hint is not in the outbox.** `Mark` notes it to the Watch in
+  its transaction, carried in the change (`notify.ReceiptMethod`), and nothing
+  else sees it. A publication's hint goes through the outbox as before; a
+  receipt's is lost with a process that stops between the commit and the
+  publish, and the reader's other sessions see the receipt on their next
+  query.
+- **Nothing is migrated.** The table and its rows are what they were, and a
+  Mark of a notification marked before keeps the receipt it has.
+- **A replica of the build before** writes its receipts through the generated
+  `Add`, on the trail, while it runs. Listeners of either build hear the
+  other's receipts: the change names the receipt by its key, which a listener
+  of the build before reads back, and this build reads one of that build's
+  the same way.
+
+What the apps on payday change:
+
+- **cxz** regenerates. Its `managementAudit` recorder keeps notification
+  records and receipts off its trail (`server/lifecycle/audit.go`); no receipt
+  reaches a recorder now, so the `pd.NotificationReceiptRecordDomain` case
+  there no longer matches anything, and can go.
+
 ## A notification receipt's first read is `date_read`
 
 **Applies if** your app declares `notify` (payday#196). For an app that does

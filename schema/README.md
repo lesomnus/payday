@@ -72,6 +72,8 @@ app's package, numbers their internal `NotificationRecord` and
 `NotificationReceiptRecord`, and takes the copies out when the option goes.
 The first file also supplies the public notification values and
 `NotificationService`; these are projections and RPCs rather than extra tables.
+The receipt record has no RPC: `notify` writes it, and keeps it off the trail
+(`trail: {off: ...}`).
 Topic authorization and the identity whose receipt is recorded remain app
 policy. A past is independent: either feature may be enabled without the other.
 

@@ -159,7 +159,8 @@ publish; the notification policy still makes its own publishing decision.
 
 Restrict Audit RPCs to separately authorized operators in that method policy,
 and keep Outbox storage accessible only to deployment components. `NotificationService` Topic and reader checks do not filter audit
-or outbox provenance records, which can include publication and reader metadata.
+or outbox provenance records, which can include publication metadata. Receipts
+are not on the trail, so they do not include who read what.
 
 ## 4. Publish one announcement
 
