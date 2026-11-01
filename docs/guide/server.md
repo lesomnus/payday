@@ -1044,7 +1044,16 @@ involved.
 An index the schema names is found under that name, `<table>_<name>`; a
 database an earlier build made holds each under ent's name for its columns.
 `rename.Indexes`, with `pd.IndexRenames`, moves them before `Create` looks, and
-`pd new`'s `Migrate` calls it (see [migrating](../migrating.md)).
+`pd new`'s `Migrate` calls it (see [migrating](../migrating.md)). A column of
+payday's own entities that an earlier build named otherwise -- a notification
+receipt's `data_read`, now `date_read` -- is found the same way, and is the
+worse of the two to miss: `Create` adds it empty beside the old one, so every
+row written before reads as never having had a value. `rename.Columns`, with
+`pd.ColumnRenames`, moves it first, and `pd new`'s `Migrate` calls that too. A
+plan of migration files would drop the old column and add the new one, which
+loses the same values: write the rename into the planned directory by hand
+(`Migrations.Write`) before you plan, so that the plan finds the column where
+the schema says it is.
 
 Found under its name is also how an index PostgreSQL has not finished is taken
 for made. A build `CONCURRENTLY` writes the index into the catalog first and
