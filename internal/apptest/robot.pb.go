@@ -1256,9 +1256,8 @@ const file_app_robot_proto_rawDesc = "" +
 	"\ttenant_id\x10\t\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x8a\xbb\x16!\b\vB\x02\n" +
 	"\x00\"\x19\n" +
-	"\frobot.tenant\x1a\ttenant_idB\x87\x05\xca\xc7\x16\xd0\x04\n" +
-	"\x04\b\x11\x10\x12\x1a\n" +
-	"\b(\x10)2\x04\x18\x01\bZ\"\"\n" +
+	"\frobot.tenant\x1a\ttenant_idB\x89\x05\xca\xc7\x16\xd2\x04\n" +
+	"\x04\b\x11\x10\x12\x1a\f\b(\x10)2\x04\x18\x01\bZ:\x00\"\"\n" +
 	"\x0eapptest.robots\x12\a{robot}\x1a\a\n" +
 	"\x05Robot\"B\n" +
 	"\x17apptest.robots.attested\x12\a{robot}\x1a\x1e\n" +
