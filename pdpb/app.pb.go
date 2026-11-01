@@ -595,6 +595,7 @@ type Notify struct {
 	xxx_hidden_Notification uint32                 `protobuf:"varint,1,opt,name=notification"`
 	xxx_hidden_Receipt      uint32                 `protobuf:"varint,2,opt,name=receipt"`
 	xxx_hidden_Tenancy      isNotify_Tenancy       `protobuf_oneof:"tenancy"`
+	xxx_hidden_Keep         *Notify_Keep           `protobuf:"bytes,6,opt,name=keep"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -656,6 +657,13 @@ func (x *Notify) GetGlobal() *Entity_Global {
 	return nil
 }
 
+func (x *Notify) GetKeep() *Notify_Keep {
+	if x != nil {
+		return x.xxx_hidden_Keep
+	}
+	return nil
+}
+
 func (x *Notify) SetNotification(v uint32) {
 	x.xxx_hidden_Notification = v
 }
@@ -678,6 +686,10 @@ func (x *Notify) SetGlobal(v *Entity_Global) {
 		return
 	}
 	x.xxx_hidden_Tenancy = &notify_Global{v}
+}
+
+func (x *Notify) SetKeep(v *Notify_Keep) {
+	x.xxx_hidden_Keep = v
 }
 
 func (x *Notify) HasTenancy() bool {
@@ -703,6 +715,13 @@ func (x *Notify) HasGlobal() bool {
 	return ok
 }
 
+func (x *Notify) HasKeep() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Keep != nil
+}
+
 func (x *Notify) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -717,6 +736,10 @@ func (x *Notify) ClearGlobal() {
 	if _, ok := x.xxx_hidden_Tenancy.(*notify_Global); ok {
 		x.xxx_hidden_Tenancy = nil
 	}
+}
+
+func (x *Notify) ClearKeep() {
+	x.xxx_hidden_Keep = nil
 }
 
 const Notify_Tenancy_not_set_case case_Notify_Tenancy = 0
@@ -749,6 +772,16 @@ type Notify_builder struct {
 	Tenanted *Entity_Tenanted
 	Global   *Entity_Global
 	// -- end of xxx_hidden_Tenancy
+	// Keep is how long a notification is kept from its publication, and with
+	// it every receipt of it and its idempotency key (payday#194):
+	//
+	//	notify: {notification: 40, receipt: 41, keep: {days: 90}}
+	//
+	// Required. A notification and its receipts hold what the people who use an
+	// app are interested in and what they read, and kept for no purpose once
+	// read or stale, they grow without bound. So an app says how long, or says
+	// `forever` with why -- the dangerous answer is the one written down.
+	Keep *Notify_Keep
 }
 
 func (b0 Notify_builder) Build() *Notify {
@@ -763,6 +796,7 @@ func (b0 Notify_builder) Build() *Notify {
 	if b.Global != nil {
 		x.xxx_hidden_Tenancy = &notify_Global{b.Global}
 	}
+	x.xxx_hidden_Keep = b.Keep
 	return m0
 }
 
@@ -874,6 +908,264 @@ func (b0 Entitlements_builder) Build() *Entitlements {
 	return m0
 }
 
+// Keep is one of the two answers. See [Notify.keep].
+type Notify_Keep struct {
+	state                protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_How       isNotify_Keep_How      `protobuf_oneof:"how"`
+	xxx_hidden_RetryDays uint32                 `protobuf:"varint,3,opt,name=retry_days,json=retryDays"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *Notify_Keep) Reset() {
+	*x = Notify_Keep{}
+	mi := &file_payday_app_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Notify_Keep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Notify_Keep) ProtoMessage() {}
+
+func (x *Notify_Keep) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Notify_Keep) GetDays() uint32 {
+	if x != nil {
+		if x, ok := x.xxx_hidden_How.(*notify_Keep_Days); ok {
+			return x.Days
+		}
+	}
+	return 0
+}
+
+func (x *Notify_Keep) GetForever() *Notify_Keep_Forever {
+	if x != nil {
+		if x, ok := x.xxx_hidden_How.(*notify_Keep_Forever_); ok {
+			return x.Forever
+		}
+	}
+	return nil
+}
+
+func (x *Notify_Keep) GetRetryDays() uint32 {
+	if x != nil {
+		return x.xxx_hidden_RetryDays
+	}
+	return 0
+}
+
+func (x *Notify_Keep) SetDays(v uint32) {
+	x.xxx_hidden_How = &notify_Keep_Days{v}
+}
+
+func (x *Notify_Keep) SetForever(v *Notify_Keep_Forever) {
+	if v == nil {
+		x.xxx_hidden_How = nil
+		return
+	}
+	x.xxx_hidden_How = &notify_Keep_Forever_{v}
+}
+
+func (x *Notify_Keep) SetRetryDays(v uint32) {
+	x.xxx_hidden_RetryDays = v
+}
+
+func (x *Notify_Keep) HasHow() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_How != nil
+}
+
+func (x *Notify_Keep) HasDays() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_How.(*notify_Keep_Days)
+	return ok
+}
+
+func (x *Notify_Keep) HasForever() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_How.(*notify_Keep_Forever_)
+	return ok
+}
+
+func (x *Notify_Keep) ClearHow() {
+	x.xxx_hidden_How = nil
+}
+
+func (x *Notify_Keep) ClearDays() {
+	if _, ok := x.xxx_hidden_How.(*notify_Keep_Days); ok {
+		x.xxx_hidden_How = nil
+	}
+}
+
+func (x *Notify_Keep) ClearForever() {
+	if _, ok := x.xxx_hidden_How.(*notify_Keep_Forever_); ok {
+		x.xxx_hidden_How = nil
+	}
+}
+
+const Notify_Keep_How_not_set_case case_Notify_Keep_How = 0
+const Notify_Keep_Days_case case_Notify_Keep_How = 1
+const Notify_Keep_Forever_case case_Notify_Keep_How = 2
+
+func (x *Notify_Keep) WhichHow() case_Notify_Keep_How {
+	if x == nil {
+		return Notify_Keep_How_not_set_case
+	}
+	switch x.xxx_hidden_How.(type) {
+	case *notify_Keep_Days:
+		return Notify_Keep_Days_case
+	case *notify_Keep_Forever_:
+		return Notify_Keep_Forever_case
+	default:
+		return Notify_Keep_How_not_set_case
+	}
+}
+
+type Notify_Keep_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_How:
+	// Days is how many days from its publication a notification is kept.
+	// `pd gen` writes `pd.NotificationExpirer`, which erases what is older
+	// with its receipts, each erasure on the trail; the app spins it. At
+	// least 1.
+	Days *uint32
+	// Forever keeps every notification for as long as the app runs, and
+	// writes no expirer. Said with why, as `trail: {off: ...}` is.
+	Forever *Notify_Keep_Forever
+	// -- end of xxx_hidden_How
+	// RetryDays is how long after a first attempt the app's producers may
+	// still retry one publication. A retry finds its notification by its
+	// key for as long as both are kept, and publishes again once they are
+	// gone, so it is at most `days`, and `pd gen` refuses one longer: a
+	// `keep` made shorter than it is a guarantee made shorter, said where it
+	// is decided. Zero says nothing, and the guarantee is `days` itself.
+	RetryDays uint32
+}
+
+func (b0 Notify_Keep_builder) Build() *Notify_Keep {
+	m0 := &Notify_Keep{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Days != nil {
+		x.xxx_hidden_How = &notify_Keep_Days{*b.Days}
+	}
+	if b.Forever != nil {
+		x.xxx_hidden_How = &notify_Keep_Forever_{b.Forever}
+	}
+	x.xxx_hidden_RetryDays = b.RetryDays
+	return m0
+}
+
+type case_Notify_Keep_How protoreflect.FieldNumber
+
+func (x case_Notify_Keep_How) String() string {
+	md := file_payday_app_proto_msgTypes[6].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isNotify_Keep_How interface {
+	isNotify_Keep_How()
+}
+
+type notify_Keep_Days struct {
+	// Days is how many days from its publication a notification is kept.
+	// `pd gen` writes `pd.NotificationExpirer`, which erases what is older
+	// with its receipts, each erasure on the trail; the app spins it. At
+	// least 1.
+	Days uint32 `protobuf:"varint,1,opt,name=days,oneof"`
+}
+
+type notify_Keep_Forever_ struct {
+	// Forever keeps every notification for as long as the app runs, and
+	// writes no expirer. Said with why, as `trail: {off: ...}` is.
+	Forever *Notify_Keep_Forever `protobuf:"bytes,2,opt,name=forever,oneof"`
+}
+
+func (*notify_Keep_Days) isNotify_Keep_How() {}
+
+func (*notify_Keep_Forever_) isNotify_Keep_How() {}
+
+type Notify_Keep_Forever struct {
+	state          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Why string                 `protobuf:"bytes,1,opt,name=why"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Notify_Keep_Forever) Reset() {
+	*x = Notify_Keep_Forever{}
+	mi := &file_payday_app_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Notify_Keep_Forever) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Notify_Keep_Forever) ProtoMessage() {}
+
+func (x *Notify_Keep_Forever) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Notify_Keep_Forever) GetWhy() string {
+	if x != nil {
+		return x.xxx_hidden_Why
+	}
+	return ""
+}
+
+func (x *Notify_Keep_Forever) SetWhy(v string) {
+	x.xxx_hidden_Why = v
+}
+
+type Notify_Keep_Forever_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Why says why nothing an app publishes is ever let go. Required.
+	Why string
+}
+
+func (b0 Notify_Keep_Forever_builder) Build() *Notify_Keep_Forever {
+	m0 := &Notify_Keep_Forever{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Why = b.Why
+	return m0
+}
+
 var File_payday_app_proto protoreflect.FileDescriptor
 
 const file_payday_app_proto_rawDesc = "" +
@@ -893,44 +1185,57 @@ const file_payday_app_proto_rawDesc = "" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
 	"\aDomains\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
-	"\x06access\x18\x02 \x01(\rR\x06access\"\xbf\x01\n" +
+	"\x06access\x18\x02 \x01(\rR\x06access\"\x83\x03\n" +
 	"\x06Notify\x12\"\n" +
 	"\fnotification\x18\x01 \x01(\rR\fnotification\x12\x18\n" +
 	"\areceipt\x18\x02 \x01(\rR\areceipt\x125\n" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
-	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06globalB\t\n" +
+	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
+	"\x04keep\x18\x06 \x01(\v2\x13.payday.Notify.KeepR\x04keep\x1a\x98\x01\n" +
+	"\x04Keep\x12\x14\n" +
+	"\x04days\x18\x01 \x01(\rH\x00R\x04days\x127\n" +
+	"\aforever\x18\x02 \x01(\v2\x1b.payday.Notify.Keep.ForeverH\x00R\aforever\x12\x1d\n" +
+	"\n" +
+	"retry_days\x18\x03 \x01(\rR\tretryDays\x1a\x1b\n" +
+	"\aForever\x12\x10\n" +
+	"\x03why\x18\x01 \x01(\tR\x03whyB\x05\n" +
+	"\x03howB\t\n" +
 	"\atenancyJ\x04\b\x03\x10\x04\"&\n" +
 	"\fEntitlements\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domainB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_payday_app_proto_goTypes = []any{
-	(*App)(nil),             // 0: payday.App
-	(*Accounts)(nil),        // 1: payday.Accounts
-	(*Past)(nil),            // 2: payday.Past
-	(*Domains)(nil),         // 3: payday.Domains
-	(*Notify)(nil),          // 4: payday.Notify
-	(*Entitlements)(nil),    // 5: payday.Entitlements
-	(*Meter)(nil),           // 6: payday.Meter
-	(*ormpb.Ref)(nil),       // 7: orm.Ref
-	(*Entity_Tenanted)(nil), // 8: payday.Entity.Tenanted
-	(*Entity_Global)(nil),   // 9: payday.Entity.Global
+	(*App)(nil),                 // 0: payday.App
+	(*Accounts)(nil),            // 1: payday.Accounts
+	(*Past)(nil),                // 2: payday.Past
+	(*Domains)(nil),             // 3: payday.Domains
+	(*Notify)(nil),              // 4: payday.Notify
+	(*Entitlements)(nil),        // 5: payday.Entitlements
+	(*Notify_Keep)(nil),         // 6: payday.Notify.Keep
+	(*Notify_Keep_Forever)(nil), // 7: payday.Notify.Keep.Forever
+	(*Meter)(nil),               // 8: payday.Meter
+	(*ormpb.Ref)(nil),           // 9: orm.Ref
+	(*Entity_Tenanted)(nil),     // 10: payday.Entity.Tenanted
+	(*Entity_Global)(nil),       // 11: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
-	2, // 0: payday.App.past:type_name -> payday.Past
-	3, // 1: payday.App.domains:type_name -> payday.Domains
-	4, // 2: payday.App.notify:type_name -> payday.Notify
-	6, // 3: payday.App.meters:type_name -> payday.Meter
-	5, // 4: payday.App.entitlements:type_name -> payday.Entitlements
-	1, // 5: payday.App.accounts:type_name -> payday.Accounts
-	7, // 6: payday.Accounts.field:type_name -> orm.Ref
-	8, // 7: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
-	9, // 8: payday.Notify.global:type_name -> payday.Entity.Global
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	2,  // 0: payday.App.past:type_name -> payday.Past
+	3,  // 1: payday.App.domains:type_name -> payday.Domains
+	4,  // 2: payday.App.notify:type_name -> payday.Notify
+	8,  // 3: payday.App.meters:type_name -> payday.Meter
+	5,  // 4: payday.App.entitlements:type_name -> payday.Entitlements
+	1,  // 5: payday.App.accounts:type_name -> payday.Accounts
+	9,  // 6: payday.Accounts.field:type_name -> orm.Ref
+	10, // 7: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	11, // 8: payday.Notify.global:type_name -> payday.Entity.Global
+	6,  // 9: payday.Notify.keep:type_name -> payday.Notify.Keep
+	7,  // 10: payday.Notify.Keep.forever:type_name -> payday.Notify.Keep.Forever
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -944,13 +1249,17 @@ func file_payday_app_proto_init() {
 		(*notify_Tenanted)(nil),
 		(*notify_Global)(nil),
 	}
+	file_payday_app_proto_msgTypes[6].OneofWrappers = []any{
+		(*notify_Keep_Days)(nil),
+		(*notify_Keep_Forever_)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
