@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/lesomnus/payday/pdid"
-	"github.com/lesomnus/payday/watch"
 )
 
 // InvalidationMethod identifies server-authored policy invalidations on the
@@ -140,10 +139,5 @@ func (s *Service) Invalidate(ctx context.Context, tenantID pdid.Id, topics []Top
 	if s.watch == nil || s.watch.Broker() == nil {
 		return status.Error(codes.Unavailable, "notification broker is unavailable")
 	}
-	signal, err := json.Marshal(Hint{Tenant: tenantID, Topics: ts})
-	if err != nil {
-		return err
-	}
-	return watch.Confirm(context.WithoutCancel(ctx), s.watch.Broker(), watch.Event{Tenant: tenantID,
-		Method: InvalidationMethod, Changes: []watch.Change{{By: InvalidationMethod, Key: tenantID, Signal: signal}}})
+	return invalidate(ctx, s.watch, tenantID, ts)
 }

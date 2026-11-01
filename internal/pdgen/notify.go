@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"fmt"
+	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
@@ -17,6 +18,13 @@ type Notify struct {
 	Receipt      uint8
 	Global       bool
 	At           string
+
+	// KeepDays is how many days a notification is kept from its publication,
+	// and zero for an app that keeps them forever, which Forever says why of
+	// (payday#194). RetryDays is how long its producers retry, when it says.
+	KeepDays  uint32
+	RetryDays uint32
+	Forever   string
 }
 
 // Domain answers the domain declared for one notification record's marker.
@@ -66,6 +74,36 @@ func CheckNotify(n *pdpb.Notify, past *pdpb.Past, domains *pdpb.Domains) error {
 	if n.GetNotification() == n.GetReceipt() {
 		return fmt.Errorf("notify: says %d for both notification and receipt; a domain identifies one entity", n.GetNotification())
 	}
+	return checkKeep(n.GetKeep())
+}
+
+// checkKeep refuses a notification store that does not say how long it keeps
+// what it holds (payday#194).
+//
+// Required, because the two failures are not alike. Keeping notifications
+// forever by default is a table of people's interests and their reading that
+// grows for as long as the app runs, kept for nothing once read or stale, and
+// nobody notices -- nothing fails. An app that keeps them forever on purpose
+// says so, with why, which is a line somebody can find and argue with.
+func checkKeep(k *pdpb.Notify_Keep) error {
+	switch {
+	case k == nil:
+		return fmt.Errorf("notify: says no `keep:`; say how long a notification is kept from its publication, " +
+			"with its receipts and its idempotency key -- `keep: {days: 90}` -- or that nothing goes, and why: " +
+			"`keep: {forever: {why: \"...\"}}`")
+	case k.HasDays() && k.GetDays() == 0:
+		return fmt.Errorf("notify: keep: days: 0 keeps a notification for no time at all; say at least a day, or forever")
+	case k.HasForever() && strings.TrimSpace(k.GetForever().GetWhy()) == "":
+		return fmt.Errorf("notify: keep: forever: says no `why`, and it is the one place the schema says nothing an app publishes is let go")
+	case !k.HasDays() && !k.HasForever():
+		return fmt.Errorf("notify: keep: says neither `days:` nor `forever: {why: ...}`")
+	case k.HasDays() && k.GetRetryDays() > k.GetDays():
+		return fmt.Errorf(
+			"notify: keep: retry_days: %d is longer than the %d days a notification is kept, and a retry finds its "+
+				"notification by its key only while both are kept: one after %d days publishes it again. Keep it at "+
+				"least as long as it is retried", k.GetRetryDays(), k.GetDays(), k.GetDays())
+	}
+
 	return nil
 }
 
@@ -73,11 +111,25 @@ func notifyProto(n *Notify) *pdpb.Notify {
 	if n == nil {
 		return nil
 	}
-	b := pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt)}
+	b := pdpb.Notify_builder{Notification: uint32(n.Notification), Receipt: uint32(n.Receipt), Keep: n.keepProto()}
 	if n.Global {
 		b.Global = &pdpb.Entity_Global{}
 	}
 	return b.Build()
+}
+
+func (n *Notify) keepProto() *pdpb.Notify_Keep {
+	k := pdpb.Notify_Keep_builder{RetryDays: n.RetryDays}
+	switch {
+	case n.KeepDays > 0:
+		k.Days = &n.KeepDays
+	case n.Forever != "":
+		k.Forever = pdpb.Notify_Keep_Forever_builder{Why: n.Forever}.Build()
+	default:
+		return nil
+	}
+
+	return k.Build()
 }
 
 func pastProto(p *Past) *pdpb.Past {
@@ -104,7 +156,8 @@ func readNotify(files []*protogen.File) (*Notify, error) {
 		if err := CheckNotify(n, a.GetPast(), a.GetDomains()); err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
 		}
-		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.HasGlobal(), At: f.Desc.Path()}
+		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.HasGlobal(), At: f.Desc.Path(),
+			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy()}
 	}
 	return found, nil
 }

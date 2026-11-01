@@ -225,6 +225,45 @@ message Notify {
     Entity.Tenanted tenanted = 4;
     Entity.Global global = 5;
   }
+
+  // Keep is how long a notification is kept from its publication, and with
+  // it every receipt of it and its idempotency key (payday#194):
+  //
+  //	notify: {notification: 40, receipt: 41, keep: {days: 90}}
+  //
+  // Required. A notification and its receipts hold what the people who use an
+  // app are interested in and what they read, and kept for no purpose once
+  // read or stale, they grow without bound. So an app says how long, or says
+  // `forever` with why -- the dangerous answer is the one written down.
+  Keep keep = 6;
+
+  // Keep is one of the two answers. See [Notify.keep].
+  message Keep {
+    oneof how {
+      // Days is how many days from its publication a notification is kept.
+      // `pd gen` writes `pd.NotificationExpirer`, which erases what is older
+      // with its receipts, each erasure on the trail; the app spins it. At
+      // least 1.
+      uint32 days = 1;
+
+      // Forever keeps every notification for as long as the app runs, and
+      // writes no expirer. Said with why, as `trail: {off: ...}` is.
+      Forever forever = 2;
+    }
+
+    // RetryDays is how long after a first attempt the app's producers may
+    // still retry one publication. A retry finds its notification by its
+    // key for as long as both are kept, and publishes again once they are
+    // gone, so it is at most `days`, and `pd gen` refuses one longer: a
+    // `keep` made shorter than it is a guarantee made shorter, said where it
+    // is decided. Zero says nothing, and the guarantee is `days` itself.
+    uint32 retry_days = 3;
+
+    message Forever {
+      // Why says why nothing an app publishes is ever let go. Required.
+      string why = 1;
+    }
+  }
 }
 
 // Entitlements is the domain of the one table an app's copy of its tenants'

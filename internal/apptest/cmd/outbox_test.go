@@ -2,12 +2,14 @@ package cmd_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/notify"
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/spin"
 
@@ -226,9 +228,14 @@ func TestNoOutboxMeansNoRows(t *testing.T) {
 	x.NoError(err)
 	x.Zero(n)
 
-	// And no loop to run but the access record's, which every app has, and
-	// the meters' reader, which this one has for declaring meters.
-	x.Equal([]any{b.Access, b.Meters}, b.Spin)
+	// And no loop to run but the access record's, which every app has, the
+	// meters' reader, which this one has for declaring meters, and the
+	// notifications' expirer, for keeping them 90 days.
+	x.Len(b.Spin, 3)
+	x.Equal([]any{b.Access, b.Meters}, b.Spin[:2])
+	e, ok := b.Spin[2].(notify.Expirer)
+	x.True(ok, "%T is not the notifications' expirer", b.Spin[2])
+	x.Equal(pd.NotificationKeep, e.Keep)
 }
 
 // TestTheLoopIsFoundAndNotDeclared is `spin` over the app's own wiring.
@@ -237,10 +244,15 @@ func TestTheLoopIsFoundAndNotDeclared(t *testing.T) {
 	b, _ := queued(t)
 
 	// The drainer, beside the access record's writer, which every app has,
-	// and the meters' reader, which this one has for declaring meters.
-	x.Len(b.Spin, 3)
+	// the meters' reader, which this one has for declaring meters, and the
+	// notifications' expirer, for keeping them 90 days.
+	x.Len(b.Spin, 4)
 	x.Contains(b.Spin, any(b.Access))
 	x.Contains(b.Spin, any(b.Meters))
+	x.True(slices.ContainsFunc(b.Spin, func(v any) bool {
+		e, ok := v.(notify.Expirer)
+		return ok && e.Keep == pd.NotificationKeep
+	}), "the notifications are kept for ever")
 	for _, v := range b.Spin {
 		_, ok := v.(spin.Spinner)
 		x.True(ok, "%T is not something spin.Run would find", v)

@@ -103,12 +103,15 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// method an account calls as itself says what it reads, and whether a
 	// resolver serves a call as one. See doctor_account.go. And of an app
 	// with a column of payday's that an earlier build named otherwise,
-	// whether its migration moves it first. See doctor_rename.go.
+	// whether its migration moves it first. See doctor_rename.go. And of an
+	// app that keeps its notifications for so many days, whether anything
+	// erases them after. See doctor_notify.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
 	vs = append(vs, doctorMeters(l, schema)...)
 	vs = append(vs, doctorEntitlements(l, schema)...)
 	vs = append(vs, doctorAccounts(l, schema)...)
 	vs = append(vs, doctorRenames(l, pdgen.ColumnRenames(schema))...)
+	vs = append(vs, doctorNotify(l, schema)...)
 
 	return append(vs, doctorPast(l, schema)...)
 }

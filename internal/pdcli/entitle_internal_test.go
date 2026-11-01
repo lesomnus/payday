@@ -131,11 +131,11 @@ func TestEntitlementsAreDeclaredOnceAtANumberOfTheirOwn(t *testing.T) {
 	x.Nil(l.Entitlements)
 
 	for src, says := range map[string]string{
-		"option (payday.app) = {entitlements: {}};":                                                    "says no `domain:`",
-		"option (payday.app) = {entitlements: {domain: 3}};":                                           "is payday's",
-		"option (payday.app) = {past: {event: 17, fact: 43}, entitlements: {domain: 43}};":             "past.fact",
-		"option (payday.app) = {notify: {notification: 43, receipt: 41}, entitlements: {domain: 43}};": "notify.notification",
-		"option (payday.app) = {domains: {archived: 43}, entitlements: {domain: 43}};":                 "domains.archived",
+		"option (payday.app) = {entitlements: {}};":                                                                      "says no `domain:`",
+		"option (payday.app) = {entitlements: {domain: 3}};":                                                             "is payday's",
+		"option (payday.app) = {past: {event: 17, fact: 43}, entitlements: {domain: 43}};":                               "past.fact",
+		"option (payday.app) = {notify: {notification: 43, receipt: 41, keep: {days: 30}}, entitlements: {domain: 43}};": "notify.notification",
+		"option (payday.app) = {domains: {archived: 43}, entitlements: {domain: 43}};":                                   "domains.archived",
 	} {
 		_, err := declared(t, map[string]string{"app.proto": head + src + "\n"})
 		x.ErrorContains(err, says, src)

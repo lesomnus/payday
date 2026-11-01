@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXki0gEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMSIgoIYWNjb3VudHMYBiABKAsyEC5wYXlkYXkuQWNjb3VudHMiIwoIQWNjb3VudHMSFwoFZmllbGQYASABKAsyCC5vcm0uUmVmIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSKWAQoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSABCCQoHdGVuYW5jeUoECAMQBCIeCgxFbnRpdGxlbWVudHMSDgoGZG9tYWluGAEgASgNQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref, file_payday_entity, file_payday_meter]);
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXki0gEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMSIgoIYWNjb3VudHMYBiABKAsyEC5wYXlkYXkuQWNjb3VudHMiIwoIQWNjb3VudHMSFwoFZmllbGQYASABKAsyCC5vcm0uUmVmIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSK0AgoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEa2VlcBgGIAEoCzITLnBheWRheS5Ob3RpZnkuS2VlcBp5CgRLZWVwEg4KBGRheXMYASABKA1IABIuCgdmb3JldmVyGAIgASgLMhsucGF5ZGF5Lk5vdGlmeS5LZWVwLkZvcmV2ZXJIABISCgpyZXRyeV9kYXlzGAMgASgNGhYKB0ZvcmV2ZXISCwoDd2h5GAEgASgJQgUKA2hvd0IJCgd0ZW5hbmN5SgQIAxAEIh4KDEVudGl0bGVtZW50cxIOCgZkb21haW4YASABKA1CJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref, file_payday_entity, file_payday_meter]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -346,6 +346,21 @@ export type Notify = Message<"payday.Notify"> & {
     value: Entity_Global;
     case: "global";
   } | { case: undefined; value?: undefined };
+
+  /**
+   * Keep is how long a notification is kept from its publication, and with
+   * it every receipt of it and its idempotency key (payday#194):
+   *
+   * 	notify: {notification: 40, receipt: 41, keep: {days: 90}}
+   *
+   * Required. A notification and its receipts hold what the people who use an
+   * app are interested in and what they read, and kept for no purpose once
+   * read or stale, they grow without bound. So an app says how long, or says
+   * `forever` with why -- the dangerous answer is the one written down.
+   *
+   * @generated from field: payday.Notify.Keep keep = 6;
+   */
+  keep?: Notify_Keep | undefined;
 };
 
 /**
@@ -354,6 +369,76 @@ export type Notify = Message<"payday.Notify"> & {
  */
 export const NotifySchema: GenMessage<Notify> = /*@__PURE__*/
   messageDesc(file_payday_app, 4);
+
+/**
+ * Keep is one of the two answers. See [Notify.keep].
+ *
+ * @generated from message payday.Notify.Keep
+ */
+export type Notify_Keep = Message<"payday.Notify.Keep"> & {
+  /**
+   * @generated from oneof payday.Notify.Keep.how
+   */
+  how: {
+    /**
+     * Days is how many days from its publication a notification is kept.
+     * `pd gen` writes `pd.NotificationExpirer`, which erases what is older
+     * with its receipts, each erasure on the trail; the app spins it. At
+     * least 1.
+     *
+     * @generated from field: uint32 days = 1;
+     */
+    value: number;
+    case: "days";
+  } | {
+    /**
+     * Forever keeps every notification for as long as the app runs, and
+     * writes no expirer. Said with why, as `trail: {off: ...}` is.
+     *
+     * @generated from field: payday.Notify.Keep.Forever forever = 2;
+     */
+    value: Notify_Keep_Forever;
+    case: "forever";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * RetryDays is how long after a first attempt the app's producers may
+   * still retry one publication. A retry finds its notification by its
+   * key for as long as both are kept, and publishes again once they are
+   * gone, so it is at most `days`, and `pd gen` refuses one longer: a
+   * `keep` made shorter than it is a guarantee made shorter, said where it
+   * is decided. Zero says nothing, and the guarantee is `days` itself.
+   *
+   * @generated from field: uint32 retry_days = 3;
+   */
+  retryDays: number;
+};
+
+/**
+ * Describes the message payday.Notify.Keep.
+ * Use `create(Notify_KeepSchema)` to create a new message.
+ */
+export const Notify_KeepSchema: GenMessage<Notify_Keep> = /*@__PURE__*/
+  messageDesc(file_payday_app, 4, 0);
+
+/**
+ * @generated from message payday.Notify.Keep.Forever
+ */
+export type Notify_Keep_Forever = Message<"payday.Notify.Keep.Forever"> & {
+  /**
+   * Why says why nothing an app publishes is ever let go. Required.
+   *
+   * @generated from field: string why = 1;
+   */
+  why: string;
+};
+
+/**
+ * Describes the message payday.Notify.Keep.Forever.
+ * Use `create(Notify_Keep_ForeverSchema)` to create a new message.
+ */
+export const Notify_Keep_ForeverSchema: GenMessage<Notify_Keep_Forever> = /*@__PURE__*/
+  messageDesc(file_payday_app, 4, 0, 0);
 
 /**
  * Entitlements is the domain of the one table an app's copy of its tenants'

@@ -225,6 +225,13 @@ type Store interface {
 	FindPublication(context.Context, pdid.Id, string, string) (Notification, bool, error)
 	Receipts(context.Context, pdid.Id, pdid.Id, []pdid.Id) ([]Receipt, error)
 	InsertReceipt(context.Context, Receipt) (Receipt, error)
+	// Hold keeps the notifications of ids, those that are there, from being
+	// erased until the transaction ends: Mark's, before it reads them, so
+	// that an expiry erasing one waits for the receipt being written of it
+	// and erases that too, or erases first and Mark finds it gone
+	// (payday#194). The generated store takes a share lock of each row on
+	// PostgreSQL, in identifier order; SQLite has one writer at a time.
+	Hold(context.Context, []pdid.Id) error
 	// Change extracts immutable notification scope from a committed change.
 	// Unrelated entity changes return false. Signal invalidations are decoded
 	// by Service itself and are never passed here.

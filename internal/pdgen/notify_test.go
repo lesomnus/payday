@@ -46,7 +46,7 @@ func TestNotifyAndPastAreIndependentFeatures(t *testing.T) {
 				records += copies(t, 17, 16)
 			}
 			if tc.notify {
-				option += "notify: {notification: 40, receipt: 41} "
+				option += "notify: {notification: 40, receipt: 41, keep: {days: 30}} "
 				if !tc.past {
 					records += "import \"google/protobuf/any.proto\";\n"
 				}
@@ -68,7 +68,7 @@ func TestNotifyAndPastAreIndependentFeatures(t *testing.T) {
 
 func TestNotifyRefusesMissingAndRenumberedCopies(t *testing.T) {
 	x := require.New(t)
-	declaration := "option (payday.app) = {notify: {notification: 40, receipt: 41}};\n"
+	declaration := "option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 30}}};\n"
 	s, err := readAs(t, "fleet", declaration+ownAll(t))
 	x.NoError(err)
 	x.ErrorContains(pdgen.CheckOwn(s), "declares notifications")
@@ -115,7 +115,7 @@ func TestGlobalNotifyScopeIsPartOfTheGeneratedContract(t *testing.T) {
 	global := strings.ReplaceAll(tenant, `  bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];`, "")
 	global = regexp.MustCompile(`(?s)          \{\s*name: "tenant_id"\s*number: 2\s*\},?\n`).ReplaceAllString(global, "")
 	global = strings.ReplaceAll(global, `tenanted: {field: "tenant_id"}`, `global: {}`)
-	declaration := `option (payday.app) = {notify: {notification: 40, receipt: 41, global: {}}};`
+	declaration := `option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 30}, global: {}}};`
 	prefix := "import \"google/protobuf/any.proto\";\n"
 	tenanted := strings.Replace(declaration, "global: {}", `tenanted: {field: "tenant_id"}`, 1)
 	s, err := readAs(t, "fleet", prefix+tenanted+ownAll(t)+tenant)
@@ -137,5 +137,41 @@ func TestGlobalNotifyScopeIsPartOfTheGeneratedContract(t *testing.T) {
 		modified := strings.Replace(global, "message "+name+" {", "message "+name+" {\nbytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];", 1)
 		_, err = readAs(t, "fleet", prefix+declaration+ownAll(t)+modified)
 		require.ErrorContains(t, err, "scope differs")
+	}
+}
+
+// TestNotifyKeepIsDecided: how long a notification is kept is the app's to
+// say, in days or forever with why, and a producer's retries no longer than
+// it (payday#194).
+func TestNotifyKeepIsDecided(t *testing.T) {
+	days := func(n uint32) *uint32 { return &n }
+	declared := func(k *pdpb.Notify_Keep) *pdpb.Notify {
+		return pdpb.Notify_builder{Notification: 40, Receipt: 41, Keep: k}.Build()
+	}
+	forever := func(why string) *pdpb.Notify_Keep_Forever { return pdpb.Notify_Keep_Forever_builder{Why: why}.Build() }
+
+	for _, tc := range []struct {
+		name string
+		keep *pdpb.Notify_Keep
+		says string
+	}{
+		{"unsaid", nil, "says no `keep:`"},
+		{"neither", pdpb.Notify_Keep_builder{RetryDays: 1}.Build(), "neither `days:` nor `forever"},
+		{"no time", pdpb.Notify_Keep_builder{Days: days(0)}.Build(), "no time at all"},
+		{"forever, and no why", pdpb.Notify_Keep_builder{Forever: forever(" ")}.Build(), "says no `why`"},
+		{"retried longer than kept", pdpb.Notify_Keep_builder{Days: days(7), RetryDays: 8}.Build(), "retry_days: 8 is longer than the 7 days"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.ErrorContains(t, pdgen.CheckNotify(declared(tc.keep), nil, nil), tc.says)
+		})
+	}
+
+	for _, k := range []*pdpb.Notify_Keep{
+		pdpb.Notify_Keep_builder{Days: days(90)}.Build(),
+		pdpb.Notify_Keep_builder{Days: days(7), RetryDays: 7}.Build(),
+		pdpb.Notify_Keep_builder{Forever: forever("an inbox people keep, and erase themselves")}.Build(),
+		pdpb.Notify_Keep_builder{Forever: forever("kept"), RetryDays: 400}.Build(),
+	} {
+		require.NoError(t, pdgen.CheckNotify(declared(k), nil, nil), "%v", k)
 	}
 }

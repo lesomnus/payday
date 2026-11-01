@@ -2333,6 +2333,10 @@ func (b0 NotificationInvalidation_builder) Build() *NotificationInvalidation {
 // NotificationRecord is the internal indexed representation of the public
 // Notification. Opaque payload bytes stay off ordinary CRUD and resource
 // streams; the notification service applies the app's policy before unpacking.
+//
+// It is kept for as long as the app's `notify.keep` says, from date_created,
+// and then erased with its receipts by `pd.NotificationExpirer`, which puts
+// each erasure on the trail (payday#194).
 type NotificationRecord struct {
 	state                     protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id             []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -2675,7 +2679,7 @@ const file_app_payday_notification_proto_rawDesc = "" +
 	"\x17NotificationListenReady\x12\x1b\n" +
 	"\treader_id\x18\x01 \x01(\fR\breaderId\"J\n" +
 	"\x18NotificationInvalidation\x12.\n" +
-	"\x06topics\x18\x01 \x03(\v2\x16.app.NotificationTopicR\x06topics\"\xbf\x05\n" +
+	"\x06topics\x18\x01 \x03(\v2\x16.app.NotificationTopicR\x06topics\"\xe0\x05\n" +
 	"\x12NotificationRecord\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12\x12\n" +
@@ -2689,12 +2693,14 @@ const file_app_payday_notification_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x1a\n" +
 	"\bproducer\x18\x10 \x01(\tR\bproducer\x12'\n" +
 	"\x0fidempotency_key\x18\x11 \x01(\tR\x0eidempotencyKey\x12'\n" +
-	"\x0fpayload_present\x18\x12 \x01(\bR\x0epayloadPresent:\xb7\x01\xca\xfc\x15\x8b\x01\x12\x06\x82\x01\x00\x8a\x01\x00\x1aA\x12\vpublication\x1a\r\n" +
+	"\x0fpayload_present\x18\x12 \x01(\bR\x0epayloadPresent:\xd8\x01\xca\xfc\x15\xac\x01\x12\x06\x82\x01\x00\x8a\x01\x00\x1aA\x12\vpublication\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\f\n" +
 	"\bproducer\x10\x10\x1a\x13\n" +
 	"\x0fidempotency_key\x10\x110\x01\x1a>\x12\x04page\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\r\n" +
 	"\ttopic_key\x10\t\x1a\x10\n" +
+	"\fdate_created\x10\x0f\x1a\x06\n" +
+	"\x02id\x10\x01\x1a\x1f\x12\x03age\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
 	"\x02id\x10\x01\x8a\xbb\x16#\b(\x12\fnotificationB\x02\n" +
 	"\x00H\v\"\v\x12\ttenant_id2\xe7\x03\n" +
