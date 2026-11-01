@@ -54,4 +54,17 @@
 // app embedding a block gets its defaults without writing them, and one that
 // wants another default writes it into its own struct before the loader is
 // made: what the struct holds then is the lowest layer.
+//
+// # What it opens
+//
+// A block that names something to connect to is also what connects to it --
+// [DbConfig.Open], and [WatchConfig.Build] and [SpinConfig.Build] for a broker
+// or a lease a deployment registered -- and each is a first contact a process
+// makes as it starts. One that fails stops the process, where it could not
+// start rather than at its first request; but one that reached nothing, as
+// against one that was answered, is tried again for up to ten seconds first
+// (#192): a network policy not yet in place for a new pod, a proxy beside the
+// app still starting, PostgreSQL finishing its own start. What the database
+// answered -- a password, a database, a certificate -- is returned at once.
+// See [DbConfig.Open].
 package config

@@ -235,6 +235,24 @@ func (c DbConfig) Speaks() (string, error) {
 // connection: `database/sql` knows the driver's name and nothing about what it
 // speaks, and the migrations, which are SQL and not ent, need to be told.
 //
+// # It waits a moment for a database it cannot reach yet
+//
+// It pings before it answers, so that a deployment pointed at a database that
+// is not there finds out at start, in the process that could not start, rather
+// than at its first request. A ping that reached nothing -- refused, reset,
+// timed out, a resolver that could not be asked, or PostgreSQL still starting
+// -- is tried again for up to ten seconds first, each attempt said in the log
+// `ctx` carries, because a database that cannot be reached for the first
+// second of a pod's life is the ordinary case where a network policy is
+// enforced (#192). Anything the database answered is returned at once: a wrong
+// password, a database that does not exist, a certificate, a name that resolves
+// to nothing, and every SQLite error. Why those numbers, and why they are
+// constants and not settings, is written beside them (`reachWithin`).
+//
+// That is the first contact only. The connections `database/sql` makes after
+// it are made as they always were, so a server that loses its database is told
+// so by the statement that finds out.
+//
 // The caller owns the connection and must close it.
 func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
 	dialect, err := c.Speaks()
@@ -253,8 +271,9 @@ func (c DbConfig) Open(ctx context.Context) (*sql.DB, string, error) {
 		db.SetMaxIdleConns(c.MaxIdleConns)
 	}
 
-	// Fail fast if the database is not reachable.
-	if err := db.PingContext(ctx); err != nil {
+	// `sql.Open` connects to nothing, so this is the first contact, and the
+	// one place the database is waited for.
+	if err := reach(ctx, "db", db.PingContext); err != nil {
 		db.Close()
 		return nil, "", z.Err(err, "ping")
 	}
