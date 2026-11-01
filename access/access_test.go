@@ -333,3 +333,184 @@ func TestAWriterSaysWhatItLostInTheProcesssLog(t *testing.T) {
 	cancel()
 	<-done
 }
+
+// TestACallNoFrameNamesIsNamedAsItsOperator: the deployment's own work, done
+// at an operator's word -- a command at a shell, which carries no frame -- is
+// a row naming the operator, a read's and a write's alike, and a call a frame
+// names is named as the frame says.
+func TestACallNoFrameNamesIsNamedAsItsOperator(t *testing.T) {
+	x := require.New(t)
+	s := &sink{}
+	w := &access.Writer{Sink: s.write}
+	op, owner := pdid.New(2), pdid.New(1)
+	who, written := access.Subject{Id: pdid.New(2)}, access.Subject{Id: pdid.New(2)}
+	c := access.Config{
+		Subjects: func(proto.Message) []access.Subject { return []access.Subject{who} },
+		Writer:   w,
+		Operator: func(context.Context) (pdid.Id, pdid.Id) { return op, owner },
+	}
+
+	var wrote []access.Record
+	_, err := c.Unary()(t.Context(), wrapperspb.String("asked"), &grpc.UnaryServerInfo{FullMethod: "/app.People/Rename"},
+		func(ctx context.Context, _ any) (any, error) {
+			// What the generated recorder writes at a write's commit, which
+			// is told of the write and not of the frame: the call in `ctx`
+			// says who made it.
+			wrote = access.Records(ctx, "/app.People/Rename", access.Write, "ok", []access.Subject{written}, nil, time.Now())
+
+			call, ok := access.Of(ctx)
+			x.True(ok)
+			a, held := call.Operator()
+			x.Equal(op, a)
+			x.Equal(owner, held)
+
+			return wrapperspb.String("alice"), nil
+		})
+	x.NoError(err)
+	x.NoError(w.Flush(t.Context()))
+
+	x.Len(wrote, 1)
+	x.Equal(op, wrote[0].Actor)
+	x.Equal(owner, wrote[0].ActorTenant)
+
+	rs := s.written()
+	x.Len(rs, 1)
+	x.Equal(access.Read, rs[0].Kind)
+	x.Equal(op, rs[0].Actor, "the operator, where no frame names anybody")
+	x.Equal(owner, rs[0].ActorTenant)
+
+	t.Run("and a call a frame names is the frame's", func(t *testing.T) {
+		x := require.New(t)
+		s.rows = nil
+
+		actor, held := pdid.New(2), pdid.New(1)
+		ctx := frame.Into(t.Context(), frame.New(actor, held, frame.Whole()))
+		_, err := handled(t, c, ctx, "/app.People/List", wrapperspb.String("alice"), nil)
+		x.NoError(err)
+		x.NoError(w.Flush(t.Context()))
+
+		rs := s.written()
+		x.Len(rs, 1)
+		x.Equal(actor, rs[0].Actor)
+		x.Equal(held, rs[0].ActorTenant)
+	})
+
+	t.Run("and with nobody to name, nobody is", func(t *testing.T) {
+		x := require.New(t)
+		s.rows = nil
+
+		c := c
+		c.Operator = nil
+		_, err := handled(t, c, t.Context(), "/app.People/List", wrapperspb.String("alice"), nil)
+		x.NoError(err)
+		x.NoError(w.Flush(t.Context()))
+
+		rs := s.written()
+		x.Len(rs, 1)
+		x.True(rs[0].Actor.IsZero(), "the deployment's own")
+		x.True(rs[0].ActorTenant.IsZero())
+	})
+}
+
+// TestAReadAtOnceIsWrittenBeforeItAnswers: a process that ends with its call
+// writes a read's row before the answer leaves, as a download's is written,
+// and refuses the read when it cannot be.
+func TestAReadAtOnceIsWrittenBeforeItAnswers(t *testing.T) {
+	x := require.New(t)
+	s := &sink{}
+	w := &access.Writer{Sink: s.write}
+	who := access.Subject{Id: pdid.New(2)}
+	c := access.Config{
+		Subjects: func(proto.Message) []access.Subject { return []access.Subject{who} },
+		Refs:     func(proto.Message) []access.Subject { return []access.Subject{who} },
+		Writer:   w,
+		AtOnce:   true,
+	}
+
+	res, err := handled(t, c, t.Context(), "/app.People/Get", wrapperspb.String("alice"), nil)
+	x.NoError(err)
+	x.NotNil(res)
+	x.Zero(w.Pending(), "nothing waits")
+
+	rs := s.written()
+	x.Len(rs, 1, "written before it answered")
+	x.Equal(access.Read, rs[0].Kind, "a read, written as a download is, and not a download")
+	x.Empty(rs[0].Detail.GetReason())
+
+	asked := &wrapperspb.StringValue{}
+	x.NoError(proto.Unmarshal(rs[0].Detail.GetRequest(), asked))
+	x.Equal("asked", asked.GetValue())
+
+	t.Run("and refused when it cannot be recorded", func(t *testing.T) {
+		x := require.New(t)
+
+		s.down = true
+		t.Cleanup(func() { s.down = false })
+
+		res, err := handled(t, c, t.Context(), "/app.People/Get", wrapperspb.String("alice"), nil)
+		x.Equal(codes.Unavailable, status.Code(err))
+		x.ErrorContains(err, access.ErrUnrecorded.Error())
+		x.Nil(res, "what could not be recorded is not answered")
+		x.Zero(w.Pending(), "and is not left to be written later, as though it had been")
+
+		// A call that was refused anyway keeps its own refusal.
+		_, err = handled(t, c, t.Context(), "/app.People/Get", nil, status.Error(codes.NotFound, "nobody"))
+		x.Equal(codes.NotFound, status.Code(err))
+	})
+}
+
+// streamed is a server stream that keeps what it is sent.
+type streamed struct {
+	grpc.ServerStream
+	ctx  context.Context
+	sent []proto.Message
+}
+
+func (s *streamed) Context() context.Context { return s.ctx }
+func (s *streamed) RecvMsg(any) error        { return nil }
+func (s *streamed) SendMsg(m any) error {
+	s.sent = append(s.sent, m.(proto.Message))
+	return nil
+}
+
+// TestAStreamAtOnceIsWrittenBeforeEachMessage: a watch from a process that
+// ends with its call says what each message carried before the message
+// leaves, and sends nothing whose row could not be written.
+func TestAStreamAtOnceIsWrittenBeforeEachMessage(t *testing.T) {
+	x := require.New(t)
+	s := &sink{}
+	w := &access.Writer{Sink: s.write}
+	alice, bob := access.Subject{Id: pdid.New(2)}, access.Subject{Id: pdid.New(2)}
+	c := access.Config{
+		Subjects: func(m proto.Message) []access.Subject {
+			if m.(*wrapperspb.StringValue).GetValue() == "alice" {
+				return []access.Subject{alice}
+			}
+			return []access.Subject{bob}
+		},
+		Writer: w,
+		AtOnce: true,
+	}
+
+	ss := &streamed{ctx: t.Context()}
+	err := c.Stream()(nil, ss, &grpc.StreamServerInfo{FullMethod: "/app.People/Watch", IsServerStream: true},
+		func(_ any, stream grpc.ServerStream) error {
+			x.NoError(stream.SendMsg(wrapperspb.String("alice")))
+			x.Len(s.written(), 1, "alice's row, before her message left")
+
+			s.down = true
+			err := stream.SendMsg(wrapperspb.String("bob"))
+			x.Equal(codes.Unavailable, status.Code(err))
+			s.down = false
+
+			return err
+		})
+	x.Equal(codes.Unavailable, status.Code(err))
+
+	x.Len(ss.sent, 1, "bob's message did not leave")
+	rs := s.written()
+	x.NotEmpty(rs)
+	x.Equal(access.Read, rs[0].Kind)
+	x.Equal([]pdid.Id{alice.Id}, rs[0].Subjects)
+	x.Zero(w.Pending())
+}

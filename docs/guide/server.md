@@ -777,6 +777,40 @@ field carries it -- a name rendered into a sentence, a column of a CSV -- says
 so with `access.Saw(ctx, access.Subject{Id: key, Tenant: tenant})` in the call
 that shows it.
 
+#### A command at a shell
+
+An app whose commands reach its ungated instance in their own process -- on a
+pipe, as a local CLI does -- has calls no frame names and a process that ends
+with each. Neither suits the server's configuration, so the pipe is given one
+of its own, with the same `Subjects` and `Refs`:
+
+```go
+c := access.Config{
+	Subjects: pd.Subjects,
+	Refs:     pd.SubjectRefs,
+	Address:  func(context.Context) string { return "shell:" + userAtHost },
+	Writer:   &access.Writer{Sink: pd.AccessSink(client)},
+
+	// Who is at the shell, which the command was told: a row names them where
+	// it would have named a frame's caller.
+	Operator: func(context.Context) (pdid.Id, pdid.Id) { return op, opTenant },
+
+	// And written before each answer leaves, since nothing will write a queue.
+	AtOnce: true,
+}
+```
+
+- **`Operator`** names who a call no frame names was made by -- reads and writes
+  alike, since the generated recorder reads it off the call. It is not a frame,
+  and putting one on the pipe instead would be wrong in the other direction: a
+  frame is what the layers decide what a call may do by, and the deployment's
+  own work would be held to the rules for callers. What it answers is the
+  app's to make sure of: a name the command was given and checked, never one
+  it made up.
+- **`AtOnce`** writes a read's row as a download's is written, and refuses the
+  read with `Unavailable` when it cannot be -- so what a command shows is
+  never data the record did not hear of. Its rows are still `read`.
+
 ### `auth.Plain` is not for production
 
 `Plain` believes what the caller writes. It is right for a sandbox and for

@@ -3,6 +3,23 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A command at a shell names who ran it, and is recorded before it answers
+
+**Applies if** your app has commands that reach its ungated instance in their
+own process -- a local CLI on a pipe -- and show or write people's data. A call
+there carries no frame, so the access record could name nobody for it; and its
+process ends with the call, so a read queued for the second is a row nothing
+writes. Nothing changes for an app that does not ask for it.
+
+1. **Give the pipe a configuration of its own**, the server's `Subjects`,
+   `Refs` and sink, with `Operator` answering who the command was told is at
+   the shell and `AtOnce` set. See [the server guide](guide/server.md#a-command-at-a-shell).
+2. **Do not put a frame on the pipe instead.** A frame is what the layers
+   decide what a call may do by; `Operator` is read by the record alone.
+3. `access.ErrUnrecorded` now reads *what the call carried could not be
+   recorded*, since a read written at once is refused with it as a download is.
+   Nothing that matched the error rather than its message changes.
+
 ## An account reads its own notifications, as itself
 
 **Applies if** your app declares accounts and wants an account -- not one of
