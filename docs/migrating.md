@@ -3,6 +3,37 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A notification's payload is a message the schema declares, of identifiers
+
+**Applies if** your app publishes notifications with a payload (payday#193).
+Run `buf dep update` first: `(payday.notification)` is in
+`buf.build/payday/payday`.
+
+A notification carries identifiers, not a person's data: it is shown to every
+reader of its topic for as long as it is kept, and neither the access record
+nor forgetting a person looks inside its payload. [The
+reference](notify.md#a-notification-carries-identifiers-not-a-persons-data)
+has the contract.
+
+- **Mark each message a notification carries** with
+  `option (payday.notification) = {};`. `NotificationService.Add` refuses a
+  payload of any other type, and one with no type URL, with
+  `InvalidArgument`.
+- **`pd gen` refuses one that holds a person**: a `(payday.field)` in it, or
+  in a message it holds, that says anything but `personal: false`; a field
+  holding an entity, a generated contract's message or an `Any`.
+- **`pd doctor` asks about each string** that says nothing about itself, and a
+  field named for somebody. Say `personal: false` of a code, a version or
+  another system's identifier. A person's name or words go, and the page
+  that shows the notification says them from an identifier.
+- **Kind and Topic names** are routing keys: no name or email in them.
+
+What the apps on payday change:
+
+- **cxz** publishes `SessionNotification` (`proto/ext/cxz/session_svc.ext.proto`):
+  mark it a payload, and its three strings -- `runtime_id`, `generation`,
+  `request_id`, identifiers cxz itself issues -- `personal: false`.
+
 ## A notification store says how long it keeps what it holds
 
 **Applies if** your app declares `notify` (payday#194). `pd gen` refuses a

@@ -213,6 +213,31 @@ Add `Payload` when the client needs custom data. Pack a Protobuf message with
 `anypb.New` and keep the resulting `Any` when retrying. Payload is independent of
 the Topic key and does not create another subscription scope.
 
+A payload is a message the schema says a notification may carry, and it
+carries identifiers, not a person's data -- `Add` refuses any other type
+(payday#193):
+
+```proto
+// What a notification of a Job's completion carries: the Job and the Robot
+// that did it, by their identifiers. The page says who they are.
+message JobDone {
+  option (payday.notification) = {};
+
+  bytes job = 1;
+  bytes robot = 2;
+  string outcome = 3 [(payday.field) = {personal: false}];  // a code, about no one
+}
+```
+
+A notification is shown to every reader of its Topic for as long as it is
+kept, and neither the access record nor forgetting a person looks inside it. So
+"Kim returned the laptop" is published as the holder's and the laptop's
+identifiers and the kind `asset.returned`, and the page that shows it says Kim's
+name, as Kim is called when it is read. `pd gen` refuses a payload that
+declares anybody's data in it, and `pd doctor` asks about every string that
+does not say it is about no one. Kind and Topic names are routing keys, and
+hold no name or email either.
+
 Validate domain-specific Kind and Payload combinations in the publishing code.
 `Publisher` authorizes a Topic; it does not inspect the request body. If external
 producers can call `Add`, put that validation in the app's service wrapper before
@@ -548,11 +573,16 @@ finishes, publish to its resource Topic:
 jobTopic := new(app.NotificationTopic)
 jobTopic.SetResourceId(jobID.Bytes())
 
+payload, err := anypb.New(app.JobDone_builder{Job: jobID.Bytes(), Robot: robotID.Bytes(), Outcome: "ok"}.Build())
+if err != nil {
+    return err
+}
 done, err := notifications.Add(ctx, app.NotificationAddRequest_builder{
     TenantId:       tenant.Bytes(),
     Topic:          jobTopic,
     Kind:           "job.completed",
     SourceId:       jobID.Bytes(),
+    Payload:        payload,
     IdempotencyKey: completionKey,
 }.Build())
 if err != nil {
@@ -560,6 +590,10 @@ if err != nil {
 }
 fmt.Printf("published job completion %x\n", done.GetId())
 ```
+
+The payload names the Job and the Robot that finished it, `robotID`, by their
+identifiers; a reader's page reads them, as that reader may, to say what
+happened.
 
 `completionKey` identifies this one domain transition and is reused when retrying
 it. If a Job can complete more than once, each completion needs a distinct key.
