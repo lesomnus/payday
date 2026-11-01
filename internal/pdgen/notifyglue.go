@@ -57,15 +57,25 @@ func emitAuditNotify(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpor
 		if e == nil {
 			continue
 		}
+		r := e.Rpcs()
+		if !r.HasAdd() && !r.HasGet() {
+			// Nothing to seal. A receipt has no RPC at all: notify writes it
+			// past the servers, and reads it the same way (payday#197).
+			continue
+		}
 		name := e.GoName()
 		g.P("// The base Sink seals these paths too, so forgetting an outer layer")
 		g.P("// cannot expose notification contents or allow forged receipt owners.")
 		g.P("func (s Sink) ", name, "() ", root.Ident(name+"ServiceServer"), " { return notify", name, "Guard{s.Server.", name, "()} }")
 		g.P("func (s Audit) ", name, "() ", root.Ident(name+"ServiceServer"), " { return notify", name, "Guard{s.Next().", name, "()} }")
 		g.P("type notify", name, "Guard struct { ", root.Ident(name+"ServiceServer"), " }")
-		g.P("func (s notify", name, "Guard) Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"), ") (*", root.Ident(name), ", error) {")
-		g.P("if !isNotifyWrite(ctx) { return nil,", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("PermissionDenied"), ",\"notification records are written through NotificationService\") }; return s.", name, "ServiceServer.Add(ctx,req) }")
-		g.P("func (s notify", name, "Guard) Get(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"GetRequest"), ") (*", root.Ident(name), ", error) { return nil,", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("PermissionDenied"), ",\"notification records are read through NotificationService\") }")
+		if r.HasAdd() {
+			g.P("func (s notify", name, "Guard) Add(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"AddRequest"), ") (*", root.Ident(name), ", error) {")
+			g.P("if !isNotifyWrite(ctx) { return nil,", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("PermissionDenied"), ",\"notification records are written through NotificationService\") }; return s.", name, "ServiceServer.Add(ctx,req) }")
+		}
+		if r.HasGet() {
+			g.P("func (s notify", name, "Guard) Get(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(name+"GetRequest"), ") (*", root.Ident(name), ", error) { return nil,", pkgStatus.Ident("Error"), "(", pkgCodes.Ident("PermissionDenied"), ",\"notification records are read through NotificationService\") }")
+		}
 	}
 }
 
@@ -265,11 +275,17 @@ func(s notificationStore) Receipts(ctx {{ctx "Context"}},tenant,reader {{id "Id"
     rows,err:=s.db.{{.Receipt}}.Query().Where({{if not .Global}}{{cp "TenantIdEQ"}}(tenant.Uuid()),{{end}}{{cp "ReaderIdEQ"}}(reader.Uuid()),{{cp "NotificationIdIn"}}(keys...)).All(ctx);if err!=nil{return nil,err}
     values:=make([]{{n "Receipt"}},len(rows));for i,row:=range rows{v,err:=notificationReceiptRow(row.Proto());if err!=nil{return nil,err};values[i]=v};return values,nil
 }
+// InsertReceipt writes the receipt itself, through the client and past the
+// servers: it has no RPC, and is kept off the trail (payday#197). Mark holds
+// what the servers would have -- the transaction it is in, the locks that
+// keep one receipt per reader, the reader's tenant -- and notes the hint its
+// reader's other sessions are owed.
 func(s notificationStore) InsertReceipt(ctx {{ctx "Context"}},v {{n "Receipt"}})({{n "Receipt"}},error){
-    b:={{receipt "AddRequest_builder"}}{ {{if not .Global}}TenantId:v.Tenant.Bytes(),{{end}}NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DateRead:{{timepb "New"}}(v.DateRead),DateCreated:{{timepb "New"}}(v.DateCreated)}
-    if !v.ID.IsZero(){b.Id=v.ID.Bytes()}
-    row,err:=s.stack.{{.Receipt}}().Add(withNotifyWrite(ctx),b.Build());if err!=nil{return {{n "Receipt"}}{},err}
-    key,err:={{id "From"}}(row.GetId());if err!=nil{return {{n "Receipt"}}{},err}
+    key:=v.ID;if key.IsZero(){key={{id "New"}}({{.Receipt}}Domain)}
+    _,err:=s.db.{{.Receipt}}.Create().SetId(key.Uuid()){{if not .Global}}.SetTenantId(v.Tenant.Uuid()){{end}}.SetNotificationId(v.Notification.Uuid()).SetReaderId(v.Reader.Uuid()).SetDateRead(v.DateRead).SetDateUpdated(v.DateUpdated).SetDateCreated(v.DateCreated).Save(ctx)
+    if err!=nil{return {{n "Receipt"}}{},err}
+    // Read the stored value, as Insert does: PostgreSQL keeps the precision it
+    // keeps, and the first Mark answers with what every later Read will.
     saved,err:=s.db.{{.Receipt}}.Query().Where({{cp "IdEQ"}}(key.Uuid())).Only(ctx);if err!=nil{return {{n "Receipt"}}{},err}
     return notificationReceiptRow(saved.Proto())
 }
@@ -279,6 +295,10 @@ func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{
         row,err:=s.Find(ctx,change.Key);if {{status "Code"}}(err)=={{codes "NotFound"}}{return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
         return {{n "Hint"}}{Tenant:row.Tenant,Topics:[]{{n "Topic"}}{row.Topic}},true,nil
     case {{.Receipt}}Domain:
+        // A receipt this build writes is no server's write, and its hint is
+        // the Signal Mark noted, which Service reads without coming here. A
+        // replica of a build before payday#197 wrote its receipts through the
+        // generated Add, whose recorder notes the row by its key alone.
         row,err:=s.db.{{.Receipt}}.Query().Where({{cp "IdEQ"}}(change.Key.Uuid())).Only(ctx)
         if {{e "IsNotFound"}}(err){return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
         receipt,err:=notificationReceiptRow(row.Proto());if err!=nil{return {{n "Hint"}}{},false,err}

@@ -17,6 +17,13 @@ import (
 // key-only changes because they carry no Resource envelope.
 const InvalidationMethod = "/payday.notify/internal/Invalidate"
 
+// ReceiptMethod identifies the hint Mark notes of a receipt it wrote: its
+// tenant, its topic and its reader, carried in the change's Signal. A receipt
+// is notify's own write and no server's (payday#197), so nothing else notes
+// it. No RPC has this name either, and ResourceService ignores the change for
+// the reason it ignores an invalidation.
+const ReceiptMethod = "/payday.notify/internal/Receipt"
+
 func (s *Service) Listen(ctx context.Context, req ListenRequest, send func(Event) error) error {
 	topics, reader, err := s.scope(ctx, req.Tenant, req.Topics)
 	if err != nil {
@@ -50,9 +57,9 @@ func (s *Service) Listen(ctx context.Context, req ListenRequest, send func(Event
 			for _, change := range event.Changes {
 				var h Hint
 				var relevant bool
-				if change.By == InvalidationMethod {
+				if change.By == InvalidationMethod || change.By == ReceiptMethod {
 					if err := json.Unmarshal(change.Signal, &h); err != nil {
-						return status.Error(codes.Internal, "invalid notification policy hint")
+						return status.Error(codes.Internal, "invalid notification hint")
 					}
 					relevant = true
 				} else {

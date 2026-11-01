@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strings"
@@ -367,6 +368,9 @@ func (s *Service) Mark(ctx context.Context, req MarkRequest) (Marked, error) {
 				if err != nil {
 					return err
 				}
+				if err := at.noteReceipt(ctx, r, v.Topic); err != nil {
+					return err
+				}
 			}
 			result.Items[i] = r
 		}
@@ -376,6 +380,26 @@ func (s *Service) Mark(ctx context.Context, req MarkRequest) (Marked, error) {
 		return Marked{}, err
 	}
 	return result, nil
+}
+
+// noteReceipt tells the watch of a receipt Mark wrote, for the reader's other
+// sessions: in the transaction that wrote it, so that it is published once
+// that commits and not at all when it does not.
+//
+// A receipt is no server's write (payday#197), so no recorder notes it: not
+// the watch's, and not the outbox's either. The hint travels in the change's
+// Signal, as a policy invalidation does, so a listener on any replica reads it
+// without reading the receipt back, and only the reader it names is told.
+func (s *Service) noteReceipt(ctx context.Context, r Receipt, topic Topic) error {
+	if s.watch == nil {
+		return nil
+	}
+	signal, err := json.Marshal(Hint{Tenant: r.Tenant, Topics: []Topic{topic}, Reader: r.Reader})
+	if err != nil {
+		return err
+	}
+	s.watch.Note(ctx, watch.Change{Method: watch.CallMethod(ctx, ReceiptMethod), By: ReceiptMethod, Key: r.ID, Signal: signal})
+	return nil
 }
 
 // Count evaluates the complete reader selection in the store's single aggregate

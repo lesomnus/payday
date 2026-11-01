@@ -76,13 +76,14 @@ func (s *state) copy() *state {
 // This fake exercises the runtime's transaction and policy boundaries. It is
 // deliberately not a SQL implementation or evidence for PostgreSQL behavior.
 type memory struct {
-	data        *state
-	latest      *memoryTx
-	rebound     dialect.Driver
-	commitError error
-	insertError error
-	selected    int
-	watch       *watch.Watch
+	data         *state
+	latest       *memoryTx
+	rebound      dialect.Driver
+	commitError  error
+	insertError  error
+	receiptError error
+	selected     int
+	watch        *watch.Watch
 }
 
 type memoryTx struct {
@@ -224,13 +225,13 @@ func (s store) Receipts(_ context.Context, tenant, reader pdid.Id, ids []pdid.Id
 	}
 	return out, nil
 }
+
+// InsertReceipt notes nothing, as the generated store does not: a receipt is
+// no server's write, and Service notes its hint itself (payday#197).
 func (s store) InsertReceipt(ctx context.Context, v notify.Receipt) (notify.Receipt, error) {
 	v.ID = pdid.New(receiptDomain)
 	s.data.receipts[[2]pdid.Id{v.Notification, v.Reader}] = v
-	if s.owner.watch != nil {
-		s.owner.watch.Note(ctx, watch.Change{By: "test-receipt", Key: v.ID})
-	}
-	return v, nil
+	return v, s.owner.receiptError
 }
 func (s store) Change(_ context.Context, change watch.Change) (notify.Hint, bool, error) {
 	if change.By != "test-hint" {
@@ -624,4 +625,69 @@ func TestListenReportsBacklogAndDisabledBroker(t *testing.T) {
 	}
 	close(resume)
 	expectCode(t, receive(t, done), codes.ResourceExhausted)
+}
+
+// TestMarkNotesItsReceiptForTheReaderAfterCommit: a receipt is no server's
+// write, so no recorder notes it, and Mark notes its hint itself -- in the
+// transaction, published once it commits and not when it fails, carrying the
+// reader so that nobody else's session is told (payday#197).
+func TestMarkNotesItsReceiptForTheReaderAfterCommit(t *testing.T) {
+	f := setup(t)
+	v := f.add(t, "one")
+	changes, stop := f.watch.Subscribe()
+	defer stop()
+
+	f.store.owner.commitError = errors.New("commit refused")
+	_, err := markOne(f.s, f.ctx, f.tenant, v.ID)
+	if err == nil {
+		t.Fatal("a refused commit marked")
+	}
+	f.store.owner.commitError = nil
+	f.store.owner.receiptError = errors.New("insert refused")
+	_, err = markOne(f.s, f.ctx, f.tenant, v.ID)
+	if err == nil {
+		t.Fatal("a refused receipt marked")
+	}
+	f.store.owner.receiptError = nil
+	select {
+	case event := <-changes:
+		t.Fatalf("a Mark that failed published %+v", event)
+	default:
+	}
+
+	r, err := markOne(f.s, f.ctx, f.tenant, v.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var event watch.Event
+	select {
+	case event = <-changes:
+	default:
+		t.Fatal("a committed receipt was not published")
+	}
+	if len(event.Changes) != 1 {
+		t.Fatalf("one receipt published %d changes", len(event.Changes))
+	}
+	c := event.Changes[0]
+	if c.By != notify.ReceiptMethod || c.Key != r.ID || c.Resource != nil {
+		t.Fatalf("the receipt's change is %+v", c)
+	}
+	var h notify.Hint
+	if err := json.Unmarshal(c.Signal, &h); err != nil {
+		t.Fatal(err)
+	}
+	if h.Tenant != f.tenant || h.Reader != f.reader || !slices.Equal(h.Topics, []notify.Topic{f.topic}) {
+		t.Fatalf("the receipt's hint is %+v", h)
+	}
+
+	// A Mark of what the reader read already writes nothing, and says nothing.
+	again, err := markOne(f.s, f.ctx, f.tenant, v.ID)
+	if err != nil || again != r {
+		t.Fatalf("marking again: %+v, %v", again, err)
+	}
+	select {
+	case event := <-changes:
+		t.Fatalf("a receipt already there was published again: %+v", event)
+	default:
+	}
 }

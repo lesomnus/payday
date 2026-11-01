@@ -107,16 +107,19 @@ inaccessible notification is answered as `NotFound`.
 
 The generated storage paths are private. Application calls use
 `NotificationService`, whose policy checks also cover identifier lookup and
-receipt writes. The generated Sink seals private records even when an outer
-Audit layer is omitted. Use the normal generated stack and recording hooks;
-bypassing it through another exposed store would remove that boundary.
-Neither Batch nor `ResourceService.Watch` is a second public path to
-notification contents. A client-supplied Topic or CEL filter is not authorization.
+receipt writes. The generated Sink seals the notification record even when an
+outer Audit layer is omitted, and the receipt record has no RPC at all: `Mark`
+writes it, past the servers. Use the normal generated stack and recording
+hooks for the rest; bypassing it through another exposed store would remove
+that boundary. Neither Batch nor `ResourceService.Watch` is a second public
+path to notification contents. A client-supplied Topic or CEL filter is not
+authorization.
 
 `notify.Policy` governs `NotificationService`; it does not filter audit or outbox
-provenance. Audit RPCs can reveal publication and reader metadata; restrict
-them to operators through the app's method policy. Outbox has no public RPCs;
-keep its storage and drainer access inside the deployment permission boundary.
+provenance. Audit RPCs can reveal publication metadata -- a receipt is not on
+the trail, so who read what is not among it; restrict them to operators
+through the app's method policy. Outbox has no public RPCs; keep its storage
+and drainer access inside the deployment permission boundary.
 
 ## Stored notification and receipt
 
@@ -161,6 +164,43 @@ removes the corresponding cached item; a different reader has a different cache.
 Receipts do not prolong access. If the app withdraws Topic access, a receipt
 does not entitle its reader to retrieve the notification. Retention and source
 deletion policies belong to the app and must preserve that boundary.
+
+### A receipt is kept off the trail
+
+A publication is written through the app's generated servers, so it is on the
+trail, versioned, and noted to the Watch and the outbox as every write is. A
+receipt is not (payday#197). Its record has no RPC; `Mark` writes it through
+the ent client, in the transaction it reads and locks its notifications in,
+and its kind says `trail: {off: {why: ...}}`. A receipt records that one reader
+read one notification. There is one for every first read, so a line of the
+trail for each made the trail grow with reading rather than with anything
+anybody decided, and kept every person's reading history -- an identifier and
+a time per read -- for as long as the trail is kept, which is longer than the
+receipt is.
+
+Everything else a receipt is held to stays where it was: the tenant wall, one
+receipt per `(notification, reader)` by a unique index, `Mark` atomic and in
+request order, and the first read kept under retries and concurrent calls.
+`Mark` notes the hint the reader's other sessions are owed in its transaction,
+carried in the change itself (`notify.ReceiptMethod`), and the Watch publishes
+it once that commits.
+
+What being off the trail costs:
+
+- **No outbox for a receipt's hint.** A publication's change reaches every
+  recorder the stack has, the outbox's included, so a hint survives a process
+  that stops between the commit and the publish. A receipt's reaches the Watch
+  alone. If the process stops there, the reader's other sessions -- on other
+  replicas, since this one's went with it -- learn of the receipt when they next
+  query: on another hint, or on reconnecting. Until then they show it unread,
+  and they are never shown it unread after a query that saw it.
+- **The trail says nothing of reading.** Who read a notification, and when, is
+  the receipt, and goes when the receipt goes.
+- **A check of the rows does not read receipts.** `pd.Digests` reads every kind
+  but the ones kept off the trail, and says which those are and why. A receipt
+  row added in the database past `Mark` is not found by it. A receipt holds no
+  secret and lets nobody in; the most one can do is show a notification as
+  read to its reader.
 
 ## RPC contract
 
@@ -243,8 +283,9 @@ An app's domain change and notification publication can use the same database
 transaction. Begin the transaction and use the notification server's
 `WithDriver` method to join it. This uses payday's existing `enttx.Rebind` and
 layer `WithDriver` pattern; sharing a context alone does not share a transaction.
-Notification and Receipt mutations use the recording path so that audit,
-version, and change records commit with the mutation.
+A publication uses the recording path, so its audit, version and change
+records commit with it; a receipt is written by `Mark` in the same transaction,
+off the trail, with its change hint noted there (see above).
 
 Database-backed policy must join that driver too. Implement `notify.PolicyBinder`
 instead of closing over a database client that always uses the original driver.

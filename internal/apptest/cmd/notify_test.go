@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/auth"
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/config/brokerpg"
@@ -25,6 +28,7 @@ import (
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
+	"github.com/lesomnus/payday/trail"
 	"github.com/lesomnus/z"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -242,6 +246,34 @@ func TestNotifyStoresOnePublicationAndLazyIndependentReceipts(t *testing.T) {
 	x.True(proto.Equal(first, ownerPage.GetItems()[0].GetReceipt()))
 	key := mustId(x, v.GetId())
 	x.Equal(1, f.b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(key.Uuid())).CountX(t.Context()), "publication uses the ordinary recording path")
+	for _, r := range []*app.NotificationReceipt{first, issuerReceipt, robotReceipt} {
+		x.Zero(f.b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(mustId(x, r.GetId()).Uuid())).CountX(t.Context()), "a receipt is kept off the trail")
+	}
+}
+
+// TestNotifyReceiptsAreKeptOffTheTrail: a receipt is notify's own write and
+// no server's (payday#197). Its first read is on no line of the trail, a check
+// of the rows does not read its kind and says why, and what the check does
+// read -- the publication -- is as the trail says.
+func TestNotifyReceiptsAreKeptOffTheTrail(t *testing.T) {
+	x := require.New(t)
+	b, _, d := digesting(t)
+	f := notificationSetup(t, b)
+	ctx := f.b.travels(t.Context())
+
+	v, err := f.client.Add(ctx, f.add("checked"))
+	x.NoError(err)
+	r, err := notificationMarked(f.client.Mark(ctx, app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
+	x.NoError(err)
+	x.Zero(b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(mustId(x, r.GetId()).Uuid())).CountX(t.Context()))
+	x.Equal(1, b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(mustId(x, v.GetId()).Uuid())).CountX(t.Context()))
+
+	rows, err := pd.Digests(t.Context(), b.Ent, d, trail.Policy{})
+	x.NoError(err)
+	x.True(rows.Ok(), "%+v", rows)
+	x.True(slices.ContainsFunc(rows.Skipped, func(v audit.Skipped) bool {
+		return v.Kind == "notification-receipt" && strings.Contains(v.Why, "reading history")
+	}), "the check does not say it left receipts out, and why: %+v", rows.Skipped)
 }
 
 func TestNotifyPagesExplicitTopicsAndBindsCursors(t *testing.T) {
@@ -320,13 +352,12 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 	_, err = f.b.batched(t, closedGuard).Do(f.b.as(t.Context()), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{op(t, app.NotificationRecordService_Add_FullMethodName, request)}}.Build())
 	x.Equal(codes.PermissionDenied, status.Code(err), "Batch must enter the same sealed record path")
 
-	receipt, err := notificationMarked(f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
+	_, err = notificationMarked(f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
-	forged := app.NotificationReceiptRecordAddRequest_builder{TenantId: f.b.Tenant.Bytes(), NotificationId: v.GetId(), ReaderId: f.outside.GetId(), DateRead: receipt.GetDateRead()}.Build()
-	_, err = f.b.Walled.NotificationReceiptRecord().Add(f.b.as(t.Context()), forged)
-	x.Equal(codes.PermissionDenied, status.Code(err), "raw receipt creation must not choose another reader")
-	_, err = f.b.Walled.NotificationReceiptRecord().Get(f.b.as(t.Context()), app.NotificationReceiptRecordGetRequest_builder{Ref: app.NotificationReceiptRecordRef_builder{Id: receipt.GetId()}.Build()}.Build())
-	x.Equal(codes.PermissionDenied, status.Code(err))
+	// A receipt has no RPC to forge one by or read one with, sealed or not:
+	// Mark writes it past the servers (payday#197).
+	x.Empty(app.NotificationReceiptRecordService_ServiceDesc.Methods, "a receipt record has an RPC of its own")
+	x.Empty(app.NotificationReceiptRecordService_ServiceDesc.Streams, "a receipt record has a stream of its own")
 	project := pd.ResourceProjector(f.b.Ent, pd.Wall(), closedGuard)
 	n := f.b.Ent.NotificationRecord.Query().OnlyX(t.Context()).Proto()
 	public, err := project(f.b.as(t.Context()), n)
@@ -344,10 +375,6 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 	_, err = sink.NotificationRecord().Add(f.b.as(t.Context()), request)
 	x.Equal(codes.PermissionDenied, status.Code(err))
 	_, err = sink.NotificationRecord().Get(f.b.as(t.Context()), app.NotificationRecordGetRequest_builder{Ref: app.NotificationRecordRef_builder{Id: v.GetId()}.Build()}.Build())
-	x.Equal(codes.PermissionDenied, status.Code(err))
-	_, err = sink.NotificationReceiptRecord().Add(f.b.as(t.Context()), forged)
-	x.Equal(codes.PermissionDenied, status.Code(err))
-	_, err = sink.NotificationReceiptRecord().Get(f.b.as(t.Context()), app.NotificationReceiptRecordGetRequest_builder{Ref: app.NotificationReceiptRecordRef_builder{Id: receipt.GetId()}.Build()}.Build())
 	x.Equal(codes.PermissionDenied, status.Code(err))
 }
 
