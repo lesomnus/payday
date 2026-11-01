@@ -898,7 +898,11 @@ and the trail's `c.Spin.Build(ctx, c.Db)` in `cmd.Build`, the loops' in the
 serve command, after `Telemetry` — because what a broker or a lease says later,
 a listener that stopped or a hold lost with its connection, is said there. A
 registration made with `config.RegisterBroker` or `config.RegisterLease` is
-handed that context first.
+handed that context first. Each dials as it is built, and that first dial is
+waited for as the database's is: called again for up to ten seconds while what
+it answers is that nothing could be reached
+([a database that cannot be reached yet](#a-database-that-cannot-be-reached-yet)),
+so a registration that answers an error leaves nothing open behind it.
 
 ## 6. Background work
 
@@ -959,6 +963,50 @@ db, dialect, err := c.Db.Open(ctx)
 drv := entsql.OpenDB(dialect, db)
 client := ent.NewClient(ent.Driver(drv))
 ```
+
+### A database that cannot be reached yet
+
+`Open` pings before it answers, so a process pointed at a database that is not
+there stops as it starts, rather than failing at its first request. A ping that
+reached nothing is tried again first, for up to ten seconds: after 200ms, then
+twice as long each time up to 2s. That covers the first second of a pod in a
+cluster that enforces NetworkPolicy, whose connections are refused until the
+policy covering it is in place -- which is what failed a `migrate` init
+container once on every rollout -- as well as a proxy started beside the app
+and PostgreSQL finishing its own start (`57P03`). Whatever opens the database
+through `Open` waits the same: `serve` and `init`, and an app's own commands,
+a `migrate` among them.
+
+Each refusal is a warning in the log the context carries, with the attempt and
+the wait before the next. A database that came up says so, and giving up is an
+error:
+
+```
+level=WARN msg="db: cannot be reached; trying again" attempt=1 wait=200ms err="... connect: connection refused"
+level=WARN msg="db: cannot be reached; trying again" attempt=2 wait=400ms err="..."
+level=WARN msg="db: cannot be reached; trying again" attempt=3 wait=800ms err="..."
+level=INFO msg="db: reached" attempts=4 after=1.41s
+```
+
+```
+level=ERROR msg="db: cannot be reached; giving up" attempts=9 after=10.004s err="..."
+```
+
+What the database answered is returned at once, and nothing is logged: a
+wrong password, a database that does not exist, a certificate, a name that
+resolves to nothing, a server that will not speak TLS, and every error from
+SQLite, which has no network to wait for. A driver that tried several
+addresses is waited for only when none of them answered -- pgx tries every
+address a name has, and each twice under `sslmode=prefer`. A wrong port is
+refused just as a policy refuses, so it costs the ten seconds before the
+process stops, and every line says why.
+
+It is the first contact only. A server that loses its database later is told so
+by the statement that finds out, as before, and the broker and the lease that
+dial as a server is built are given the same moment under their own names
+(`watch.broker: postgres`, `spin.lease: postgres`). There is nothing to
+configure: a database that is down for longer than a moment is the
+orchestrator's to wait for, with a restart that is seen as one.
 
 ### Migrations
 

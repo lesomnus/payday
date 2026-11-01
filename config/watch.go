@@ -131,9 +131,15 @@ var brokers = map[string]func(ctx context.Context, c WatchConfig, db DbConfig) (
 // installs. A broker outlives the call, so it holds on to the values and not
 // to the cancellation ([context.WithoutCancel]).
 //
-// The function is called once, when a server is built. A broker that cannot
-// reach whatever it publishes to answers with an error there rather than
-// panicking later, which is the same bargain [DbConfig.Open] makes.
+// The function is called when a server is built. A broker that cannot reach
+// whatever it publishes to answers with an error there rather than panicking
+// later, which is the same bargain [DbConfig.Open] makes -- and it is given the
+// same moment: an error that says nothing could be reached, a connection
+// refused or one that timed out, has the function called again for up to ten
+// seconds before the server is refused. So a function that answers an error
+// leaves nothing open behind it, since it may be called again; and a broker
+// that dials once to check, as `watchpg` does, needs nothing more to be waited
+// for at start.
 func RegisterBroker(name string, build func(ctx context.Context, c WatchConfig, db DbConfig) (watch.Broker, error)) {
 	brokers[name] = build
 }
@@ -191,7 +197,14 @@ func (c WatchConfig) Build(ctx context.Context, db DbConfig) (watch.Broker, erro
 			c.Broker, strings.Join(Brokers(), ", "))
 	}
 
-	b, err := build(ctx, c, db)
+	// Its first contact, waited for as the database's is: the broker's dial
+	// comes after the database's in the same moment, and it may name an
+	// address of its own (`watch.dsn`).
+	var b watch.Broker
+	err := reach(ctx, "watch.broker: "+c.Broker, func(ctx context.Context) (err error) {
+		b, err = build(ctx, c, db)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("watch.broker: %s: %w", c.Broker, err)
 	}

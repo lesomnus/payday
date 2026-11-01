@@ -67,7 +67,8 @@ var leases = map[string]func(ctx context.Context, c SpinConfig, db DbConfig) (sp
 // It is told what [RegisterBroker] is told, and for its reasons: the context
 // the serve command runs under -- what it dials under, and the log it says a
 // lost hold in -- its own configuration, and the database the app is on, which
-// the first lease anybody writes rides.
+// the first lease anybody writes rides. And it is called again as a broker's
+// is, for a moment, while what it answers is that nothing could be reached.
 func RegisterLease(name string, build func(ctx context.Context, c SpinConfig, db DbConfig) (spin.Lease, error)) {
 	leases[name] = build
 }
@@ -115,7 +116,12 @@ func (c SpinConfig) Build(ctx context.Context, db DbConfig) (spin.Lease, error) 
 			c.Lease, strings.Join(Leases(), ", "))
 	}
 
-	l, err := build(ctx, c, db)
+	// Its first contact, waited for as the database's is; see [RegisterLease].
+	var l spin.Lease
+	err := reach(ctx, "spin.lease: "+c.Lease, func(ctx context.Context) (err error) {
+		l, err = build(ctx, c, db)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("spin.lease: %s: %w", c.Lease, err)
 	}
