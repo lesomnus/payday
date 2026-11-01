@@ -25,6 +25,13 @@ const (
 
 // NotificationReceiptRecord is created only on the reader's first Mark. Its
 // reader identifier is polymorphic: it need not name a Holder.
+//
+// It is notify's own write and no server's (payday#197). It has no RPC, and
+// Mark writes it through the ent client in the transaction it reads its
+// notifications in. So no recorder sees it: not the trail's, which `trail:
+// off` says, nor the watch's or the outbox's. Mark notes the hint the
+// reader's other sessions are owed itself, and it is published once that
+// transaction commits.
 type NotificationReceiptRecord struct {
 	state                     protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id             []byte                 `protobuf:"bytes,1,opt,name=id"`
@@ -215,7 +222,7 @@ var File_app_payday_notification_receipt_proto protoreflect.FileDescriptor
 
 const file_app_payday_notification_receipt_proto_rawDesc = "" +
 	"\n" +
-	"%app/payday/notification_receipt.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xb3\x04\n" +
+	"%app/payday/notification_receipt.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x94\x06\n" +
 	"\x19NotificationReceiptRecord\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12#\n" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12/\n" +
@@ -224,13 +231,14 @@ const file_app_payday_notification_receipt_proto_rawDesc = "" +
 	"\tdate_read\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\bdateRead\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\xa9\x01\xca\xfc\x15v\x12\x06\x82\x01\x00\x8a\x01\x00\x1a/\x12\areceipt\x1a\x13\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x8a\x03\xca\xfc\x15n\x1a/\x12\areceipt\x1a\x13\n" +
 	"\x0fnotification_id\x10\b\x1a\r\n" +
 	"\treader_id\x10\t0\x01\x1a;\x12\x06reader\x1a\r\n" +
 	"\ttenant_id\x10\x02\x1a\r\n" +
 	"\treader_id\x10\t\x1a\x13\n" +
-	"\x0fnotification_id\x10\b\x8a\xbb\x16+\b)\x12\x14notification-receiptB\x02\n" +
-	"\x00H\f\"\v\x12\ttenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x0fnotification_id\x10\b\x8a\xbb\x16\x93\x02\b)\x12\x14notification-receiptB\x02\n" +
+	"\x00H\fR\xe5\x01\x12\xe2\x01\n" +
+	"\xdf\x01a reader's first read of a notification, written once by Mark and never changed: there are as many as there are reads, and a line of the trail for each would keep everybody's reading history for as long as the trail is kept\"\v\x12\ttenant_idB2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_payday_notification_receipt_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_app_payday_notification_receipt_proto_goTypes = []any{

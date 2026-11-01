@@ -6128,33 +6128,6 @@ func (s accountsHolder) Memberships(ctx context.Context, req *apptest.HolderMemb
 	return s.HolderServiceServer.Memberships(ctx, req)
 }
 
-func (s Gate) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
-	return accountsNotificationReceiptRecord{s.Next().NotificationReceiptRecord()}
-}
-
-// accountsNotificationReceiptRecord is NotificationReceiptRecordService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsNotificationReceiptRecord struct {
-	apptest.NotificationReceiptRecordServiceServer
-}
-
-func (s accountsNotificationReceiptRecord) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
-	if err := gate.AsAccount(ctx, apptest.NotificationReceiptRecordService_Add_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.NotificationReceiptRecordServiceServer.Add(ctx, req)
-}
-
-func (s accountsNotificationReceiptRecord) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
-	if err := gate.AsAccount(ctx, apptest.NotificationReceiptRecordService_Get_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.NotificationReceiptRecordServiceServer.Get(ctx, req)
-}
-
 func (s Gate) NotificationRecord() apptest.NotificationRecordServiceServer {
 	return accountsNotificationRecord{s.Next().NotificationRecord()}
 }
@@ -6478,29 +6451,6 @@ func (s notifyNotificationRecordGuard) Add(ctx context.Context, req *apptest.Not
 	return s.NotificationRecordServiceServer.Add(ctx, req)
 }
 func (s notifyNotificationRecordGuard) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
-	return nil, status.Error(codes.PermissionDenied, "notification records are read through NotificationService")
-}
-
-// The base Sink seals these paths too, so forgetting an outer layer
-// cannot expose notification contents or allow forged receipt owners.
-func (s Sink) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
-	return notifyNotificationReceiptRecordGuard{s.Server.NotificationReceiptRecord()}
-}
-func (s Audit) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
-	return notifyNotificationReceiptRecordGuard{s.Next().NotificationReceiptRecord()}
-}
-
-type notifyNotificationReceiptRecordGuard struct {
-	apptest.NotificationReceiptRecordServiceServer
-}
-
-func (s notifyNotificationReceiptRecordGuard) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
-	if !isNotifyWrite(ctx) {
-		return nil, status.Error(codes.PermissionDenied, "notification records are written through NotificationService")
-	}
-	return s.NotificationReceiptRecordServiceServer.Add(ctx, req)
-}
-func (s notifyNotificationReceiptRecordGuard) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
 	return nil, status.Error(codes.PermissionDenied, "notification records are read through NotificationService")
 }
 
@@ -6885,7 +6835,6 @@ func added(by string) bool {
 		apptest.JobService_Add_FullMethodName,
 		apptest.JointService_Add_FullMethodName,
 		apptest.MachineService_Add_FullMethodName,
-		apptest.NotificationReceiptRecordService_Add_FullMethodName,
 		apptest.NotificationRecordService_Add_FullMethodName,
 		apptest.PairingService_Add_FullMethodName,
 		apptest.ReadingService_Add_FullMethodName,
@@ -7195,29 +7144,6 @@ func subject(ctx context.Context, s bare.Server, key pdid.Id, image proto.Messag
 		}
 
 		k, err := entuuid.FromBytes(row.GetTenant().GetId())
-		if err != nil {
-			return uuid.Nil(), nil, err
-		}
-
-		return k, b, nil
-
-	case NotificationReceiptRecordDomain:
-		row, ok := image.(*apptest.NotificationReceiptRecord)
-		if !ok {
-			return uuid.Nil(), []byte{}, nil
-		}
-
-		b := []byte{}
-		if keep {
-			kept := row
-			v, err := proto.Marshal(kept)
-			if err != nil {
-				return uuid.Nil(), nil, err
-			}
-			b = v
-		}
-
-		k, err := entuuid.FromBytes(row.GetTenantId())
 		if err != nil {
 			return uuid.Nil(), nil, err
 		}
@@ -7862,6 +7788,7 @@ func Digests(ctx context.Context, db *ent.Client, d *audit.Digest, p trail.Polic
 	}
 
 	out := audit.Rows{Skipped: []audit.Skipped{
+		{Kind: "notification-receipt", Why: "a reader's first read of a notification, written once by Mark and never changed: there are as many as there are reads, and a line of the trail for each would keep everybody's reading history for as long as the trail is kept"},
 		{Kind: "pulse", Why: "a heartbeat each process writes every few seconds; a record of each is noise"},
 	}}
 	if err := audit.CheckKind(ctx, d, checkedCell(db), archived, &out); err != nil {
@@ -7890,9 +7817,6 @@ func Digests(ctx context.Context, db *ent.Client, d *audit.Digest, p trail.Polic
 	}
 	if err := audit.CheckKind(ctx, d, checkedMachine(db), archived, &out); err != nil {
 		return out, fmt.Errorf("machine: %w", err)
-	}
-	if err := audit.CheckKind(ctx, d, checkedNotificationReceiptRecord(db), archived, &out); err != nil {
-		return out, fmt.Errorf("notification-receipt: %w", err)
 	}
 	if err := audit.CheckKind(ctx, d, checkedNotificationRecord(db), archived, &out); err != nil {
 		return out, fmt.Errorf("notification: %w", err)
@@ -8344,52 +8268,6 @@ func checkedMachine(db *ent.Client) audit.Kind {
 			var out map[pdid.Id]*audit.Recorded
 			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
 				rows, err := rowsMachine(ctx, db, entMachine.IdIn(uuids(ids)...))
-				if err != nil {
-					return err
-				}
-
-				out, err = goneOf(ctx, db, ids, rows)
-				return err
-			})
-
-			return out, err
-		},
-	}
-}
-
-// checkedNotificationReceiptRecord is what a check of the rows reads of the notification-receipt kind.
-func checkedNotificationReceiptRecord(db *ent.Client) audit.Kind {
-	read := func(ctx context.Context, ps ...predicate.NotificationReceiptRecord) (audit.Page, error) {
-		var out audit.Page
-		err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-			rows, err := rowsNotificationReceiptRecord(ctx, db, ps...)
-			if err != nil {
-				return err
-			}
-
-			recorded, err := newestDigests(ctx, db, objects(rows))
-			out = audit.Page{Rows: rows, Recorded: recorded}
-			return err
-		})
-
-		return out, err
-	}
-
-	return audit.Kind{
-		Domain: NotificationReceiptRecordDomain,
-		After: func(ctx context.Context, after pdid.Id) (audit.Page, error) {
-			return read(ctx, entNotificationReceiptRecord.IdGT(uuid.UUID(after)))
-		},
-		Of: func(ctx context.Context, ids []pdid.Id) (audit.Page, error) {
-			return read(ctx, entNotificationReceiptRecord.IdIn(uuids(ids)...))
-		},
-		Trail: func(ctx context.Context, yield func([]pdid.Id) error) error {
-			return trailObjects(ctx, db, NotificationReceiptRecordDomain, yield)
-		},
-		Gone: func(ctx context.Context, ids []pdid.Id) (map[pdid.Id]*audit.Recorded, error) {
-			var out map[pdid.Id]*audit.Recorded
-			err := snapshot(ctx, db, func(ctx context.Context, db *ent.Client) error {
-				rows, err := rowsNotificationReceiptRecord(ctx, db, entNotificationReceiptRecord.IdIn(uuids(ids)...))
 				if err != nil {
 					return err
 				}
@@ -9007,7 +8885,6 @@ func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) (
 // a Get reads it.
 func rowsNotificationReceiptRecord(ctx context.Context, db *ent.Client, ps ...predicate.NotificationReceiptRecord) ([]audit.Live, error) {
 	q := db.NotificationReceiptRecord.Query().Where(ps...)
-	bare.NotificationReceiptRecordSelectInit(q, nil)
 
 	vs, err := q.Order(entNotificationReceiptRecord.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -9461,8 +9338,6 @@ func record(ctx context.Context, db *ent.Client, content audit.Contents, action 
 				rows, err = rowsJoint(ctx, db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
 				rows, err = rowsMachine(ctx, db, entMachine.IdIn(uuids(page)...))
-			case NotificationReceiptRecordDomain:
-				rows, err = rowsNotificationReceiptRecord(ctx, db, entNotificationReceiptRecord.IdIn(uuids(page)...))
 			case NotificationRecordDomain:
 				rows, err = rowsNotificationRecord(ctx, db, entNotificationRecord.IdIn(uuids(page)...))
 			case PairingDomain:
@@ -9613,8 +9488,6 @@ func (s trailStore) Carry(ctx context.Context, digest *audit.Digest, d pdid.Doma
 			rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(ids)...))
 		case MachineDomain:
 			rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(ids)...))
-		case NotificationReceiptRecordDomain:
-			rows, err = rowsNotificationReceiptRecord(ctx, s.db, entNotificationReceiptRecord.IdIn(uuids(ids)...))
 		case NotificationRecordDomain:
 			rows, err = rowsNotificationRecord(ctx, s.db, entNotificationRecord.IdIn(uuids(ids)...))
 		case PairingDomain:
@@ -10605,25 +10478,6 @@ func (s interceptHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerS
 func (s interceptHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
 		apptest.HolderService_Memberships_FullMethodName, req, s.HolderServiceServer.Memberships)
-}
-
-func (s Intercept) NotificationReceiptRecord() apptest.NotificationReceiptRecordServiceServer {
-	return interceptNotificationReceiptRecord{s, s.Next().NotificationReceiptRecord()}
-}
-
-type interceptNotificationReceiptRecord struct {
-	Intercept
-	apptest.NotificationReceiptRecordServiceServer
-}
-
-func (s interceptNotificationReceiptRecord) Add(ctx context.Context, req *apptest.NotificationReceiptRecordAddRequest) (*apptest.NotificationReceiptRecord, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.NotificationReceiptRecordServiceServer,
-		apptest.NotificationReceiptRecordService_Add_FullMethodName, req, s.NotificationReceiptRecordServiceServer.Add)
-}
-
-func (s interceptNotificationReceiptRecord) Get(ctx context.Context, req *apptest.NotificationReceiptRecordGetRequest) (*apptest.NotificationReceiptRecord, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.NotificationReceiptRecordServiceServer,
-		apptest.NotificationReceiptRecordService_Get_FullMethodName, req, s.NotificationReceiptRecordServiceServer.Get)
 }
 
 func (s Intercept) NotificationRecord() apptest.NotificationRecordServiceServer {
@@ -12113,8 +11967,6 @@ func (s pastStore) TenantOf(ctx context.Context, ids []pdid.Id) (map[pdid.Id]pdi
 				rows, err = rowsJoint(ctx, s.db, entJoint.IdIn(uuids(page)...))
 			case MachineDomain:
 				rows, err = rowsMachine(ctx, s.db, entMachine.IdIn(uuids(page)...))
-			case NotificationReceiptRecordDomain:
-				rows, err = rowsNotificationReceiptRecord(ctx, s.db, entNotificationReceiptRecord.IdIn(uuids(page)...))
 			case NotificationRecordDomain:
 				rows, err = rowsNotificationRecord(ctx, s.db, entNotificationRecord.IdIn(uuids(page)...))
 			case PairingDomain:
@@ -12881,19 +12733,23 @@ func (s notificationStore) Receipts(ctx context.Context, tenant, reader pdid.Id,
 	}
 	return values, nil
 }
+
+// InsertReceipt writes the receipt itself, through the client and past the
+// servers: it has no RPC, and is kept off the trail (payday#197). Mark holds
+// what the servers would have -- the transaction it is in, the locks that
+// keep one receipt per reader, the reader's tenant -- and notes the hint its
+// reader's other sessions are owed.
 func (s notificationStore) InsertReceipt(ctx context.Context, v notify.Receipt) (notify.Receipt, error) {
-	b := apptest.NotificationReceiptRecordAddRequest_builder{TenantId: v.Tenant.Bytes(), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DateRead: timestamppb.New(v.DateRead), DateCreated: timestamppb.New(v.DateCreated)}
-	if !v.ID.IsZero() {
-		b.Id = v.ID.Bytes()
+	key := v.ID
+	if key.IsZero() {
+		key = pdid.New(NotificationReceiptRecordDomain)
 	}
-	row, err := s.stack.NotificationReceiptRecord().Add(withNotifyWrite(ctx), b.Build())
+	_, err := s.db.NotificationReceiptRecord.Create().SetId(key.Uuid()).SetTenantId(v.Tenant.Uuid()).SetNotificationId(v.Notification.Uuid()).SetReaderId(v.Reader.Uuid()).SetDateRead(v.DateRead).SetDateUpdated(v.DateUpdated).SetDateCreated(v.DateCreated).Save(ctx)
 	if err != nil {
 		return notify.Receipt{}, err
 	}
-	key, err := pdid.From(row.GetId())
-	if err != nil {
-		return notify.Receipt{}, err
-	}
+	// Read the stored value, as Insert does: PostgreSQL keeps the precision it
+	// keeps, and the first Mark answers with what every later Read will.
 	saved, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.IdEQ(key.Uuid())).Only(ctx)
 	if err != nil {
 		return notify.Receipt{}, err
@@ -12912,6 +12768,10 @@ func (s notificationStore) Change(ctx context.Context, change watch.Change) (not
 		}
 		return notify.Hint{Tenant: row.Tenant, Topics: []notify.Topic{row.Topic}}, true, nil
 	case NotificationReceiptRecordDomain:
+		// A receipt this build writes is no server's write, and its hint is
+		// the Signal Mark noted, which Service reads without coming here. A
+		// replica of a build before payday#197 wrote its receipts through the
+		// generated Add, whose recorder notes the row by its key alone.
 		row, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.IdEQ(change.Key.Uuid())).Only(ctx)
 		if ent.IsNotFound(err) {
 			return notify.Hint{}, false, nil
@@ -14386,10 +14246,6 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.HolderListRequest{}
 	case apptest.HolderService_Memberships_FullMethodName:
 		v = &apptest.HolderMembershipsRequest{}
-	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
-		v = &apptest.NotificationReceiptRecordAddRequest{}
-	case apptest.NotificationReceiptRecordService_Get_FullMethodName:
-		v = &apptest.NotificationReceiptRecordGetRequest{}
 	case apptest.NotificationRecordService_Add_FullMethodName:
 		v = &apptest.NotificationRecordAddRequest{}
 	case apptest.NotificationRecordService_Get_FullMethodName:
@@ -14588,10 +14444,6 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Holder().List(ctx, v.(*apptest.HolderListRequest))
 	case apptest.HolderService_Memberships_FullMethodName:
 		res, err = s.Holder().Memberships(ctx, v.(*apptest.HolderMembershipsRequest))
-	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
-		res, err = s.NotificationReceiptRecord().Add(ctx, v.(*apptest.NotificationReceiptRecordAddRequest))
-	case apptest.NotificationReceiptRecordService_Get_FullMethodName:
-		res, err = s.NotificationReceiptRecord().Get(ctx, v.(*apptest.NotificationReceiptRecordGetRequest))
 	case apptest.NotificationRecordService_Add_FullMethodName:
 		res, err = s.NotificationRecord().Add(ctx, v.(*apptest.NotificationRecordAddRequest))
 	case apptest.NotificationRecordService_Get_FullMethodName:
@@ -15059,8 +14911,6 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				return nil, err
 			}
 			return publicResource(v), nil
-		case *apptest.NotificationReceiptRecord:
-			return nil, nil
 		case *apptest.NotificationRecord:
 			return nil, nil
 		case *apptest.Pairing:
@@ -15397,8 +15247,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.MachineService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
-	case apptest.NotificationReceiptRecordService_Add_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.NotificationRecordService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.PairingService_Add_FullMethodName:
@@ -15479,7 +15327,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return nil
 	}
 	switch image.ProtoReflect().Descriptor().FullName() {
-	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Job", "app.Joint", "app.Machine", "app.NotificationReceiptRecord", "app.NotificationRecord", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Stint", "app.Tenant", "shared.Thing":
+	case "app.Access", "app.Audit", "app.Cell", "app.Event", "app.Fact", "app.Fleet", "app.Holder", "app.Job", "app.Joint", "app.Machine", "app.NotificationRecord", "app.Pairing", "app.Reading", "app.Robot", "app.Seal", "app.Stint", "app.Tenant", "shared.Thing":
 	default:
 		return nil
 	}

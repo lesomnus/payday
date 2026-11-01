@@ -10,10 +10,7 @@
 package apptest
 
 import (
-	context "context"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -21,19 +18,10 @@ import (
 // Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
-const (
-	NotificationReceiptRecordService_Add_FullMethodName = "/app.NotificationReceiptRecordService/Add"
-	NotificationReceiptRecordService_Get_FullMethodName = "/app.NotificationReceiptRecordService/Get"
-)
-
 // NotificationReceiptRecordServiceClient is the client API for NotificationReceiptRecordService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NotificationReceiptRecordServiceClient interface {
-	// Add creates a new NotificationReceiptRecord
-	Add(ctx context.Context, in *NotificationReceiptRecordAddRequest, opts ...grpc.CallOption) (*NotificationReceiptRecord, error)
-	// Get retrieves a NotificationReceiptRecord
-	Get(ctx context.Context, in *NotificationReceiptRecordGetRequest, opts ...grpc.CallOption) (*NotificationReceiptRecord, error)
 }
 
 type notificationReceiptRecordServiceClient struct {
@@ -44,34 +32,10 @@ func NewNotificationReceiptRecordServiceClient(cc grpc.ClientConnInterface) Noti
 	return &notificationReceiptRecordServiceClient{cc}
 }
 
-func (c *notificationReceiptRecordServiceClient) Add(ctx context.Context, in *NotificationReceiptRecordAddRequest, opts ...grpc.CallOption) (*NotificationReceiptRecord, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(NotificationReceiptRecord)
-	err := c.cc.Invoke(ctx, NotificationReceiptRecordService_Add_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *notificationReceiptRecordServiceClient) Get(ctx context.Context, in *NotificationReceiptRecordGetRequest, opts ...grpc.CallOption) (*NotificationReceiptRecord, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(NotificationReceiptRecord)
-	err := c.cc.Invoke(ctx, NotificationReceiptRecordService_Get_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // NotificationReceiptRecordServiceServer is the server API for NotificationReceiptRecordService service.
 // All implementations must embed UnimplementedNotificationReceiptRecordServiceServer
 // for forward compatibility.
 type NotificationReceiptRecordServiceServer interface {
-	// Add creates a new NotificationReceiptRecord
-	Add(context.Context, *NotificationReceiptRecordAddRequest) (*NotificationReceiptRecord, error)
-	// Get retrieves a NotificationReceiptRecord
-	Get(context.Context, *NotificationReceiptRecordGetRequest) (*NotificationReceiptRecord, error)
 	mustEmbedUnimplementedNotificationReceiptRecordServiceServer()
 }
 
@@ -82,12 +46,6 @@ type NotificationReceiptRecordServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedNotificationReceiptRecordServiceServer struct{}
 
-func (UnimplementedNotificationReceiptRecordServiceServer) Add(context.Context, *NotificationReceiptRecordAddRequest) (*NotificationReceiptRecord, error) {
-	return nil, status.Error(codes.Unimplemented, "method Add not implemented")
-}
-func (UnimplementedNotificationReceiptRecordServiceServer) Get(context.Context, *NotificationReceiptRecordGetRequest) (*NotificationReceiptRecord, error) {
-	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
-}
 func (UnimplementedNotificationReceiptRecordServiceServer) mustEmbedUnimplementedNotificationReceiptRecordServiceServer() {
 }
 func (UnimplementedNotificationReceiptRecordServiceServer) testEmbeddedByValue() {}
@@ -110,58 +68,13 @@ func RegisterNotificationReceiptRecordServiceServer(s grpc.ServiceRegistrar, srv
 	s.RegisterService(&NotificationReceiptRecordService_ServiceDesc, srv)
 }
 
-func _NotificationReceiptRecordService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotificationReceiptRecordAddRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NotificationReceiptRecordServiceServer).Add(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: NotificationReceiptRecordService_Add_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NotificationReceiptRecordServiceServer).Add(ctx, req.(*NotificationReceiptRecordAddRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _NotificationReceiptRecordService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotificationReceiptRecordGetRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NotificationReceiptRecordServiceServer).Get(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: NotificationReceiptRecordService_Get_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NotificationReceiptRecordServiceServer).Get(ctx, req.(*NotificationReceiptRecordGetRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // NotificationReceiptRecordService_ServiceDesc is the grpc.ServiceDesc for NotificationReceiptRecordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var NotificationReceiptRecordService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "app.NotificationReceiptRecordService",
 	HandlerType: (*NotificationReceiptRecordServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Add",
-			Handler:    _NotificationReceiptRecordService_Add_Handler,
-		},
-		{
-			MethodName: "Get",
-			Handler:    _NotificationReceiptRecordService_Get_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "app/payday/notification_receipt_svc.g.proto",
+	Methods:     []grpc.MethodDesc{},
+	Streams:     []grpc.StreamDesc{},
+	Metadata:    "app/payday/notification_receipt_svc.g.proto",
 }
