@@ -194,7 +194,7 @@ func notificationValue(v {{n "Notification"}})*{{a "Notification"}}{
     if !v.Source.IsZero(){b.SourceId=v.Source.Bytes()};return b.Build()
 }
 func notificationReceiptValue(v {{n "Receipt"}})*{{a "NotificationReceipt"}}{
-    return {{a "NotificationReceipt_builder"}}{Id:v.ID.Bytes(),TenantId:notificationBytes(v.Tenant),NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}.Build()
+    return {{a "NotificationReceipt_builder"}}{Id:v.ID.Bytes(),TenantId:notificationBytes(v.Tenant),NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DateRead:{{timepb "New"}}(v.DateRead),DateCreated:{{timepb "New"}}(v.DateCreated),DateUpdated:{{timepb "New"}}(v.DateUpdated)}.Build()
 }
 
 type notificationStore struct{stack {{a "Server"}}; driver {{drv "Driver"}}; db *{{e "Client"}}}
@@ -266,7 +266,7 @@ func(s notificationStore) Receipts(ctx {{ctx "Context"}},tenant,reader {{id "Id"
     values:=make([]{{n "Receipt"}},len(rows));for i,row:=range rows{v,err:=notificationReceiptRow(row.Proto());if err!=nil{return nil,err};values[i]=v};return values,nil
 }
 func(s notificationStore) InsertReceipt(ctx {{ctx "Context"}},v {{n "Receipt"}})({{n "Receipt"}},error){
-    b:={{receipt "AddRequest_builder"}}{ {{if not .Global}}TenantId:v.Tenant.Bytes(),{{end}}NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DataRead:{{timepb "New"}}(v.DataRead),DateCreated:{{timepb "New"}}(v.DateCreated)}
+    b:={{receipt "AddRequest_builder"}}{ {{if not .Global}}TenantId:v.Tenant.Bytes(),{{end}}NotificationId:v.Notification.Bytes(),ReaderId:v.Reader.Bytes(),DateRead:{{timepb "New"}}(v.DateRead),DateCreated:{{timepb "New"}}(v.DateCreated)}
     if !v.ID.IsZero(){b.Id=v.ID.Bytes()}
     row,err:=s.stack.{{.Receipt}}().Add(withNotifyWrite(ctx),b.Build());if err!=nil{return {{n "Receipt"}}{},err}
     key,err:={{id "From"}}(row.GetId());if err!=nil{return {{n "Receipt"}}{},err}
@@ -301,6 +301,6 @@ func notificationReceiptRow(v *{{receipt ""}})({{n "Receipt"}},error){
     {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Receipt"}}{},err}{{end}}
     notification,err:={{id "From"}}(v.GetNotificationId());if err!=nil{return {{n "Receipt"}}{},err}
     reader,err:={{id "From"}}(v.GetReaderId());if err!=nil{return {{n "Receipt"}}{},err}
-    return {{n "Receipt"}}{ID:key,Tenant:tenant,Notification:notification,Reader:reader,DataRead:v.GetDataRead().AsTime(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()},nil
+    return {{n "Receipt"}}{ID:key,Tenant:tenant,Notification:notification,Reader:reader,DateRead:v.GetDateRead().AsTime(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()},nil
 }
 `
