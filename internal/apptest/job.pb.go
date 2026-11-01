@@ -209,6 +209,101 @@ func (b0 Job_builder) Build() *Job {
 	return m0
 }
 
+// JobDone is what a notification of a Job's completion carries (payday#193):
+// the Job and the Robot that did it, by their identifiers, and nothing of
+// anybody's. Whoever reads it says who they are, as they are called then.
+type JobDone struct {
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Job     []byte                 `protobuf:"bytes,1,opt,name=job"`
+	xxx_hidden_Robot   []byte                 `protobuf:"bytes,2,opt,name=robot"`
+	xxx_hidden_Outcome string                 `protobuf:"bytes,3,opt,name=outcome"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *JobDone) Reset() {
+	*x = JobDone{}
+	mi := &file_app_job_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JobDone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JobDone) ProtoMessage() {}
+
+func (x *JobDone) ProtoReflect() protoreflect.Message {
+	mi := &file_app_job_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *JobDone) GetJob() []byte {
+	if x != nil {
+		return x.xxx_hidden_Job
+	}
+	return nil
+}
+
+func (x *JobDone) GetRobot() []byte {
+	if x != nil {
+		return x.xxx_hidden_Robot
+	}
+	return nil
+}
+
+func (x *JobDone) GetOutcome() string {
+	if x != nil {
+		return x.xxx_hidden_Outcome
+	}
+	return ""
+}
+
+func (x *JobDone) SetJob(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Job = v
+}
+
+func (x *JobDone) SetRobot(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Robot = v
+}
+
+func (x *JobDone) SetOutcome(v string) {
+	x.xxx_hidden_Outcome = v
+}
+
+type JobDone_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Job   []byte
+	Robot []byte
+	// How it ended, as the robot reports it: a code, about no one.
+	Outcome string
+}
+
+func (b0 JobDone_builder) Build() *JobDone {
+	m0 := &JobDone{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Job = b.Job
+	x.xxx_hidden_Robot = b.Robot
+	x.xxx_hidden_Outcome = b.Outcome
+	return m0
+}
+
 var File_app_job_proto protoreflect.FileDescriptor
 
 const file_app_job_proto_rawDesc = "" +
@@ -223,18 +318,23 @@ const file_app_job_proto_rawDesc = "" +
 	" \x01(\bR\tcompleted\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x12\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x06\b*B\x02\n" +
-	"\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x00\"Y\n" +
+	"\aJobDone\x12\x10\n" +
+	"\x03job\x18\x01 \x01(\fR\x03job\x12\x14\n" +
+	"\x05robot\x18\x02 \x01(\fR\x05robot\x12 \n" +
+	"\aoutcome\x18\x03 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\aoutcome:\x04\x9a\xbb\x16\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_app_job_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_app_job_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_app_job_proto_goTypes = []any{
 	(*Job)(nil),                   // 0: app.Job
-	(*Tenant)(nil),                // 1: app.Tenant
-	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*JobDone)(nil),               // 1: app.JobDone
+	(*Tenant)(nil),                // 2: app.Tenant
+	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
 var file_app_job_proto_depIdxs = []int32{
-	1, // 0: app.Job.tenant:type_name -> app.Tenant
-	2, // 1: app.Job.date_updated:type_name -> google.protobuf.Timestamp
-	2, // 2: app.Job.date_created:type_name -> google.protobuf.Timestamp
+	2, // 0: app.Job.tenant:type_name -> app.Tenant
+	3, // 1: app.Job.date_updated:type_name -> google.protobuf.Timestamp
+	3, // 2: app.Job.date_created:type_name -> google.protobuf.Timestamp
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -254,7 +354,7 @@ func file_app_job_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_job_proto_rawDesc), len(file_app_job_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

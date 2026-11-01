@@ -12335,6 +12335,9 @@ type NotificationServer struct {
 func Notifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*NotificationServer, error) {
 	options.Global = false
 	options.Namespace = "github.com/lesomnus/payday/internal/apptest"
+	// The messages a notification may carry, which the schema declares
+	// (payday#193): what Add takes a payload of, and nothing else.
+	options.Payloads = []string{"app.JobDone"}
 	rebound, err := enttx.Rebind(stack, driver)
 	if err != nil {
 		return nil, err

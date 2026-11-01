@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/job.proto.
  */
 export const file_app_job: GenFile = /*@__PURE__*/
-  fileDesc("Cg1hcHAvam9iLnByb3RvEgNhcHAilwIKA0pvYhIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEhgKCHJvYm90X2lkGAggASgMQgbqghYCEEASGQoJaXNzdWVyX2lkGAkgASgMQgbqghYCEEASEQoJY29tcGxldGVkGAogASgIEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOhLK/BUEEgIQAYq7FgYIKkICCgBCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg1hcHAvam9iLnByb3RvEgNhcHAilwIKA0pvYhIXCgJpZBgBIAEoDEIL6oIWBxBAKAGCAQASIwoGdGVuYW50GAIgASgLMgsuYXBwLlRlbmFudEIG8oIWAkABEhgKCHJvYm90X2lkGAggASgMQgbqghYCEEASGQoJaXNzdWVyX2lkGAkgASgMQgbqghYCEEASEQoJY29tcGxldGVkGAogASgIEjkKDGRhdGVfdXBkYXRlZBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOKAQASOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOhLK/BUEEgIQAYq7FgYIKkICCgAiRAoHSm9iRG9uZRILCgNqb2IYASABKAwSDQoFcm9ib3QYAiABKAwSFwoHb3V0Y29tZRgDIAEoCUIGqsEWAhgAOgSauxYAQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Job supplies a real application relationship for notification policy: its
@@ -69,4 +69,37 @@ export type Job = Message<"app.Job"> & {
  */
 export const JobSchema: GenMessage<Job> = /*@__PURE__*/
   messageDesc(file_app_job, 0);
+
+/**
+ * JobDone is what a notification of a Job's completion carries (payday#193):
+ * the Job and the Robot that did it, by their identifiers, and nothing of
+ * anybody's. Whoever reads it says who they are, as they are called then.
+ *
+ * @generated from message app.JobDone
+ */
+export type JobDone = Message<"app.JobDone"> & {
+  /**
+   * @generated from field: bytes job = 1;
+   */
+  job: Uint8Array;
+
+  /**
+   * @generated from field: bytes robot = 2;
+   */
+  robot: Uint8Array;
+
+  /**
+   * How it ended, as the robot reports it: a code, about no one.
+   *
+   * @generated from field: string outcome = 3;
+   */
+  outcome: string;
+};
+
+/**
+ * Describes the message app.JobDone.
+ * Use `create(JobDoneSchema)` to create a new message.
+ */
+export const JobDoneSchema: GenMessage<JobDone> = /*@__PURE__*/
+  messageDesc(file_app_job, 1);
 
