@@ -72,23 +72,23 @@ func (_u *NotificationReceiptRecordUpdate) SetNillableReaderId(v *uuid.UUID) *No
 	return _u
 }
 
-// SetDataRead sets the "data_read" field.
-func (_u *NotificationReceiptRecordUpdate) SetDataRead(v time.Time) *NotificationReceiptRecordUpdate {
-	_u.mutation.SetDataRead(v)
+// SetDateRead sets the "date_read" field.
+func (_u *NotificationReceiptRecordUpdate) SetDateRead(v time.Time) *NotificationReceiptRecordUpdate {
+	_u.mutation.SetDateRead(v)
 	return _u
 }
 
-// SetNillableDataRead sets the "data_read" field if the given value is not nil.
-func (_u *NotificationReceiptRecordUpdate) SetNillableDataRead(v *time.Time) *NotificationReceiptRecordUpdate {
+// SetNillableDateRead sets the "date_read" field if the given value is not nil.
+func (_u *NotificationReceiptRecordUpdate) SetNillableDateRead(v *time.Time) *NotificationReceiptRecordUpdate {
 	if v != nil {
-		_u.SetDataRead(*v)
+		_u.SetDateRead(*v)
 	}
 	return _u
 }
 
-// ClearDataRead clears the value of the "data_read" field.
-func (_u *NotificationReceiptRecordUpdate) ClearDataRead() *NotificationReceiptRecordUpdate {
-	_u.mutation.ClearDataRead()
+// ClearDateRead clears the value of the "date_read" field.
+func (_u *NotificationReceiptRecordUpdate) ClearDateRead() *NotificationReceiptRecordUpdate {
+	_u.mutation.ClearDateRead()
 	return _u
 }
 
@@ -171,14 +171,14 @@ func (_u *NotificationReceiptRecordUpdate) sqlSave(ctx context.Context) (_node i
 	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldReaderId); ok {
 		_spec.SetField(notificationreceiptrecord.FieldReaderId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.DataRead(); ok {
-		_spec.SetField(notificationreceiptrecord.FieldDataRead, field.TypeTime, value)
+	if value, ok := _u.mutation.DateRead(); ok {
+		_spec.SetField(notificationreceiptrecord.FieldDateRead, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldDataRead); ok {
-		_spec.SetField(notificationreceiptrecord.FieldDataRead, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldDateRead); ok {
+		_spec.SetField(notificationreceiptrecord.FieldDateRead, field.TypeTime, e)
 	}
-	if _u.mutation.DataReadCleared() {
-		_spec.ClearField(notificationreceiptrecord.FieldDataRead, field.TypeTime)
+	if _u.mutation.DateReadCleared() {
+		_spec.ClearField(notificationreceiptrecord.FieldDateRead, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(notificationreceiptrecord.FieldDateUpdated, field.TypeTime, value)
@@ -253,23 +253,23 @@ func (_u *NotificationReceiptRecordUpdateOne) SetNillableReaderId(v *uuid.UUID) 
 	return _u
 }
 
-// SetDataRead sets the "data_read" field.
-func (_u *NotificationReceiptRecordUpdateOne) SetDataRead(v time.Time) *NotificationReceiptRecordUpdateOne {
-	_u.mutation.SetDataRead(v)
+// SetDateRead sets the "date_read" field.
+func (_u *NotificationReceiptRecordUpdateOne) SetDateRead(v time.Time) *NotificationReceiptRecordUpdateOne {
+	_u.mutation.SetDateRead(v)
 	return _u
 }
 
-// SetNillableDataRead sets the "data_read" field if the given value is not nil.
-func (_u *NotificationReceiptRecordUpdateOne) SetNillableDataRead(v *time.Time) *NotificationReceiptRecordUpdateOne {
+// SetNillableDateRead sets the "date_read" field if the given value is not nil.
+func (_u *NotificationReceiptRecordUpdateOne) SetNillableDateRead(v *time.Time) *NotificationReceiptRecordUpdateOne {
 	if v != nil {
-		_u.SetDataRead(*v)
+		_u.SetDateRead(*v)
 	}
 	return _u
 }
 
-// ClearDataRead clears the value of the "data_read" field.
-func (_u *NotificationReceiptRecordUpdateOne) ClearDataRead() *NotificationReceiptRecordUpdateOne {
-	_u.mutation.ClearDataRead()
+// ClearDateRead clears the value of the "date_read" field.
+func (_u *NotificationReceiptRecordUpdateOne) ClearDateRead() *NotificationReceiptRecordUpdateOne {
+	_u.mutation.ClearDateRead()
 	return _u
 }
 
@@ -382,14 +382,14 @@ func (_u *NotificationReceiptRecordUpdateOne) sqlSave(ctx context.Context) (_nod
 	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldReaderId); ok {
 		_spec.SetField(notificationreceiptrecord.FieldReaderId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.DataRead(); ok {
-		_spec.SetField(notificationreceiptrecord.FieldDataRead, field.TypeTime, value)
+	if value, ok := _u.mutation.DateRead(); ok {
+		_spec.SetField(notificationreceiptrecord.FieldDateRead, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldDataRead); ok {
-		_spec.SetField(notificationreceiptrecord.FieldDataRead, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(notificationreceiptrecord.FieldDateRead); ok {
+		_spec.SetField(notificationreceiptrecord.FieldDateRead, field.TypeTime, e)
 	}
-	if _u.mutation.DataReadCleared() {
-		_spec.ClearField(notificationreceiptrecord.FieldDataRead, field.TypeTime)
+	if _u.mutation.DateReadCleared() {
+		_spec.ClearField(notificationreceiptrecord.FieldDateRead, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(notificationreceiptrecord.FieldDateUpdated, field.TypeTime, value)

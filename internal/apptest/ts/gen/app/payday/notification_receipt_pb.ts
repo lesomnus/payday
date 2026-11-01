@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/notification_receipt.proto.
  */
 export const file_app_payday_notification_receipt: GenFile = /*@__PURE__*/
-  fileDesc("CiVhcHAvcGF5ZGF5L25vdGlmaWNhdGlvbl9yZWNlaXB0LnByb3RvEgNhcHAi5wMKGU5vdGlmaWNhdGlvblJlY2VpcHRSZWNvcmQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEh8KD25vdGlmaWNhdGlvbl9pZBgIIAEoDEIG6oIWAhBAEhkKCXJlYWRlcl9pZBgJIAEoDEIG6oIWAhBAEjYKCWRhdGFfcmVhZBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOCAQASOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6qQHK/BV2EgaCAQCKAQAaLxIHcmVjZWlwdBoTCg9ub3RpZmljYXRpb25faWQQCBoNCglyZWFkZXJfaWQQCTABGjsSBnJlYWRlchoNCgl0ZW5hbnRfaWQQAhoNCglyZWFkZXJfaWQQCRoTCg9ub3RpZmljYXRpb25faWQQCIq7FisIKRIUbm90aWZpY2F0aW9uLXJlY2VpcHRCAgoASAwiCxIJdGVuYW50X2lkQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("CiVhcHAvcGF5ZGF5L25vdGlmaWNhdGlvbl9yZWNlaXB0LnByb3RvEgNhcHAi5wMKGU5vdGlmaWNhdGlvblJlY2VpcHRSZWNvcmQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEhkKCXRlbmFudF9pZBgCIAEoDEIG6oIWAhBAEh8KD25vdGlmaWNhdGlvbl9pZBgIIAEoDEIG6oIWAhBAEhkKCXJlYWRlcl9pZBgJIAEoDEIG6oIWAhBAEjYKCWRhdGVfcmVhZBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOCAQASOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQA6qQHK/BV2EgaCAQCKAQAaLxIHcmVjZWlwdBoTCg9ub3RpZmljYXRpb25faWQQCBoNCglyZWFkZXJfaWQQCTABGjsSBnJlYWRlchoNCgl0ZW5hbnRfaWQQAhoNCglyZWFkZXJfaWQQCRoTCg9ub3RpZmljYXRpb25faWQQCIq7FisIKRIUbm90aWZpY2F0aW9uLXJlY2VpcHRCAgoASAwiCxIJdGVuYW50X2lkQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * NotificationReceiptRecord is created only on the reader's first Mark. Its
@@ -45,9 +45,9 @@ export type NotificationReceiptRecord = Message<"app.NotificationReceiptRecord">
   readerId: Uint8Array;
 
   /**
-   * @generated from field: google.protobuf.Timestamp data_read = 10;
+   * @generated from field: google.protobuf.Timestamp date_read = 10;
    */
-  dataRead?: Timestamp | undefined;
+  dateRead?: Timestamp | undefined;
 
   /**
    * @generated from field: google.protobuf.Timestamp date_updated = 13;

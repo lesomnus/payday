@@ -497,7 +497,7 @@ var (
 		{Name: "tenant_id", Type: field.TypeUuid},
 		{Name: "notification_id", Type: field.TypeUuid},
 		{Name: "reader_id", Type: field.TypeUuid},
-		{Name: "data_read", Type: field.TypeTime, Nullable: true},
+		{Name: "date_read", Type: field.TypeTime, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 	}

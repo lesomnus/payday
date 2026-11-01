@@ -3903,21 +3903,21 @@ func (m *NotificationReceiptRecordMutation) OldReaderId(ctx context.Context) (v 
 	return oldValue.ReaderId, nil
 }
 
-// OldDataRead returns the old "data_read" field's value of the NotificationReceiptRecord entity.
+// OldDateRead returns the old "date_read" field's value of the NotificationReceiptRecord entity.
 // If the NotificationReceiptRecord object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NotificationReceiptRecordMutation) OldDataRead(ctx context.Context) (v time.Time, err error) {
+func (m *NotificationReceiptRecordMutation) OldDateRead(ctx context.Context) (v time.Time, err error) {
 	if !m.Op().Is(OpUpdateOne) {
-		return v, errors.New("OldDataRead is only allowed on UpdateOne operations")
+		return v, errors.New("OldDateRead is only allowed on UpdateOne operations")
 	}
 	if _, exists := m.Id(); !exists || m.oldValue == nil {
-		return v, errors.New("OldDataRead requires an Id field in the mutation")
+		return v, errors.New("OldDateRead requires an Id field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDataRead: %w", err)
+		return v, fmt.Errorf("querying old value for OldDateRead: %w", err)
 	}
-	return oldValue.DataRead, nil
+	return oldValue.DateRead, nil
 }
 
 // OldDateUpdated returns the old "date_updated" field's value of the NotificationReceiptRecord entity.
@@ -3965,8 +3965,8 @@ func (m *NotificationReceiptRecordMutation) OldField(ctx context.Context, name s
 		return m.OldNotificationId(ctx)
 	case notificationreceiptrecord.FieldReaderId:
 		return m.OldReaderId(ctx)
-	case notificationreceiptrecord.FieldDataRead:
-		return m.OldDataRead(ctx)
+	case notificationreceiptrecord.FieldDateRead:
+		return m.OldDateRead(ctx)
 	case notificationreceiptrecord.FieldDateUpdated:
 		return m.OldDateUpdated(ctx)
 	case notificationreceiptrecord.FieldDateCreated:

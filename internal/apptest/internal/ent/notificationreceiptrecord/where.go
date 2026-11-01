@@ -70,9 +70,9 @@ func ReaderId(v uuid.UUID) predicate.NotificationReceiptRecord {
 	return predicate.NotificationReceiptRecord(sql.FieldEQ(FieldReaderId, v))
 }
 
-// DataRead applies equality check predicate on the "data_read" field. It's identical to DataReadEQ.
-func DataRead(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldEQ(FieldDataRead, v))
+// DateRead applies equality check predicate on the "date_read" field. It's identical to DateReadEQ.
+func DateRead(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldEQ(FieldDateRead, v))
 }
 
 // DateUpdated applies equality check predicate on the "date_updated" field. It's identical to DateUpdatedEQ.
@@ -205,54 +205,54 @@ func ReaderIdLTE(v uuid.UUID) predicate.NotificationReceiptRecord {
 	return predicate.NotificationReceiptRecord(sql.FieldLTE(FieldReaderId, v))
 }
 
-// DataReadEQ applies the EQ predicate on the "data_read" field.
-func DataReadEQ(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldEQ(FieldDataRead, v))
+// DateReadEQ applies the EQ predicate on the "date_read" field.
+func DateReadEQ(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldEQ(FieldDateRead, v))
 }
 
-// DataReadNEQ applies the NEQ predicate on the "data_read" field.
-func DataReadNEQ(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldNEQ(FieldDataRead, v))
+// DateReadNEQ applies the NEQ predicate on the "date_read" field.
+func DateReadNEQ(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldNEQ(FieldDateRead, v))
 }
 
-// DataReadIn applies the In predicate on the "data_read" field.
-func DataReadIn(vs ...time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldIn(FieldDataRead, vs...))
+// DateReadIn applies the In predicate on the "date_read" field.
+func DateReadIn(vs ...time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldIn(FieldDateRead, vs...))
 }
 
-// DataReadNotIn applies the NotIn predicate on the "data_read" field.
-func DataReadNotIn(vs ...time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldNotIn(FieldDataRead, vs...))
+// DateReadNotIn applies the NotIn predicate on the "date_read" field.
+func DateReadNotIn(vs ...time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldNotIn(FieldDateRead, vs...))
 }
 
-// DataReadGT applies the GT predicate on the "data_read" field.
-func DataReadGT(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldGT(FieldDataRead, v))
+// DateReadGT applies the GT predicate on the "date_read" field.
+func DateReadGT(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldGT(FieldDateRead, v))
 }
 
-// DataReadGTE applies the GTE predicate on the "data_read" field.
-func DataReadGTE(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldGTE(FieldDataRead, v))
+// DateReadGTE applies the GTE predicate on the "date_read" field.
+func DateReadGTE(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldGTE(FieldDateRead, v))
 }
 
-// DataReadLT applies the LT predicate on the "data_read" field.
-func DataReadLT(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldLT(FieldDataRead, v))
+// DateReadLT applies the LT predicate on the "date_read" field.
+func DateReadLT(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldLT(FieldDateRead, v))
 }
 
-// DataReadLTE applies the LTE predicate on the "data_read" field.
-func DataReadLTE(v time.Time) predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldLTE(FieldDataRead, v))
+// DateReadLTE applies the LTE predicate on the "date_read" field.
+func DateReadLTE(v time.Time) predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldLTE(FieldDateRead, v))
 }
 
-// DataReadIsNil applies the IsNil predicate on the "data_read" field.
-func DataReadIsNil() predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldIsNull(FieldDataRead))
+// DateReadIsNil applies the IsNil predicate on the "date_read" field.
+func DateReadIsNil() predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldIsNull(FieldDateRead))
 }
 
-// DataReadNotNil applies the NotNil predicate on the "data_read" field.
-func DataReadNotNil() predicate.NotificationReceiptRecord {
-	return predicate.NotificationReceiptRecord(sql.FieldNotNull(FieldDataRead))
+// DateReadNotNil applies the NotNil predicate on the "date_read" field.
+func DateReadNotNil() predicate.NotificationReceiptRecord {
+	return predicate.NotificationReceiptRecord(sql.FieldNotNull(FieldDateRead))
 }
 
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.

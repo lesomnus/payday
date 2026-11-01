@@ -41,16 +41,16 @@ func (_c *NotificationReceiptRecordCreate) SetReaderId(v uuid.UUID) *Notificatio
 	return _c
 }
 
-// SetDataRead sets the "data_read" field.
-func (_c *NotificationReceiptRecordCreate) SetDataRead(v time.Time) *NotificationReceiptRecordCreate {
-	_c.mutation.SetDataRead(v)
+// SetDateRead sets the "date_read" field.
+func (_c *NotificationReceiptRecordCreate) SetDateRead(v time.Time) *NotificationReceiptRecordCreate {
+	_c.mutation.SetDateRead(v)
 	return _c
 }
 
-// SetNillableDataRead sets the "data_read" field if the given value is not nil.
-func (_c *NotificationReceiptRecordCreate) SetNillableDataRead(v *time.Time) *NotificationReceiptRecordCreate {
+// SetNillableDateRead sets the "date_read" field if the given value is not nil.
+func (_c *NotificationReceiptRecordCreate) SetNillableDateRead(v *time.Time) *NotificationReceiptRecordCreate {
 	if v != nil {
-		_c.SetDataRead(*v)
+		_c.SetDateRead(*v)
 	}
 	return _c
 }
@@ -193,9 +193,9 @@ func (_c *NotificationReceiptRecordCreate) createSpec() (*NotificationReceiptRec
 		_spec.SetField(notificationreceiptrecord.FieldReaderId, field.TypeUuid, value)
 		_node.ReaderId = value
 	}
-	if value, ok := _c.mutation.DataRead(); ok {
-		_spec.SetField(notificationreceiptrecord.FieldDataRead, field.TypeTime, value)
-		_node.DataRead = value
+	if value, ok := _c.mutation.DateRead(); ok {
+		_spec.SetField(notificationreceiptrecord.FieldDateRead, field.TypeTime, value)
+		_node.DateRead = value
 	}
 	if value, ok := _c.mutation.DateUpdated(); ok {
 		_spec.SetField(notificationreceiptrecord.FieldDateUpdated, field.TypeTime, value)

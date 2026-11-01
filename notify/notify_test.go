@@ -383,7 +383,7 @@ func TestPublicationRetryAndLazyReadStateAreIndependent(t *testing.T) {
 	_, err = f.s.Add(f.ctx, req)
 	expectCode(t, err, codes.AlreadyExists)
 	marked, err := markOne(f.s, f.ctx, f.tenant, first.ID)
-	if err != nil || !marked.DataRead.Equal(f.clock) {
+	if err != nil || !marked.DateRead.Equal(f.clock) {
 		t.Fatalf("first mark: %+v, %v", marked, err)
 	}
 	f.clock = f.clock.Add(time.Hour)

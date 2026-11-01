@@ -322,7 +322,7 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 
 	receipt, err := notificationMarked(f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)
-	forged := app.NotificationReceiptRecordAddRequest_builder{TenantId: f.b.Tenant.Bytes(), NotificationId: v.GetId(), ReaderId: f.outside.GetId(), DataRead: receipt.GetDataRead()}.Build()
+	forged := app.NotificationReceiptRecordAddRequest_builder{TenantId: f.b.Tenant.Bytes(), NotificationId: v.GetId(), ReaderId: f.outside.GetId(), DateRead: receipt.GetDateRead()}.Build()
 	_, err = f.b.Walled.NotificationReceiptRecord().Add(f.b.as(t.Context()), forged)
 	x.Equal(codes.PermissionDenied, status.Code(err), "raw receipt creation must not choose another reader")
 	_, err = f.b.Walled.NotificationReceiptRecord().Get(f.b.as(t.Context()), app.NotificationReceiptRecordGetRequest_builder{Ref: app.NotificationReceiptRecordRef_builder{Id: receipt.GetId()}.Build()}.Build())

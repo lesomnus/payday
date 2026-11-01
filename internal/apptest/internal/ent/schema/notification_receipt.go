@@ -23,7 +23,7 @@ func (NotificationReceiptRecord) Fields() []ent.Field {
 		field.Uuid("tenant_id"),
 		field.Uuid("notification_id"),
 		field.Uuid("reader_id"),
-		field.Time("data_read").
+		field.Time("date_read").
 			Optional(),
 		field.Time("date_updated"),
 		field.Time("date_created").

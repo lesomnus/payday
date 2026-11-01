@@ -148,7 +148,7 @@ stored notifications use them.
 unique constraint on that pair. It is created on the first successful
 `Mark`; absence means unread for an authorized reader. Receipt absence does
 not decide whether the notification is visible. The first server-assigned
-`data_read` is preserved across retries and concurrent calls. This contract has no
+`date_read` is preserved across retries and concurrent calls. This contract has no
 mark-unread, seen, archived, or acknowledged state.
 
 Clients cache Read projections under `(tenant, reader, notification)`. A stale

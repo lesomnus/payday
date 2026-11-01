@@ -38,3 +38,15 @@ breaking:
   ignore_only:
     FIELD_NO_DELETE:
       - proto/payday/app.proto
+    # A receipt's `data_read` is `date_read` (payday#196): the same number, so
+    # the binary wire is the wire it was, and a JSON client reads `dateRead`.
+    # The app's copies are the only files that carry it. Remove once main has
+    # it.
+    FIELD_SAME_NAME:
+      - internal/apptest/proto/app/payday/notification.proto
+      - internal/apptest/proto/app/payday/notification_receipt.proto
+      - internal/apptest/proto/app/payday/notification_receipt_svc.g.proto
+    FIELD_SAME_JSON_NAME:
+      - internal/apptest/proto/app/payday/notification.proto
+      - internal/apptest/proto/app/payday/notification_receipt.proto
+      - internal/apptest/proto/app/payday/notification_receipt_svc.g.proto

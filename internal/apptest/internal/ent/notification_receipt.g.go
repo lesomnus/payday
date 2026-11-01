@@ -14,7 +14,7 @@ func (e *NotificationReceiptRecord) Proto() *apptest.NotificationReceiptRecord {
 	x.SetTenantId(e.TenantId[:])
 	x.SetNotificationId(e.NotificationId[:])
 	x.SetReaderId(e.ReaderId[:])
-	x.SetDataRead(timestamppb.New(e.DataRead))
+	x.SetDateRead(timestamppb.New(e.DateRead))
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	return x

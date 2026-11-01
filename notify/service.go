@@ -363,7 +363,7 @@ func (s *Service) Mark(ctx context.Context, req MarkRequest) (Marked, error) {
 		for i, v := range values {
 			r, ok := byID[v.ID]
 			if !ok {
-				r, err = at.store.InsertReceipt(ctx, Receipt{Tenant: req.Tenant, Notification: v.ID, Reader: reader, DataRead: now, DateCreated: now, DateUpdated: now})
+				r, err = at.store.InsertReceipt(ctx, Receipt{Tenant: req.Tenant, Notification: v.ID, Reader: reader, DateRead: now, DateCreated: now, DateUpdated: now})
 				if err != nil {
 					return err
 				}

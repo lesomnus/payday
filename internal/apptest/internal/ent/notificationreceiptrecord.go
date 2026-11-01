@@ -24,8 +24,8 @@ type NotificationReceiptRecord struct {
 	NotificationId uuid.UUID `json:"notification_id,omitempty"`
 	// ReaderId holds the value of the "reader_id" field.
 	ReaderId uuid.UUID `json:"reader_id,omitempty"`
-	// DataRead holds the value of the "data_read" field.
-	DataRead time.Time `json:"data_read,omitempty"`
+	// DateRead holds the value of the "date_read" field.
+	DateRead time.Time `json:"date_read,omitempty"`
 	// DateUpdated holds the value of the "date_updated" field.
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -38,7 +38,7 @@ func (*NotificationReceiptRecord) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case notificationreceiptrecord.FieldDataRead, notificationreceiptrecord.FieldDateUpdated, notificationreceiptrecord.FieldDateCreated:
+		case notificationreceiptrecord.FieldDateRead, notificationreceiptrecord.FieldDateUpdated, notificationreceiptrecord.FieldDateCreated:
 			values[i] = new(sql.NullTime)
 		case notificationreceiptrecord.FieldId, notificationreceiptrecord.FieldTenantId, notificationreceiptrecord.FieldNotificationId, notificationreceiptrecord.FieldReaderId:
 			values[i] = new(uuid.UUID)
@@ -81,11 +81,11 @@ func (_m *NotificationReceiptRecord) assignValues(columns []string, values []any
 			} else if value != nil {
 				_m.ReaderId = *value
 			}
-		case notificationreceiptrecord.FieldDataRead:
+		case notificationreceiptrecord.FieldDateRead:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field data_read", values[i])
+				return fmt.Errorf("unexpected type %T for field date_read", values[i])
 			} else if value.Valid {
-				_m.DataRead = value.Time
+				_m.DateRead = value.Time
 			}
 		case notificationreceiptrecord.FieldDateUpdated:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -144,8 +144,8 @@ func (_m *NotificationReceiptRecord) String() string {
 	builder.WriteString("reader_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ReaderId))
 	builder.WriteString(", ")
-	builder.WriteString("data_read=")
-	builder.WriteString(_m.DataRead.Format(time.ANSIC))
+	builder.WriteString("date_read=")
+	builder.WriteString(_m.DateRead.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("date_updated=")
 	builder.WriteString(_m.DateUpdated.Format(time.ANSIC))

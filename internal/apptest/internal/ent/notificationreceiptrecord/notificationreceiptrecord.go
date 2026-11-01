@@ -17,8 +17,8 @@ const (
 	FieldNotificationId = "notification_id"
 	// FieldReaderId holds the string denoting the reader_id field in the database.
 	FieldReaderId = "reader_id"
-	// FieldDataRead holds the string denoting the data_read field in the database.
-	FieldDataRead = "data_read"
+	// FieldDateRead holds the string denoting the date_read field in the database.
+	FieldDateRead = "date_read"
 	// FieldDateUpdated holds the string denoting the date_updated field in the database.
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -33,7 +33,7 @@ var Columns = []string{
 	FieldTenantId,
 	FieldNotificationId,
 	FieldReaderId,
-	FieldDataRead,
+	FieldDateRead,
 	FieldDateUpdated,
 	FieldDateCreated,
 }
@@ -71,9 +71,9 @@ func ByReaderId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldReaderId, opts...).ToFunc()
 }
 
-// ByDataRead orders the results by the data_read field.
-func ByDataRead(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDataRead, opts...).ToFunc()
+// ByDateRead orders the results by the date_read field.
+func ByDateRead(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateRead, opts...).ToFunc()
 }
 
 // ByDateUpdated orders the results by the date_updated field.

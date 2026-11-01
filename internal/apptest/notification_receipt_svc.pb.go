@@ -30,7 +30,7 @@ type NotificationReceiptRecordAddRequest struct {
 	xxx_hidden_TenantId       []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
 	xxx_hidden_NotificationId []byte                 `protobuf:"bytes,8,opt,name=notification_id,json=notificationId"`
 	xxx_hidden_ReaderId       []byte                 `protobuf:"bytes,9,opt,name=reader_id,json=readerId"`
-	xxx_hidden_DataRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=data_read,json=dataRead"`
+	xxx_hidden_DateRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_read,json=dateRead"`
 	xxx_hidden_DateCreated    *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
 	XXX_presence              [1]uint32
@@ -91,9 +91,9 @@ func (x *NotificationReceiptRecordAddRequest) GetReaderId() []byte {
 	return nil
 }
 
-func (x *NotificationReceiptRecordAddRequest) GetDataRead() *timestamppb.Timestamp {
+func (x *NotificationReceiptRecordAddRequest) GetDateRead() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_DataRead
+		return x.xxx_hidden_DateRead
 	}
 	return nil
 }
@@ -134,8 +134,8 @@ func (x *NotificationReceiptRecordAddRequest) SetReaderId(v []byte) {
 	x.xxx_hidden_ReaderId = v
 }
 
-func (x *NotificationReceiptRecordAddRequest) SetDataRead(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DataRead = v
+func (x *NotificationReceiptRecordAddRequest) SetDateRead(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateRead = v
 }
 
 func (x *NotificationReceiptRecordAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -149,11 +149,11 @@ func (x *NotificationReceiptRecordAddRequest) HasId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *NotificationReceiptRecordAddRequest) HasDataRead() bool {
+func (x *NotificationReceiptRecordAddRequest) HasDateRead() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_DataRead != nil
+	return x.xxx_hidden_DateRead != nil
 }
 
 func (x *NotificationReceiptRecordAddRequest) HasDateCreated() bool {
@@ -168,8 +168,8 @@ func (x *NotificationReceiptRecordAddRequest) ClearId() {
 	x.xxx_hidden_Id = nil
 }
 
-func (x *NotificationReceiptRecordAddRequest) ClearDataRead() {
-	x.xxx_hidden_DataRead = nil
+func (x *NotificationReceiptRecordAddRequest) ClearDateRead() {
+	x.xxx_hidden_DateRead = nil
 }
 
 func (x *NotificationReceiptRecordAddRequest) ClearDateCreated() {
@@ -183,7 +183,7 @@ type NotificationReceiptRecordAddRequest_builder struct {
 	TenantId       []byte
 	NotificationId []byte
 	ReaderId       []byte
-	DataRead       *timestamppb.Timestamp
+	DateRead       *timestamppb.Timestamp
 	DateCreated    *timestamppb.Timestamp
 }
 
@@ -198,7 +198,7 @@ func (b0 NotificationReceiptRecordAddRequest_builder) Build() *NotificationRecei
 	x.xxx_hidden_TenantId = b.TenantId
 	x.xxx_hidden_NotificationId = b.NotificationId
 	x.xxx_hidden_ReaderId = b.ReaderId
-	x.xxx_hidden_DataRead = b.DataRead
+	x.xxx_hidden_DateRead = b.DateRead
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
 }
@@ -490,7 +490,7 @@ type NotificationReceiptRecordSelect struct {
 	xxx_hidden_TenantId       bool                   `protobuf:"varint,2,opt,name=tenant_id,json=tenantId"`
 	xxx_hidden_NotificationId bool                   `protobuf:"varint,8,opt,name=notification_id,json=notificationId"`
 	xxx_hidden_ReaderId       bool                   `protobuf:"varint,9,opt,name=reader_id,json=readerId"`
-	xxx_hidden_DataRead       bool                   `protobuf:"varint,10,opt,name=data_read,json=dataRead"`
+	xxx_hidden_DateRead       bool                   `protobuf:"varint,10,opt,name=date_read,json=dateRead"`
 	xxx_hidden_DateUpdated    bool                   `protobuf:"varint,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated    bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
@@ -552,9 +552,9 @@ func (x *NotificationReceiptRecordSelect) GetReaderId() bool {
 	return false
 }
 
-func (x *NotificationReceiptRecordSelect) GetDataRead() bool {
+func (x *NotificationReceiptRecordSelect) GetDateRead() bool {
 	if x != nil {
-		return x.xxx_hidden_DataRead
+		return x.xxx_hidden_DateRead
 	}
 	return false
 }
@@ -593,8 +593,8 @@ func (x *NotificationReceiptRecordSelect) SetReaderId(v bool) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
-func (x *NotificationReceiptRecordSelect) SetDataRead(v bool) {
-	x.xxx_hidden_DataRead = v
+func (x *NotificationReceiptRecordSelect) SetDateRead(v bool) {
+	x.xxx_hidden_DateRead = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
@@ -636,7 +636,7 @@ func (x *NotificationReceiptRecordSelect) HasReaderId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
-func (x *NotificationReceiptRecordSelect) HasDataRead() bool {
+func (x *NotificationReceiptRecordSelect) HasDateRead() bool {
 	if x == nil {
 		return false
 	}
@@ -677,9 +677,9 @@ func (x *NotificationReceiptRecordSelect) ClearReaderId() {
 	x.xxx_hidden_ReaderId = false
 }
 
-func (x *NotificationReceiptRecordSelect) ClearDataRead() {
+func (x *NotificationReceiptRecordSelect) ClearDateRead() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_DataRead = false
+	x.xxx_hidden_DateRead = false
 }
 
 func (x *NotificationReceiptRecordSelect) ClearDateUpdated() {
@@ -699,7 +699,7 @@ type NotificationReceiptRecordSelect_builder struct {
 	TenantId       *bool
 	NotificationId *bool
 	ReaderId       *bool
-	DataRead       *bool
+	DateRead       *bool
 	DateUpdated    *bool
 	DateCreated    *bool
 }
@@ -724,9 +724,9 @@ func (b0 NotificationReceiptRecordSelect_builder) Build() *NotificationReceiptRe
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_ReaderId = *b.ReaderId
 	}
-	if b.DataRead != nil {
+	if b.DateRead != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
-		x.xxx_hidden_DataRead = *b.DataRead
+		x.xxx_hidden_DateRead = *b.DateRead
 	}
 	if b.DateUpdated != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
@@ -842,8 +842,8 @@ const file_app_payday_notification_receipt_svc_g_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12.\n" +
 	"\x0fnotification_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\x0enotificationId\x12\"\n" +
 	"\treader_id\x18\t \x01(\fB\x05\xaa\x01\x02\b\x02R\breaderId\x127\n" +
-	"\tdata_read\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\bdataRead\x12=\n" +
+	"\tdate_read\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\bdateRead\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"m\n" +
 	"%NotificationReceiptRecordRefByReceipt\x12'\n" +
 	"\x0fnotification_id\x18\b \x01(\fR\x0enotificationId\x12\x1b\n" +
@@ -857,8 +857,8 @@ const file_app_payday_notification_receipt_svc_g_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\bR\btenantId\x12'\n" +
 	"\x0fnotification_id\x18\b \x01(\bR\x0enotificationId\x12\x1b\n" +
 	"\treader_id\x18\t \x01(\bR\breaderId\x12\x1b\n" +
-	"\tdata_read\x18\n" +
-	" \x01(\bR\bdataRead\x12!\n" +
+	"\tdate_read\x18\n" +
+	" \x01(\bR\bdateRead\x12!\n" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"\x98\x01\n" +
 	"#NotificationReceiptRecordGetRequest\x123\n" +
@@ -879,7 +879,7 @@ var file_app_payday_notification_receipt_svc_g_proto_goTypes = []any{
 	(*NotificationReceiptRecord)(nil),             // 6: app.NotificationReceiptRecord
 }
 var file_app_payday_notification_receipt_svc_g_proto_depIdxs = []int32{
-	5, // 0: app.NotificationReceiptRecordAddRequest.data_read:type_name -> google.protobuf.Timestamp
+	5, // 0: app.NotificationReceiptRecordAddRequest.date_read:type_name -> google.protobuf.Timestamp
 	5, // 1: app.NotificationReceiptRecordAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	1, // 2: app.NotificationReceiptRecordRef.receipt:type_name -> app.NotificationReceiptRecordRefByReceipt
 	2, // 3: app.NotificationReceiptRecordGetRequest.ref:type_name -> app.NotificationReceiptRecordRef

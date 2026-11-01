@@ -8,13 +8,22 @@
 // written on every insert and read by nothing. Renamed first, it is found, and
 // the migration has nothing to do.
 //
-// Indexes are what this renames, because they are what has moved:
+// Indexes and columns are what this renames, because they are what has moved.
 // protoc-gen-orm-ent stored an index under a name made of its columns,
 // `robot_tenant_id_date_created_id`, and stores it now under the name the
-// schema declares, `robot_page` (protobuf-orm/protoc-gen-orm-ent#15).
-// `pd gen` writes what that means for an app's schema as `pd.IndexRenames`,
-// and an app's `Migrate` hands it here before it creates:
+// schema declares, `robot_page` (protobuf-orm/protoc-gen-orm-ent#15). And a
+// column of one of payday's own entities was misnamed once: a notification
+// receipt's first read was `data_read`, where every other time payday keeps is
+// a `date_*`, and is `date_read` now (payday#196). A migration drops no column
+// either, so it adds the new one, empty, beside the old -- and that one fails
+// worse than an index, since the rows written before read as never having had
+// a value. `pd gen` writes what both mean for an app's schema, as
+// `pd.ColumnRenames` and `pd.IndexRenames`, and an app's `Migrate` hands them
+// here before it creates:
 //
+//	if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
+//		return err
+//	}
 //	if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
 //		return err
 //	}

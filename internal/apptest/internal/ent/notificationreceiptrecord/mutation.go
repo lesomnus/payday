@@ -20,7 +20,7 @@ type Mutation struct {
 	tenant_id       *uuid.UUID
 	notification_id *uuid.UUID
 	reader_id       *uuid.UUID
-	data_read       *time.Time
+	date_read       *time.Time
 	date_updated    *time.Time
 	date_created    *time.Time
 	clearedFields   map[string]struct{}
@@ -105,40 +105,40 @@ func (m *Mutation) ResetReaderId() {
 	delete(m.exprs, FieldReaderId)
 }
 
-// SetDataRead sets the "data_read" field.
-func (m *Mutation) SetDataRead(t time.Time) {
-	m.data_read = &t
-	delete(m.clearedFields, FieldDataRead)
-	delete(m.exprs, FieldDataRead)
+// SetDateRead sets the "date_read" field.
+func (m *Mutation) SetDateRead(t time.Time) {
+	m.date_read = &t
+	delete(m.clearedFields, FieldDateRead)
+	delete(m.exprs, FieldDateRead)
 }
 
-// DataRead returns the value of the "data_read" field in the mutation.
-func (m *Mutation) DataRead() (r time.Time, exists bool) {
-	v := m.data_read
+// DateRead returns the value of the "date_read" field in the mutation.
+func (m *Mutation) DateRead() (r time.Time, exists bool) {
+	v := m.date_read
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearDataRead clears the value of the "data_read" field.
-func (m *Mutation) ClearDataRead() {
-	m.data_read = nil
-	delete(m.exprs, FieldDataRead)
-	m.clearedFields[FieldDataRead] = struct{}{}
+// ClearDateRead clears the value of the "date_read" field.
+func (m *Mutation) ClearDateRead() {
+	m.date_read = nil
+	delete(m.exprs, FieldDateRead)
+	m.clearedFields[FieldDateRead] = struct{}{}
 }
 
-// DataReadCleared returns if the "data_read" field was cleared in this mutation.
-func (m *Mutation) DataReadCleared() bool {
-	_, ok := m.clearedFields[FieldDataRead]
+// DateReadCleared returns if the "date_read" field was cleared in this mutation.
+func (m *Mutation) DateReadCleared() bool {
+	_, ok := m.clearedFields[FieldDateRead]
 	return ok
 }
 
-// ResetDataRead resets all changes to the "data_read" field.
-func (m *Mutation) ResetDataRead() {
-	m.data_read = nil
-	delete(m.clearedFields, FieldDataRead)
-	delete(m.exprs, FieldDataRead)
+// ResetDateRead resets all changes to the "date_read" field.
+func (m *Mutation) ResetDateRead() {
+	m.date_read = nil
+	delete(m.clearedFields, FieldDateRead)
+	delete(m.exprs, FieldDateRead)
 }
 
 // SetDateUpdated sets the "date_updated" field.
@@ -239,8 +239,8 @@ func (m *Mutation) Fields() []string {
 	if m.reader_id != nil || m.exprs[FieldReaderId] != nil {
 		fields = append(fields, FieldReaderId)
 	}
-	if m.data_read != nil || m.exprs[FieldDataRead] != nil {
-		fields = append(fields, FieldDataRead)
+	if m.date_read != nil || m.exprs[FieldDateRead] != nil {
+		fields = append(fields, FieldDateRead)
 	}
 	if m.date_updated != nil || m.exprs[FieldDateUpdated] != nil {
 		fields = append(fields, FieldDateUpdated)
@@ -268,8 +268,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.NotificationId()
 	case FieldReaderId:
 		return m.ReaderId()
-	case FieldDataRead:
-		return m.DataRead()
+	case FieldDateRead:
+		return m.DateRead()
 	case FieldDateUpdated:
 		return m.DateUpdated()
 	case FieldDateCreated:
@@ -323,7 +323,7 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetReaderId(v)
 		return nil
-	case FieldDataRead:
+	case FieldDateRead:
 		v, ok := value.(time.Time)
 		if !ok {
 			if e, ok := value.(sql.Querier); ok {
@@ -331,7 +331,7 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetDataRead(v)
+		m.SetDateRead(v)
 		return nil
 	case FieldDateUpdated:
 		v, ok := value.(time.Time)
@@ -381,8 +381,8 @@ func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
 		m.ResetNotificationId()
 	case FieldReaderId:
 		m.ResetReaderId()
-	case FieldDataRead:
-		m.ResetDataRead()
+	case FieldDateRead:
+		m.ResetDateRead()
 	case FieldDateUpdated:
 		m.ResetDateUpdated()
 	case FieldDateCreated:
@@ -417,8 +417,8 @@ func (m *Mutation) ExprFields() []string {
 	if _, ok := m.exprs[FieldReaderId]; ok {
 		fields = append(fields, FieldReaderId)
 	}
-	if _, ok := m.exprs[FieldDataRead]; ok {
-		fields = append(fields, FieldDataRead)
+	if _, ok := m.exprs[FieldDateRead]; ok {
+		fields = append(fields, FieldDateRead)
 	}
 	if _, ok := m.exprs[FieldDateUpdated]; ok {
 		fields = append(fields, FieldDateUpdated)
@@ -452,8 +452,8 @@ func (m *Mutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *Mutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(FieldDataRead) {
-		fields = append(fields, FieldDataRead)
+	if m.FieldCleared(FieldDateRead) {
+		fields = append(fields, FieldDateRead)
 	}
 	if m.FieldCleared(FieldDateCreated) {
 		fields = append(fields, FieldDateCreated)
@@ -472,8 +472,8 @@ func (m *Mutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *Mutation) ClearField(name string) error {
 	switch name {
-	case FieldDataRead:
-		m.ClearDataRead()
+	case FieldDateRead:
+		m.ClearDateRead()
 		return nil
 	case FieldDateCreated:
 		m.ClearDateCreated()
@@ -495,8 +495,8 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldReaderId:
 		m.ResetReaderId()
 		return nil
-	case FieldDataRead:
-		m.ResetDataRead()
+	case FieldDateRead:
+		m.ResetDateRead()
 		return nil
 	case FieldDateUpdated:
 		m.ResetDateUpdated()

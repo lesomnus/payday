@@ -101,11 +101,14 @@ func doctorEntities(ctx context.Context, l Layout) []Finding {
 	// of a follower, whether it has a source and runs. See doctor_entitle.go.
 	// And of an app whose holders are memberships of accounts, whether each
 	// method an account calls as itself says what it reads, and whether a
-	// resolver serves a call as one. See doctor_account.go.
+	// resolver serves a call as one. See doctor_account.go. And of an app
+	// with a column of payday's that an earlier build named otherwise,
+	// whether its migration moves it first. See doctor_rename.go.
 	vs := append(doctorPersonal(schema), doctorTrailOff(schema)...)
 	vs = append(vs, doctorMeters(l, schema)...)
 	vs = append(vs, doctorEntitlements(l, schema)...)
 	vs = append(vs, doctorAccounts(l, schema)...)
+	vs = append(vs, doctorRenames(l, pdgen.ColumnRenames(schema))...)
 
 	return append(vs, doctorPast(l, schema)...)
 }

@@ -3,6 +3,65 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A notification receipt's first read is `date_read`
+
+**Applies if** your app declares `notify` (payday#196). For an app that does
+not, `pd.ColumnRenames` is empty and the call below does nothing.
+
+`NotificationReceipt.data_read` is `date_read`, as every other time payday
+keeps is a `date_*`: in the public message, in the stored record and its
+column, in `notify.Receipt` (`DateRead`), and in the generated Go and
+TypeScript (`dateRead`). It is field 10 as it was, so the binary wire is the
+one it was; a JSON client reads `dateRead`, and one generated before reads no
+time.
+
+- **Move the column before you migrate.** Call `rename.Columns` in your
+  `Migrate`, before `Create` -- `pd new`'s `Migrate` does:
+
+  ```go
+  if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
+  	return err
+  }
+  if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
+  	return err
+  }
+  ```
+
+  Without it the migration adds `date_read`, empty, beside `data_read`: every
+  receipt marked before reads as marked at no time, and nothing fails -- the
+  schema check a server makes before serving passes too. `pd doctor` says so.
+  With it the column is renamed with what it holds, which is one change to the
+  catalog on PostgreSQL and the table's definition rewritten in place on
+  SQLite. A store a migration reached first, holding both columns, has what
+  `data_read` holds copied into `date_read` wherever that is empty, and
+  `data_read` dropped. A store this build made is left as it is.
+- **With migration files**, a plan drops `data_read` and adds `date_read`,
+  which loses the same values. Write the rename into the planned directory by
+  hand before you plan, and the plan finds the column where the schema says it
+  is:
+
+  ```go
+  _, err := ent.Write(entschema.Version(time.Now()), "notification_receipt_date_read",
+  	[]byte("ALTER TABLE notificationreceiptrecord RENAME COLUMN data_read TO date_read;\n"))
+  ```
+
+- **Rename it in your own code**: `GetDataRead`, `SetDataRead` and `DataRead:`
+  in Go, `dataRead` in TypeScript, and the column in any SQL of your own.
+- **A replica of the build before** writes `data_read`, which the migration
+  takes away: its `Mark` fails until it is replaced. Migrate with it stopped,
+  or let its Marks fail meanwhile -- a Mark is retried safely, and keeps the
+  first read of a notification marked twice.
+
+What the apps on payday change:
+
+- **cxz** migrates with `migrate.NewSchema(driver).Create(ctx)` alone
+  (`server/lifecycle/stack.go`). Call `rename.Columns(ctx, db, dialect.SQLite,
+  pd.ColumnRenames)` before it. Its retention names the column in SQL
+  (`server/lifecycle/retention.go`, `r.data_read` four times, and its test's
+  `UPDATE`), its sandbox builds a receipt with `DataRead:`
+  (`internal/websandbox/notifications.go`), and its tests read
+  `GetDataRead()`: each is `date_read`, `DateRead` and `GetDateRead()` now.
+
 ## `pd gen` stops at another module, `--check` says what it removed, and an app names its toolchain
 
 **Applies if** your app holds a module of its own below it, if your go.mod

@@ -66,14 +66,18 @@ type Notification struct {
 	IdempotencyKey string
 }
 
+// Receipt is one reader's first read of one notification. It exists only once
+// the reader marked it, and is never changed after.
 type Receipt struct {
 	ID           pdid.Id
 	Tenant       pdid.Id
 	Notification pdid.Id
 	Reader       pdid.Id
-	DataRead     time.Time
-	DateCreated  time.Time
-	DateUpdated  time.Time
+	// DateRead is when the reader first marked the notification, by the
+	// server's clock. A Mark retried or made again keeps it.
+	DateRead    time.Time
+	DateCreated time.Time
+	DateUpdated time.Time
 }
 
 type AddRequest struct {

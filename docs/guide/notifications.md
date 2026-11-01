@@ -245,7 +245,7 @@ if err != nil {
 fmt.Printf("marked %x\n", marked.GetItems()[0].GetNotificationId())
 ```
 
-The server chooses the receipt owner and `data_read`. Repeated and concurrent
+The server chooses the receipt owner and `date_read`. Repeated and concurrent
 calls preserve the first read time. Cache reader projections separately from
 the shared notification. A delayed response with no receipt must not clear a
 receipt already observed for the same tenant, reader, and notification.
