@@ -137,15 +137,61 @@ Source and Topic may refer to the same resource, different resources, or only
 one may be a resource at all. A Topic key is used for routing and authorization;
 putting an extra key inside Payload does not create another subscription scope.
 
-Payload is an optional `google.protobuf.Any`. The publishing app validates the
-kind and payload type and owns their compatibility and data-retention rules. It
-must classify personal and secret content explicitly; arbitrary `Any` contents are
-not automatically safe to copy to an audit log or resource stream. Readers that
-do not recognize a payload type preserve its opaque bytes and metadata on binary
-transports instead of failing an entire page. A JSON gateway needs an explicit
-fallback for unknown `Any` types; ordinary Protobuf JSON conversion is not that
-fallback. Payload field names and type names must remain readable for as long as
-stored notifications use them.
+Payload is an optional `google.protobuf.Any`, of a message the app declares
+a notification may carry (below). The publishing app validates the kind and
+payload type and owns their compatibility. Readers that do not recognize a
+payload type preserve its opaque bytes and metadata on binary transports
+instead of failing an entire page. A JSON gateway needs an explicit fallback
+for unknown `Any` types; ordinary Protobuf JSON conversion is not that
+fallback. Payload field names and type names must remain readable for as long
+as stored notifications use them.
+
+### A notification carries identifiers, not a person's data
+
+A notification is kept for as long as `notify.keep` says, shown to every reader
+its Topic policy lets in, and read through nothing that keeps a person's data in
+step (payday#193). The access record is made of what the schema declares
+`personal`, and nothing in an `Any` is declared, so a read of a name in a
+payload is recorded nowhere. Forgetting a person blanks what declarations
+point at, and reaches no notification. So the contract is that a notification
+carries **identifiers**: people by their payday ids, rows by theirs, and the
+page that shows a notification says them as they are called when it is read,
+as an app's past does. "Kim returned the laptop" is a holder, a laptop and the
+kind `asset.returned`; the sentence is made where it is shown, in the reader's
+language, and a Kim forgotten since is shown as whatever a forgotten person is
+shown as.
+
+- **Kind and Topic names are routing keys**: a stable word for the kind of
+  occurrence, and an app-defined interest. They are never the place for an
+  email, a name, or anything a person typed. A Topic about a person is that
+  person's resource id, not their name.
+- **A payload is a declared message**: `option (payday.notification) = {};`
+  on it. `Add` refuses a payload of any other type, with `InvalidArgument`,
+  before policy or storage is asked. So every payload an app publishes is one
+  the schema holds to carrying identifiers:
+  - `pd gen` refuses a payload message, or a message it holds, with a
+    `(payday.field)` that says anything but `personal: false`, a field holding
+    an entity or a message of a generated contract (a row whole, or a Ref with
+    a slug), or an `Any`, and an entity that says it is one.
+  - `pd doctor` asks of every string in it that says nothing about itself, and
+    of a field named for somebody. A code, a version or another system's
+    identifier says `personal: false`; free text is where a name ends up, and
+    belongs in the sentence the reader makes. A `bytes` field is taken for an
+    identifier.
+- **The access record needs nothing new.** A notification of identifiers
+  shows nobody's data, and the page that resolves them reads people through
+  the app's own RPCs, which record what they show as every read does. Neither
+  does forgetting: an identifier is what the trail is made of too, and a
+  notification holds nothing more of anybody. A receipt holds its reader's
+  identifier and a time, and goes when its notification goes.
+
+Holding a payload to a declared message was my choice building payday#193
+(Claude's), over advice alone on the messages an app chose to declare. A
+check that only covers what an app opts into covers least the app that most
+needs it. A refusal at `Add` makes the declaration the price of a payload, so
+the rules the declaration carries reach every one. Kind and Topic names are
+runtime strings no declaration describes, so for them the contract is stated
+here and not checked.
 
 `NotificationReceipt` belongs to one `(notification_id, reader_id)` pair, with a
 unique constraint on that pair. It is created on the first successful
@@ -313,8 +359,8 @@ different publication content is `AlreadyExists`. The comparison includes
 Topic, Kind, Source, and Payload and excludes server-generated IDs and times.
 Payload equality means the same `Any.type_url` and encoded `Any.value` bytes;
 retrying callers retain that encoding rather than relying on semantic equality
-between differently encoded messages. Absent Payload and present-empty Payload
-are distinct. Keys are compared exactly without trimming or case folding.
+between differently encoded messages. Absent Payload and a Payload whose
+message is empty are distinct. Keys are compared exactly without trimming or case folding.
 Current publication policy is checked even on a retry. The key is kept with its
 notification, for `notify.keep` from the publication: a retry within that
 returns the same Notification, and one after it publishes again, because both

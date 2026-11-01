@@ -12,6 +12,8 @@ import type { Entity, Field } from "./payday/entity_pb.js";
 import { file_payday_entity } from "./payday/entity_pb.js";
 import type { Method } from "./payday/method_pb.js";
 import { file_payday_method } from "./payday/method_pb.js";
+import type { NotificationPayload } from "./payday/notify_pb.js";
+import { file_payday_notify } from "./payday/notify_pb.js";
 import type { EventMessage } from "./payday/past_pb.js";
 import { file_payday_past } from "./payday/past_pb.js";
 
@@ -19,7 +21,7 @@ import { file_payday_past } from "./payday/past_pb.js";
  * Describes the file payday.proto.
  */
 export const file_payday: GenFile = /*@__PURE__*/
-  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6RAoFZmllbGQSHS5nb29nbGUucHJvdG9idWYuRmllbGRPcHRpb25zGJXoAiABKAsyDS5wYXlkYXkuRmllbGRSBWZpZWxkOj0KA2FwcBIcLmdvb2dsZS5wcm90b2J1Zi5GaWxlT3B0aW9ucxj56AIgASgLMgsucGF5ZGF5LkFwcFIDYXBwOkgKBm1ldGhvZBIeLmdvb2dsZS5wcm90b2J1Zi5NZXRob2RPcHRpb25zGN3pAiABKAsyDi5wYXlkYXkuTWV0aG9kUgZtZXRob2RCIVofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_method, file_payday_past]);
+  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6YgoMbm90aWZpY2F0aW9uEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGLPnAiABKAsyGy5wYXlkYXkuTm90aWZpY2F0aW9uUGF5bG9hZFIMbm90aWZpY2F0aW9uOkQKBWZpZWxkEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxiV6AIgASgLMg0ucGF5ZGF5LkZpZWxkUgVmaWVsZDo9CgNhcHASHC5nb29nbGUucHJvdG9idWYuRmlsZU9wdGlvbnMY+egCIAEoCzILLnBheWRheS5BcHBSA2FwcDpICgZtZXRob2QSHi5nb29nbGUucHJvdG9idWYuTWV0aG9kT3B0aW9ucxjd6QIgASgLMg4ucGF5ZGF5Lk1ldGhvZFIGbWV0aG9kQiFaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGJiCGVkaXRpb25zcOgH", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_method, file_payday_notify, file_payday_past]);
 
 /**
  * @generated from extension: payday.Entity entity = 46001;
@@ -39,20 +41,31 @@ export const event: GenExtension<MessageOptions, EventMessage> = /*@__PURE__*/
   extDesc(file_payday, 1);
 
 /**
+ * What a message is when it is what the app's notifications carry as their
+ * payload (payday#193): `option (payday.notification) = {};`. See
+ * [NotificationPayload] for what is refused of one, and why a notification
+ * carries identifiers rather than a person's data.
+ *
+ * @generated from extension: payday.NotificationPayload notification = 46003;
+ */
+export const notification: GenExtension<MessageOptions, NotificationPayload> = /*@__PURE__*/
+  extDesc(file_payday, 2);
+
+/**
  * @generated from extension: payday.Field field = 46101;
  */
 export const field: GenExtension<FieldOptions, Field> = /*@__PURE__*/
-  extDesc(file_payday, 2);
+  extDesc(file_payday, 3);
 
 /**
  * @generated from extension: payday.App app = 46201;
  */
 export const app: GenExtension<FileOptions, App> = /*@__PURE__*/
-  extDesc(file_payday, 3);
+  extDesc(file_payday, 4);
 
 /**
  * @generated from extension: payday.Method method = 46301;
  */
 export const method: GenExtension<MethodOptions, Method> = /*@__PURE__*/
-  extDesc(file_payday, 4);
+  extDesc(file_payday, 5);
 

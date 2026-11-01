@@ -164,7 +164,9 @@ func TestNotifyStoresOnePublicationAndLazyIndependentReceipts(t *testing.T) {
 		x.NoError(err)
 	}
 	request := f.add("finished")
-	request.SetPayload(&anypb.Any{TypeUrl: "type.googleapis.com/app.FutureJobResult", Value: []byte{10, 1, 65}})
+	// A payload of a message the app declares, as bytes it reads back as it
+	// wrote them: a reader that has no such message keeps them as they are.
+	request.SetPayload(&anypb.Any{TypeUrl: "type.googleapis.com/app.JobDone", Value: []byte{10, 1, 65}})
 	type publication struct {
 		value *app.Notification
 		err   error
@@ -193,6 +195,13 @@ func TestNotifyStoresOnePublicationAndLazyIndependentReceipts(t *testing.T) {
 	changed.SetKind("job.failed")
 	_, err = f.client.Add(ctx, changed)
 	x.Equal(codes.AlreadyExists, status.Code(err))
+
+	// A payload of a type the schema does not say a notification carries is
+	// refused: nothing holds it to carrying identifiers (payday#193).
+	undeclared := f.add("undeclared")
+	undeclared.SetPayload(&anypb.Any{TypeUrl: "type.googleapis.com/app.Job", Value: []byte{}})
+	_, err = f.client.Add(ctx, undeclared)
+	x.Equal(codes.InvalidArgument, status.Code(err))
 	x.Equal(1, f.b.Ent.NotificationRecord.Query().CountX(t.Context()))
 	x.Zero(f.b.Ent.NotificationReceiptRecord.Query().CountX(t.Context()))
 

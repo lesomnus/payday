@@ -40,3 +40,16 @@ message Job {
     }
   };
 }
+
+// JobDone is what a notification of a Job's completion carries (payday#193):
+// the Job and the Robot that did it, by their identifiers, and nothing of
+// anybody's. Whoever reads it says who they are, as they are called then.
+message JobDone {
+  option (payday.notification) = {};
+
+  bytes job = 1;
+  bytes robot = 2;
+
+  // How it ended, as the robot reports it: a code, about no one.
+  string outcome = 3 [(payday.field) = {personal: false}];
+}

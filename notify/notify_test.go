@@ -271,7 +271,7 @@ func setup(t *testing.T) *fixture {
 	f.ctx = frame.Into(t.Context(), frame.New(f.reader, f.tenant, frame.Whole()).WithScope(frame.Only(f.tenant)))
 	m := &memory{data: &state{notifications: map[pdid.Id]notify.Notification{}, receipts: map[[2]pdid.Id]notify.Receipt{}}, watch: f.watch}
 	f.store = store{owner: m, data: m.data, drv: m}
-	f.options = notify.Options{CursorKey: bytes.Repeat([]byte{7}, 32), Clock: func() time.Time { return f.clock }}
+	f.options = notify.Options{CursorKey: bytes.Repeat([]byte{7}, 32), Clock: func() time.Time { return f.clock }, Payloads: []string{"notify_test.Done"}}
 	var err error
 	f.s, err = notify.New(f.store, f.watch, f.policy, f.options)
 	if err != nil {
@@ -362,7 +362,9 @@ func TestCursorIsBoundToMethodReaderCredentialAndTopicSet(t *testing.T) {
 
 func TestPublicationRetryAndLazyReadStateAreIndependent(t *testing.T) {
 	f := setup(t)
-	payload := &anypb.Any{TypeUrl: "example.invalid/Unknown", Value: []byte{1, 2, 3}}
+	// A type this binary has no message of, which the payload is kept as the
+	// bytes it is anyway.
+	payload := &anypb.Any{TypeUrl: "example.invalid/notify_test.Done", Value: []byte{1, 2, 3}}
 	req := notify.AddRequest{Tenant: f.tenant, Topic: f.topic, Kind: "job.completed", IdempotencyKey: "occurrence", Payload: payload}
 	first, err := f.s.Add(f.ctx, req)
 	if err != nil {
@@ -472,9 +474,43 @@ func TestAbsentAndEmptyPayloadAreDifferentPublications(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Payload = &anypb.Any{}
+	req.Payload = &anypb.Any{TypeUrl: "type.googleapis.com/notify_test.Done"}
 	_, err = f.s.Add(f.ctx, req)
 	expectCode(t, err, codes.AlreadyExists)
+}
+
+// TestAPayloadIsOneTheAppDeclares: a notification carries identifiers, and a
+// payload is held to that by being a message the schema says it may carry
+// (payday#193). Anything else is refused before policy or storage is asked.
+func TestAPayloadIsOneTheAppDeclares(t *testing.T) {
+	f := setup(t)
+	asked := false
+	f.policy.publisher = func(context.Context, pdid.Id, notify.Topic) (string, error) {
+		asked = true
+		return "test-worker", nil
+	}
+	for _, url := range []string{"type.googleapis.com/notify_test.Person", "notify_test.Done/", "", "notify_test.Don"} {
+		_, err := f.s.Add(f.ctx, notify.AddRequest{Tenant: f.tenant, Topic: f.topic, Kind: "job.completed", IdempotencyKey: url, Payload: &anypb.Any{TypeUrl: url}})
+		expectCode(t, err, codes.InvalidArgument)
+	}
+	if asked || len(f.store.data.notifications) != 0 {
+		t.Fatal("an undeclared payload reached policy or storage")
+	}
+	for _, url := range []string{"type.googleapis.com/notify_test.Done", "notify_test.Done"} {
+		if _, err := f.s.Add(f.ctx, notify.AddRequest{Tenant: f.tenant, Topic: f.topic, Kind: "job.completed", IdempotencyKey: url, Payload: &anypb.Any{TypeUrl: url}}); err != nil {
+			t.Fatalf("%s: %v", url, err)
+		}
+	}
+
+	// And a service told of none takes none.
+	none := f.options
+	none.Payloads = nil
+	s, err := notify.New(f.store, f.watch, f.policy, none)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Add(f.ctx, notify.AddRequest{Tenant: f.tenant, Topic: f.topic, Kind: "job.completed", IdempotencyKey: "none", Payload: &anypb.Any{TypeUrl: "type.googleapis.com/notify_test.Done"}})
+	expectCode(t, err, codes.InvalidArgument)
 }
 
 func TestJoinedWriteWaitsForTheOuterCommit(t *testing.T) {
