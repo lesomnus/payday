@@ -596,6 +596,7 @@ type Notify struct {
 	xxx_hidden_Receipt      uint32                 `protobuf:"varint,2,opt,name=receipt"`
 	xxx_hidden_Tenancy      isNotify_Tenancy       `protobuf_oneof:"tenancy"`
 	xxx_hidden_Keep         *Notify_Keep           `protobuf:"bytes,6,opt,name=keep"`
+	xxx_hidden_Accounts     *Notify_Accounts       `protobuf:"bytes,7,opt,name=accounts"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -664,6 +665,13 @@ func (x *Notify) GetKeep() *Notify_Keep {
 	return nil
 }
 
+func (x *Notify) GetAccounts() *Notify_Accounts {
+	if x != nil {
+		return x.xxx_hidden_Accounts
+	}
+	return nil
+}
+
 func (x *Notify) SetNotification(v uint32) {
 	x.xxx_hidden_Notification = v
 }
@@ -690,6 +698,10 @@ func (x *Notify) SetGlobal(v *Entity_Global) {
 
 func (x *Notify) SetKeep(v *Notify_Keep) {
 	x.xxx_hidden_Keep = v
+}
+
+func (x *Notify) SetAccounts(v *Notify_Accounts) {
+	x.xxx_hidden_Accounts = v
 }
 
 func (x *Notify) HasTenancy() bool {
@@ -722,6 +734,13 @@ func (x *Notify) HasKeep() bool {
 	return x.xxx_hidden_Keep != nil
 }
 
+func (x *Notify) HasAccounts() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Accounts != nil
+}
+
 func (x *Notify) ClearTenancy() {
 	x.xxx_hidden_Tenancy = nil
 }
@@ -740,6 +759,10 @@ func (x *Notify) ClearGlobal() {
 
 func (x *Notify) ClearKeep() {
 	x.xxx_hidden_Keep = nil
+}
+
+func (x *Notify) ClearAccounts() {
+	x.xxx_hidden_Accounts = nil
 }
 
 const Notify_Tenancy_not_set_case case_Notify_Tenancy = 0
@@ -782,6 +805,19 @@ type Notify_builder struct {
 	// read or stale, they grow without bound. So an app says how long, or says
 	// `forever` with why -- the dangerous answer is the one written down.
 	Keep *Notify_Keep
+	// Accounts gives an app whose holders are memberships of accounts -- one
+	// that declares [App.accounts] -- a namespace of notifications no tenant
+	// holds, which an account reads as itself (payday#195):
+	//
+	//	notify: {notification: 40, receipt: 41, keep: {days: 90}, accounts: {}}
+	//
+	// `pd gen` copies `NotificationAccountService` beside `NotificationService`,
+	// each of its methods the account's own, and writes
+	// `pd.AccountNotifications`, which serves it with a policy of its own. An
+	// account reads no tenant's notifications through it, and no tenant reads
+	// the account namespace. It is a message so that something can be said of
+	// it later; for now it is said or not.
+	Accounts *Notify_Accounts
 }
 
 func (b0 Notify_builder) Build() *Notify {
@@ -797,6 +833,7 @@ func (b0 Notify_builder) Build() *Notify {
 		x.xxx_hidden_Tenancy = &notify_Global{b.Global}
 	}
 	x.xxx_hidden_Keep = b.Keep
+	x.xxx_hidden_Accounts = b.Accounts
 	return m0
 }
 
@@ -908,6 +945,50 @@ func (b0 Entitlements_builder) Build() *Entitlements {
 	return m0
 }
 
+// Accounts is the account namespace, said. See [Notify.accounts].
+type Notify_Accounts struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Notify_Accounts) Reset() {
+	*x = Notify_Accounts{}
+	mi := &file_payday_app_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Notify_Accounts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Notify_Accounts) ProtoMessage() {}
+
+func (x *Notify_Accounts) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_app_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type Notify_Accounts_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Notify_Accounts_builder) Build() *Notify_Accounts {
+	m0 := &Notify_Accounts{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
 // Keep is one of the two answers. See [Notify.keep].
 type Notify_Keep struct {
 	state                protoimpl.MessageState `protogen:"opaque.v1"`
@@ -919,7 +1000,7 @@ type Notify_Keep struct {
 
 func (x *Notify_Keep) Reset() {
 	*x = Notify_Keep{}
-	mi := &file_payday_app_proto_msgTypes[6]
+	mi := &file_payday_app_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -931,7 +1012,7 @@ func (x *Notify_Keep) String() string {
 func (*Notify_Keep) ProtoMessage() {}
 
 func (x *Notify_Keep) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[6]
+	mi := &file_payday_app_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1079,7 +1160,7 @@ func (b0 Notify_Keep_builder) Build() *Notify_Keep {
 type case_Notify_Keep_How protoreflect.FieldNumber
 
 func (x case_Notify_Keep_How) String() string {
-	md := file_payday_app_proto_msgTypes[6].Descriptor()
+	md := file_payday_app_proto_msgTypes[7].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -1117,7 +1198,7 @@ type Notify_Keep_Forever struct {
 
 func (x *Notify_Keep_Forever) Reset() {
 	*x = Notify_Keep_Forever{}
-	mi := &file_payday_app_proto_msgTypes[7]
+	mi := &file_payday_app_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1129,7 +1210,7 @@ func (x *Notify_Keep_Forever) String() string {
 func (*Notify_Keep_Forever) ProtoMessage() {}
 
 func (x *Notify_Keep_Forever) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_app_proto_msgTypes[7]
+	mi := &file_payday_app_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1185,13 +1266,16 @@ const file_payday_app_proto_rawDesc = "" +
 	"\x04fact\x18\x02 \x01(\rR\x04fact\"=\n" +
 	"\aDomains\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\rR\barchived\x12\x16\n" +
-	"\x06access\x18\x02 \x01(\rR\x06access\"\x83\x03\n" +
+	"\x06access\x18\x02 \x01(\rR\x06access\"\xc4\x03\n" +
 	"\x06Notify\x12\"\n" +
 	"\fnotification\x18\x01 \x01(\rR\fnotification\x12\x18\n" +
 	"\areceipt\x18\x02 \x01(\rR\areceipt\x125\n" +
 	"\btenanted\x18\x04 \x01(\v2\x17.payday.Entity.TenantedH\x00R\btenanted\x12/\n" +
 	"\x06global\x18\x05 \x01(\v2\x15.payday.Entity.GlobalH\x00R\x06global\x12'\n" +
-	"\x04keep\x18\x06 \x01(\v2\x13.payday.Notify.KeepR\x04keep\x1a\x98\x01\n" +
+	"\x04keep\x18\x06 \x01(\v2\x13.payday.Notify.KeepR\x04keep\x123\n" +
+	"\baccounts\x18\a \x01(\v2\x17.payday.Notify.AccountsR\baccounts\x1a\n" +
+	"\n" +
+	"\bAccounts\x1a\x98\x01\n" +
 	"\x04Keep\x12\x14\n" +
 	"\x04days\x18\x01 \x01(\rH\x00R\x04days\x127\n" +
 	"\aforever\x18\x02 \x01(\v2\x1b.payday.Notify.Keep.ForeverH\x00R\aforever\x12\x1d\n" +
@@ -1204,7 +1288,7 @@ const file_payday_app_proto_rawDesc = "" +
 	"\fEntitlements\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\rR\x06domainB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_payday_app_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_payday_app_proto_goTypes = []any{
 	(*App)(nil),                 // 0: payday.App
 	(*Accounts)(nil),            // 1: payday.Accounts
@@ -1212,30 +1296,32 @@ var file_payday_app_proto_goTypes = []any{
 	(*Domains)(nil),             // 3: payday.Domains
 	(*Notify)(nil),              // 4: payday.Notify
 	(*Entitlements)(nil),        // 5: payday.Entitlements
-	(*Notify_Keep)(nil),         // 6: payday.Notify.Keep
-	(*Notify_Keep_Forever)(nil), // 7: payday.Notify.Keep.Forever
-	(*Meter)(nil),               // 8: payday.Meter
-	(*ormpb.Ref)(nil),           // 9: orm.Ref
-	(*Entity_Tenanted)(nil),     // 10: payday.Entity.Tenanted
-	(*Entity_Global)(nil),       // 11: payday.Entity.Global
+	(*Notify_Accounts)(nil),     // 6: payday.Notify.Accounts
+	(*Notify_Keep)(nil),         // 7: payday.Notify.Keep
+	(*Notify_Keep_Forever)(nil), // 8: payday.Notify.Keep.Forever
+	(*Meter)(nil),               // 9: payday.Meter
+	(*ormpb.Ref)(nil),           // 10: orm.Ref
+	(*Entity_Tenanted)(nil),     // 11: payday.Entity.Tenanted
+	(*Entity_Global)(nil),       // 12: payday.Entity.Global
 }
 var file_payday_app_proto_depIdxs = []int32{
 	2,  // 0: payday.App.past:type_name -> payday.Past
 	3,  // 1: payday.App.domains:type_name -> payday.Domains
 	4,  // 2: payday.App.notify:type_name -> payday.Notify
-	8,  // 3: payday.App.meters:type_name -> payday.Meter
+	9,  // 3: payday.App.meters:type_name -> payday.Meter
 	5,  // 4: payday.App.entitlements:type_name -> payday.Entitlements
 	1,  // 5: payday.App.accounts:type_name -> payday.Accounts
-	9,  // 6: payday.Accounts.field:type_name -> orm.Ref
-	10, // 7: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
-	11, // 8: payday.Notify.global:type_name -> payday.Entity.Global
-	6,  // 9: payday.Notify.keep:type_name -> payday.Notify.Keep
-	7,  // 10: payday.Notify.Keep.forever:type_name -> payday.Notify.Keep.Forever
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	10, // 6: payday.Accounts.field:type_name -> orm.Ref
+	11, // 7: payday.Notify.tenanted:type_name -> payday.Entity.Tenanted
+	12, // 8: payday.Notify.global:type_name -> payday.Entity.Global
+	7,  // 9: payday.Notify.keep:type_name -> payday.Notify.Keep
+	6,  // 10: payday.Notify.accounts:type_name -> payday.Notify.Accounts
+	8,  // 11: payday.Notify.Keep.forever:type_name -> payday.Notify.Keep.Forever
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_payday_app_proto_init() }
@@ -1249,7 +1335,7 @@ func file_payday_app_proto_init() {
 		(*notify_Tenanted)(nil),
 		(*notify_Global)(nil),
 	}
-	file_payday_app_proto_msgTypes[6].OneofWrappers = []any{
+	file_payday_app_proto_msgTypes[7].OneofWrappers = []any{
 		(*notify_Keep_Days)(nil),
 		(*notify_Keep_Forever_)(nil),
 	}
@@ -1259,7 +1345,7 @@ func file_payday_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_app_proto_rawDesc), len(file_payday_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

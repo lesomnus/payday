@@ -237,6 +237,23 @@ message Notify {
   // `forever` with why -- the dangerous answer is the one written down.
   Keep keep = 6;
 
+  // Accounts gives an app whose holders are memberships of accounts -- one
+  // that declares [App.accounts] -- a namespace of notifications no tenant
+  // holds, which an account reads as itself (payday#195):
+  //
+  //	notify: {notification: 40, receipt: 41, keep: {days: 90}, accounts: {}}
+  //
+  // `pd gen` copies `NotificationAccountService` beside `NotificationService`,
+  // each of its methods the account's own, and writes
+  // `pd.AccountNotifications`, which serves it with a policy of its own. An
+  // account reads no tenant's notifications through it, and no tenant reads
+  // the account namespace. It is a message so that something can be said of
+  // it later; for now it is said or not.
+  Accounts accounts = 7;
+
+  // Accounts is the account namespace, said. See [Notify.accounts].
+  message Accounts {}
+
   // Keep is one of the two answers. See [Notify.keep].
   message Keep {
     oneof how {
