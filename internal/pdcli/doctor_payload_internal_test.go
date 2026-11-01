@@ -22,6 +22,18 @@ import (
 // payloadsOf is what the doctor says of the payloads `names` of `src`.
 func payloadsOf(t *testing.T, src string, names ...string) string {
 	t.Helper()
+
+	said := []string{}
+	for _, v := range doctorPayloads(&pdgen.Schema{Payloads: payloadsOfSchema(t, src, names...)}) {
+		said = append(said, v.String())
+	}
+
+	return strings.Join(said, "\n")
+}
+
+// payloadsOfSchema is the payloads `names` of `src`, compiled.
+func payloadsOfSchema(t *testing.T, src string, names ...string) []*pdgen.Payload {
+	t.Helper()
 	x := require.New(t)
 
 	const name = "app/payload.proto"
@@ -47,19 +59,14 @@ func payloadsOf(t *testing.T, src string, names ...string) string {
 	fd, err := protodesc.NewFile(v, protoregistry.GlobalFiles)
 	x.NoError(err)
 
-	s := &pdgen.Schema{}
+	var vs []*pdgen.Payload
 	for _, n := range names {
 		md := fd.Messages().ByName(protoreflect.Name(n))
 		x.NotNil(md, n)
-		s.Payloads = append(s.Payloads, &pdgen.Payload{Desc: md})
+		vs = append(vs, &pdgen.Payload{Desc: md})
 	}
 
-	said := []string{}
-	for _, v := range doctorPayloads(s) {
-		said = append(said, v.String())
-	}
-
-	return strings.Join(said, "\n")
+	return vs
 }
 
 const payloads = `edition = "2023";
@@ -114,4 +121,25 @@ func TestAPayloadsFreeTextIsAsked(t *testing.T) {
 	x.NotContains(v, "label")
 	x.Contains(v, "[(payday.field) = {personal: false}]")
 	x.Contains(v, "proto/app/payload.proto:")
+}
+
+// TestNotificationsWithNoPayloadMessageAreSaid: an app that declares
+// notifications and marks no message one may carry has every payload it
+// publishes refused when it runs, which is the shape of an app upgraded
+// across payday#193 that has not marked what it publishes.
+func TestNotificationsWithNoPayloadMessageAreSaid(t *testing.T) {
+	x := require.New(t)
+	notified := &pdgen.Notify{Notification: 40, Receipt: 41, At: "proto/app/app.proto", KeepDays: 30}
+
+	vs := doctorPayloads(&pdgen.Schema{Notify: notified})
+	x.Len(vs, 1)
+	x.Contains(vs[0].What, "proto/app/app.proto declares notifications and no message one may carry")
+	x.Contains(vs[0].What, "NotificationService.Add refuses every notification this app publishes with a payload")
+	x.False(vs[0].Fatal, "a notification with no payload is a notification, and the schema is fine without one")
+	x.Contains(vs[0].Fix, "option (payday.notification) = {};")
+	x.Contains(vs[0].Fix, "docs/migrating.md")
+
+	// An app that marks one, and one with no notifications, are not asked.
+	x.Empty(doctorPayloads(&pdgen.Schema{}))
+	x.Empty(doctorPayloads(&pdgen.Schema{Notify: notified, Payloads: payloadsOfSchema(t, payloads, "JobDone")}))
 }
