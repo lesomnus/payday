@@ -38,11 +38,3 @@ breaking:
   ignore_only:
     FIELD_NO_DELETE:
       - proto/payday/app.proto
-    # A receipt record has no RPC (payday#197): notify writes it past the
-    # servers, so its Add and Get, and the messages only they used, are gone
-    # from the app's contract. They were sealed, and refused every caller.
-    # Remove once main has it.
-    MESSAGE_NO_DELETE:
-      - internal/apptest/proto/app/payday/notification_receipt_svc.g.proto
-    RPC_NO_DELETE:
-      - internal/apptest/proto/app/payday/notification_receipt_svc.g.proto
