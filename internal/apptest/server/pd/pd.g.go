@@ -227,6 +227,13 @@ var EventKinds = map[string]protoreflect.MessageType{
 	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
 }
 
+// ColumnRenames are the columns of payday's own entities in this schema that
+// an earlier build stored under another name. Hand them to `rename.Columns`
+// before a migration, which otherwise adds each beside the old one, empty.
+var ColumnRenames = []rename.Column{
+	{Table: "notificationreceiptrecord", From: "data_read", To: "date_read"},
+}
+
 // IndexRenames are the indexes this schema names, by what an earlier build
 // stored each under: the name made of its columns, where protoc-gen-orm-ent
 // now stores it under the one it declares. Hand them to `rename.Indexes`
@@ -12708,7 +12715,7 @@ func notificationValue(v notify.Notification) *apptest.Notification {
 	return b.Build()
 }
 func notificationReceiptValue(v notify.Receipt) *apptest.NotificationReceipt {
-	return apptest.NotificationReceipt_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}.Build()
+	return apptest.NotificationReceipt_builder{Id: v.ID.Bytes(), TenantId: notificationBytes(v.Tenant), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DateRead: timestamppb.New(v.DateRead), DateCreated: timestamppb.New(v.DateCreated), DateUpdated: timestamppb.New(v.DateUpdated)}.Build()
 }
 
 type notificationStore struct {
@@ -12875,7 +12882,7 @@ func (s notificationStore) Receipts(ctx context.Context, tenant, reader pdid.Id,
 	return values, nil
 }
 func (s notificationStore) InsertReceipt(ctx context.Context, v notify.Receipt) (notify.Receipt, error) {
-	b := apptest.NotificationReceiptRecordAddRequest_builder{TenantId: v.Tenant.Bytes(), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DataRead: timestamppb.New(v.DataRead), DateCreated: timestamppb.New(v.DateCreated)}
+	b := apptest.NotificationReceiptRecordAddRequest_builder{TenantId: v.Tenant.Bytes(), NotificationId: v.Notification.Bytes(), ReaderId: v.Reader.Bytes(), DateRead: timestamppb.New(v.DateRead), DateCreated: timestamppb.New(v.DateCreated)}
 	if !v.ID.IsZero() {
 		b.Id = v.ID.Bytes()
 	}
@@ -12968,7 +12975,7 @@ func notificationReceiptRow(v *apptest.NotificationReceiptRecord) (notify.Receip
 	if err != nil {
 		return notify.Receipt{}, err
 	}
-	return notify.Receipt{ID: key, Tenant: tenant, Notification: notification, Reader: reader, DataRead: v.GetDataRead().AsTime(), DateCreated: v.GetDateCreated().AsTime(), DateUpdated: v.GetDateUpdated().AsTime()}, nil
+	return notify.Receipt{ID: key, Tenant: tenant, Notification: notification, Reader: reader, DateRead: v.GetDateRead().AsTime(), DateCreated: v.GetDateCreated().AsTime(), DateUpdated: v.GetDateUpdated().AsTime()}, nil
 }
 
 // Meters are the meters this app's schema declares (payday#186), each

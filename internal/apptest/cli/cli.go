@@ -180,16 +180,20 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // not migrate: it executes a script that is already the answer, which is what
 // `sandbox` is for.
 //
-// The indexes an earlier build made under another name are moved to this
-// build's first: a migration finds an index by its name, and one it does not
-// find it makes again, from every row, beside the old one, which it leaves --
-// it drops no index. See `rename`.
+// The columns and indexes an earlier build made under another name are moved
+// to this build's first: a migration finds both by name and drops neither. A
+// column it does not find it adds, empty, beside the old one -- every row
+// written before then reads as never having had a value -- and an index it
+// makes again, from every row, beside the old one. See `rename`.
 //
 // And for the same reason an index this build declares that PostgreSQL left
 // invalid -- a build of it `CONCURRENTLY` that did not finish -- is refused
 // before anything is made: found by its name, it would be taken for made, and
 // read by nothing from then on. See `valid`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
+	if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
+		return err
+	}
 	if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
 		return err
 	}

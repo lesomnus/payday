@@ -20,7 +20,7 @@ message NotificationReceiptRecord {
   bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
   bytes notification_id = 8 [(orm.field) = {type: TYPE_UUID}];
   bytes reader_id = 9 [(orm.field) = {type: TYPE_UUID}];
-  google.protobuf.Timestamp data_read = 10 [(orm.field) = {default: ""}];
+  google.protobuf.Timestamp date_read = 10 [(orm.field) = {default: ""}];
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {
     version: {}
   }];

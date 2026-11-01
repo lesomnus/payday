@@ -31,7 +31,7 @@ type NotificationReceiptRecord struct {
 	xxx_hidden_TenantId       []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
 	xxx_hidden_NotificationId []byte                 `protobuf:"bytes,8,opt,name=notification_id,json=notificationId"`
 	xxx_hidden_ReaderId       []byte                 `protobuf:"bytes,9,opt,name=reader_id,json=readerId"`
-	xxx_hidden_DataRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=data_read,json=dataRead"`
+	xxx_hidden_DateRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_read,json=dateRead"`
 	xxx_hidden_DateUpdated    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated    *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields             protoimpl.UnknownFields
@@ -91,9 +91,9 @@ func (x *NotificationReceiptRecord) GetReaderId() []byte {
 	return nil
 }
 
-func (x *NotificationReceiptRecord) GetDataRead() *timestamppb.Timestamp {
+func (x *NotificationReceiptRecord) GetDateRead() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_DataRead
+		return x.xxx_hidden_DateRead
 	}
 	return nil
 }
@@ -140,8 +140,8 @@ func (x *NotificationReceiptRecord) SetReaderId(v []byte) {
 	x.xxx_hidden_ReaderId = v
 }
 
-func (x *NotificationReceiptRecord) SetDataRead(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DataRead = v
+func (x *NotificationReceiptRecord) SetDateRead(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateRead = v
 }
 
 func (x *NotificationReceiptRecord) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -152,11 +152,11 @@ func (x *NotificationReceiptRecord) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
 
-func (x *NotificationReceiptRecord) HasDataRead() bool {
+func (x *NotificationReceiptRecord) HasDateRead() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_DataRead != nil
+	return x.xxx_hidden_DateRead != nil
 }
 
 func (x *NotificationReceiptRecord) HasDateUpdated() bool {
@@ -173,8 +173,8 @@ func (x *NotificationReceiptRecord) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
-func (x *NotificationReceiptRecord) ClearDataRead() {
-	x.xxx_hidden_DataRead = nil
+func (x *NotificationReceiptRecord) ClearDateRead() {
+	x.xxx_hidden_DateRead = nil
 }
 
 func (x *NotificationReceiptRecord) ClearDateUpdated() {
@@ -192,7 +192,7 @@ type NotificationReceiptRecord_builder struct {
 	TenantId       []byte
 	NotificationId []byte
 	ReaderId       []byte
-	DataRead       *timestamppb.Timestamp
+	DateRead       *timestamppb.Timestamp
 	DateUpdated    *timestamppb.Timestamp
 	DateCreated    *timestamppb.Timestamp
 }
@@ -205,7 +205,7 @@ func (b0 NotificationReceiptRecord_builder) Build() *NotificationReceiptRecord {
 	x.xxx_hidden_TenantId = b.TenantId
 	x.xxx_hidden_NotificationId = b.NotificationId
 	x.xxx_hidden_ReaderId = b.ReaderId
-	x.xxx_hidden_DataRead = b.DataRead
+	x.xxx_hidden_DateRead = b.DateRead
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -221,8 +221,8 @@ const file_app_payday_notification_receipt_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12/\n" +
 	"\x0fnotification_id\x18\b \x01(\fB\x06\xea\x82\x16\x02\x10@R\x0enotificationId\x12#\n" +
 	"\treader_id\x18\t \x01(\fB\x06\xea\x82\x16\x02\x10@R\breaderId\x12@\n" +
-	"\tdata_read\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\bdataRead\x12F\n" +
+	"\tdate_read\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\bdateRead\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\xa9\x01\xca\xfc\x15v\x12\x06\x82\x01\x00\x8a\x01\x00\x1a/\x12\areceipt\x1a\x13\n" +
 	"\x0fnotification_id\x10\b\x1a\r\n" +
@@ -238,7 +238,7 @@ var file_app_payday_notification_receipt_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),     // 1: google.protobuf.Timestamp
 }
 var file_app_payday_notification_receipt_proto_depIdxs = []int32{
-	1, // 0: app.NotificationReceiptRecord.data_read:type_name -> google.protobuf.Timestamp
+	1, // 0: app.NotificationReceiptRecord.date_read:type_name -> google.protobuf.Timestamp
 	1, // 1: app.NotificationReceiptRecord.date_updated:type_name -> google.protobuf.Timestamp
 	1, // 2: app.NotificationReceiptRecord.date_created:type_name -> google.protobuf.Timestamp
 	3, // [3:3] is the sub-list for method output_type

@@ -429,7 +429,7 @@ type NotificationReceipt struct {
 	xxx_hidden_TenantId       []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
 	xxx_hidden_NotificationId []byte                 `protobuf:"bytes,8,opt,name=notification_id,json=notificationId"`
 	xxx_hidden_ReaderId       []byte                 `protobuf:"bytes,9,opt,name=reader_id,json=readerId"`
-	xxx_hidden_DataRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=data_read,json=dataRead"`
+	xxx_hidden_DateRead       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_read,json=dateRead"`
 	xxx_hidden_DateUpdated    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated    *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields             protoimpl.UnknownFields
@@ -489,9 +489,9 @@ func (x *NotificationReceipt) GetReaderId() []byte {
 	return nil
 }
 
-func (x *NotificationReceipt) GetDataRead() *timestamppb.Timestamp {
+func (x *NotificationReceipt) GetDateRead() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_DataRead
+		return x.xxx_hidden_DateRead
 	}
 	return nil
 }
@@ -538,8 +538,8 @@ func (x *NotificationReceipt) SetReaderId(v []byte) {
 	x.xxx_hidden_ReaderId = v
 }
 
-func (x *NotificationReceipt) SetDataRead(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DataRead = v
+func (x *NotificationReceipt) SetDateRead(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateRead = v
 }
 
 func (x *NotificationReceipt) SetDateUpdated(v *timestamppb.Timestamp) {
@@ -550,11 +550,11 @@ func (x *NotificationReceipt) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
 
-func (x *NotificationReceipt) HasDataRead() bool {
+func (x *NotificationReceipt) HasDateRead() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_DataRead != nil
+	return x.xxx_hidden_DateRead != nil
 }
 
 func (x *NotificationReceipt) HasDateUpdated() bool {
@@ -571,8 +571,8 @@ func (x *NotificationReceipt) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
-func (x *NotificationReceipt) ClearDataRead() {
-	x.xxx_hidden_DataRead = nil
+func (x *NotificationReceipt) ClearDateRead() {
+	x.xxx_hidden_DateRead = nil
 }
 
 func (x *NotificationReceipt) ClearDateUpdated() {
@@ -590,7 +590,7 @@ type NotificationReceipt_builder struct {
 	TenantId       []byte
 	NotificationId []byte
 	ReaderId       []byte
-	DataRead       *timestamppb.Timestamp
+	DateRead       *timestamppb.Timestamp
 	DateUpdated    *timestamppb.Timestamp
 	DateCreated    *timestamppb.Timestamp
 }
@@ -603,7 +603,7 @@ func (b0 NotificationReceipt_builder) Build() *NotificationReceipt {
 	x.xxx_hidden_TenantId = b.TenantId
 	x.xxx_hidden_NotificationId = b.NotificationId
 	x.xxx_hidden_ReaderId = b.ReaderId
-	x.xxx_hidden_DataRead = b.DataRead
+	x.xxx_hidden_DateRead = b.DateRead
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -2603,8 +2603,8 @@ const file_app_payday_notification_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12'\n" +
 	"\x0fnotification_id\x18\b \x01(\fR\x0enotificationId\x12\x1b\n" +
 	"\treader_id\x18\t \x01(\fR\breaderId\x127\n" +
-	"\tdata_read\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\bdataRead\x12=\n" +
+	"\tdate_read\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\bdateRead\x12=\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"\x81\x01\n" +
 	"\x14NotificationReadItem\x125\n" +
@@ -2739,7 +2739,7 @@ var file_app_payday_notification_proto_depIdxs = []int32{
 	22, // 1: app.Notification.payload:type_name -> google.protobuf.Any
 	23, // 2: app.Notification.date_updated:type_name -> google.protobuf.Timestamp
 	23, // 3: app.Notification.date_created:type_name -> google.protobuf.Timestamp
-	23, // 4: app.NotificationReceipt.data_read:type_name -> google.protobuf.Timestamp
+	23, // 4: app.NotificationReceipt.date_read:type_name -> google.protobuf.Timestamp
 	23, // 5: app.NotificationReceipt.date_updated:type_name -> google.protobuf.Timestamp
 	23, // 6: app.NotificationReceipt.date_created:type_name -> google.protobuf.Timestamp
 	1,  // 7: app.NotificationReadItem.notification:type_name -> app.Notification

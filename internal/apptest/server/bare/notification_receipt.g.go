@@ -126,10 +126,10 @@ func (st NotificationReceiptRecordServiceServer) create(ctx context.Context, req
 	} else {
 		q.SetReaderId(v)
 	}
-	if req.HasDataRead() {
-		q.SetDataRead(req.GetDataRead().AsTime())
+	if req.HasDateRead() {
+		q.SetDateRead(req.GetDateRead().AsTime())
 	} else {
-		q.SetDataRead(st.now())
+		q.SetDateRead(st.now())
 	}
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
@@ -273,8 +273,8 @@ func NotificationReceiptRecordSelectedFields(m *apptest.NotificationReceiptRecor
 	if m.GetReaderId() {
 		vs = append(vs, notificationreceiptrecord.FieldReaderId)
 	}
-	if m.GetDataRead() {
-		vs = append(vs, notificationreceiptrecord.FieldDataRead)
+	if m.GetDateRead() {
+		vs = append(vs, notificationreceiptrecord.FieldDateRead)
 	}
 	if m.GetDateUpdated() {
 		vs = append(vs, notificationreceiptrecord.FieldDateUpdated)
