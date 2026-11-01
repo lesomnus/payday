@@ -286,6 +286,12 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	}
 	s.Spin = append(s.Spin, s.Meters)
 
+	// Notifications kept for as long as the schema says and no longer
+	// (payday#194): erased with their receipts by a loop a lease runs in one
+	// process, each erasure on the trail with the deployment's content, and
+	// the streams that showed one told once each batch commits.
+	s.Spin = append(s.Spin, pd.NotificationExpirer(drv, w, content))
+
 	// What each tenant is entitled to, copied from the source of grants
 	// (payday#185) by a loop a lease runs in one process. Its writes go on
 	// the trail with the deployment's content, so a check of the rows reads

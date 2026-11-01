@@ -42,7 +42,14 @@ option (payday.app) = {
     field: {name: "account", number: 12}
   }
   past: {event: 17, fact: 18}
-  notify: {notification: 40, receipt: 41}
+  // Notifications, kept 90 days from their publication and then erased with
+  // their receipts (payday#194); a producer of this app retries a publication
+  // for a day at most.
+  notify: {
+    notification: 40
+    receipt: 41
+    keep: {days: 90, retry_days: 1}
+  }
   // A tenant's copy of what it is entitled to (payday#185), at a domain of
   // the app's own.
   entitlements: {domain: 43}

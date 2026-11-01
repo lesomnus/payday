@@ -251,6 +251,10 @@ message NotificationInvalidation {
 // NotificationRecord is the internal indexed representation of the public
 // Notification. Opaque payload bytes stay off ordinary CRUD and resource
 // streams; the notification service applies the app's policy before unpacking.
+//
+// It is kept for as long as the app's `notify.keep` says, from date_created,
+// and then erased with its receipts by `pd.NotificationExpirer`, which puts
+// each erasure on the trail (payday#194).
 message NotificationRecord {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -315,6 +319,21 @@ message NotificationRecord {
             name: "topic_key"
             number: 9
           },
+          {
+            name: "date_created"
+            number: 15
+          },
+          {
+            name: "id"
+            number: 1
+          }
+        ]
+      },
+      // What an expiry reads, oldest first and across every namespace: the
+      // notifications published before a moment (payday#194).
+      {
+        name: "age"
+        refs: [
           {
             name: "date_created"
             number: 15

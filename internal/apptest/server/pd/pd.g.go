@@ -270,6 +270,7 @@ var IndexRenames = []rename.Index{
 	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_tenant_id_reader_id_notification_id", To: "notificationreceiptrecord_reader"},
 	{Table: "notificationrecord", From: "notificationrecord_tenant_id_producer_idempotency_key", To: "notificationrecord_publication"},
 	{Table: "notificationrecord", From: "notificationrecord_tenant_id_topic_key_date_created_id", To: "notificationrecord_page"},
+	{Table: "notificationrecord", From: "notificationrecord_date_created_id", To: "notificationrecord_age"},
 	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
 	{Table: "owed", From: "owed_date_created_id", To: "owed_owed"},
 	{Table: "reading", From: "reading_tenant_id_date_created", To: "reading_wall"},
@@ -12756,6 +12757,61 @@ func (s notificationStore) InsertReceipt(ctx context.Context, v notify.Receipt) 
 	}
 	return notificationReceiptRow(saved.Proto())
 }
+
+// Hold takes a share lock of each notification of ids that is there, on
+// PostgreSQL and in the order of their identifiers: what Mark asks before it
+// reads them, so that an expiry erasing one waits for the receipt being
+// written of it (notify.Store.Hold).
+func (s notificationStore) Hold(ctx context.Context, ids []pdid.Id) error {
+	keys := make([]uuid.UUID, len(ids))
+	for i, v := range ids {
+		keys[i] = v.Uuid()
+	}
+	_, err := notificationsLocked(ctx, s.driver, keys, false)
+	return err
+}
+
+// notificationsLocked answers which of keys are notifications that are there,
+// having locked each -- to share, or to update -- in the order of their
+// identifiers, which is the order Mark and an expiry both lock in, so neither
+// waits on the other while it holds what the other wants. On SQLite, which
+// has one writer at a time, nothing is locked and every key is answered.
+func notificationsLocked(ctx context.Context, driver dialect.Driver, keys []uuid.UUID, update bool) (map[uuid.UUID]bool, error) {
+	out := make(map[uuid.UUID]bool, len(keys))
+	if driver.Dialect() != dialect.Postgres {
+		for _, k := range keys {
+			out[k] = true
+		}
+		return out, nil
+	}
+	if len(keys) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(keys))
+	for i, k := range keys {
+		args[i] = k
+	}
+	q := sql.Dialect(driver.Dialect()).Select(entNotificationRecord.FieldId).From(sql.Table(entNotificationRecord.Table)).Where(sql.In(entNotificationRecord.FieldId, args...)).OrderBy(entNotificationRecord.FieldId)
+	if update {
+		q.ForUpdate()
+	} else {
+		q.ForShare()
+	}
+	query, qargs := q.Query()
+	var rows sql.Rows
+	if err := driver.Query(ctx, query, qargs, &rows); err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k uuid.UUID
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		out[k] = true
+	}
+	return out, rows.Err()
+}
 func (s notificationStore) Change(ctx context.Context, change watch.Change) (notify.Hint, bool, error) {
 	switch change.Key.Domain() {
 	case NotificationRecordDomain:
@@ -12795,6 +12851,95 @@ func (s notificationStore) Change(ctx context.Context, change watch.Change) (not
 		return notify.Hint{}, false, nil
 	}
 }
+
+// NotificationKeep is how long a notification is kept from its publication,
+// as app/robot.proto declares: 90 days. [NotificationExpirer] erases what is
+// older, with every receipt of it and its idempotency key.
+const NotificationKeep = 90 * 24 * time.Hour
+
+// NotificationExpirer is the loop that erases the notifications older than
+// [NotificationKeep], with every receipt of each (payday#194): a
+// `spin.Spinner` called `payday.notify.expire`, for the spin list.
+//
+//	s.Spin = append(s.Spin, pd.NotificationExpirer(drv, w, content))
+//
+// `driver` is the deployment's own: an expiry is the deployment acting on
+// itself, and nobody's in a tenant. `content` is the trail's, as the recorder
+// is given it: each notification erased is a line of the trail saying it went
+// ([RecordErased]), filed under the tenant it was in. `changes` is told which
+// topics a batch took from, once it commits, so that a stream showing one
+// drops it.
+func NotificationExpirer(driver dialect.Driver, changes *watch.Watch, content audit.Contents) notify.Expirer {
+	return notify.Expirer{Keep: NotificationKeep, Watch: changes, Erase: func(ctx context.Context, before time.Time, limit int) ([]notify.Notification, error) {
+		return notificationErase(ctx, driver, content, before, limit)
+	}}
+}
+
+// notificationErase is one batch of an expiry, in a transaction of its own:
+// the oldest `limit` notifications published before `before`, every receipt
+// of them, and a line of the trail for each notification.
+func notificationErase(ctx context.Context, driver dialect.Driver, content audit.Contents, before time.Time, limit int) ([]notify.Notification, error) {
+	tdrv, tx, err := dialect.BeginTx(ctx, driver)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	db := ent.NewClient(ent.Driver(tdrv))
+	rows, err := db.NotificationRecord.Query().Where(entNotificationRecord.DateCreatedLT(before)).Order(ent.Asc(entNotificationRecord.FieldDateCreated), ent.Asc(entNotificationRecord.FieldId)).Limit(limit).All(ctx)
+	if err != nil || len(rows) == 0 {
+		return nil, err
+	}
+	// Locked to update before anything goes, in the order Mark holds what it
+	// reads: so this waits for a Mark writing a receipt of one, and the
+	// receipts' delete below finds what it wrote. An expiry run beside this
+	// one has taken what this finds is no longer there.
+	keys := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		keys[i] = row.Id
+	}
+	held, err := notificationsLocked(ctx, tdrv, keys, true)
+	if err != nil {
+		return nil, err
+	}
+	var out []notify.Notification
+	var gone []uuid.UUID
+	var tenants []pdid.Id
+	erased := map[pdid.Id][]pdid.Id{}
+	for _, row := range rows {
+		if !held[row.Id] {
+			continue
+		}
+		v, err := notificationRow(row.Proto())
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+		gone = append(gone, row.Id)
+		if _, ok := erased[v.Tenant]; !ok {
+			tenants = append(tenants, v.Tenant)
+		}
+		erased[v.Tenant] = append(erased[v.Tenant], v.ID)
+	}
+	if len(gone) == 0 {
+		return nil, nil
+	}
+	if _, err := db.NotificationRecord.Delete().Where(entNotificationRecord.IdIn(gone...)).Exec(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := db.NotificationReceiptRecord.Delete().Where(entNotificationReceiptRecord.NotificationIdIn(gone...)).Exec(ctx); err != nil {
+		return nil, err
+	}
+	for _, tenant := range tenants {
+		// The deployment's work in the namespace the notifications were in,
+		// which is what the trail files an erasure of no row under.
+		in := frame.Into(ctx, frame.New(pdid.Nil, tenant, frame.Grant{}).WithScope(frame.Only(tenant)))
+		if _, err := RecordErased(in, db, content, notify.ExpireName, erased[tenant]); err != nil {
+			return nil, err
+		}
+	}
+	return out, tx.Commit()
+}
+
 func notificationRow(v *apptest.NotificationRecord) (notify.Notification, error) {
 	key, err := pdid.From(v.GetId())
 	if err != nil {

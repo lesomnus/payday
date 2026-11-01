@@ -46,6 +46,8 @@ func (NotificationRecord) Indexes() []ent.Index {
 			Unique(),
 		index.Fields("tenant_id", "topic_key", "date_created", "id").
 			StorageKey("notificationrecord_page"),
+		index.Fields("date_created", "id").
+			StorageKey("notificationrecord_age"),
 	}
 }
 

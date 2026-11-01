@@ -550,6 +550,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{NotificationrecordColumns[1], NotificationrecordColumns[3], NotificationrecordColumns[8], NotificationrecordColumns[0]},
 			},
+			{
+				Name:    "notificationrecord_age",
+				Unique:  false,
+				Columns: []*schema.Column{NotificationrecordColumns[8], NotificationrecordColumns[0]},
+			},
 		},
 	}
 	// OutboxColumns holds the columns for the "outbox" table.

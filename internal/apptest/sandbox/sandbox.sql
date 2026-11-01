@@ -65,6 +65,7 @@ CREATE UNIQUE INDEX `holder_slug` ON `holder` (`alias`, `tenant_id`) WHERE date_
 CREATE INDEX `machine_by_tenant` ON `machine` (`tenant_id`);
 CREATE INDEX `notificationreceiptrecord_reader` ON `notificationreceiptrecord` (`tenant_id`, `reader_id`, `notification_id`);
 CREATE UNIQUE INDEX `notificationreceiptrecord_receipt` ON `notificationreceiptrecord` (`notification_id`, `reader_id`);
+CREATE INDEX `notificationrecord_age` ON `notificationrecord` (`date_created`, `id`);
 CREATE INDEX `notificationrecord_page` ON `notificationrecord` (`tenant_id`, `topic_key`, `date_created`, `id`);
 CREATE UNIQUE INDEX `notificationrecord_publication` ON `notificationrecord` (`tenant_id`, `producer`, `idempotency_key`);
 CREATE INDEX `outbox_queue` ON `outbox` (`id`);
