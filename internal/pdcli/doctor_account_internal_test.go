@@ -165,3 +165,21 @@ var r = auth.ResolverFunc(nil)
 `}, accept, deny)
 	x.Contains(v, "no resolver serves a call as one")
 }
+
+// TestTheAccountNamespacesMethodsDeclareNothing: NotificationAccountService's
+// methods are an account's own, and payday serves them through notify's own
+// store, which holds every read to the account namespace -- no walled server
+// is asked, so there is nothing for the app to declare (payday#195).
+func TestTheAccountNamespacesMethodsDeclareNothing(t *testing.T) {
+	read := pdgen.AccountMethod{
+		Full:    "/app.NotificationAccountService/Read",
+		Service: "NotificationAccountService",
+		Method:  "Read",
+		Const:   "NotificationAccountService_Read_FullMethodName",
+		At:      "app/payday/notification_account.proto",
+	}
+	require.Empty(t, accounted(t, true, map[string]string{"cmd/serve.go": resolving}, read))
+
+	// And one of the app's own beside it is still asked about.
+	require.Contains(t, accounted(t, true, map[string]string{"cmd/serve.go": resolving}, read, accept), "/app.InvitationService/Accept")
+}

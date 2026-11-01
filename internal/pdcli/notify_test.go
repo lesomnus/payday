@@ -215,6 +215,7 @@ func TestNotifyDeclarationsAreRefusedBeforeCompilation(t *testing.T) {
 		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 7, retry_days: 8}}};`,
 		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {forever: {}}}};`,
 		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 7, forever: {why: "both"}}}};`,
+		`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 7}, accounts: {}}};`,
 	} {
 		root := app(t, "github.com/acme/thing")
 		past(t, root, "widget.proto", option)

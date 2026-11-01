@@ -44,11 +44,13 @@ option (payday.app) = {
   past: {event: 17, fact: 18}
   // Notifications, kept 90 days from their publication and then erased with
   // their receipts (payday#194); a producer of this app retries a publication
-  // for a day at most.
+  // for a day at most. And an account namespace beside the tenants', which
+  // an account reads as itself (payday#195).
   notify: {
     notification: 40
     receipt: 41
     keep: {days: 90, retry_days: 1}
+    accounts: {}
   }
   // A tenant's copy of what it is entitled to (payday#185), at a domain of
   // the app's own.

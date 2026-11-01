@@ -12333,6 +12333,13 @@ type NotificationServer struct {
 // Reusing the app driver makes a domain operation and its publication one
 // transaction. Every layer of stack must support rebinding.
 func Notifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*NotificationServer, error) {
+	// A tenant's namespace, or the global one: never the account namespace,
+	// which is NotificationAccountService's alone (payday#195).
+	options.Accounts = false
+	return notifications(stack, driver, changes, policy, options)
+}
+
+func notifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*NotificationServer, error) {
 	options.Global = false
 	options.Namespace = "github.com/lesomnus/payday/internal/apptest"
 	// The messages a notification may carry, which the schema declares
@@ -12352,7 +12359,69 @@ func Notifications(stack apptest.Server, driver dialect.Driver, changes *watch.W
 
 // WithDriver joins a business transaction without dropping a layer's rules.
 func (s *NotificationServer) WithDriver(driver dialect.Driver) (*NotificationServer, error) {
-	return Notifications(s.stack, driver, s.watch, s.policy, s.options)
+	return notifications(s.stack, driver, s.watch, s.policy, s.options)
+}
+
+// AccountNotificationServer serves NotificationAccountService: the account
+// namespace, the one no tenant holds, to an account calling as itself
+// (payday#195). Register it with RegisterNotificationAccountServiceServer
+// beside the tenant one. Publishing into it is the app's own code, through
+// [AccountNotificationServer.Add], and no RPC.
+type AccountNotificationServer struct {
+	apptest.UnimplementedNotificationAccountServiceServer
+	server *NotificationServer
+}
+
+// AccountNotifications binds the account namespace to the app's records and
+// to a policy of its own, asked with pdid.Nil for the tenant: a policy written
+// for tenants that ignores its tenant argument would answer for accounts too.
+// The stack, driver and Watch are the ones the tenant service is given.
+func AccountNotifications(stack apptest.Server, driver dialect.Driver, changes *watch.Watch, policy notify.Policy, options notify.Options) (*AccountNotificationServer, error) {
+	options.Accounts = true
+	s, err := notifications(stack, driver, changes, policy, options)
+	if err != nil {
+		return nil, err
+	}
+	return &AccountNotificationServer{server: s}, nil
+}
+
+// WithDriver joins a business transaction, as the tenant server's does.
+func (s *AccountNotificationServer) WithDriver(driver dialect.Driver) (*AccountNotificationServer, error) {
+	v, err := s.server.WithDriver(driver)
+	if err != nil {
+		return nil, err
+	}
+	return &AccountNotificationServer{server: v}, nil
+}
+
+// Add publishes into the account namespace: the app's own code, under any
+// frame its publisher policy allows. The request names no tenant.
+func (s *AccountNotificationServer) Add(ctx context.Context, req *apptest.NotificationAddRequest) (*apptest.Notification, error) {
+	return s.server.Add(ctx, req)
+}
+
+// Invalidate is [NotificationServer.Invalidate] of the account namespace.
+func (s *AccountNotificationServer) Invalidate(ctx context.Context, topics []notify.Topic) error {
+	return s.server.Invalidate(ctx, pdid.Nil, topics)
+}
+
+func (s *AccountNotificationServer) Get(ctx context.Context, req *apptest.NotificationGetRequest) (*apptest.Notification, error) {
+	return s.server.Get(ctx, req)
+}
+func (s *AccountNotificationServer) List(ctx context.Context, req *apptest.NotificationListRequest) (*apptest.NotificationListResponse, error) {
+	return s.server.List(ctx, req)
+}
+func (s *AccountNotificationServer) Read(ctx context.Context, req *apptest.NotificationReadRequest) (*apptest.NotificationReadResponse, error) {
+	return s.server.Read(ctx, req)
+}
+func (s *AccountNotificationServer) Count(ctx context.Context, req *apptest.NotificationCountRequest) (*apptest.NotificationCountResponse, error) {
+	return s.server.Count(ctx, req)
+}
+func (s *AccountNotificationServer) Mark(ctx context.Context, req *apptest.NotificationMarkRequest) (*apptest.NotificationMarkResponse, error) {
+	return s.server.Mark(ctx, req)
+}
+func (s *AccountNotificationServer) Listen(req *apptest.NotificationListenRequest, stream grpc.ServerStreamingServer[apptest.NotificationListenResponse]) error {
+	return s.server.Listen(req, stream)
 }
 
 // Invalidate is an app operation after a committed policy dependency changed.
@@ -12943,12 +13012,22 @@ func notificationErase(ctx context.Context, driver dialect.Driver, content audit
 	return out, tx.Commit()
 }
 
+// notificationTenant is the namespace a record's tenant_id says: a tenant, or
+// the Nil identifier of the account namespace, which is no tenant's
+// (payday#195) -- as payday's own records say no tenant.
+func notificationTenant(v []byte) (pdid.Id, error) {
+	if len(v) == 16 && bytes.Equal(v, make([]byte, 16)) {
+		return pdid.Nil, nil
+	}
+	return pdid.From(v)
+}
+
 func notificationRow(v *apptest.NotificationRecord) (notify.Notification, error) {
 	key, err := pdid.From(v.GetId())
 	if err != nil {
 		return notify.Notification{}, err
 	}
-	tenant, err := pdid.From(v.GetTenantId())
+	tenant, err := notificationTenant(v.GetTenantId())
 	if err != nil {
 		return notify.Notification{}, err
 	}
@@ -12971,7 +13050,7 @@ func notificationReceiptRow(v *apptest.NotificationReceiptRecord) (notify.Receip
 	if err != nil {
 		return notify.Receipt{}, err
 	}
-	tenant, err := pdid.From(v.GetTenantId())
+	tenant, err := notificationTenant(v.GetTenantId())
 	if err != nil {
 		return notify.Receipt{}, err
 	}
@@ -13429,6 +13508,12 @@ func (s entitlementStore) Forget(ctx context.Context, ids []pdid.Id) error {
 // marks `(payday.method) = {account: {}}`.
 var AccountMethods = []string{
 	apptest.HolderService_Memberships_FullMethodName,
+	apptest.NotificationAccountService_Get_FullMethodName,
+	apptest.NotificationAccountService_List_FullMethodName,
+	apptest.NotificationAccountService_Read_FullMethodName,
+	apptest.NotificationAccountService_Count_FullMethodName,
+	apptest.NotificationAccountService_Mark_FullMethodName,
+	apptest.NotificationAccountService_Listen_FullMethodName,
 }
 
 var accountMethods = func() map[string]bool {

@@ -34,6 +34,7 @@ type Service struct {
 	key       []byte
 	clock     func() time.Time
 	global    bool
+	accounts  bool
 	namespace string
 	payloads  map[string]bool
 }
@@ -57,7 +58,7 @@ func New(store Store, w *watch.Watch, policy Policy, opts Options) (*Service, er
 	for _, v := range opts.Payloads {
 		payloads[v] = true
 	}
-	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock, global: opts.Global, namespace: opts.Namespace, payloads: payloads}, nil
+	return &Service{store: store, watch: w, policy: bound, source: policy, key: slices.Clone(opts.CursorKey), clock: clock, global: opts.Global, accounts: opts.Accounts, namespace: opts.Namespace, payloads: payloads}, nil
 }
 
 func bindPolicy(policy Policy, drv dialect.Driver) (Policy, error) {
@@ -506,6 +507,12 @@ func (s *Service) scope(ctx context.Context, id pdid.Id, requested []Topic) ([]T
 }
 
 func (s *Service) reader(ctx context.Context, id pdid.Id) (pdid.Id, error) {
+	if _, ok := frame.AccountOf(ctx); s.accounts && !ok {
+		// The account namespace is an account's own, read as itself: a
+		// membership reads its tenant's, and anybody else nothing here
+		// (payday#195).
+		return pdid.Nil, status.Error(codes.PermissionDenied, "an account's notifications are read by the account, calling as itself")
+	}
 	r, err := s.policy.Reader(ctx, id)
 	if err != nil {
 		return pdid.Nil, policyError(err)
@@ -561,6 +568,15 @@ func (s *Service) tenant(ctx context.Context, id pdid.Id) error {
 	f, ok := frame.From(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "who is asking?")
+	}
+	if s.accounts {
+		// No tenant's, whoever asks: what an account reads here is never a
+		// row a tenant holds, and the reader it is read as is resolved only
+		// for an account ([Service.reader]).
+		if !id.IsZero() {
+			return invalid("the account namespace is no tenant's; name none")
+		}
+		return nil
 	}
 	if s.global {
 		if !id.IsZero() {

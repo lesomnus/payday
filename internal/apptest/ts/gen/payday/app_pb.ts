@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/app.proto.
  */
 export const file_payday_app: GenFile = /*@__PURE__*/
-  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXki0gEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMSIgoIYWNjb3VudHMYBiABKAsyEC5wYXlkYXkuQWNjb3VudHMiIwoIQWNjb3VudHMSFwoFZmllbGQYASABKAsyCC5vcm0uUmVmIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSK0AgoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEa2VlcBgGIAEoCzITLnBheWRheS5Ob3RpZnkuS2VlcBp5CgRLZWVwEg4KBGRheXMYASABKA1IABIuCgdmb3JldmVyGAIgASgLMhsucGF5ZGF5Lk5vdGlmeS5LZWVwLkZvcmV2ZXJIABISCgpyZXRyeV9kYXlzGAMgASgNGhYKB0ZvcmV2ZXISCwoDd2h5GAEgASgJQgUKA2hvd0IJCgd0ZW5hbmN5SgQIAxAEIh4KDEVudGl0bGVtZW50cxIOCgZkb21haW4YASABKA1CJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_orm_ref, file_payday_entity, file_payday_meter]);
+  fileDesc("ChBwYXlkYXkvYXBwLnByb3RvEgZwYXlkYXki0gEKA0FwcBIaCgRwYXN0GAEgASgLMgwucGF5ZGF5LlBhc3QSIAoHZG9tYWlucxgCIAEoCzIPLnBheWRheS5Eb21haW5zEh4KBm5vdGlmeRgDIAEoCzIOLnBheWRheS5Ob3RpZnkSHQoGbWV0ZXJzGAQgAygLMg0ucGF5ZGF5Lk1ldGVyEioKDGVudGl0bGVtZW50cxgFIAEoCzIULnBheWRheS5FbnRpdGxlbWVudHMSIgoIYWNjb3VudHMYBiABKAsyEC5wYXlkYXkuQWNjb3VudHMiIwoIQWNjb3VudHMSFwoFZmllbGQYASABKAsyCC5vcm0uUmVmIiMKBFBhc3QSDQoFZXZlbnQYASABKA0SDAoEZmFjdBgCIAEoDSIrCgdEb21haW5zEhAKCGFyY2hpdmVkGAEgASgNEg4KBmFjY2VzcxgCIAEoDSLrAgoGTm90aWZ5EhQKDG5vdGlmaWNhdGlvbhgBIAEoDRIPCgdyZWNlaXB0GAIgASgNEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEa2VlcBgGIAEoCzITLnBheWRheS5Ob3RpZnkuS2VlcBIpCghhY2NvdW50cxgHIAEoCzIXLnBheWRheS5Ob3RpZnkuQWNjb3VudHMaCgoIQWNjb3VudHMaeQoES2VlcBIOCgRkYXlzGAEgASgNSAASLgoHZm9yZXZlchgCIAEoCzIbLnBheWRheS5Ob3RpZnkuS2VlcC5Gb3JldmVySAASEgoKcmV0cnlfZGF5cxgDIAEoDRoWCgdGb3JldmVyEgsKA3doeRgBIAEoCUIFCgNob3dCCQoHdGVuYW5jeUoECAMQBCIeCgxFbnRpdGxlbWVudHMSDgoGZG9tYWluGAEgASgNQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref, file_payday_entity, file_payday_meter]);
 
 /**
  * App says that this file's proto package is the app's own.
@@ -361,6 +361,24 @@ export type Notify = Message<"payday.Notify"> & {
    * @generated from field: payday.Notify.Keep keep = 6;
    */
   keep?: Notify_Keep | undefined;
+
+  /**
+   * Accounts gives an app whose holders are memberships of accounts -- one
+   * that declares [App.accounts] -- a namespace of notifications no tenant
+   * holds, which an account reads as itself (payday#195):
+   *
+   * 	notify: {notification: 40, receipt: 41, keep: {days: 90}, accounts: {}}
+   *
+   * `pd gen` copies `NotificationAccountService` beside `NotificationService`,
+   * each of its methods the account's own, and writes
+   * `pd.AccountNotifications`, which serves it with a policy of its own. An
+   * account reads no tenant's notifications through it, and no tenant reads
+   * the account namespace. It is a message so that something can be said of
+   * it later; for now it is said or not.
+   *
+   * @generated from field: payday.Notify.Accounts accounts = 7;
+   */
+  accounts?: Notify_Accounts | undefined;
 };
 
 /**
@@ -369,6 +387,21 @@ export type Notify = Message<"payday.Notify"> & {
  */
 export const NotifySchema: GenMessage<Notify> = /*@__PURE__*/
   messageDesc(file_payday_app, 4);
+
+/**
+ * Accounts is the account namespace, said. See [Notify.accounts].
+ *
+ * @generated from message payday.Notify.Accounts
+ */
+export type Notify_Accounts = Message<"payday.Notify.Accounts"> & {
+};
+
+/**
+ * Describes the message payday.Notify.Accounts.
+ * Use `create(Notify_AccountsSchema)` to create a new message.
+ */
+export const Notify_AccountsSchema: GenMessage<Notify_Accounts> = /*@__PURE__*/
+  messageDesc(file_payday_app, 4, 0);
 
 /**
  * Keep is one of the two answers. See [Notify.keep].
@@ -419,7 +452,7 @@ export type Notify_Keep = Message<"payday.Notify.Keep"> & {
  * Use `create(Notify_KeepSchema)` to create a new message.
  */
 export const Notify_KeepSchema: GenMessage<Notify_Keep> = /*@__PURE__*/
-  messageDesc(file_payday_app, 4, 0);
+  messageDesc(file_payday_app, 4, 1);
 
 /**
  * @generated from message payday.Notify.Keep.Forever
@@ -438,7 +471,7 @@ export type Notify_Keep_Forever = Message<"payday.Notify.Keep.Forever"> & {
  * Use `create(Notify_Keep_ForeverSchema)` to create a new message.
  */
 export const Notify_Keep_ForeverSchema: GenMessage<Notify_Keep_Forever> = /*@__PURE__*/
-  messageDesc(file_payday_app, 4, 0, 0);
+  messageDesc(file_payday_app, 4, 1, 0);
 
 /**
  * Entitlements is the domain of the one table an app's copy of its tenants'

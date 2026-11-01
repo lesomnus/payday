@@ -33,7 +33,17 @@ type Notify struct {
 	KeepDays  uint32
 	RetryDays uint32
 	Forever   string
+
+	// Accounts is whether the app has an account namespace, which an account
+	// reads as itself through NotificationAccountService (payday#195).
+	Accounts bool
 }
+
+// notifyAccountFile is the service an account reads its own notifications
+// through, copied beside the records only into an app that declares
+// `notify: {accounts: {}}`. It numbers no domain: it is a service and nothing
+// else.
+const notifyAccountFile = "notification_account.proto"
 
 var notifyFiles = []pastFile{
 	{"notification.proto", "NotificationRecord", pdpb.Own_OWN_NOTIFICATION},
@@ -69,6 +79,9 @@ func (n *Notify) proto() *pdpb.Notify {
 	case n.Forever != "":
 		k.Forever = pdpb.Notify_Keep_Forever_builder{Why: n.Forever}.Build()
 		b.Keep = k.Build()
+	}
+	if n.Accounts {
+		b.Accounts = &pdpb.Notify_Accounts{}
 	}
 	return b.Build()
 }
@@ -106,14 +119,23 @@ func readNotify(l Layout) (*Notify, error) {
 		if err := pdgen.CheckNotify(n, past, a.GetDomains()); err != nil {
 			return fmt.Errorf("%s: %w", l.rel(p), err)
 		}
+		if err := pdgen.CheckNotifyAccounts(n, a); err != nil {
+			return fmt.Errorf("%s: %w", l.rel(p), err)
+		}
 		found = &Notify{Notification: n.GetNotification(), Receipt: n.GetReceipt(), Global: n.HasGlobal(), At: l.rel(p),
-			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy()}
+			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy(),
+			Accounts: n.HasAccounts()}
 		return nil
 	})
 	return found, err
 }
 
 func (g Gen) notify(ctx context.Context, dst string) error {
+	if g.Layout.Notify == nil || !g.Layout.Notify.Accounts {
+		if err := os.Remove(filepath.Join(dst, notifyAccountFile)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
 	if g.Layout.Notify == nil {
 		for _, v := range notifyFiles {
 			if err := os.Remove(filepath.Join(dst, v.Name)); err != nil && !os.IsNotExist(err) {
@@ -142,7 +164,20 @@ func (g Gen) notify(ctx context.Context, dst string) error {
 			return err
 		}
 	}
-	return nil
+	if !g.Layout.Notify.Accounts {
+		return nil
+	}
+
+	// The account service imports the records' file by where it ships; once
+	// copied, that is beside it, as payday's own entities import each other.
+	g.say("  notify: NotificationAccountService")
+	return g.copyEntity(ctx, filepath.Join(src, notifyAccountFile), dst, func(b []byte) ([]byte, error) {
+		const from = `import "notify/notification.proto";`
+		if !bytes.Contains(b, []byte(from)) {
+			return nil, fmt.Errorf("the account service no longer imports the records as %s", from)
+		}
+		return bytes.Replace(b, []byte(from), []byte(`import "payday/notification.proto";`), 1), nil
+	})
 }
 
 // checkNotifyNames also protects the public values and RPC messages in the
@@ -152,12 +187,19 @@ func checkNotifyNames(l Layout) error {
 		return nil
 	}
 	names := map[string]string{}
-	for _, source := range notifyFiles {
-		b, err := schema.FS().Open(filepath.ToSlash(filepath.Join(schema.DirNotify, source.Name)))
+	sources := []string{}
+	for _, v := range notifyFiles {
+		sources = append(sources, v.Name)
+	}
+	if l.Notify.Accounts {
+		sources = append(sources, notifyAccountFile)
+	}
+	for _, source := range sources {
+		b, err := schema.FS().Open(filepath.ToSlash(filepath.Join(schema.DirNotify, source)))
 		if err != nil {
 			return err
 		}
-		f, err := parser.Parse(source.Name, b, reporter.NewHandler(nil))
+		f, err := parser.Parse(source, b, reporter.NewHandler(nil))
 		b.Close()
 		if err != nil {
 			return err
@@ -165,15 +207,15 @@ func checkNotifyNames(l Layout) error {
 		for _, d := range f.Decls {
 			switch d := d.(type) {
 			case *ast.MessageNode:
-				names[string(d.Name.AsIdentifier())] = source.Name
+				names[string(d.Name.AsIdentifier())] = source
 			case *ast.ServiceNode:
-				names[string(d.Name.AsIdentifier())] = source.Name
+				names[string(d.Name.AsIdentifier())] = source
 			}
 		}
 	}
 	return l.eachOwn(func(p string, b []byte) error {
 		base := filepath.Base(p)
-		if slices.ContainsFunc(notifyFiles, func(v pastFile) bool { return v.Name == base }) {
+		if slices.ContainsFunc(notifyFiles, func(v pastFile) bool { return v.Name == base }) || (l.Notify.Accounts && base == notifyAccountFile) {
 			return fmt.Errorf("%s has the same generated Go filename as a notification copy, and %s declares notify; rename this source file", l.rel(p), l.Notify.At)
 		}
 		f, err := parser.Parse(p, bytes.NewReader(b), reporter.NewHandler(nil))

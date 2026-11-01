@@ -80,3 +80,45 @@ func normalized(message proto.Message, namespace protoreflect.FullName) proto.Me
 	visit(clone.ProtoReflect())
 	return clone
 }
+
+// The account namespace's service (payday#195), held to the source copied
+// into an app as NotificationService is. The contract cannot import payday's
+// options, so the one thing each method says in the copy -- that it is the
+// account's own -- is left out of the comparison, and asked of the copy
+// instead.
+func TestTheAccountNotificationContractMatchesWhatAppsReceive(t *testing.T) {
+	x := require.New(t)
+	contract := map[string]string{}
+	for _, name := range []string{"notification.proto", "notification_account.proto"} {
+		b, err := os.ReadFile("../docs/contracts/notify/" + name)
+		x.NoError(err)
+		contract[name] = string(b)
+	}
+	compiler := protocompile.Compiler{Resolver: protocompile.CompositeResolver{
+		&protocompile.SourceResolver{Accessor: func(name string) (io.ReadCloser, error) {
+			if v, ok := contract[name]; ok {
+				return io.NopCloser(strings.NewReader(v)), nil
+			}
+			return schema.FS().Open(name)
+		}},
+		protocompile.ResolverFunc(func(name string) (protocompile.SearchResult, error) {
+			file, err := protoregistry.GlobalFiles.FindFileByPath(name)
+			return protocompile.SearchResult{Desc: file}, err
+		}),
+	}}
+	files, err := compiler.Compile(context.Background(), "notification_account.proto", "notify/notification_account.proto")
+	x.NoError(err)
+	want, actual := files[0], files[1]
+	x.Equal(1, want.Services().Len())
+	service := want.Services().Get(0)
+	found := actual.Services().ByName(service.Name())
+	x.NotNil(found, "public service %s disappeared", service.Name())
+
+	copied := protodesc.ToServiceDescriptorProto(found)
+	for _, m := range copied.GetMethod() {
+		x.NotNil(m.GetOptions(), "%s is not marked an account's own", m.GetName())
+		m.Options = nil
+	}
+	x.True(proto.Equal(normalized(protodesc.ToServiceDescriptorProto(service), want.Package()), normalized(copied, actual.Package())),
+		"service %s differs from its contract", service.Name())
+}

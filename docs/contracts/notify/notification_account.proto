@@ -1,0 +1,50 @@
+edition = "2023";
+
+// The account namespace's service (payday#195), compiled without payday's
+// options: in the copy an app receives, schema/notify/notification_account.proto,
+// every method says `(payday.method) = {account: {}}`, so that it is served
+// to an account calling as itself. See ../../notify.md. This package stands
+// for the application's own.
+package app;
+
+import "notification.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "example.com/app;app";
+
+// NotificationAccountService is how an account, calling as itself, reads the
+// notifications of the account namespace: the namespace no tenant holds
+// (payday#195). It is copied only into an app that declares `notify:
+// {accounts: {}}` beside its own `accounts`, and every method is the
+// account's own, so the resolver frames each call as the account and never
+// as one of its memberships.
+//
+// The requests are NotificationService's, and name no tenant: one that does is
+// InvalidArgument. A caller that is not an account calling as itself is
+// PermissionDenied, and a notification of a tenant asked for by its
+// identifier is NotFound -- an account reads no tenant's notifications here,
+// and no tenant reads these through NotificationService. There is no Add: the
+// app's own code publishes into the account namespace, through the server it
+// holds.
+service NotificationAccountService {
+  // Get reads one notification of the account namespace, NotFound for both
+  // absent and inaccessible ones.
+  rpc Get(NotificationGetRequest) returns (Notification);
+
+  // List reads shared notifications in explicit topics of the account
+  // namespace.
+  rpc List(NotificationListRequest) returns (NotificationListResponse);
+
+  // Read projects notifications with only the resolved reader's receipts.
+  rpc Read(NotificationReadRequest) returns (NotificationReadResponse);
+
+  // Count aggregates the entire authorized reader selection.
+  rpc Count(NotificationCountRequest) returns (NotificationCountResponse);
+
+  // Mark atomically records the reader's first read of 1–100 distinct refs.
+  rpc Mark(NotificationMarkRequest) returns (NotificationMarkResponse);
+
+  // Listen first sends ready once its live subscription is installed, then
+  // invalidation hints, as NotificationService's does.
+  rpc Listen(NotificationListenRequest) returns (stream NotificationListenResponse);
+}

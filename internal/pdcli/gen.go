@@ -323,6 +323,8 @@ until the next one -- the past's lock apart, below.
   when the app declares ` + "`option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 90}}};`" + `.
   Their domains come from that declaration; the public notification contract is
   copied beside the internal records and disappears with them on opt-out.
+  ` + "`notification_account.proto`" + `, the service an account reads its own
+  notifications through, is here too when that declaration says ` + "`accounts: {}`" + `.
 - ` + "`entitlement.proto`" + ` is here only when the app declares
   ` + "`option (payday.app) = {entitlements: {domain: 43}};`" + ` -- a tenant's copy
   of what it is entitled to, numbered as declared -- and goes when the

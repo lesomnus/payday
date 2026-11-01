@@ -27,7 +27,7 @@ func TestNotifyCopiesAreOptionalAndNumbered(t *testing.T) {
 		copies = append(copies, v.Name)
 		x.Equal(schema.DirNotify, features[v.Own])
 	}
-	x.ElementsMatch(files, copies)
+	x.ElementsMatch(files, append(copies, notifyAccountFile))
 
 	root, dst := t.TempDir(), t.TempDir()
 	l := Layout{Root: root, ProtoPkg: "app", Module: "example.com/app", Pkg: "example.com/app", Notify: &Notify{Notification: 40, Receipt: 41, At: "app.proto"}}
@@ -39,9 +39,28 @@ func TestNotifyCopiesAreOptionalAndNumbered(t *testing.T) {
 	x.Contains(string(b), "domain: 40")
 	x.Contains(string(b), "package app;")
 	x.Contains(string(b), "service NotificationService")
+	_, err = os.Stat(filepath.Join(dst, notifyAccountFile))
+	x.True(os.IsNotExist(err), "the account service was copied into an app with no account namespace")
+
+	// With one, the account service is copied beside the records, importing
+	// them where they are now.
+	g.Layout.Notify.Accounts = true
+	x.NoError(g.notify(context.Background(), dst))
+	b, err = os.ReadFile(filepath.Join(dst, notifyAccountFile))
+	x.NoError(err)
+	x.Contains(string(b), "package app;")
+	x.Contains(string(b), `import "app/payday/notification.proto";`)
+	x.Contains(string(b), "service NotificationAccountService")
+	g.Layout.Notify.Accounts = false
+	x.NoError(g.notify(context.Background(), dst))
+	_, err = os.Stat(filepath.Join(dst, notifyAccountFile))
+	x.True(os.IsNotExist(err), "the account service survived the account namespace")
+
+	g.Layout.Notify = &Notify{Notification: 40, Receipt: 41, At: "app.proto", Accounts: true}
+	x.NoError(g.notify(context.Background(), dst))
 	g.Layout.Notify = nil
 	x.NoError(g.notify(context.Background(), dst))
-	for _, v := range notifyFiles {
+	for _, v := range append(notifyFiles, pastFile{Name: notifyAccountFile}) {
 		_, err := os.Stat(filepath.Join(dst, v.Name))
 		x.True(os.IsNotExist(err), "%s survived opt-out", v.Name)
 	}
