@@ -40,7 +40,7 @@ func EmitNotify(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	var code bytes.Buffer
 	stream := g.QualifiedGoIdent(pkgGrpc.Ident("ServerStreamingServer")) + "[" + g.QualifiedGoIdent(root.Ident("NotificationListenResponse")) + "]"
 	if err := t.Execute(&code, map[string]any{"Record": n.GoName(), "Receipt": r.GoName(), "Stream": stream, "Global": s.Notify.Global, "Namespace": string(root),
-		"Keep": s.Notify.KeepDays, "Forever": s.Notify.Forever, "At": s.Notify.At, "Payloads": payloadNames(s)}); err != nil {
+		"Keep": s.Notify.KeepDays, "Forever": s.Notify.Forever, "At": s.Notify.At, "Payloads": payloadNames(s), "Accounts": s.Notify.Accounts}); err != nil {
 		panic(err)
 	}
 	g.P(code.String())
@@ -111,6 +111,13 @@ type NotificationServer struct {
 // Reusing the app driver makes a domain operation and its publication one
 // transaction. Every layer of stack must support rebinding.
 func Notifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "Watch"}}, policy {{n "Policy"}}, options {{n "Options"}}) (*NotificationServer, error) {
+    // A tenant's namespace, or the global one: never the account namespace,
+    // which is NotificationAccountService's alone (payday#195).
+    options.Accounts=false
+    return notifications(stack,driver,changes,policy,options)
+}
+
+func notifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "Watch"}}, policy {{n "Policy"}}, options {{n "Options"}}) (*NotificationServer, error) {
     options.Global={{.Global}}
     options.Namespace={{printf "%q" .Namespace}}
     // The messages a notification may carry, which the schema declares
@@ -126,8 +133,53 @@ func Notifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "
 
 // WithDriver joins a business transaction without dropping a layer's rules.
 func (s *NotificationServer) WithDriver(driver {{drv "Driver"}}) (*NotificationServer,error) {
-    return Notifications(s.stack,driver,s.watch,s.policy,s.options)
+    return notifications(s.stack,driver,s.watch,s.policy,s.options)
 }
+{{if .Accounts}}
+// AccountNotificationServer serves NotificationAccountService: the account
+// namespace, the one no tenant holds, to an account calling as itself
+// (payday#195). Register it with RegisterNotificationAccountServiceServer
+// beside the tenant one. Publishing into it is the app's own code, through
+// [AccountNotificationServer.Add], and no RPC.
+type AccountNotificationServer struct {
+    {{a "UnimplementedNotificationAccountServiceServer"}}
+    server *NotificationServer
+}
+
+// AccountNotifications binds the account namespace to the app's records and
+// to a policy of its own, asked with pdid.Nil for the tenant: a policy written
+// for tenants that ignores its tenant argument would answer for accounts too.
+// The stack, driver and Watch are the ones the tenant service is given.
+func AccountNotifications(stack {{a "Server"}}, driver {{drv "Driver"}}, changes *{{w "Watch"}}, policy {{n "Policy"}}, options {{n "Options"}}) (*AccountNotificationServer, error) {
+    options.Accounts=true
+    s,err:=notifications(stack,driver,changes,policy,options);if err!=nil{return nil,err}
+    return &AccountNotificationServer{server:s},nil
+}
+
+// WithDriver joins a business transaction, as the tenant server's does.
+func (s *AccountNotificationServer) WithDriver(driver {{drv "Driver"}}) (*AccountNotificationServer,error) {
+    v,err:=s.server.WithDriver(driver);if err!=nil{return nil,err}
+    return &AccountNotificationServer{server:v},nil
+}
+
+// Add publishes into the account namespace: the app's own code, under any
+// frame its publisher policy allows. The request names no tenant.
+func (s *AccountNotificationServer) Add(ctx {{ctx "Context"}}, req *{{a "NotificationAddRequest"}}) (*{{a "Notification"}},error) {
+    return s.server.Add(ctx,req)
+}
+
+// Invalidate is [NotificationServer.Invalidate] of the account namespace.
+func (s *AccountNotificationServer) Invalidate(ctx {{ctx "Context"}}, topics []{{n "Topic"}}) error {
+    return s.server.Invalidate(ctx,{{id "Nil"}},topics)
+}
+
+func (s *AccountNotificationServer) Get(ctx {{ctx "Context"}}, req *{{a "NotificationGetRequest"}}) (*{{a "Notification"}},error) { return s.server.Get(ctx,req) }
+func (s *AccountNotificationServer) List(ctx {{ctx "Context"}}, req *{{a "NotificationListRequest"}}) (*{{a "NotificationListResponse"}},error) { return s.server.List(ctx,req) }
+func (s *AccountNotificationServer) Read(ctx {{ctx "Context"}}, req *{{a "NotificationReadRequest"}}) (*{{a "NotificationReadResponse"}},error) { return s.server.Read(ctx,req) }
+func (s *AccountNotificationServer) Count(ctx {{ctx "Context"}}, req *{{a "NotificationCountRequest"}}) (*{{a "NotificationCountResponse"}},error) { return s.server.Count(ctx,req) }
+func (s *AccountNotificationServer) Mark(ctx {{ctx "Context"}}, req *{{a "NotificationMarkRequest"}}) (*{{a "NotificationMarkResponse"}},error) { return s.server.Mark(ctx,req) }
+func (s *AccountNotificationServer) Listen(req *{{a "NotificationListenRequest"}}, stream {{.Stream}}) error { return s.server.Listen(req,stream) }
+{{end}}
 
 // Invalidate is an app operation after a committed policy dependency changed.
 // It is deliberately absent from the public gRPC service.
@@ -410,9 +462,18 @@ func notificationErase(ctx {{ctx "Context"}},driver {{drv "Driver"}},content {{a
     return out,tx.Commit()
 }
 {{end}}
+{{if not .Global}}
+// notificationTenant is the namespace a record's tenant_id says: a tenant, or
+// the Nil identifier of the account namespace, which is no tenant's
+// (payday#195) -- as payday's own records say no tenant.
+func notificationTenant(v []byte)({{id "Id"}},error){
+    if len(v)==16&&{{bytes "Equal"}}(v,make([]byte,16)){return {{id "Nil"}},nil}
+    return {{id "From"}}(v)
+}
+{{end}}
 func notificationRow(v *{{record ""}})({{n "Notification"}},error){
     key,err:={{id "From"}}(v.GetId());if err!=nil{return {{n "Notification"}}{},err}
-    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Notification"}}{},err}{{end}}
+    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:=notificationTenant(v.GetTenantId());if err!=nil{return {{n "Notification"}}{},err}{{end}}
     topic,err:={{n "ParseTopicKey"}}(v.GetTopicKey());if err!=nil{return {{n "Notification"}}{},err}
     source,err:=notificationID(v.GetSourceId());if err!=nil{return {{n "Notification"}}{},err}
     row:={{n "Notification"}}{ID:key,Tenant:tenant,Topic:topic,Source:source,Kind:v.GetKind(),Producer:v.GetProducer(),IdempotencyKey:v.GetIdempotencyKey(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()}
@@ -421,7 +482,7 @@ func notificationRow(v *{{record ""}})({{n "Notification"}},error){
 }
 func notificationReceiptRow(v *{{receipt ""}})({{n "Receipt"}},error){
     key,err:={{id "From"}}(v.GetId());if err!=nil{return {{n "Receipt"}}{},err}
-    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:={{id "From"}}(v.GetTenantId());if err!=nil{return {{n "Receipt"}}{},err}{{end}}
+    {{if .Global}}tenant:={{id "Nil"}}{{else}}tenant,err:=notificationTenant(v.GetTenantId());if err!=nil{return {{n "Receipt"}}{},err}{{end}}
     notification,err:={{id "From"}}(v.GetNotificationId());if err!=nil{return {{n "Receipt"}}{},err}
     reader,err:={{id "From"}}(v.GetReaderId());if err!=nil{return {{n "Receipt"}}{},err}
     return {{n "Receipt"}}{ID:key,Tenant:tenant,Notification:notification,Reader:reader,DateRead:v.GetDateRead().AsTime(),DateCreated:v.GetDateCreated().AsTime(),DateUpdated:v.GetDateUpdated().AsTime()},nil

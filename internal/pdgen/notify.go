@@ -25,6 +25,24 @@ type Notify struct {
 	KeepDays  uint32
 	RetryDays uint32
 	Forever   string
+
+	// Accounts is whether the app has an account namespace, which an account
+	// reads as itself through NotificationAccountService (payday#195).
+	Accounts bool
+}
+
+// CheckNotifyAccounts refuses an account namespace in an app that declares no
+// accounts to read it (payday#195). Its service's methods are the account's
+// own, and an app with no accounts serves every call as one tenant's holder:
+// there would be nobody to read it as.
+func CheckNotifyAccounts(n *pdpb.Notify, a *pdpb.App) error {
+	if !n.HasAccounts() || a.HasAccounts() {
+		return nil
+	}
+
+	return fmt.Errorf("notify: accounts: is read by an account calling as itself, and this app declares no accounts -- " +
+		"a call is served as one tenant's holder. Say which holder field names an account:\n\n" +
+		"    option (payday.app) = {accounts: {field: {name: \"account\", number: <its number>}}, notify: {...}};")
 }
 
 // Domain answers the domain declared for one notification record's marker.
@@ -115,6 +133,9 @@ func notifyProto(n *Notify) *pdpb.Notify {
 	if n.Global {
 		b.Global = &pdpb.Entity_Global{}
 	}
+	if n.Accounts {
+		b.Accounts = &pdpb.Notify_Accounts{}
+	}
 	return b.Build()
 }
 
@@ -156,8 +177,12 @@ func readNotify(files []*protogen.File) (*Notify, error) {
 		if err := CheckNotify(n, a.GetPast(), a.GetDomains()); err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
 		}
+		if err := CheckNotifyAccounts(n, a); err != nil {
+			return nil, fmt.Errorf("%s: %w", f.Desc.Path(), err)
+		}
 		found = &Notify{Notification: uint8(n.GetNotification()), Receipt: uint8(n.GetReceipt()), Global: n.HasGlobal(), At: f.Desc.Path(),
-			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy()}
+			KeepDays: n.GetKeep().GetDays(), RetryDays: n.GetKeep().GetRetryDays(), Forever: n.GetKeep().GetForever().GetWhy(),
+			Accounts: n.HasAccounts()}
 	}
 	return found, nil
 }

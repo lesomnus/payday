@@ -110,6 +110,12 @@ func doctorAccounts(l Layout, s *pdgen.Schema) []Finding {
 	var vs []Finding
 	var missing []string
 	for _, m := range s.Accounts.Methods {
+		if filepath.Base(m.At) == notifyAccountFile {
+			// NotificationAccountService's, which payday serves (payday#195):
+			// it reads through notify's own store, which holds every read to
+			// the account namespace, and through no walled server.
+			continue
+		}
 		if !declared[m.Const] && !declared[m.Full] {
 			missing = append(missing, m.Full)
 		}
