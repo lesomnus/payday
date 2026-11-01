@@ -6,6 +6,7 @@ import "google/protobuf/descriptor.proto";
 import "payday/app.proto";
 import "payday/entity.proto";
 import "payday/method.proto";
+import "payday/notify.proto";
 import "payday/past.proto";
 
 option go_package = "github.com/lesomnus/payday/pdpb";
@@ -20,6 +21,12 @@ extend google.protobuf.MessageOptions {
   // "robot.move"};`. The next number of the message block. See
   // [EventMessage] for what is refused of one.
   EventMessage event = 46002;
+
+  // What a message is when it is what the app's notifications carry as their
+  // payload (payday#193): `option (payday.notification) = {};`. See
+  // [NotificationPayload] for what is refused of one, and why a notification
+  // carries identifiers rather than a person's data.
+  NotificationPayload notification = 46003;
 }
 
 // The field block, one above the message one for the same reason: room to grow

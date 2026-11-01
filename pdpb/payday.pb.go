@@ -39,6 +39,14 @@ var file_payday_proto_extTypes = []protoimpl.ExtensionInfo{
 		Filename:      "payday.proto",
 	},
 	{
+		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
+		ExtensionType: (*NotificationPayload)(nil),
+		Field:         46003,
+		Name:          "payday.notification",
+		Tag:           "bytes,46003,opt,name=notification",
+		Filename:      "payday.proto",
+	},
+	{
 		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
 		ExtensionType: (*Field)(nil),
 		Field:         46101,
@@ -75,33 +83,41 @@ var (
 	//
 	// optional payday.EventMessage event = 46002;
 	E_Event = &file_payday_proto_extTypes[1]
+	// What a message is when it is what the app's notifications carry as their
+	// payload (payday#193): `option (payday.notification) = {};`. See
+	// [NotificationPayload] for what is refused of one, and why a notification
+	// carries identifiers rather than a person's data.
+	//
+	// optional payday.NotificationPayload notification = 46003;
+	E_Notification = &file_payday_proto_extTypes[2]
 )
 
 // Extension fields to descriptorpb.FieldOptions.
 var (
 	// optional payday.Field field = 46101;
-	E_Field = &file_payday_proto_extTypes[2]
+	E_Field = &file_payday_proto_extTypes[3]
 )
 
 // Extension fields to descriptorpb.FileOptions.
 var (
 	// optional payday.App app = 46201;
-	E_App = &file_payday_proto_extTypes[3]
+	E_App = &file_payday_proto_extTypes[4]
 )
 
 // Extension fields to descriptorpb.MethodOptions.
 var (
 	// optional payday.Method method = 46301;
-	E_Method = &file_payday_proto_extTypes[4]
+	E_Method = &file_payday_proto_extTypes[5]
 )
 
 var File_payday_proto protoreflect.FileDescriptor
 
 const file_payday_proto_rawDesc = "" +
 	"\n" +
-	"\fpayday.proto\x12\x06payday\x1a google/protobuf/descriptor.proto\x1a\x10payday/app.proto\x1a\x13payday/entity.proto\x1a\x13payday/method.proto\x1a\x11payday/past.proto:I\n" +
+	"\fpayday.proto\x12\x06payday\x1a google/protobuf/descriptor.proto\x1a\x10payday/app.proto\x1a\x13payday/entity.proto\x1a\x13payday/method.proto\x1a\x13payday/notify.proto\x1a\x11payday/past.proto:I\n" +
 	"\x06entity\x12\x1f.google.protobuf.MessageOptions\x18\xb1\xe7\x02 \x01(\v2\x0e.payday.EntityR\x06entity:M\n" +
-	"\x05event\x12\x1f.google.protobuf.MessageOptions\x18\xb2\xe7\x02 \x01(\v2\x14.payday.EventMessageR\x05event:D\n" +
+	"\x05event\x12\x1f.google.protobuf.MessageOptions\x18\xb2\xe7\x02 \x01(\v2\x14.payday.EventMessageR\x05event:b\n" +
+	"\fnotification\x12\x1f.google.protobuf.MessageOptions\x18\xb3\xe7\x02 \x01(\v2\x1b.payday.NotificationPayloadR\fnotification:D\n" +
 	"\x05field\x12\x1d.google.protobuf.FieldOptions\x18\x95\xe8\x02 \x01(\v2\r.payday.FieldR\x05field:=\n" +
 	"\x03app\x12\x1c.google.protobuf.FileOptions\x18\xf9\xe8\x02 \x01(\v2\v.payday.AppR\x03app:H\n" +
 	"\x06method\x12\x1e.google.protobuf.MethodOptions\x18\xdd\xe9\x02 \x01(\v2\x0e.payday.MethodR\x06methodB!Z\x1fgithub.com/lesomnus/payday/pdpbb\beditionsp\xe8\a"
@@ -113,25 +129,28 @@ var file_payday_proto_goTypes = []any{
 	(*descriptorpb.MethodOptions)(nil),  // 3: google.protobuf.MethodOptions
 	(*Entity)(nil),                      // 4: payday.Entity
 	(*EventMessage)(nil),                // 5: payday.EventMessage
-	(*Field)(nil),                       // 6: payday.Field
-	(*App)(nil),                         // 7: payday.App
-	(*Method)(nil),                      // 8: payday.Method
+	(*NotificationPayload)(nil),         // 6: payday.NotificationPayload
+	(*Field)(nil),                       // 7: payday.Field
+	(*App)(nil),                         // 8: payday.App
+	(*Method)(nil),                      // 9: payday.Method
 }
 var file_payday_proto_depIdxs = []int32{
 	0,  // 0: payday.entity:extendee -> google.protobuf.MessageOptions
 	0,  // 1: payday.event:extendee -> google.protobuf.MessageOptions
-	1,  // 2: payday.field:extendee -> google.protobuf.FieldOptions
-	2,  // 3: payday.app:extendee -> google.protobuf.FileOptions
-	3,  // 4: payday.method:extendee -> google.protobuf.MethodOptions
-	4,  // 5: payday.entity:type_name -> payday.Entity
-	5,  // 6: payday.event:type_name -> payday.EventMessage
-	6,  // 7: payday.field:type_name -> payday.Field
-	7,  // 8: payday.app:type_name -> payday.App
-	8,  // 9: payday.method:type_name -> payday.Method
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	5,  // [5:10] is the sub-list for extension type_name
-	0,  // [0:5] is the sub-list for extension extendee
+	0,  // 2: payday.notification:extendee -> google.protobuf.MessageOptions
+	1,  // 3: payday.field:extendee -> google.protobuf.FieldOptions
+	2,  // 4: payday.app:extendee -> google.protobuf.FileOptions
+	3,  // 5: payday.method:extendee -> google.protobuf.MethodOptions
+	4,  // 6: payday.entity:type_name -> payday.Entity
+	5,  // 7: payday.event:type_name -> payday.EventMessage
+	6,  // 8: payday.notification:type_name -> payday.NotificationPayload
+	7,  // 9: payday.field:type_name -> payday.Field
+	8,  // 10: payday.app:type_name -> payday.App
+	9,  // 11: payday.method:type_name -> payday.Method
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	6,  // [6:12] is the sub-list for extension type_name
+	0,  // [0:6] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
 }
 
@@ -143,6 +162,7 @@ func file_payday_proto_init() {
 	file_payday_app_proto_init()
 	file_payday_entity_proto_init()
 	file_payday_method_proto_init()
+	file_payday_notify_proto_init()
 	file_payday_past_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -151,7 +171,7 @@ func file_payday_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_proto_rawDesc), len(file_payday_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   0,
-			NumExtensions: 5,
+			NumExtensions: 6,
 			NumServices:   0,
 		},
 		GoTypes:           file_payday_proto_goTypes,
