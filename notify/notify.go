@@ -1,6 +1,9 @@
 // Package notify provides topic notifications with application-defined access
-// and lazy, independently owned receipts. An app's generated Store writes through
-// its own servers so notification, audit and change records share a transaction.
+// and lazy, independently owned receipts. An app's generated Store writes a
+// notification through its own servers, so the notification, its trail and its
+// change records share a transaction. A receipt is notify's own write in that
+// transaction, kept off the trail: it records that one reader read, and there
+// are as many as there are reads (payday#197).
 //
 // A Topic identifies an interest, not a recipient list. Resource identifiers
 // carry their own kind; named topics need not correspond to a database row.
@@ -205,8 +208,11 @@ type PolicyBinder interface {
 }
 
 // Store is generated into the app: the runtime cannot name its ent client or
-// protobuf types. Insert and InsertReceipt use its generated write path. Rebind
-// retains the complete server stack on the transaction driver it is given.
+// protobuf types. Insert writes through the generated servers, so a
+// publication is on the trail, versioned and noted as any write is.
+// InsertReceipt writes past them: a receipt has no RPC and is kept off the
+// trail (payday#197), and Service notes its hint itself. Rebind retains the
+// complete server stack on the transaction driver it is given.
 type Store interface {
 	Driver() dialect.Driver
 	Rebind(dialect.Driver) (Store, error)
