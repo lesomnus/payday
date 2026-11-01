@@ -31,6 +31,9 @@ import (
 //
 // A `bytes` field is taken for an identifier, which is what one holds here.
 //
+// And of an app that declares notifications and marks no message at all, that
+// every payload it publishes is refused ([unmarkedPayloads]).
+//
 // Advice and not a refusal, as `personal` is: generation does what it always
 // did, and what a field holds is the schema's to say.
 func doctorPayloads(s *pdgen.Schema) []Finding {
@@ -38,6 +41,9 @@ func doctorPayloads(s *pdgen.Schema) []Finding {
 	seen := map[protoreflect.FullName]bool{}
 
 	var vs []Finding
+	if s.Notify != nil && len(s.Payloads) == 0 {
+		vs = append(vs, unmarkedPayloads(s.Notify))
+	}
 	for _, p := range s.Payloads {
 		var asked []protoreflect.FieldDescriptor
 		var walk func(m protoreflect.MessageDescriptor)
@@ -116,4 +122,31 @@ func aboutNoOne(f protoreflect.FieldDescriptor) bool {
 	v, _ := proto.GetExtension(opts, pdpb.E_Field).(*pdpb.Field)
 
 	return v.HasPersonal() && !v.GetPersonal()
+}
+
+// unmarkedPayloads is the finding of an app that declares notifications and no
+// message one may carry.
+//
+// `NotificationService.Add` takes a payload only of a message the schema marks
+// (payday#193), so in such an app every notification that carries one is
+// refused -- when it is published, by `InvalidArgument`, and not before. That
+// is the shape an app upgraded across #193 is in until it marks what it
+// publishes, and nothing else says so. Advice and not a refusal: a
+// notification with no payload is a notification, and an app that publishes
+// only those marks nothing.
+func unmarkedPayloads(n *pdgen.Notify) Finding {
+	return Finding{
+		What: fmt.Sprintf("%s declares notifications and no message one may carry, so NotificationService.Add "+
+			"refuses every notification this app publishes with a payload: a payload's type has to say "+
+			"`option (payday.notification) = {}` (payday#193)", n.At),
+		Fix: `Mark each message your app publishes as a notification's payload:
+
+    message JobDone {
+      option (payday.notification) = {};
+
+      bytes job = 1;   // what it is about, by identifier
+    }
+
+A notification with no payload needs nothing. docs/migrating.md, "A notification's payload is a message the schema declares", has the rest.`,
+	}
 }

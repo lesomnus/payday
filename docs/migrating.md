@@ -61,7 +61,10 @@ has the contract.
 - **Mark each message a notification carries** with
   `option (payday.notification) = {};`. `NotificationService.Add` refuses a
   payload of any other type, and one with no type URL, with
-  `InvalidArgument`.
+  `InvalidArgument` -- when it is published, and not before. `pd doctor` says
+  so of an app that declares notifications and marks no message: advice, since
+  a notification with no payload is one, and an app that publishes only those
+  marks nothing.
 - **`pd gen` refuses one that holds a person**: a `(payday.field)` in it, or
   in a message it holds, that says anything but `personal: false`; a field
   holding an entity, a generated contract's message or an `Any`.
