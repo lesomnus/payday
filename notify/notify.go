@@ -241,6 +241,12 @@ type Store interface {
 type Options struct {
 	// Global is fixed by the app declaration in generated servers.
 	Global bool
+	// Accounts serves the account namespace, the one no tenant holds, to an
+	// account calling as itself (payday#195): a request names no tenant, a
+	// reader is resolved only for a frame of an account (`frame.OfAccount`),
+	// and a notification of a tenant is not found. The generated
+	// `pd.AccountNotifications` sets it, and `pd.Notifications` clears it.
+	Accounts bool
 	// Namespace binds cursors to one app; generated servers set it.
 	Namespace string
 	// Payloads are the full names of the messages a notification may carry:

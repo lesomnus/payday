@@ -102,8 +102,11 @@ func (s *Service) scopeKey(ctx context.Context, method string, tenant, reader pd
 		Context   json.RawMessage
 		Namespace string
 		Global    bool
-		Filter    ReadFilter
-	}{b, s.namespace, s.global, filter})
+		// Said only of the account namespace, so that a cursor a build
+		// before it gave out stays one of the same scope.
+		Accounts bool `json:",omitempty"`
+		Filter   ReadFilter
+	}{b, s.namespace, s.global, s.accounts, filter})
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }
