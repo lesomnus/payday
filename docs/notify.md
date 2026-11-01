@@ -121,6 +121,99 @@ the trail, so who read what is not among it; restrict them to operators
 through the app's method policy. Outbox has no public RPCs; keep its storage
 and drainer access inside the deployment permission boundary.
 
+## An account's own notifications
+
+In an app whose holders are memberships of accounts (payday#184), a call is
+served as one membership, in one tenant, and a few methods are the account's
+own: its frame holds the account and no tenant (`frame.OfAccount`). Every
+`NotificationService` method takes a tenant, and the wall answers a frame of no
+tenant with nothing, so an account that is nobody's member -- the one an
+invitation is addressed to -- could read no notification at all (payday#195).
+
+An app opts in with `notify: {..., accounts: {}}`, which needs the app's own
+`accounts` declaration. `pd gen` then copies a second service beside the first,
+`NotificationAccountService`, whose `Get`, `List`, `Read`, `Count`, `Mark` and
+`Listen` are each the account's own (`(payday.method) = {account: {}}`), and
+writes `pd.AccountNotifications`, which serves them:
+
+| | `NotificationService` | `NotificationAccountService` |
+| --- | --- | --- |
+| Called as | a membership, or anybody else a resolver frames | the account, as itself |
+| Namespace | the tenant the request names | **the account namespace**: no tenant's |
+| Reader | what the policy's `Reader` resolves | the same, usually the account |
+| Publishing | the `Add` RPC | `AccountNotificationServer.Add`, the app's own code; no RPC |
+| Policy | the app's | one of its own, handed to `pd.AccountNotifications` |
+
+### The account namespace
+
+It is a namespace like a tenant's, and held apart from every tenant's in both
+directions:
+
+- **An account reads no tenant's notifications.** The account service takes no
+  tenant, and serves only a frame of an account calling as itself -- any other
+  caller is `PermissionDenied`. A request that names a tenant is
+  `InvalidArgument`, and a notification of a tenant asked for by its
+  identifier is `NotFound`, as an inaccessible one always is. The tenant wall
+  is not widened: what an account reads is never a row any tenant holds.
+- **No tenant reads the account namespace.** `NotificationService` refuses a
+  request that names no tenant, and a notification of the account namespace
+  asked for by its identifier is `NotFound` to it.
+- **Its Topic policy is its own.** `pd.AccountNotifications` takes a
+  `notify.Policy` apart from the tenant one, asked with `pdid.Nil` for the
+  tenant and an account's frame. A policy written for tenants that ignores its
+  tenant argument would otherwise answer for accounts as well.
+
+Within it, what keeps one account's notifications from another's is that
+policy, as in a global app: payday holds the namespace's edges, and the app
+holds its topics. An app that wants an account to read only what is addressed
+to it publishes to the account's own resource Topic, `notify.Resource(account)`,
+and allows that Topic to that reader alone; one that wants a notice every
+account reads publishes to a named Topic every account may read.
+
+In a tenant app the namespace is stored as rows of `tenant_id` Nil, which is
+how payday's own field-tenanted records say "no tenant" (the trail, the access
+record, a row's seal): the generated wall shows them to nobody, the trail files
+their publications under no tenant -- the deployment's own record -- a tenant's
+purge leaves them, and the expirer takes them by age with the rest. In a global
+app it is the global namespace, the only one there is: an account reads, as
+itself, what the policy lets it read there.
+
+Everything else is what it is for a tenant: one notification per publication
+and a receipt per first read, `Mark` atomic and ordered, the first read kept,
+idempotent publication by producer and key, `Listen` hints after commit, and
+cursors bound to the account and the service.
+
+### Why not the other ways
+
+- **Making `NotificationService`'s methods the account's own.** Every call an
+  account credential makes would then be framed as the account, never as a
+  membership: the tenant scope, the grant and the holder a tenant's
+  notifications are authorized by would be gone from every call of every app
+  with accounts, and what the account could read in each tenant would have to
+  be declared, method by method, in place of the wall.
+- **A table of its own for account notifications.** Two more domains for every
+  app that declares accounts, a second store and a second copy of the same
+  shape, to say what a Nil tenant already says in payday's own records.
+- **A namespace per account.** An account's notifications would be its own by
+  construction, with no policy to get wrong. But a notice to every account
+  would be one notification per account, the fan-out this design exists to
+  avoid -- and `notify.Resource(account)` with a policy allowing its owner
+  gives the same isolation to the app that wants it.
+
+### What it costs
+
+- **Two services.** A page that shows a membership's notifications and the
+  account's opens two streams and asks two services.
+- **Two read states.** A receipt in the account namespace is the account's,
+  across every tenant and device; a membership's receipt in a tenant is the
+  membership's. The same person reading a tenant's notification and an
+  account notification has a receipt under each identity.
+- **Publishing is code.** There is no RPC to publish into the account
+  namespace: a public `Add` there would be a write outside every tenant's wall
+  that only a policy stood in front of. The deployment's own code publishes --
+  an invitation sent, an account's workspace made -- through
+  `AccountNotificationServer.Add`, under any frame its publisher policy allows.
+
 ## Stored notification and receipt
 
 The notification is immutable after publication. These concepts remain separate:
