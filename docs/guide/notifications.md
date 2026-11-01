@@ -11,11 +11,12 @@ and `pd` for its generated `server/pd` package, as the server guide does.
 
 ## 1. Opt in and generate
 
-On the file declaring your app package, choose two unused entity domains:
+On the file declaring your app package, choose two unused entity domains, and
+how long a notification is kept:
 
 ```proto
 option (payday.app) = {
-  notify: {notification: 40, receipt: 41}
+  notify: {notification: 40, receipt: 41, keep: {days: 90}}
 };
 ```
 
@@ -23,6 +24,13 @@ These numbers are examples, not reserved notification domains. Each must be
 unused in your app, in `7` to `247`, and different from the other. Choose them
 once: existing identifiers retain their domains. You do not need a `past`
 declaration to use notifications.
+
+`keep` is required. A notification is kept that many days from its
+publication, with every receipt of it and its idempotency key, and then erased
+by the expirer `pd gen` writes (step 3). An app whose producers retry a
+publication for a known time adds `retry_days`, no more than `days`, and `pd
+gen` then refuses a `keep` shorter than the retries. One that keeps everything
+says so, and why: `keep: {forever: {why: "..."}}`.
 
 A global app adds `global: {}` inside `notify`. Its requests omit tenant IDs,
 its private records have no Tenant relationship, and its policy receives
@@ -148,7 +156,20 @@ app.RegisterNotificationServiceServer(grpcServer, notifications)
 ```
 
 Here `stack` is the app's server stack, `drv` its database driver, `w` its
-configured Watch, and `policy` the implementation above. Load `cursorKey` from
+configured Watch, and `policy` the implementation above.
+
+Put the expirer in the app's spin list beside its other loops. It erases what
+is older than `keep`, a batch at a time, each erasure on the trail with the
+deployment's trail content, and tells open streams which topics lost a
+notification:
+
+```go
+s.Spin = append(s.Spin, pd.NotificationExpirer(drv, w, content))
+```
+
+`content` is the `audit.Contents` the recorder is given (`c.Audit.Contents()`).
+Under `spin.lease` it runs in one process of the deployment; run twice, it takes
+nothing twice. An app that keeps notifications forever has no expirer to wire. Load `cursorKey` from
 the app's configuration: it is a secret of at least 32 bytes, shared by all
 replicas and preserved across restarts. Rotating it invalidates old page cursors.
 

@@ -61,10 +61,11 @@ that holds every one of them to what rows of it were written with -- see
 
 ## `notify/`
 
-An app enables notifications with two distinct domains of its own:
+An app enables notifications with two distinct domains of its own, and how
+long it keeps them:
 
 ```proto
-option (payday.app) = {notify: {notification: 40, receipt: 41}};
+option (payday.app) = {notify: {notification: 40, receipt: 41, keep: {days: 90}}};
 ```
 
 `pd gen` copies `notification.proto` and `notification_receipt.proto` into the

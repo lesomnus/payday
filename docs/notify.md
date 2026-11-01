@@ -162,8 +162,50 @@ remains visible. Losing Topic access or removing an expired notification still
 removes the corresponding cached item; a different reader has a different cache.
 
 Receipts do not prolong access. If the app withdraws Topic access, a receipt
-does not entitle its reader to retrieve the notification. Retention and source
-deletion policies belong to the app and must preserve that boundary.
+does not entitle its reader to retrieve the notification. Source deletion
+policies belong to the app and must preserve that boundary; how long a
+notification is kept is the schema's (below).
+
+### How long a notification is kept
+
+As long as the app's `notify.keep` says, from its publication, and no longer
+(payday#194). The declaration is required:
+
+```proto
+notify: {notification: 40, receipt: 41, keep: {days: 90}}
+notify: {notification: 40, receipt: 41, keep: {days: 90, retry_days: 1}}
+notify: {notification: 40, receipt: 41, keep: {forever: {why: "..."}}}
+```
+
+A notification and its receipts hold what the people who use an app are
+interested in and what they read. Kept for no purpose once read or stale, they
+grow without bound and nothing fails, so the app says how long, or says forever
+and why: the dangerous answer is the one written down.
+
+For `days`, `pd gen` writes `pd.NotificationKeep` and `pd.NotificationExpirer`,
+a `spin.Spinner` called `payday.notify.expire` that the app puts in its spin
+list (`pd doctor` says so when nothing does). Each pass erases the notifications
+published longer ago than `keep`, oldest first, a batch at a time, each batch in
+a transaction of its own with every receipt of them:
+
+- **Each erasure is on the trail**, as the act `payday.notify.expire`, filed
+  under the tenant the notification was in (`pd.RecordErased`), so a check of
+  the rows finds nothing the trail says is a row and is not. A receipt is off
+  the trail, and goes with nothing said.
+- **Streams are told**: once a batch commits, the topics it took from are
+  invalidated as an app's policy change invalidates them. A stream that showed
+  one queries again and drops it.
+- **A receipt never outlives its notification.** `Mark` holds each notification
+  it reads until its transaction ends -- a share lock on PostgreSQL, taken in
+  identifier order, which the expiry takes its own in too -- so an expiry
+  erasing one waits for the receipt being written of it and erases that as
+  well, or erases first and `Mark` answers `NotFound`.
+- **Run twice it takes nothing twice**: a pass of the same moment finds what the
+  other took gone, under a lease or around a failover.
+
+For `forever`, nothing is generated and nothing goes. Either way the app may
+remove what it decides to sooner, through its own code; the declaration is the
+longest anything is kept.
 
 ### A receipt is kept off the trail
 
@@ -273,11 +315,16 @@ Payload equality means the same `Any.type_url` and encoded `Any.value` bytes;
 retrying callers retain that encoding rather than relying on semantic equality
 between differently encoded messages. Absent Payload and present-empty Payload
 are distinct. Keys are compared exactly without trimming or case folding.
-Current publication policy is checked even on a retry. The app documents its
-retry period and retains both the key and the original Notification throughout
-it. Notification retention cannot silently shorten that guarantee. After this
-period, retention may remove the notification and its key; idempotency beyond
-that period is not promised. No deletion or expiry operation is exposed here.
+Current publication policy is checked even on a retry. The key is kept with its
+notification, for `notify.keep` from the publication: a retry within that
+returns the same Notification, and one after it publishes again, because both
+are gone. So a producer retries one publication for no longer than the app
+keeps it. An app whose producers retry for a known time -- a queue replayed
+after an outage -- says so as `keep.retry_days`, and `pd gen` refuses a `keep`
+shorter than it: a retention made shorter than the retry period is a guarantee
+made shorter, refused where it is decided rather than found when a reader sees a
+notification twice. With `forever` the key is kept forever. No deletion or
+expiry RPC is exposed; the expiry is the deployment's.
 
 An app's domain change and notification publication can use the same database
 transaction. Begin the transaction and use the notification server's

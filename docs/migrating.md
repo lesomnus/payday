@@ -3,6 +3,60 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## A notification store says how long it keeps what it holds
+
+**Applies if** your app declares `notify` (payday#194). `pd gen` refuses a
+declaration that does not say.
+
+1. **Run `buf dep update`**: `Notify.keep` is in `buf.build/payday/payday`'s
+   `payday/app.proto`.
+2. **Say how long a notification is kept**, from its publication, with every
+   receipt of it and its idempotency key:
+
+   ```proto
+   notify: {notification: 40, receipt: 41, keep: {days: 90}}
+   ```
+
+   or that nothing goes, and why: `keep: {forever: {why: "..."}}`. A producer
+   that retries one publication for a known time says it as `retry_days`, and
+   `pd gen` refuses a `days` shorter than that.
+3. **Spin the expirer.** For `days`, `pd gen` writes `pd.NotificationKeep` and
+   `pd.NotificationExpirer`; put it in the spin list (`pd doctor` says so when
+   nothing does):
+
+   ```go
+   s.Spin = append(s.Spin, pd.NotificationExpirer(drv, w, content))
+   ```
+
+   Its first pass takes everything older than `keep` at once, a batch at a
+   time: on a store that has kept everything since it began, that is the
+   whole backlog, each erasure a line of the trail.
+4. **The migration adds an index**, `notificationrecord_age` on
+   `(date_created, id)`, which the expiry reads in. On PostgreSQL with many
+   notifications, build it first so that the table takes writes while it
+   builds, and `valid.Indexes` holds it to having finished:
+
+   ```sql
+   CREATE INDEX CONCURRENTLY IF NOT EXISTS notificationrecord_age ON notificationrecord (date_created, id);
+   ```
+
+5. **`notify.Store` has `Hold`**, which the generated store answers. A store
+   of your own -- none is known -- takes a share lock of each notification it
+   is given, on PostgreSQL, in identifier order.
+
+The idempotency guarantee is the retention now: a retry within `keep` returns
+the notification it published, and one after it publishes again.
+
+What the apps on payday change:
+
+- **cxz** declares `keep:`. It erases notifications itself already, by its
+  maintenance policy's `NotificationDays` (`RetainNotifications`), coalescing
+  each source's history in a way an age alone does not. Either answer fits:
+  `forever` with its own retention as the why, or a `days` no shorter than the
+  longest `NotificationDays` it allows, with the expirer spun as the bound
+  beside its own. Its own erasures are past the servers and not on the trail;
+  `pd.RecordErased` in the same transaction is how they get there.
+
 ## A notification receipt is kept off the trail
 
 **Applies if** your app declares `notify` (payday#197). Regenerate.
