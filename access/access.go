@@ -43,6 +43,20 @@
 // killed outright takes the last second's reads with it. One stopped writes
 // what it has first, and again once its server has stopped.
 //
+// A process that ends with its call -- a command at a shell -- has no second
+// to wait out, and writes a read's row as a download's is written, before its
+// answer leaves and refused when it cannot be ([Config.AtOnce]).
+//
+// # Who a row names
+//
+// Who made the call, as its frame names them: a holder and the tenant they are
+// held by, or an account calling as itself. A call no frame names is the
+// deployment's own work, through the instance the wall was never installed on,
+// and names nobody -- unless it was done at somebody's word, as an operator's
+// command at a shell is, when the row names them ([Config.Operator]). That is
+// not a frame: it is read by the record and by nothing that decides what the
+// call may do.
+//
 // # What a row keeps
 //
 // Who, when, from where, what was done to whose data, and how it ended. Of
@@ -137,6 +151,7 @@ type Record struct {
 	Detail *pdpb.AccessDetail
 }
 
-// ErrUnrecorded is a download whose record could not be written: it is
-// refused rather than let out unrecorded.
-var ErrUnrecorded = errors.New("access: the download could not be recorded")
+// ErrUnrecorded is a call whose record could not be written, and so is
+// refused rather than let out unrecorded: a download, and a read written at
+// once ([Config.AtOnce]).
+var ErrUnrecorded = errors.New("access: what the call carried could not be recorded")

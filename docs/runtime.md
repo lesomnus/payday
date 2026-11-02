@@ -1686,6 +1686,24 @@ call that carried nobody's data leaves nothing.
   has stopped. A stream's reads are queued
   as it sends, so a watch open for an hour is a record of that hour.
 
+  A process that ends with its call -- a command at a shell -- has no second
+  to wait out: what it queued is a row nothing writes, and the data it showed
+  is on no record. `access.Config.AtOnce` writes its reads as a download is
+  written, before the answer leaves (and each message of a stream), and
+  refuses one whose row cannot be written. Its rows are still `read`.
+
+**Who a row names** is who made the call, as its frame names them -- a holder
+and the tenant that holds them (`actor_id`, `actor_tenant_id`), or an account
+calling as itself, with no tenant. A call no frame names is the deployment's
+own work, through the instance the wall was never installed on, and names
+nobody. When that work is done at somebody's word -- an operator's command at
+a shell on the deployment's database -- `access.Config.Operator` says who, and
+their rows, a read's and the write's the generated recorder writes at the
+commit alike, name them. It is **not a frame**: a frame says what a call may
+do, and the layers read it for that, so one naming the operator would hold the
+deployment's own work to the rules for callers. This is read by the record
+alone.
+
 **It is kept by the trail's machinery**, not a copy of it. The generated
 `TrailStore` reads both tables, so access rows leave the database on a window,
 are archived, sealed, checkpointed, destroyed, and leave with their tenant, as

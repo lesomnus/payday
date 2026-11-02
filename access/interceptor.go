@@ -50,6 +50,37 @@ type Config struct {
 
 	// Now is the clock; nil is the wall's.
 	Now func() time.Time
+
+	// Operator is who makes the calls no frame names, for their rows to name:
+	// the deployment's own work, done at somebody's word -- an operator's
+	// command at a shell on the deployment's own database, which reaches the
+	// instance the wall was never installed on and so carries no frame.
+	//
+	// It is not a frame, and that is the point of it. What a frame says is
+	// what the call may do, and the layers read it for that: a frame naming the
+	// operator would make the deployment's own work a caller's, held to rules
+	// that are about callers. This changes nothing about what the call may do
+	// and is read by nothing but the record, which names `actor`, held by
+	// `tenant`, where it would have named the frame's -- a read's row and a
+	// write's alike, since the call carries it.
+	//
+	// A call a frame names is named as the frame says, whatever this answers.
+	// Nil, or an answer of the nil identifier, names nobody: what such a call
+	// carried is the deployment's own, as it always was.
+	Operator func(context.Context) (actor, tenant pdid.Id)
+
+	// AtOnce writes a read's rows before its answer leaves, as a download's
+	// are, and refuses the read when they cannot be written; a stream's,
+	// before each message it sends.
+	//
+	// For a process that ends with its call -- a command at a shell. A server
+	// queues a read for the second it is in ([Writer]), because a page is a
+	// dozen of them and the queue is what a process stopped writes as it goes;
+	// a command is one call, and its process ends before a second is up, so
+	// what it queues is a row nothing writes: data shown to whoever ran it,
+	// and no record that it was. A row written at once costs it a statement,
+	// and a refusal where the record cannot be had is what it is for.
+	AtOnce bool
 }
 
 // Interceptor is the access record's interceptors, for the chain.
@@ -95,7 +126,8 @@ func (c Config) Unary() grpc.UnaryServerInterceptor {
 // read as it is sent, and said by rows as it goes rather than when it ends: a
 // download's before each message leaves, and a read's queued within
 // [Writer.Every] of it -- a watch open for an hour is a record of what it
-// showed in that hour, not of the moment it closed.
+// showed in that hour, not of the moment it closed. With [Config.AtOnce], a
+// read's are written before each message leaves too.
 func (c Config) Stream() grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		reason, err := c.reason(ss.Context(), info.FullMethod)
@@ -164,8 +196,9 @@ func (w *watched) SendMsg(m any) error {
 
 	// A download's message leaves once a row says what it carries, which is a
 	// statement for each message that carries anybody: what hands out many
-	// rows sends them in few messages.
-	if w.reason != "" {
+	// rows sends them in few messages. So does a read's, where the
+	// configuration says it is written at once.
+	if w.reason != "" || w.c.AtOnce {
 		if err := w.c.record(w.ctx, w.call, w.request(), nil, w.reason); err != nil {
 			return err
 		}
@@ -206,11 +239,15 @@ func (w *watched) stop() {
 	}
 }
 
-// into is the call's [Call], as this configuration makes it.
+// into is the call's [Call], as this configuration makes it: who made it as
+// [Config.Operator] says, where no frame says.
 func (c Config) into(ctx context.Context, method string) (context.Context, *Call) {
 	ctx, call := Into(ctx, method)
 	call.address = c.address(ctx)
 	call.downloads = c.Downloads
+	if _, framed := frame.From(ctx); !framed && c.Operator != nil {
+		call.operator, call.operatorTenant = c.Operator(ctx)
+	}
 
 	return ctx, call
 }
@@ -261,7 +298,8 @@ func (c Config) done(ctx context.Context, call *Call, answer, asked proto.Messag
 //     the refusal the row then says;
 //   - a download of what a download carried, at once, refused when it cannot
 //     be written;
-//   - and a read of what anything else carried, queued.
+//   - and a read of what anything else carried, queued -- or at once, and
+//     refused as a download is, where [Config.AtOnce] says so.
 //
 // So a person whose data a call both wrote and showed is a row of the write,
 // and a write refused before it wrote is a read of what it named, its refusal
@@ -287,7 +325,12 @@ func (c Config) record(ctx context.Context, call *Call, asked proto.Message, her
 		d.SetRequest(b)
 	}
 
-	if reason == "" {
+	kind := Download
+	switch {
+	case reason != "":
+	case c.AtOnce:
+		kind = Read
+	default:
 		if vs := call.take(); len(vs) > 0 {
 			c.Writer.Queue(Records(ctx, call.Method(), Read, result, vs, d, at)...)
 		}
@@ -297,13 +340,13 @@ func (c Config) record(ctx context.Context, call *Call, asked proto.Message, her
 	if len(others) == 0 {
 		return nil
 	}
-	if err := c.Writer.Write(ctx, Records(ctx, call.Method(), Download, result, others, d, at)...); err != nil {
+	if err := c.Writer.Write(ctx, Records(ctx, call.Method(), kind, result, others, d, at)...); err != nil {
 		if herr != nil {
-			log.From(ctx).ErrorContext(ctx, "access: a refused download's record could not be written", "method", call.Method(), "err", err)
+			log.From(ctx).ErrorContext(ctx, "access: a refused call's record could not be written", "method", call.Method(), "kind", kind, "err", err)
 			return nil
 		}
 
-		log.From(ctx).ErrorContext(ctx, "access: a download was refused, since its record could not be written", "method", call.Method(), "err", err)
+		log.From(ctx).ErrorContext(ctx, "access: a call was refused, since its record could not be written", "method", call.Method(), "kind", kind, "err", err)
 		return status.Error(codes.Unavailable, ErrUnrecorded.Error())
 	}
 
@@ -419,6 +462,12 @@ func (c Config) now() time.Time {
 // that column. Whose data it carried is filed as anybody's is, under the
 // tenant the row it was in is held by, and what was in no tenant's row under
 // none: the deployment's own record, which an operator reads.
+//
+// A call no frame names is named as the [Call] in `ctx` says, which is what
+// [Config.Operator] answered as it began: the operator at whose word the
+// deployment did its own work, or nobody. So a write's row, written at its
+// commit by what is told of the write and not by the interceptor, names who
+// made the call as its read's row does.
 func Records(ctx context.Context, method string, kind Kind, result string, subjects []Subject, d *pdpb.AccessDetail, at time.Time) []Record {
 	var actor, held pdid.Id
 	if f, ok := frame.From(ctx); ok {
@@ -426,6 +475,8 @@ func Records(ctx context.Context, method string, kind Kind, result string, subje
 		if f.AsAccount() {
 			actor, held = f.Account, pdid.Nil
 		}
+	} else if c, ok := Of(ctx); ok {
+		actor, held = c.operator, c.operatorTenant
 	}
 
 	tenants := []pdid.Id{}

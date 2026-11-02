@@ -792,3 +792,78 @@ func TestTheAccessRecordIsKeptAsAKindOfItsOwn(t *testing.T) {
 		x.NotEmpty(must(b.Ent.Access.Get(ctx, theirs)).Value, "the other side's record was touched")
 	})
 }
+
+// TestACallAtAShellIsRecordedAsItsOperatorsAtOnce: the ungated server on a pipe
+// in a process of its own, as a command at a shell reaches it -- no frame, and
+// a process that ends with its call. What it reads is written before it
+// answers and names the operator the command was told of; what it writes is
+// written by the generated recorder at the write's commit, and names them too;
+// and a read whose row cannot be written is not answered.
+func TestACallAtAShellIsRecordedAsItsOperatorsAtOnce(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	alice := b.person(t, ctx, "alice")
+
+	op, owner := pdid.New(pd.HolderDomain), pdid.New(pd.TenantDomain)
+	c := access.Config{
+		Subjects: pd.Subjects,
+		Refs:     pd.SubjectRefs,
+		Address:  func(context.Context) string { return "shell:somebody@the-box" },
+		Writer:   &access.Writer{Sink: pd.AccessSink(b.Ent)},
+		Operator: func(context.Context) (pdid.Id, pdid.Id) { return op, owner },
+		AtOnce:   true,
+	}
+	g := grpc.NewServer(c.Interceptor().ServerOptions()...)
+	app.RegisterServer(g, b.Ungated)
+	people := app.NewHolderServiceClient(pdtest.Serve(t, g))
+
+	v, err := people.Get(ctx, app.HolderGetRequest_builder{Ref: app.HolderRef_builder{Id: alice.Bytes()}.Build()}.Build())
+	x.NoError(err)
+	x.Equal("alice", v.GetAlias())
+
+	// Nothing to flush: it is there as the answer is.
+	rs, err := b.Ent.Access.Query().All(ctx)
+	x.NoError(err)
+	x.Len(rs, 1, "written before it answered")
+	x.Equal("read", rs[0].Kind)
+	x.Equal(app.HolderService_Get_FullMethodName, rs[0].Action)
+	x.Equal(op.Uuid(), rs[0].ActorId, "the operator, where no frame names anybody")
+	x.Equal(owner.Uuid(), rs[0].ActorTenantId)
+	x.Equal(subjects(alice), rs[0].Subjects)
+	x.Equal("shell:somebody@the-box", detail(t, rs[0]).GetAddress())
+
+	t.Run("and a write, at its commit, by the generated recorder", func(t *testing.T) {
+		x := require.New(t)
+
+		bob, err := people.Add(ctx, app.HolderAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "bob",
+		}.Build())
+		x.NoError(err)
+
+		rs, err := b.Ent.Access.Query().Where(entaccess.KindEQ("write")).All(ctx)
+		x.NoError(err)
+		x.Len(rs, 1)
+		x.Equal(app.HolderService_Add_FullMethodName, rs[0].Action)
+		x.Equal([][]byte{bob.GetId()}, rs[0].Subjects)
+		x.Equal(op.Uuid(), rs[0].ActorId)
+		x.Equal(owner.Uuid(), rs[0].ActorTenantId)
+	})
+
+	t.Run("and a read whose row cannot be written is not answered", func(t *testing.T) {
+		x := require.New(t)
+
+		c := c
+		c.Writer = &access.Writer{Sink: func(context.Context, []access.Record) error {
+			return errors.New("the database is not there")
+		}}
+		g := grpc.NewServer(c.Interceptor().ServerOptions()...)
+		app.RegisterServer(g, b.Ungated)
+
+		v, err := app.NewHolderServiceClient(pdtest.Serve(t, g)).Get(ctx, app.HolderGetRequest_builder{
+			Ref: app.HolderRef_builder{Id: alice.Bytes()}.Build(),
+		}.Build())
+		x.Equal(codes.Unavailable, status.Code(err))
+		x.Nil(v, "what could not be recorded was not shown")
+	})
+}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 	"sync"
+
+	"github.com/lesomnus/payday/pdid"
 )
 
 // Call is what one call has carried so far: what the app said it showed, and
@@ -20,6 +22,11 @@ type Call struct {
 
 	method  string
 	address string
+
+	// operator is who made a call no frame names, held by operatorTenant, as
+	// [Config.Operator] answered: what its rows name instead of a frame's
+	// caller ([Records]).
+	operator, operatorTenant pdid.Id
 
 	// downloads are the methods [Config.Downloads] names, for what serves
 	// several in one call to ask of each ([IsDownload]).
@@ -103,6 +110,11 @@ func (c *Call) Method() string { return c.method }
 // Address is where the call came from, as [Config.Address] said: what a row
 // written at a write's commit says too.
 func (c *Call) Address() string { return c.address }
+
+// Operator is who made the call where no frame names anybody, and the tenant
+// they are held by, as [Config.Operator] answered: the nil identifier where it
+// was not asked, or answered nobody.
+func (c *Call) Operator() (actor, tenant pdid.Id) { return c.operator, c.operatorTenant }
 
 // Wrote says the call's writes wrote the personal data of `subjects`.
 func (c *Call) Wrote(subjects ...Subject) { c.add(true, subjects...) }
