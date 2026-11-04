@@ -92,6 +92,11 @@ type Entity struct {
 	// Name is what a person writes this domain as.
 	Name string
 
+	// Formerly is what an earlier build called this entity, before the schema
+	// renamed it (`(payday.entity).formerly`): each name as what was written
+	// down under it. Empty for nearly every entity.
+	Formerly []Former
+
 	// Via is the path of edges that reaches the tenant, empty for an entity
 	// that is the tenant, is not behind the wall, or names its tenant with a
 	// column instead.
@@ -381,6 +386,9 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	if err := s.check(); err != nil {
 		return nil, err
 	}
+	if err := s.checkFormerly(); err != nil {
+		return nil, err
+	}
 	if err := CheckOverlay(s); err != nil {
 		return nil, err
 	}
@@ -553,9 +561,15 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 		}
 	}
 
+	formerly, err := readFormerly(e, opts)
+	if err != nil {
+		return nil, err
+	}
+
 	v := &Entity{
 		Entity:          e,
 		Opts:            opts,
+		Formerly:        formerly,
 		Secrets:         secrets,
 		SecretNumbers:   secretNumbers,
 		Personal:        personal,

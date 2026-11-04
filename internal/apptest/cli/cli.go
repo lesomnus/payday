@@ -180,19 +180,25 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // not migrate: it executes a script that is already the answer, which is what
 // `sandbox` is for.
 //
-// The columns and indexes an earlier build made under another name are moved
-// to this build's first: a migration finds both by name and drops neither. A
-// column it does not find it adds, empty, beside the old one -- every row
-// written before then reads as never having had a value, and on SQLite a
-// table whose index names the column is made again without the old one at
-// all -- and an index it makes again, from every row, beside the old one. See
-// `rename`.
+// The tables, columns and indexes an earlier build made under another name
+// are moved to this build's first: a migration finds each by name and drops
+// none. A table it does not find -- an entity's the schema renamed
+// (`formerly`) -- it makes again, empty, and the rows stay in the old one; a
+// column it adds, empty, beside the old one -- every row written before then
+// reads as never having had a value, and on SQLite a table whose index names
+// the column is made again without the old one at all -- and an index it
+// makes again, from every row, beside the old one. The tables go first, since
+// a column and an index are looked for on their table by the name it has now.
+// See `rename`.
 //
 // And for the same reason an index this build declares that PostgreSQL left
 // invalid -- a build of it `CONCURRENTLY` that did not finish -- is refused
 // before anything is made: found by its name, it would be taken for made, and
 // read by nothing from then on. See `valid`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
+	if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
+		return err
+	}
 	if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
 		return err
 	}

@@ -3,6 +3,51 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## An entity says what it was called, and a migration moves its table
+
+**Applies to** every app's `Migrate`, and an app that renames an entity says so
+in its schema. Nothing changes for an app that renamed nothing:
+`pd.TableRenames` is empty and the call below does nothing.
+
+- **Hand `pd.TableRenames` to `rename.Tables` first** in your `Migrate`, before
+  `rename.Columns`, `rename.Indexes` and `Create` -- `pd new`'s does. First,
+  because the other two look for a column and an index on its table by the
+  name the table has now, and find nothing on one still under its old name:
+
+  ```go
+  if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
+  	return err
+  }
+  ```
+
+  It moves the table of an entity the schema renamed (`(payday.entity).formerly`,
+  [the schema guide](guide/schema.md#formerly--when-you-rename-an-entity)) onto
+  its new name with its rows: on PostgreSQL with its indexes, its primary key
+  and the foreign keys named after it, one transaction of changes to the
+  catalog; on SQLite the table renamed in place and the old indexes dropped for
+  the migration to make again, while a foreign key keeps its name there, which
+  nothing reads. A store holding both tables, the new one empty, has the empty
+  one dropped; one with rows in both is refused (`rename.ErrBoth`). `pd doctor`
+  says so when nothing moves a renamed table.
+- **`pdid.Formerly`** is new and generated: each old name of a renamed entity
+  -- its word and its full name -- answers the entity's domain in `DomainOf`
+  and `Lookup`, after what is registered now. The trail reads a chunk of its
+  archive labelled with an old word as the kind it was: checked with its rows,
+  cut by its window, and counted under its name now.
+
+What the apps on payday change:
+
+- **loft** renamed `TenantDomain` to `Domain` (D72) and moves its table by
+  hand, first in its `migrate` (`moveTables`, `cli/tables.go`). It declares
+  `formerly: [{message: "TenantDomain"}]` on `Domain` and hands
+  `pd.TableRenames` to `rename.Tables` in that place instead: the same table,
+  moved the same way. `offboard.Renamed`, by which a restore reads an export
+  from before, says the same table and stays. The chunks of its trail's
+  archive labelled `tenant-domain` are then `domain`'s.
+- **roster** and **levyan** renamed nothing, and `pd.TableRenames` is empty
+  for both. The call goes first in each `Migrate` all the same, before
+  `rename.Columns`, for the day one of them renames an entity.
+
 ## The past's times, the copy's, a grant's and a token's are `date_*`
 
 **Applies if** your app declares a past or entitlements, serves or follows

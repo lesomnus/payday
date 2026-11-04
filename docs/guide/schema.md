@@ -125,6 +125,43 @@ identifier lie about what it used to be.
 the lowest that is free, so it does not hand back the number of an entity you
 deleted while anything above it survives.
 
+### `formerly:` — when you rename an entity
+
+```proto
+option (payday.entity) = {
+  domain: 24
+  formerly: [{message: "TenantDomain"}]
+  ...
+};
+```
+
+An entity's name is written down where nothing moves it: its table is named
+after it, the trail's archive labels each chunk with its word, and a
+configuration file names it by that word (`audit.by.<kind>`). Renamed with
+nothing said, a migration makes the new table empty while the rows stay in the
+old one, and the archive's chunks of the old word are of no kind -- kept or
+destroyed by whatever pass is about everything else, and not read with the
+kind's rows when they are checked against the trail.
+
+So a rename says what the entity was called: the message's name then, in this
+package, and the word it was written as when that was not the name in
+kebab-case (`{message: "SshKey", name: "key"}`). `pd gen` writes
+`pd.TableRenames`, which your `Migrate` hands `rename.Tables` before anything
+else -- the table moves with its rows, its indexes and the foreign keys named
+after it -- and registers each old name with `pdid.Formerly`, so that the old
+word and the old full name read back as this domain. `pd doctor` says so when
+nothing moves the table.
+
+- Keep the domain number. It is what identifiers, the trail and the archive
+  hold, and it is the one thing a rename must not change.
+- Only ever add to the list: a deployment may migrate from any build before.
+- A name in it is never given to another entity, now or later: generation
+  refuses one that another entity is called, is written as, is stored in, or
+  was.
+- What a client sent is not reached: the service is the new name's, and the
+  old one answers Unimplemented. What the trail kept of a write -- its
+  `action`, the message a patch names -- stays as it was written.
+
 ### Erasure — required, one way or the other
 
 Every entity has to say what `Erase` does to a row:
@@ -1032,6 +1069,7 @@ only test for whether it belongs on this list.
 | no `(payday.entity)` | identifiers that say nothing about what they name |
 | `domain: 0`, or `> 255` | zero is what an unregistered identifier reads as |
 | two entities, one domain | an old identifier starts lying about what it was |
+| a `formerly:` name that is what it is called now, said twice, or that another entity is called, is written as, is stored in, or was | an earlier build's table, chunk or setting read as another kind's |
 | erasure unsaid, or said twice | a row destroyed where one was meant to stay |
 | `alias`, `name` or `desc` of another type | a generic read that finds nothing and says nothing |
 | `alias`, `name` or `desc` at another number | a header number spent, and nothing payday adds later can land on it |

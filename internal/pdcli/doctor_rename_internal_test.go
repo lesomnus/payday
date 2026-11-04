@@ -92,3 +92,56 @@ import "example.com/rename"
 var _ = rename.Columns(nil, nil, "", nil)
 `}, dateRead))
 }
+
+// tableRenamed is what the doctor says of an app of `files` whose schema
+// renamed an entity, `vs` its tables.
+func tableRenamed(t *testing.T, files map[string]string, vs ...pdgen.TableRename) string {
+	t.Helper()
+	x := require.New(t)
+
+	root := t.TempDir()
+	for name, src := range files {
+		p := filepath.Join(root, name)
+		x.NoError(os.MkdirAll(filepath.Dir(p), 0o755))
+		x.NoError(os.WriteFile(p, []byte(src), 0o644))
+	}
+
+	l := Layout{Root: root, Work: root, Module: "github.com/acme/thing"}
+	said := []string{}
+	for _, v := range doctorTableRenames(l, vs) {
+		said = append(said, v.String())
+	}
+
+	return strings.Join(said, "\n")
+}
+
+// TestAMigrationThatDoesNotMoveARenamedTableIsSaid: an entity the schema
+// renamed (`formerly`) has its table moved before the migration, or the
+// migration makes it again, empty, and the app serves that -- which nothing
+// else reports. One that moves it, and one that renamed nothing, are asked
+// nothing; and moving columns is not moving tables.
+func TestAMigrationThatDoesNotMoveARenamedTableIsSaid(t *testing.T) {
+	x := require.New(t)
+	domain := pdgen.TableRename{From: "tenantdomain", To: "domain"}
+
+	v := tableRenamed(t, map[string]string{"cli/cli.go": migrating}, domain)
+	x.Contains(v, "rename.Tables")
+	x.Contains(v, "domain, which an earlier build called tenantdomain")
+
+	x.Empty(tableRenamed(t, map[string]string{"cli/cli.go": `package cli
+
+import (
+	"context"
+
+	"github.com/lesomnus/payday/rename"
+
+	"github.com/acme/thing/cmd"
+	"github.com/acme/thing/server/pd"
+)
+
+func Migrate(ctx context.Context, s *cmd.Server) error {
+	return rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames)
+}
+`}, domain))
+	x.Empty(tableRenamed(t, map[string]string{"cli/cli.go": "package cli\n"}))
+}

@@ -227,6 +227,13 @@ var EventKinds = map[string]protoreflect.MessageType{
 	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
 }
 
+// TableRenames are the tables of this schema's entities that an earlier
+// build made under the name the entity had then (`(payday.entity).formerly`).
+// Hand them to `rename.Tables` first, before `rename.Columns`, `rename.Indexes`
+// and the migration, which otherwise makes each again, empty, beside the one
+// with the rows.
+var TableRenames = []rename.Table{}
+
 // ColumnRenames are the columns of payday's own entities in this schema that
 // an earlier build stored under another name. Hand them to `rename.Columns`
 // before a migration, which otherwise adds each beside the old one, empty.

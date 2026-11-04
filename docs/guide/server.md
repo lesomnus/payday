@@ -1139,6 +1139,15 @@ which loses the same values: write the rename into the planned directory by
 hand (`Migrations.Write`) before you plan, so that the plan finds the column
 where the schema says it is.
 
+A table is found by its name too, and an entity the schema renamed
+(`formerly`, [the schema guide](schema.md#formerly--when-you-rename-an-entity))
+keeps its rows in the one named after what it was called: `Create` makes the
+new one beside it, empty. `rename.Tables`, with `pd.TableRenames`, moves it
+with what is named after it, and `pd new`'s `Migrate` calls it before the
+other two, which look for a column and an index on its table by the name the
+table has now. A plan of migration files is the same: write the move into the
+planned directory by hand before you plan.
+
 Found under its name is also how an index PostgreSQL has not finished is taken
 for made. A build `CONCURRENTLY` writes the index into the catalog first and
 builds it after, marked invalid, and one that fails -- a timeout, a deadlock, a
