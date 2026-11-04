@@ -24,10 +24,11 @@ it is generated rather than remembered.
 - [**One sign-in, many tenants**](docs/guide/accounts.md) — holders that are
   memberships of an identity provider's account, a call served as the one it
   names, and the few an account makes as itself, outside every tenant.
-- [**Commands on your binary**](docs/guide/commands.md) — `get`, `ls`, `watch`,
-  `add`, `patch` and `erase` for every entity, from a `Connector` that says how
-  to reach the deployment; the output formats, and a command for an RPC of your
-  own.
+- [**Commands on your binary**](docs/guide/commands.md) — `get`, `list`,
+  `watch`, `add`, `patch` and `erase` for every entity, from a `Connector` that
+  says how to reach the deployment, mounted wherever the app puts them; the
+  output formats, the words a command answers to, and a command for an RPC of
+  your own.
 - [docs/](docs/) — the rest: [batch](docs/guide/batch.md),
   [keeping a past](docs/guide/past.md),
   [more than one proto package](docs/guide/packages.md),

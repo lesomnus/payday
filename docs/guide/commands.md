@@ -10,11 +10,15 @@ if err != nil {
 	return err
 }
 
-root.Commands = append(root.Commands, t.Commands()...)
+if err := t.Mount(root); err != nil {
+	return err
+}
 ```
 
-That is the whole of it. `robot get`, `robot ls`, `holder add`, `tenant patch`,
-and so on for every entity your schema declares.
+That is the whole of it. `robot get`, `robot list`, `holder add`, `tenant
+patch`, and so on for every entity your schema declares — at the root of your
+binary, or under a command of your own if that is where you mount it. Both
+words are the schema's: the entity's name, and the RPC the verb calls.
 
 For what these commands are and why they are in `pdcmd` rather than in `pd`, see
 [the server guide](server.md#8-the-commands). This page is how to use them.
@@ -131,21 +135,25 @@ Six verbs, and only where the schema declared them:
 | | |
 | --- | --- |
 | `get <REF>` | one row |
-| `ls` | a page, with `--size` and `--next`; `--reverse` reads the order the other way round, and `--order NAME` in another order the schema declared |
+| `list` | a page, with `--size` and `--next`; `--reverse` reads the order the other way round, and `--order NAME` in another order the schema declared. `ls` runs it too |
 | `watch [REF]` | the same rows, kept current — see [below](#watch-and-what-an-ending-means) |
 | `add [NAME]` | a new row |
 | `patch <REF>` | change one |
 | `erase <REF>` | remove one |
 
-`ls` exists only for an entity that declared `list:`, and `watch` only for one
-that declared `watch:`. In payday's own test app, seven of the eleven entities
-in the `app` package have no list, so `robot ls` is built and `cell ls` is not;
-`Tenant` has a list and no watch, so `tenant watch` is not there either — and
-nobody decided any of that twice. The commands are read from the descriptors
-your `.pb.go` files register at init, so a verb exists exactly when the method
-does.
+Each is the RPC it calls, in the case a command is typed in: `list` for `List`.
+It was `ls`, and `ls` is kept as its alias, so a script or a habit that says
+`ls` is where it was.
 
-**Paging is a cursor and not a page number.** An `ls` with more to give answers
+`list` exists only for an entity that declared `list:`, and `watch` only for
+one that declared `watch:`. In payday's own test app, seven of the eleven
+entities in the `app` package have no list, so `robot list` is built and
+`cell list` is not; `Tenant` has a list and no watch, so `tenant watch` is not
+there either — and nobody decided any of that twice. The commands are read
+from the descriptors your `.pb.go` files register at init, so a verb exists
+exactly when the method does.
+
+**Paging is a cursor and not a page number.** A `list` with more to give answers
 with a `next`, printed under the rows by the default format, and `--next` hands
 it back: the page carries on from the last row of the one before. A request
 with no cursor field for the flag to write — a hand-written service that is a
@@ -164,8 +172,8 @@ It can be mounted anyway — see [§5](#5-an-rpc-of-your-own).
 
 ### `watch`, and what an ending means
 
-`watch` is `ls` kept current, and it is the only command here that does not end
-on its own:
+`watch` is `list` kept current, and it is the only command here that does not
+end on its own:
 
 ```sh
 $ app robot watch @acme/arm-01
@@ -313,7 +321,7 @@ id: invalid UUID (got 27 bytes)
 | `template=...` | `text/template` over the JSON |
 
 ```
-$ app holder get @acme/bob            $ app holder ls -o table
+$ app holder get @acme/bob            $ app holder list -o table
 id           01a00104-e385-8595-…     ALIAS   NAME        AGE
 tenant       01a00104-e380-8aa9-…     admin   -           3d
 alias        bob                      bob     Bob Vance   2h
@@ -350,7 +358,7 @@ t, err := pdcmd.New(to, pdcmd.Options{
 })
 ```
 
-`pdcmd.Rows` is what makes a printer work for both a `get` and an `ls`: a `Get`
+`pdcmd.Rows` is what makes a printer work for both a `get` and a `list`: a `Get`
 answers with the entity and a `List` with the response that holds them, and this
 hands back rows either way.
 
@@ -420,6 +428,11 @@ if err := t.Add("robot/move", c); err != nil {
 $ app robot move @acme/arm-07 '{"to":{"id":"01a0010f-fd1e-8f1b-a60a-44424d2ababd"}}'
 ```
 
+The verb is the RPC's name, as the six are: `Unary` calls the command what the
+method is called in the case a command is typed in — `Move` is `move`,
+`AddMany` is `add-many` — and `Add` calls it by its path, so the path is where
+a method of yours is named in kebab-case too.
+
 **It does not care where the method came from.** A method you declared in an
 overlay and a method `pd gen` wrote land in the same `ServiceDescriptor` — the
 overlay is merged before generation — so there is no second path for a
@@ -435,7 +448,7 @@ Two things it works out for itself:
   every other RPC names one. What kind of thing the reference names comes from
   the field's own type — the `ref` of `RobotMoveRequest` is a `RobotRef` — so
   `robot move @acme/arm-07#holder` is refused the way it is on every verb that
-  takes one: five of the six, since `ls` takes none.
+  takes one: five of the six, since `list` takes none.
 - **Whether it can be a command at all.** A stream is refused **while you are
   wiring it**, not when somebody runs it — and so is a name that is not there
   at all:
@@ -463,15 +476,21 @@ What goes in is an `*xli.Command` and so is everything that came out, so a
 hand-written command is not a lesser kind of command here:
 
 ```go
-t.Command("robot/ls")            // one of it, to mount elsewhere or to wrap
+t.Command("robot/list")          // one of it, to mount elsewhere or to wrap
 t.Replace("holder/erase", mine)  // this deployment means something else by it
 t.Add("robot/transfer", mine)    // yours, beside the rest
 t.Drop("audit")                  // the whole group, verbs included
+t.Alias("tenant", "ws")          // another word that runs it
+t.Hide("fact")                   // there, and not in the help
 ```
+
+A path reads the way the command line does, by name or by alias at each step:
+`robot/ls` is the `list` that `app robot ls` runs.
 
 `Replace` refuses a path that is not there rather than adding it, because a typo
 would otherwise be a command that silently never runs — and a typo and a
-deliberate addition look identical at the call site.
+deliberate addition look identical at the call site. What it puts there takes
+the place as it was: its name, its aliases, and whether it is hidden.
 
 That everything is one type is deliberate, and it is the lesson of
 `kubectl describe`: its typed describers are in-tree, a custom resource falls
@@ -481,7 +500,107 @@ declare its own columns.
 
 ---
 
-## 7. Two payday apps in one process
+## 7. Where it goes, and the words it answers to
+
+### Mount it where you want it
+
+`t.Mount(at)` appends the tree to any command: your root, for `app robot list`,
+or a command of your own — `app api robot list` under one called `api`.
+Nothing in the tree names what it is under. The usage line and the name in the
+help are xli's, read off the path a command was run by, and no brief spells a
+parent.
+
+```go
+root := &xli.Command{Name: "app", Commands: xli.Commands{version, config, serve}}
+if err := t.Mount(root); err != nil {
+	return err
+}
+```
+
+**Mount last.** At the root an entity sits beside `version`, `config` and
+whatever you wrote yourself, and xli runs the first command a word matches and
+says nothing about the second — so an entity, or an alias, that is also one of
+your commands would be one that silently never runs. `Mount` refuses that,
+naming both, before it moves anything:
+
+```
+pdcmd: mount on app: "tenant" already runs tenant there, and is the tree's tenant
+```
+
+It can only see what `at` holds when it is called, and the tree cannot be
+changed after it: a group added once it is mounted would be in the tree and not
+on `at`, so every method that would change it refuses instead.
+`root.Commands = append(root.Commands, t.Commands()...)` still works, and checks
+nothing.
+
+### Another word for a command
+
+A command is called what the schema calls it. An alias is another word that
+runs it:
+
+```go
+t.Alias("tenant", "workspace", "ws")
+t.Alias("tenant/configure", "conf", "config")   // after the Add that put it there
+```
+
+`ls` for `list` is payday's own, and the help lists them together:
+
+```
+Commands:
+    get                  get one Robot
+    list,ls              list Robot
+    watch                watch Robot
+```
+
+What is refused, where it is said rather than when somebody types it:
+
+- **A path that is not there**, which would be an alias of nothing:
+  `pdcmd: cell/list: nothing to alias`.
+- **A word another command at the same level already answers to**, by its
+  name or by an alias of its own:
+  `pdcmd: robot/get: "ls" already runs robot/list, as an alias`. `Add` and
+  `Replace` hold the words they bring in to the same rule, so `t.Add("robot/ls",
+  mine)` is refused rather than added where nothing would reach it.
+- **A word that cannot be typed as one**: empty, with a space or a `/` in it,
+  or beginning with `-`, which is read as a flag.
+
+A word the command already answers to is nothing to add, and not an error.
+
+An alias is for typing, and that is all it is. Completion offers each command
+once, by its name; the documentation xli writes (`xli.WriteMarkdown`,
+`xli.WriteMan`) names it by its name; and the `#word` of a slug is the schema's
+name and nothing else, so `@acme#ws` is no reference. An alias that abbreviates
+the name reads back to it — `ls`, `conf` — and one that does not is a second
+vocabulary to keep in step, so it is worth being one the app means to have.
+
+**Why in Go, and not in the schema.** The schema is the contract every client
+is generated from, and none of the others has a use for `ws`. The entity an app
+most wants a word for is as often payday's as its own — `Tenant` is copied in
+whole from payday's protos, so an option on it is not the app's to set — and
+the check could not be made there anyway: the words that collide are the ones
+beside your own `version` and `config`, which `pd gen` never sees. The longer
+version is on `Tree.Alias`.
+
+### Kept out of the help
+
+```go
+t.Hide("fact")
+```
+
+A hidden command is left out of `--help`, `--help-all`, the help an AI agent's
+`--help` prints, the shell's completion and the documentation xli writes, and
+it runs by name. It is for the rows an app keeps that other commands write — the
+facts an operation records, the allocation a reservation makes: real, readable,
+and not what a person reading `app --help` came for. Its own help still lists
+its verbs, and whether a call is allowed is the server's to say, as it is of
+every other.
+
+`Drop` is the other answer, for what a deployment does not serve at all: a
+dropped command is gone, and a hidden one is there and not shown.
+
+---
+
+## 8. Two payday apps in one process
 
 An app that embeds another is one binary with two payday apps in it: `dispatch`
 serves its own entities in the `fleet` package, and `directory`, the identity

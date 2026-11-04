@@ -12,7 +12,7 @@ comments, which are where the detail actually lives.
 | [Declaring an entity](guide/schema.md) | the options, the field numbers, `list:` and `watch:`, and everything generation refuses |
 | [The server](guide/server.md) | the stack, writing a layer, the interceptors, configuration, the commands |
 | [The page](guide/client.md) | reads that keep themselves current, writes that need no invalidation rule |
-| [Commands on your binary](guide/commands.md) | `get`/`ls`/`watch`/`add`/`patch`/`erase` where the schema declared them, the output formats, and a command for an RPC of your own |
+| [Commands on your binary](guide/commands.md) | `get`/`list`/`watch`/`add`/`patch`/`erase` where the schema declared them, mounted wherever the app puts them, the output formats, aliases and hidden commands, and a command for an RPC of your own |
 | [Resource events](guide/resources.md) | shared Batch/Watch API, CEL filters and mutation images |
 | [Several writes at once](guide/batch.md) | one transaction, and the four rules re-applied per operation |
 | [More than one proto package](guide/packages.md) | `option (payday.app)`, and two apps linked into one process |
