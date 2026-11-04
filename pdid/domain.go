@@ -83,14 +83,27 @@ var registry = struct {
 	// has no one name. See [Register].
 	shared map[Domain]bool
 
+	// formerEntity and formerName are what an earlier build called a domain:
+	// a message's full name then, and the word a person wrote it as. Read only
+	// where what is registered now says nothing, and never by [Domain.String]
+	// or [Domains]. See [Formerly].
+	formerEntity map[string]Domain
+	formerName   map[string]Domain
+	// formerAmbiguous is a former word two apps in this process mean two
+	// domains by, so it names nothing here, as [Register]'s words do not.
+	formerAmbiguous map[string]bool
+
 	// tenant is the domain of whichever entity declared `own: OWN_TENANT`.
 	tenant Domain
 }{
-	byEntity:  map[string]Domain{},
-	byName:    map[string]Domain{},
-	ambiguous: map[string]bool{},
-	names:     map[Domain]string{},
-	shared:    map[Domain]bool{},
+	byEntity:        map[string]Domain{},
+	byName:          map[string]Domain{},
+	ambiguous:       map[string]bool{},
+	names:           map[Domain]string{},
+	shared:          map[Domain]bool{},
+	formerEntity:    map[string]Domain{},
+	formerName:      map[string]Domain{},
+	formerAmbiguous: map[string]bool{},
 }
 
 // Name is what a person writes an entity as: the word its schema declared, or
@@ -205,22 +218,93 @@ func Register(entity string, d Domain, name string) {
 	registry.names[d] = name
 }
 
-// Lookup answers with the domain of the message with the given full name.
+// Formerly records what an earlier build called domain `d`: the full name its
+// message had then, `entity`, and the word a person wrote it as, `name`
+// (`(payday.entity).formerly`). Generated code calls it from the same init as
+// [Register], once for each name the schema says the entity had.
+//
+// # Why a name that is gone is kept
+//
+// Because an earlier build wrote it down where nothing rewrites it. The
+// trail's archive labels each chunk with the word of the kind its rows are
+// about, and a chunk is written once and checked as it was written: one
+// labelled with a word this build answers nothing to is of no kind -- kept or
+// destroyed by the pass about everything else rather than by its own kind's
+// window, and not read as that kind's when the rows are checked against the
+// trail. A configuration file names a kind by its word too, and so does the
+// message a trail's patch names. Answered here, each is read as the domain it
+// was, without being written again.
+//
+// # What it does not change
+//
+// What a domain is called now: [Domain.String], [Domains] and the word a new
+// chunk is labelled with are the name [Register] was given, and a former name
+// never shadows one -- [Lookup] and [DomainOf] answer what is registered now
+// first, whatever order the inits ran in. So a word one entity had and another
+// has now is the other's, which is why `pd gen` refuses a schema that gives a
+// name somebody had to somebody else, as it refuses a domain number used twice.
+//
+// It panics for what [Register] would: a domain of [Unknown], an empty name,
+// and a full name that is said to have been two domains.
+func Formerly(entity string, d Domain, name string) {
+	if d == Unknown {
+		panic(fmt.Sprintf("pdid: %s: domain 0 is what an unregistered identifier reads as, so nothing held it", entity))
+	}
+	if entity == "" || name == "" {
+		panic(fmt.Sprintf("pdid: domain %d: what it was called before is an entity and a name", d))
+	}
+
+	registry.Lock()
+	defer registry.Unlock()
+
+	if v, ok := registry.formerEntity[entity]; ok && v != d {
+		panic(fmt.Sprintf("pdid: %s: said to have been domain %d, now %d", entity, v, d))
+	}
+	registry.formerEntity[entity] = d
+
+	// Two apps in one process that each had a word for different things: it
+	// stops answering, as a word two apps write now does.
+	switch v, ok := registry.formerName[name]; {
+	case registry.formerAmbiguous[name]:
+	case ok && v != d:
+		delete(registry.formerName, name)
+		registry.formerAmbiguous[name] = true
+	default:
+		registry.formerName[name] = d
+	}
+}
+
+// Lookup answers with the domain of the message with the given full name: the
+// one registered now, or, for a name an earlier build gave it, what
+// [Formerly] says it was.
 func Lookup(entity string) (Domain, bool) {
 	registry.RLock()
 	defer registry.RUnlock()
 
-	d, ok := registry.byEntity[entity]
+	if d, ok := registry.byEntity[entity]; ok {
+		return d, true
+	}
+
+	d, ok := registry.formerEntity[entity]
 	return d, ok
 }
 
 // DomainOf answers with the domain a person writes as `name`, which is how the
-// `#domain` of a slug is read.
+// `#domain` of a slug is read -- and with the one a word an earlier build
+// wrote it as names ([Formerly]), where no domain is written so now.
 func DomainOf(name string) (Domain, bool) {
 	registry.RLock()
 	defer registry.RUnlock()
 
-	d, ok := registry.byName[name]
+	if d, ok := registry.byName[name]; ok {
+		return d, true
+	}
+	if registry.ambiguous[name] {
+		// Somebody's word now, in two apps: not a former word's to answer.
+		return Unknown, false
+	}
+
+	d, ok := registry.formerName[name]
 	return d, ok
 }
 
