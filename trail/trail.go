@@ -661,6 +661,23 @@ func domainOf(v string) (pdid.Domain, bool) {
 	return pdid.Domain(n), true
 }
 
+// filed is the name a chunk labelled `kind` is read under: its kind's name now.
+//
+// A chunk is labelled once, as it is written, with the name its kind had then,
+// and a kind the schema renamed (`(payday.entity).formerly`) has chunks of
+// both names -- the old one answering through `pdid.Formerly`. Read by its
+// label, a check of the rows would read a renamed kind's rows in the chunks
+// written since and not in those before, and a report would count one kind
+// twice. A label nothing answers to stays as it is, and so does none, which
+// is what a format before kinds wrote.
+func filed(kind string) string {
+	if d, ok := kindOf(kind); ok {
+		return nameOf(d)
+	}
+
+	return kind
+}
+
 // DomainOf is [domainOf] for a configuration block, which has to refuse a name
 // nothing answers to rather than sweep on a kind that does not exist.
 func DomainOf(v string) (pdid.Domain, error) {

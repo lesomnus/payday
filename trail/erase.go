@@ -1313,7 +1313,7 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 		if keeps != nil && r.trusted {
 			if d, _ := kindOf(c.Kind); keeps(d, newest(c)) {
 				if first {
-					out.keep(c.Kind, c.Rows)
+					out.keep(filed(c.Kind), c.Rows)
 					saved.archive += c.Rows
 				}
 
@@ -1379,7 +1379,7 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 
 			if first {
 				out.Held.keep(v.held, 0)
-				out.keep(cmp.Or(c.Kind, "*"), v.floored)
+				out.keep(cmp.Or(filed(c.Kind), "*"), v.floored)
 				saved.archive += v.floored
 			}
 			if v.changed+v.dropped > 0 {
