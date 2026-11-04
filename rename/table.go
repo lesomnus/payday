@@ -60,10 +60,12 @@ var ErrBoth = errors.New("the table is there under both its names, with rows in 
 //
 // # Both names
 //
-// A table held under both names is what a migration that ran first leaves:
-// the new table made beside the old, empty. That one is dropped, and the old
-// one moved onto its name. A database whose new table holds rows as well --
-// a build that renamed it, and one before it, both wrote to it -- is refused
+// A table held under both names is a migration of one build made beside what
+// another left, and the empty one goes: the new table a migration that ran
+// first made beside the old, which is dropped and the old one moved onto its
+// name; or the old one a build before made again once this one had moved it,
+// which is dropped and nothing moved. A database with rows under both -- a
+// build that renamed it, and one before it, both wrote to it -- is refused
 // with [ErrBoth], and nothing is changed: which rows are the table's is for
 // somebody to decide.
 //
@@ -136,15 +138,32 @@ func table(ctx context.Context, db *sql.DB, t tables, v Table) error {
 		return err
 	}
 	if to {
-		n := 0
-		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM "+quote(v.To)).Scan(&n); err != nil {
+		count := func(name string) (int, error) {
+			n := 0
+			err := tx.QueryRowContext(ctx, "SELECT count(*) FROM "+quote(name)).Scan(&n)
+			return n, err
+		}
+		nto, err := count(v.To)
+		if err != nil {
 			return err
 		}
-		if n > 0 {
-			return fmt.Errorf("%w: %s and %s; move what one of them holds into the other, drop it, and migrate again", ErrBoth, v.From, v.To)
+		nfrom, err := count(v.From)
+		if err != nil {
+			return err
 		}
-		if err := t.drop(ctx, tx, v.To); err != nil {
-			return fmt.Errorf("the empty %s a migration made beside it: %w", v.To, err)
+
+		switch {
+		case nto == 0:
+			if err := t.drop(ctx, tx, v.To); err != nil {
+				return fmt.Errorf("the empty %s a migration made beside it: %w", v.To, err)
+			}
+		case nfrom == 0:
+			if err := t.drop(ctx, tx, v.From); err != nil {
+				return fmt.Errorf("the empty %s a build before made again: %w", v.From, err)
+			}
+			return tx.Commit()
+		default:
+			return fmt.Errorf("%w: %s and %s; move what one of them holds into the other, drop it, and migrate again", ErrBoth, v.From, v.To)
 		}
 	}
 

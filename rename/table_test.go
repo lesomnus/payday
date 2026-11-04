@@ -159,6 +159,20 @@ func TestTables(t *testing.T) {
 		x.Equal(map[string]string{"a": "a.example", "b": "b.example"}, valuesOf(t, db, "cell", "host"))
 	})
 
+	// What a build before leaves when it runs again once this one moved the
+	// table: the old one made again, empty, beside the one with the rows.
+	t.Run("an old one a build before made again, empty, goes, and nothing is moved", func(t *testing.T) {
+		x := require.New(t)
+		db, d := open(t)
+		ofAnEarlierBuild(t, db)
+		x.NoError(rename.Tables(t.Context(), db, d, []rename.Table{cell}))
+		exec(t, db, `CREATE TABLE workcell (id text NOT NULL, PRIMARY KEY (id))`)
+
+		x.NoError(rename.Tables(t.Context(), db, d, []rename.Table{cell}))
+		x.False(tableExists(t, db, d, "workcell"))
+		x.Equal(map[string]string{"a": "a.example", "b": "b.example"}, valuesOf(t, db, "cell", "host"))
+	})
+
 	t.Run("one with rows under both names is refused, and nothing is changed", func(t *testing.T) {
 		x := require.New(t)
 		db, d := open(t)
