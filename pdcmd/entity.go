@@ -39,7 +39,7 @@ type Entity struct {
 // The nil is the point of this whole type. Not every entity has every verb:
 // `List` is generated only where the schema declared `list:`, and in payday's
 // own test app four entities of eleven have it. A command tree that assumed the
-// verb would build `robot ls` for a service with no `List` and fail at the
+// verb would build `robot list` for a service with no `List` and fail at the
 // call, naming a method the server is right to say it does not have.
 func (e Entity) Method(name string) protoreflect.MethodDescriptor {
 	if e.Service == nil {

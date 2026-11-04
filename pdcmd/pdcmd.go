@@ -20,17 +20,25 @@
 //
 // # The entity commands
 //
-// `get`, `ls`, `watch`, `add`, `patch` and `erase`, for every entity the app
+// `get`, `list`, `watch`, `add`, `patch` and `erase`, for every entity the app
 // has, are the same kind of thing and are here for the same reason: they need a
 // connection to a running deployment, and which connection -- and who it is
 // authenticated as -- is the app's to decide. See [Tree].
+//
+// Each reads `<entity> <verb>` below wherever the app mounts the tree -- its
+// root, for `<app> robot list`, or a command of its own -- and nothing in them
+// assumes which. Both words are the schema's: the entity's name, and the RPC's
+// in the case a command is typed in. An alias is a shorter word for one --
+// `ls` for `list` is this package's own, and an app gives its own with
+// [Tree.Alias] -- and the rows other commands write can be kept out of the
+// help without being taken away, with [Tree.Hide].
 //
 // They are built rather than generated. Everything they need is already in the
 // process: an app's `.pb.go` files register their descriptors at init, and the
 // `(payday.entity)` option travels with them, so what generation would add is a
 // second copy of a list the binary already has. It also gets the hard part
 // right for free -- an entity has a `List` only if it declared `list:`, and a
-// tree built from the descriptors has `robot ls` and no `cell ls` without
+// tree built from the descriptors has `robot list` and no `cell list` without
 // anybody deciding that twice. `watch` is the same rule read off `watch:`,
 // which is why `Tenant` has a list and no watch and nobody wrote that down.
 //

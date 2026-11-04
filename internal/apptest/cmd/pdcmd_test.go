@@ -60,8 +60,8 @@ func rooted(t *testing.T, conn *grpc.ClientConn, opts ...pdcmd.Options) *xli.Com
 //
 // A tree of "every entity gets every verb" would be wrong on this app: seven of
 // its eleven entities have no `List`, because `list:` is a thing an entity
-// declares and most did not. So `robot ls` exists and `cell ls` does not, and
-// neither was written down anywhere.
+// declares and most did not. So `robot list` exists and `cell list` does not,
+// and neither was written down anywhere.
 func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -70,7 +70,7 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	x.NoError(err)
 
 	// Spelled out rather than asserted one `Nil` at a time, because a `Nil` on
-	// a path is also what a typo answers -- `tree.Command("cell/lsx")` is nil
+	// a path is also what a typo answers -- `tree.Command("cell/listx")` is nil
 	// too, and a test made of those asserts nothing at all.
 	verbs := func(entity string) []string {
 		c := tree.Command(entity)
@@ -87,21 +87,27 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	// `Apply` is one of payday's two general writes and is closed unless an app
 	// opts in, so it is not built and does not appear here even though `Robot`
 	// has one.
-	x.Equal([]string{"get", "ls", "watch", "add", "patch", "erase"}, verbs("robot"),
+	x.Equal([]string{"get", "list", "watch", "add", "patch", "erase"}, verbs("robot"),
 		"robot declared list: and watch:, so it has both")
 	x.Equal([]string{"get", "add", "patch", "erase"}, verbs("cell"),
-		"cell declared no list:, so there is no ls to call")
+		"cell declared no list:, so there is no list to call")
 
 	// `Tenant` is the one that says `watch` is read off the schema rather than
 	// added to everything that can be listed: it has a `List` and no `Watch`,
 	// because `watch:` is declared separately and it did not.
-	x.Equal([]string{"get", "ls", "add", "patch", "erase"}, verbs("tenant"),
+	x.Equal([]string{"get", "list", "add", "patch", "erase"}, verbs("tenant"),
 		"tenant declared list: and no watch:")
 
-	x.Nil(tree.Command("cell/ls"))
-	x.NotNil(tree.Command("robot/ls"))
+	x.Nil(tree.Command("cell/list"))
+	x.NotNil(tree.Command("robot/list"))
 	x.Nil(tree.Command("tenant/watch"))
 	x.NotNil(tree.Command("robot/watch"))
+
+	// And `ls`, which is what this verb was called, is the same command by an
+	// alias -- a path reads the way the command line does -- and is nothing
+	// where there is no list for it to be.
+	x.Same(tree.Command("robot/list"), tree.Command("robot/ls"))
+	x.Nil(tree.Command("cell/ls"))
 }
 
 // TestACommandTravelsTheWholeStack is the command doing the only thing it does.
@@ -284,7 +290,7 @@ func TestTheFormats(t *testing.T) {
 	t.Run("table has a header and a row", func(t *testing.T) {
 		x := require.New(t)
 
-		got := run(t, "holder", "ls", "-o", "table")
+		got := run(t, "holder", "list", "-o", "table")
 		x.NoError(got.Err)
 
 		lines := strings.Split(strings.TrimSpace(got.Stdout), "\n")
@@ -298,7 +304,7 @@ func TestTheFormats(t *testing.T) {
 	t.Run("wide is the same table with the identifiers", func(t *testing.T) {
 		x := require.New(t)
 
-		got := run(t, "holder", "ls", "-o", "wide")
+		got := run(t, "holder", "list", "-o", "wide")
 		x.NoError(got.Err)
 		x.Contains(got.Stdout, "Id")
 		x.Contains(got.Stdout, b.Holder.String())
@@ -321,7 +327,7 @@ func TestTheFormats(t *testing.T) {
 	})
 }
 
-// TestLsPagesWithNext is the round trip the two paging flags exist for: the
+// TestListPagesWithNext is the round trip the two paging flags exist for: the
 // "next" of one answer, handed back, is the page after it.
 //
 // It is worth a test of its own because the halves have different names. The
@@ -329,7 +335,7 @@ func TestTheFormats(t *testing.T) {
 // and a command that wrote the flag onto a field the request does not have
 // would drop it without a word: every page would be the first page, and the
 // first page again is exactly what an honest one-page list looks like.
-func TestLsPagesWithNext(t *testing.T) {
+func TestListPagesWithNext(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
@@ -343,7 +349,7 @@ func TestLsPagesWithNext(t *testing.T) {
 	page := func(next string) (string, string) {
 		t.Helper()
 
-		args := []string{"robot", "ls", "-o", "json", "--size", "1"}
+		args := []string{"robot", "list", "-o", "json", "--size", "1"}
 		if next != "" {
 			args = append(args, "--next", next)
 		}
@@ -446,7 +452,7 @@ func TestReplacingWhatIsNotThereIsRefused(t *testing.T) {
 	x.NoError(err)
 
 	x.Error(tree.Replace("holder/gett", &xli.Command{}))
-	x.Error(tree.Replace("cell/ls", &xli.Command{}), "cell has no list to replace")
+	x.Error(tree.Replace("cell/list", &xli.Command{}), "cell has no list to replace")
 }
 
 // TestATreeCanBeNarrowed: a deployment that serves a subset says so.
@@ -943,11 +949,11 @@ type connectorFunc func(ctx context.Context) (pdcmd.Conn, func(), error)
 
 func (f connectorFunc) Connect(ctx context.Context) (pdcmd.Conn, func(), error) { return f(ctx) }
 
-// TestLsReadsTheOtherWayAndInANamedOrder: `--reverse` reads the list's order
+// TestListReadsTheOtherWayAndInANamedOrder: `--reverse` reads the list's order
 // the other way round and `--order` names one the schema declared, and the two
 // go together. A name the schema did not declare is refused, saying which ones
 // it did.
-func TestLsReadsTheOtherWayAndInANamedOrder(t *testing.T) {
+func TestListReadsTheOtherWayAndInANamedOrder(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
@@ -964,7 +970,7 @@ func TestLsReadsTheOtherWayAndInANamedOrder(t *testing.T) {
 	ls := func(flags ...string) []string {
 		t.Helper()
 
-		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, append([]string{"robot", "ls", "-o", "json"}, flags...)...)
+		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, append([]string{"robot", "list", "-o", "json"}, flags...)...)
 		x.NoError(got.Err)
 
 		var res struct {
@@ -986,7 +992,7 @@ func TestLsReadsTheOtherWayAndInANamedOrder(t *testing.T) {
 	x.Equal([]string{"m-a", "m-b", "m-c"}, ls("--order", "alias"))
 	x.Equal([]string{"m-c", "m-b", "m-a"}, ls("--order", "alias", "--reverse"))
 
-	got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, "robot", "ls", "--order", "height")
+	got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, "robot", "list", "--order", "height")
 	x.ErrorContains(got.Err, `"height"`)
 	x.ErrorContains(got.Err, "alias_desc", "and which orders there are")
 }
