@@ -110,8 +110,8 @@ github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa h1:vlGiiYVD6OwCsW
 github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa/go.mod h1:8ievCRKra/hYmE+V+PuOutSuY8Ki8t0iRLngVsJfEsI=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e h1:S272MwPLsKMFJ7Xl75vVixiZ6QpN9tLuJXH4Q3GsKJk=
 github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e/go.mod h1:OT2wkw6444ni+rf0+zlh9T8IQhOWy5x04ArBbqv3Lu0=
-github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76 h1:UgldNC20nDC5kT8sAdLHlSxi/d5rGDhIOIsE3q8IekY=
-github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
+github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c h1:C3QoREkgt4tivmakukKKPdfaVUZb5zy3gF+LOsMoybY=
+github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
 github.com/lesomnus/xli/cfg v0.1.2 h1:Jm61ryyvkRrTq1Y6YjJ5MlRHNlsWhiDOz0phQXgFa0M=
 github.com/lesomnus/xli/cfg v0.1.2/go.mod h1:ER3vEDLCDJTYPGx+HY+IeIOBSQFmJUxW9qm7tG0qdoA=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 h1:dBLfXrOR8qLwZculDy8uJfNN+Q5xlyvM9CF4yylPB/0=

@@ -13,7 +13,7 @@ require (
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20261013182912-d2af55df512e
 	github.com/lesomnus/payday v0.0.0-00010101000000-000000000000
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
-	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
+	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
 	github.com/lesomnus/xli/cfg v0.1.2
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/ncruces/go-sqlite3 v0.35.3
