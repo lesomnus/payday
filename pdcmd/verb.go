@@ -20,6 +20,12 @@ import (
 // The verbs this package knows how to build, in the order they are shown --
 // what reads, then what writes.
 //
+// A verb is the RPC it calls, in the case a command is typed in: `list` for
+// `List`. That one was `ls`, and `ls` still runs it -- it is in scripts, in
+// documentation and in the fingers of everybody who used one of these, and an
+// abbreviation of the RPC's name is an alias that reads back to what it
+// stands for.
+//
 // `Apply` is deliberately absent. It is one of payday's two general writes and
 // is closed unless an app opts in, so a command for it would be one that fails
 // on every app that took the default -- and the apps that did opt in have a
@@ -31,8 +37,9 @@ import (
 // -- the connection, the request, `--in`, `-o` -- is the same, and what a
 // stream actually needs is an ending to have an opinion about. See [cmdWatch].
 var verbs = []struct {
-	name   string
-	method string
+	name    string
+	aliases []string
+	method  string
 
 	// stream is the shape the verb was written for, and it is checked rather
 	// than assumed: a `Watch` that is not a stream, or a `Get` that is, is not
@@ -43,7 +50,7 @@ var verbs = []struct {
 	build func(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 }{
 	{name: "get", method: "Get", build: cmdGet},
-	{name: "ls", method: "List", build: cmdList},
+	{name: "list", aliases: []string{"ls"}, method: "List", build: cmdList},
 	{name: "watch", method: "Watch", stream: true, build: cmdWatch},
 	{name: "add", method: "Add", build: cmdAdd},
 	{name: "patch", method: "Patch", build: cmdPatch},
@@ -242,7 +249,6 @@ func flgInput() *flg.String {
 
 func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "get",
 		Brief: fmt.Sprintf("get one %s", e.Message.Name()),
 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
@@ -269,7 +275,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 	}
 }
 
-// cmdList is `ls`, and the two flags are the whole of paging.
+// cmdList is `list`, and the two flags are the whole of paging.
 //
 // `--size` and `--next` rather than a page number, because that is what the
 // schema offers: a list carries on from the last row of the answer before, so
@@ -281,7 +287,6 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 // [argRaw]: a flag per filter would be a second copy of the schema.
 func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "ls",
 		Brief: fmt.Sprintf("list %s", e.Message.Name()),
 
 		Flags: flg.Flags{
@@ -382,8 +387,8 @@ func orderNamed(md protoreflect.MessageDescriptor, name string) (protoreflect.En
 	return 0, fmt.Errorf("--order: %q is not an order of %s; it has %s", name, md.FullName(), strings.Join(names, ", "))
 }
 
-// cmdWatch is `ls`, kept current, and the only command here that does not end
-// on its own.
+// cmdWatch is `list`, kept current, and the only command here that does not
+// end on its own.
 //
 // The request is a `List`'s in the same words -- what is watched is what that
 // list would answer with, now and afterwards -- so the arguments are the same
@@ -408,7 +413,6 @@ func orderNamed(md protoreflect.MessageDescriptor, name string) (protoreflect.En
 // which of the two it is.
 func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "watch",
 		Brief: fmt.Sprintf("watch %s", e.Message.Name()),
 
 		Flags: flg.Flags{
@@ -467,7 +471,6 @@ func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 // alias at all -- `Reading` in payday's own test app has none.
 func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "add",
 		Brief: fmt.Sprintf("add a %s", e.Message.Name()),
 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
@@ -514,7 +517,6 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 
 func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "patch",
 		Brief: fmt.Sprintf("change one %s", e.Message.Name()),
 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
@@ -548,7 +550,6 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 // refused it would be a special case to remember.
 func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
 	return &xli.Command{
-		Name:  "erase",
 		Brief: fmt.Sprintf("erase one %s", e.Message.Name()),
 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},

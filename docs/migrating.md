@@ -3,6 +3,71 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The entity commands are the schema's words: `list`, with `ls` its alias
+
+**Applies if** your app mounts `pdcmd`'s tree, or reads the name of one of its
+commands. Nothing a person or a script types changes: `ls` still runs what it
+ran.
+
+1. **`ls` is `list`**, the RPC it calls, and `ls` is its alias. `app robot ls`
+   runs it, and so do `t.Command("robot/ls")`, `t.Replace("robot/ls", c)` and
+   `t.Drop("robot/ls")`: a path is read the way the command line is, by name or
+   by alias at each step. What is different is the **name**: the help lists
+   `list,ls`, `app robot ls --help` is headed `app robot list`, and code that
+   reads a verb's `Name` finds `list` -- a test that lists a group's verbs is
+   where that shows.
+2. **`Unary` names a command in kebab-case**, as an entity's name is: `AddMany`
+   is `add-many`, where it was `addmany`. One mounted with `t.Add` is named by
+   its path, as it was, so only a command mounted some other way changes.
+3. **A word two commands at one level answer to is refused**, by `Add`,
+   `Replace`, `Alias` and `Mount`. xli runs the first command a word matches
+   and says nothing about the second, so a tree that held one had a command
+   that never ran; it is refused where the tree is built now.
+4. **Mount the tree with `t.Mount(root)`** -- or under a command of your own
+   -- rather than `root.Commands = append(root.Commands, t.Commands()...)`,
+   which still works and checks nothing. `Mount` refuses an entity, or an
+   alias, that is already one of the commands it lands beside, naming both.
+   Mount last: the tree cannot be changed after it.
+5. **New, if you want them**: `t.Alias(path, words...)` gives a command more
+   words, and `t.Hide(path)` keeps one out of the help, the completion and the
+   documentation xli writes while it still runs by name. Both are said in Go,
+   on the tree, and refused there -- a path that is not there, a word that
+   already runs something else at that level. Why there and not in the schema
+   is on `Tree.Alias`; [the commands guide](guide/commands.md#7-where-it-goes-and-the-words-it-answers-to)
+   has the rest.
+
+payday's own `go.mod` now names the xli every app on it already built with
+(`v0.0.0-20261009121920-4ce270c7448c`, which has `--help-all`), so nothing
+moves in yours.
+
+What the apps on payday change:
+
+- **roster** builds the tree twice (`cli/entity.go`, `cli/control.go`), and
+  its `ls` keeps running everywhere it is typed. Three tests read the name and
+  change with the bump:
+  - `cmd/entity_test.go`: `TestTheCommandsAreWhatTheSchemaDeclared` looks for a
+    verb named `ls` among `tenant`'s, which is `list` now, and
+    `TestHelpOpensNoDatabase` looks for `ls` in `tenant ls --help`, which is
+    headed `roster tenant list`.
+  - `cli/docs_test.go`: `TestTheDocumentationNamesCommandsThatExist` walks the
+    tree by `Name` only, so the four lines that say `roster control holder
+    ls`, `roster holder ls` and `roster tenant ls` (`docs/operating.md`,
+    `docs/usage/cli.md`) are refused. Write `list` there; a walk that reads
+    `Aliases` as well passes with the pages as they are.
+
+  `roster hold ls` is roster's own command and is untouched.
+- **loft** mounts the tree under `loft api` (`cli/client.go`), and its tests
+  pass unchanged. When it mounts the tree at its root (loft#285), `Mount`
+  refuses five words its root holds now: `access`, `event`, `holder` and
+  `tenant`, the operator's commands on the database, and `workspace` once
+  `tenant` answers to it. Those are the commands that issue moves to RPCs, so
+  they go first. Its own words are `t.Alias("tenant", "workspace", "ws")` and
+  `t.Alias("tenant/configure", "conf", "config")` after the `Add` of
+  `configure`, `t.Hide` for `allocation`, `placement`, `fact`, `stewardship`
+  and `stock-movement`, and `t.Mount(root)` last.
+- **levyan** builds no tree -- `pdcmd` is only its `version` -- and changes
+  nothing. Its `ls` commands are its own, written by hand.
+
 ## A command at a shell names who ran it, and is recorded before it answers
 
 **Applies if** your app has commands that reach its ungated instance in their

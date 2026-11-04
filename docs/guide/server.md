@@ -1209,12 +1209,13 @@ what reads the configuration, and `pdcmd.NewCmdVersion()` — and the first two
 are written into your repository by `pd new`, because their bodies are the stack
 and the first row.
 
-The same package builds `get`, `ls`, `watch`, `add`, `patch` and `erase` for
-every entity you have, against a deployment it is told how to reach:
+The same package builds `get`, `list`, `watch`, `add`, `patch` and `erase` for
+every entity you have, against a deployment it is told how to reach, and
+mounts them wherever you put them — your root, or a command of your own:
 
 ```go
 t, err := pdcmd.New(to)
-root.Commands = append(root.Commands, t.Commands()...)
+err = t.Mount(root)
 ```
 
 `to` is a `pdcmd.Connector` — which address, as whom — and it is asked when a

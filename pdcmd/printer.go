@@ -81,7 +81,7 @@ var ProtoJson Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 
 // Name prints the identifier of each row and nothing else.
 //
-// For the shell: `app robot ls -o name | xargs -n1 app robot get`. kubectl's
+// For the shell: `app robot list -o name | xargs -n1 app robot get`. kubectl's
 // `-o name` is the same idea and the same use.
 var Name Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	for _, row := range Rows(m) {

@@ -27,7 +27,7 @@ require (
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
-	github.com/lesomnus/xli v0.0.0-20261006051808-dadaa2417a76
+	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
 	github.com/lesomnus/xli/cfg v0.1.2
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/miekg/pkcs11 v1.1.2

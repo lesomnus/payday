@@ -111,7 +111,11 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 	args = append(args, argRaw())
 
 	return &xli.Command{
-		Name:  strings.ToLower(name),
+		// The RPC's name, as a command is typed: `AddMany` is `add-many`, the
+		// way an entity's name is its message's -- [pdid.Name] -- and not
+		// `addmany`, which is a word nobody would guess at. [Tree.Add] names
+		// it again by its path, so this is what it is called anywhere else.
+		Name:  pdid.Name("", name),
 		Brief: string(md.Name()),
 
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
