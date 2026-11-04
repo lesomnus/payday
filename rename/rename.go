@@ -8,7 +8,10 @@
 // written on every insert and read by nothing. Renamed first, it is found, and
 // the migration has nothing to do.
 //
-// Indexes and columns are what this renames, because they are what has moved.
+// Tables, indexes and columns are what this renames, because they are what
+// has moved. An entity the schema renamed says what it was called
+// (`(payday.entity).formerly`), and its table was named after that: a
+// migration makes the new one, empty, and the rows stay in the old one.
 // protoc-gen-orm-ent stored an index under a name made of its columns,
 // `robot_tenant_id_date_created_id`, and stores it now under the name the
 // schema declares, `robot_page` (protobuf-orm/protoc-gen-orm-ent#15). And a
@@ -21,10 +24,13 @@
 // that one fails worse than an index, since the rows written before read as
 // never having had a value. On SQLite a table whose index names the column is
 // made again instead, without the old one: what it held is gone, and there is
-// nothing left to move. `pd gen` writes what both mean for an app's schema, as
-// `pd.ColumnRenames` and `pd.IndexRenames`, and an app's `Migrate` hands them
-// here before it creates:
+// nothing left to move. `pd gen` writes what all three mean for an app's
+// schema, as `pd.TableRenames`, `pd.ColumnRenames` and `pd.IndexRenames`, and
+// an app's `Migrate` hands them here before it creates, in this order:
 //
+//	if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
+//		return err
+//	}
 //	if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
 //		return err
 //	}
@@ -32,6 +38,15 @@
 //		return err
 //	}
 //	return entmigrate.NewSchema(s.Drv).Create(ctx)
+//
+// The tables first, because the other two are handed each table by the name
+// this build gives it: a table still under the name its entity had holds its
+// columns and its indexes where neither looks. Run before it, they find nothing
+// and do nothing, the table moves with the old column and the old index in it,
+// and the migration adds the new ones beside them as though neither had run --
+// on SQLite, making a table whose index names the column again without it.
+// Then the columns, and the indexes, and the migration last, which finds each
+// by its name and moves none of them.
 package rename
 
 import (

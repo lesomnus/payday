@@ -53,7 +53,9 @@ type Column struct {
 // it wrote keep the value they were written with.
 //
 // It is run before a migration, by one process at a time, as the migration
-// is, and as [Indexes] is.
+// is, and as [Indexes] is -- and after [Tables]: a column is found on its
+// table by the name the table has now, and one still under the name its
+// entity had holds no column this finds.
 func Columns(ctx context.Context, db *sql.DB, d string, vs []Column) error {
 	if len(vs) == 0 {
 		return nil
