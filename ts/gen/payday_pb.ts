@@ -16,12 +16,14 @@ import type { NotificationPayload } from "./payday/notify_pb.js";
 import { file_payday_notify } from "./payday/notify_pb.js";
 import type { EventMessage } from "./payday/past_pb.js";
 import { file_payday_past } from "./payday/past_pb.js";
+import type { ReadResource } from "./payday/read_resource_pb.js";
+import { file_payday_read_resource } from "./payday/read_resource_pb.js";
 
 /**
  * Describes the file payday.proto.
  */
 export const file_payday: GenFile = /*@__PURE__*/
-  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6YgoMbm90aWZpY2F0aW9uEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGLPnAiABKAsyGy5wYXlkYXkuTm90aWZpY2F0aW9uUGF5bG9hZFIMbm90aWZpY2F0aW9uOkQKBWZpZWxkEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxiV6AIgASgLMg0ucGF5ZGF5LkZpZWxkUgVmaWVsZDo9CgNhcHASHC5nb29nbGUucHJvdG9idWYuRmlsZU9wdGlvbnMY+egCIAEoCzILLnBheWRheS5BcHBSA2FwcDpICgZtZXRob2QSHi5nb29nbGUucHJvdG9idWYuTWV0aG9kT3B0aW9ucxjd6QIgASgLMg4ucGF5ZGF5Lk1ldGhvZFIGbWV0aG9kQiFaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGJiCGVkaXRpb25zcOgH", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_method, file_payday_notify, file_payday_past]);
+  fileDesc("CgxwYXlkYXkucHJvdG8SBnBheWRheTpJCgZlbnRpdHkSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMYsecCIAEoCzIOLnBheWRheS5FbnRpdHlSBmVudGl0eTpNCgVldmVudBIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxiy5wIgASgLMhQucGF5ZGF5LkV2ZW50TWVzc2FnZVIFZXZlbnQ6YgoMbm90aWZpY2F0aW9uEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGLPnAiABKAsyGy5wYXlkYXkuTm90aWZpY2F0aW9uUGF5bG9hZFIMbm90aWZpY2F0aW9uOlMKCHJlc291cmNlEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGLTnAiABKAsyFC5wYXlkYXkuUmVhZFJlc291cmNlUghyZXNvdXJjZTpECgVmaWVsZBIdLmdvb2dsZS5wcm90b2J1Zi5GaWVsZE9wdGlvbnMYlegCIAEoCzINLnBheWRheS5GaWVsZFIFZmllbGQ6PQoDYXBwEhwuZ29vZ2xlLnByb3RvYnVmLkZpbGVPcHRpb25zGPnoAiABKAsyCy5wYXlkYXkuQXBwUgNhcHA6SAoGbWV0aG9kEh4uZ29vZ2xlLnByb3RvYnVmLk1ldGhvZE9wdGlvbnMY3ekCIAEoCzIOLnBheWRheS5NZXRob2RSBm1ldGhvZEIhWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBiYghlZGl0aW9uc3DoBw", [file_google_protobuf_descriptor, file_payday_app, file_payday_entity, file_payday_method, file_payday_notify, file_payday_past, file_payday_read_resource]);
 
 /**
  * @generated from extension: payday.Entity entity = 46001;
@@ -52,20 +54,28 @@ export const notification: GenExtension<MessageOptions, NotificationPayload> = /
   extDesc(file_payday, 2);
 
 /**
+ * A read-only resource computed from other state, without an ORM entity.
+ *
+ * @generated from extension: payday.ReadResource resource = 46004;
+ */
+export const resource: GenExtension<MessageOptions, ReadResource> = /*@__PURE__*/
+  extDesc(file_payday, 3);
+
+/**
  * @generated from extension: payday.Field field = 46101;
  */
 export const field: GenExtension<FieldOptions, Field> = /*@__PURE__*/
-  extDesc(file_payday, 3);
+  extDesc(file_payday, 4);
 
 /**
  * @generated from extension: payday.App app = 46201;
  */
 export const app: GenExtension<FileOptions, App> = /*@__PURE__*/
-  extDesc(file_payday, 4);
+  extDesc(file_payday, 5);
 
 /**
  * @generated from extension: payday.Method method = 46301;
  */
 export const method: GenExtension<MethodOptions, Method> = /*@__PURE__*/
-  extDesc(file_payday, 5);
+  extDesc(file_payday, 6);
 

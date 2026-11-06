@@ -1,0 +1,27 @@
+edition = "2023";
+
+package app;
+
+import "payday.proto";
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+// A service value computed from other records, with no ORM declaration or row.
+// Its filter uses RobotRef in a message-only service overlay, which exercises
+// the same clean-generation dependency an app's parent-scoped resource needs.
+message ComputedReading {
+  bytes id = 1;
+  string value = 2;
+  option (payday.resource) = {
+    name: "computed-reading"
+    filter: ".app.ComputedReadingFilter"
+    metadata: ".app.ComputedReadingSnapshot"
+    watch: true
+  };
+}
+
+message ComputedReadingSnapshot {
+  string revision = 1;
+  uint32 requested = 2;
+}

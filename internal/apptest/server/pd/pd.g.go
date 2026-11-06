@@ -5427,51 +5427,6 @@ func (s accountsTenant) List(ctx context.Context, req *apptest.TenantListRequest
 	return s.TenantServiceServer.List(ctx, req)
 }
 
-// accountsJob is JobService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsJob struct{ apptest.JobServiceServer }
-
-func (s accountsJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
-	if err := gate.AsAccount(ctx, apptest.JobService_Add_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Add(ctx, req)
-}
-
-func (s accountsJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
-	if err := gate.AsAccount(ctx, apptest.JobService_Get_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Get(ctx, req)
-}
-
-func (s accountsJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
-	if err := gate.AsAccount(ctx, apptest.JobService_Patch_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Patch(ctx, req)
-}
-
-func (s accountsJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	if err := gate.AsAccount(ctx, apptest.JobService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Apply(ctx, req)
-}
-
-func (s accountsJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
-	if err := gate.AsAccount(ctx, apptest.JobService_Erase_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Erase(ctx, req)
-}
-
 func (s Gate) Thing() apptest.ThingServiceServer {
 	return accountsThing{s.Next().Thing()}
 }
@@ -5841,6 +5796,51 @@ func (s accountsReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*a
 	}
 
 	return s.ReadingServiceServer.Erase(ctx, req)
+}
+
+// accountsJob is JobService as the gate serves it to a call an account
+// makes as itself: refused every method but the ones the schema marks the
+// account's own. See [gate.AsAccount].
+type accountsJob struct{ apptest.JobServiceServer }
+
+func (s accountsJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Add_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Add(ctx, req)
+}
+
+func (s accountsJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Get_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Get(ctx, req)
+}
+
+func (s accountsJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Patch_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Patch(ctx, req)
+}
+
+func (s accountsJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Apply(ctx, req)
+}
+
+func (s accountsJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	if err := gate.AsAccount(ctx, apptest.JobService_Erase_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.JobServiceServer.Erase(ctx, req)
 }
 
 // accountsMachine is MachineService as the gate serves it to a call an account
@@ -9970,40 +9970,6 @@ func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListReques
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
 }
 
-func (s Intercept) Job() apptest.JobServiceServer {
-	return interceptJob{s, s.Next().Job()}
-}
-
-type interceptJob struct {
-	Intercept
-	apptest.JobServiceServer
-}
-
-func (s interceptJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Add_FullMethodName, req, s.JobServiceServer.Add)
-}
-
-func (s interceptJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Get_FullMethodName, req, s.JobServiceServer.Get)
-}
-
-func (s interceptJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Patch_FullMethodName, req, s.JobServiceServer.Patch)
-}
-
-func (s interceptJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Apply_FullMethodName, req, s.JobServiceServer.Apply)
-}
-
-func (s interceptJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Erase_FullMethodName, req, s.JobServiceServer.Erase)
-}
-
 func (s Intercept) Thing() apptest.ThingServiceServer {
 	return interceptThing{s, s.Next().Thing()}
 }
@@ -10270,6 +10236,40 @@ func (s interceptReading) Apply(ctx context.Context, req *apptest.ReadingApplyRe
 func (s interceptReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Erase_FullMethodName, req, s.ReadingServiceServer.Erase)
+}
+
+func (s Intercept) Job() apptest.JobServiceServer {
+	return interceptJob{s, s.Next().Job()}
+}
+
+type interceptJob struct {
+	Intercept
+	apptest.JobServiceServer
+}
+
+func (s interceptJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Add_FullMethodName, req, s.JobServiceServer.Add)
+}
+
+func (s interceptJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Get_FullMethodName, req, s.JobServiceServer.Get)
+}
+
+func (s interceptJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Patch_FullMethodName, req, s.JobServiceServer.Patch)
+}
+
+func (s interceptJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Apply_FullMethodName, req, s.JobServiceServer.Apply)
+}
+
+func (s interceptJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
+		apptest.JobService_Erase_FullMethodName, req, s.JobServiceServer.Erase)
 }
 
 func (s Intercept) Machine() apptest.MachineServiceServer {
@@ -14345,16 +14345,6 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.TenantRef{}
 	case apptest.TenantService_List_FullMethodName:
 		v = &apptest.TenantListRequest{}
-	case apptest.JobService_Add_FullMethodName:
-		v = &apptest.JobAddRequest{}
-	case apptest.JobService_Get_FullMethodName:
-		v = &apptest.JobGetRequest{}
-	case apptest.JobService_Patch_FullMethodName:
-		v = &apptest.JobPatchRequest{}
-	case apptest.JobService_Apply_FullMethodName:
-		v = &apptest.JobApplyRequest{}
-	case apptest.JobService_Erase_FullMethodName:
-		v = &apptest.JobRef{}
 	case apptest.ThingService_Add_FullMethodName:
 		v = &apptest.ThingAddRequest{}
 	case apptest.ThingService_Get_FullMethodName:
@@ -14435,6 +14425,16 @@ func unpack(op *pdpb.Op) (proto.Message, error) {
 		v = &apptest.ReadingApplyRequest{}
 	case apptest.ReadingService_Erase_FullMethodName:
 		v = &apptest.ReadingRef{}
+	case apptest.JobService_Add_FullMethodName:
+		v = &apptest.JobAddRequest{}
+	case apptest.JobService_Get_FullMethodName:
+		v = &apptest.JobGetRequest{}
+	case apptest.JobService_Patch_FullMethodName:
+		v = &apptest.JobPatchRequest{}
+	case apptest.JobService_Apply_FullMethodName:
+		v = &apptest.JobApplyRequest{}
+	case apptest.JobService_Erase_FullMethodName:
+		v = &apptest.JobRef{}
 	case apptest.MachineService_Add_FullMethodName:
 		v = &apptest.MachineAddRequest{}
 	case apptest.MachineService_Get_FullMethodName:
@@ -14543,16 +14543,6 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Tenant().Erase(ctx, v.(*apptest.TenantRef))
 	case apptest.TenantService_List_FullMethodName:
 		res, err = s.Tenant().List(ctx, v.(*apptest.TenantListRequest))
-	case apptest.JobService_Add_FullMethodName:
-		res, err = s.Job().Add(ctx, v.(*apptest.JobAddRequest))
-	case apptest.JobService_Get_FullMethodName:
-		res, err = s.Job().Get(ctx, v.(*apptest.JobGetRequest))
-	case apptest.JobService_Patch_FullMethodName:
-		res, err = s.Job().Patch(ctx, v.(*apptest.JobPatchRequest))
-	case apptest.JobService_Apply_FullMethodName:
-		res, err = s.Job().Apply(ctx, v.(*apptest.JobApplyRequest))
-	case apptest.JobService_Erase_FullMethodName:
-		res, err = s.Job().Erase(ctx, v.(*apptest.JobRef))
 	case apptest.ThingService_Add_FullMethodName:
 		res, err = s.Thing().Add(ctx, v.(*apptest.ThingAddRequest))
 	case apptest.ThingService_Get_FullMethodName:
@@ -14633,6 +14623,16 @@ func dispatch(ctx context.Context, s apptest.Server, m string, v proto.Message) 
 		res, err = s.Reading().Apply(ctx, v.(*apptest.ReadingApplyRequest))
 	case apptest.ReadingService_Erase_FullMethodName:
 		res, err = s.Reading().Erase(ctx, v.(*apptest.ReadingRef))
+	case apptest.JobService_Add_FullMethodName:
+		res, err = s.Job().Add(ctx, v.(*apptest.JobAddRequest))
+	case apptest.JobService_Get_FullMethodName:
+		res, err = s.Job().Get(ctx, v.(*apptest.JobGetRequest))
+	case apptest.JobService_Patch_FullMethodName:
+		res, err = s.Job().Patch(ctx, v.(*apptest.JobPatchRequest))
+	case apptest.JobService_Apply_FullMethodName:
+		res, err = s.Job().Apply(ctx, v.(*apptest.JobApplyRequest))
+	case apptest.JobService_Erase_FullMethodName:
+		res, err = s.Job().Erase(ctx, v.(*apptest.JobRef))
 	case apptest.MachineService_Add_FullMethodName:
 		res, err = s.Machine().Add(ctx, v.(*apptest.MachineAddRequest))
 	case apptest.MachineService_Get_FullMethodName:
