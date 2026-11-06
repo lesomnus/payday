@@ -180,7 +180,8 @@ type Entity struct {
 
 // Schema is every entity of one generation, in a stable order.
 type Schema struct {
-	Entities []*Entity
+	Entities  []*Entity
+	Resources []*ReadResource
 
 	// Tenant is the entity a wall is made of, and nil for a schema that has
 	// none. A schema with a tenanted entity and no tenant does not get this
@@ -253,6 +254,11 @@ type Schema struct {
 // them can be: before a line of code exists to be wrong.
 func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	s := &Schema{}
+	resources, err := readResources(files)
+	if err != nil {
+		return nil, err
+	}
+	s.Resources = resources
 
 	past, err := readPast(files)
 	if err != nil {
@@ -345,6 +351,12 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 	if err := s.checkPayloads(); err != nil {
+		return nil, err
+	}
+	if err := checkResourceNames(s); err != nil {
+		return nil, err
+	}
+	if err := checkResourceSymbols(s, files); err != nil {
 		return nil, err
 	}
 	if len(s.Entities) == 0 {

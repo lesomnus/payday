@@ -1,0 +1,29 @@
+edition = "2023";
+
+package payday;
+
+option features.field_presence = IMPLICIT;
+option go_package = "github.com/lesomnus/payday/pdpb";
+
+// ReadResource declares a service for a value computed by the application,
+// without declaring a stored entity. It creates no table, row, SQL predicate,
+// identifier domain or write RPC. The application implements the reads and
+// checks current authorization, including on every Watch snapshot.
+// The value is a top-level message with opaque bytes id = 1. Its identifier
+// need not have a payday domain or name a row stored under this resource type.
+message ReadResource {
+  // The CLI/resource name; omitted means the message name in kebab-case.
+  string name = 1;
+
+  // Fully-qualified message type used by List and Watch filters. These are
+  // application predicates, not an inferred query over every response field.
+  string filter = 2;
+
+  // Optional fully-qualified collection metadata message. An empty collection
+  // still has metadata, so it is separate from the repeated resource values.
+  string metadata = 3;
+
+  // Generate Watch as complete collection snapshots, including empty ones.
+  // A revision names the collection last observed; it is not a replay cursor.
+  bool watch = 4;
+}

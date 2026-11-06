@@ -8,6 +8,7 @@ import "payday/entity.proto";
 import "payday/method.proto";
 import "payday/notify.proto";
 import "payday/past.proto";
+import "payday/read_resource.proto";
 
 option go_package = "github.com/lesomnus/payday/pdpb";
 
@@ -27,6 +28,9 @@ extend google.protobuf.MessageOptions {
   // [NotificationPayload] for what is refused of one, and why a notification
   // carries identifiers rather than a person's data.
   NotificationPayload notification = 46003;
+
+  // A read-only resource computed from other state, without an ORM entity.
+  ReadResource resource = 46004;
 }
 
 // The field block, one above the message one for the same reason: room to grow

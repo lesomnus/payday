@@ -417,6 +417,9 @@ func contractsIn(root string, fn func(p string) error) error {
 // now, so there is nothing to reconcile: what a contract imports is what is on
 // disk, before the merge and after it.
 func (r run) merge(ctx context.Context) error {
+	if err := r.seedReadResourceContracts(); err != nil {
+		return err
+	}
 	// Which overlays were actually used, so that one nothing reached can be
 	// named afterwards. See [run.unreached].
 	used := map[string]bool{}
@@ -492,6 +495,7 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 
 		for _, overlay := range []string{
 			filepath.Join(r.pd, stem+"_svc.pd.proto"),
+			filepath.Join(r.pd, stem+"_svc.resource.proto"),
 			r.Layout.Path(DirExt, stem+"_svc.ext.proto"),
 		} {
 			if _, err := os.Stat(overlay); err != nil {
@@ -502,11 +506,21 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 
 			r.say("  merge %s + %s", rel, filepath.Base(overlay))
 
-			if err := CheckOverlayFile(overlay); err != nil {
-				return err
-			}
-			if err := checkOverlayRpcs(b, overlay); err != nil {
-				return err
+			if strings.HasSuffix(overlay, "_svc.resource.proto") {
+				generated, err := os.ReadFile(overlay)
+				if err != nil {
+					return err
+				}
+				if err := checkReadResourceRpcs(generated, overlay); err != nil {
+					return err
+				}
+			} else {
+				if err := CheckOverlayFile(overlay); err != nil {
+					return err
+				}
+				if err := checkOverlayRpcs(b, overlay); err != nil {
+					return err
+				}
 			}
 
 			// protobuf-merge takes files, so what has been merged so far has to

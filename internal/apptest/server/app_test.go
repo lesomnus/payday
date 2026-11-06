@@ -27,7 +27,9 @@ import (
 // was never installed on, which is how a test arranges the tenants it is about
 // -- there is nobody to be inside a tenant before there are tenants.
 type App struct {
-	Db *ent.Client
+	Db      *ent.Client
+	SQL     *sql.DB
+	Dialect string
 
 	// Walled is what a caller reaches. Every read it makes carries the
 	// predicate the schema declared.
@@ -71,7 +73,7 @@ func New(t *testing.T) *App {
 	ungated, err := bare.NewServer(c, bare.WithMinter(pd.Minter()))
 	x.NoError(err)
 
-	return &App{Db: c, Walled: walled, Ungated: ungated}
+	return &App{Db: c, SQL: db, Dialect: dia, Walled: walled, Ungated: ungated}
 }
 
 // As answers with a context that sees exactly the given tenants.

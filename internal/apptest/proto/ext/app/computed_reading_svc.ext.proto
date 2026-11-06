@@ -1,0 +1,12 @@
+edition = "2023";
+
+package app;
+
+import "app/robot_svc.g.proto";
+
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+message ComputedReadingFilter {
+  RobotRef robot = 1;
+  bool history = 2 [features.field_presence = IMPLICIT];
+}

@@ -1,0 +1,52 @@
+edition = "2023";
+package app;
+
+import "app/computed_reading.proto";
+import "app/robot_svc.g.proto";
+
+option go_package = "github.com/lesomnus/payday/internal/apptest";
+
+service ComputedReadingService {
+  rpc Get(ComputedReadingGetRequest) returns (.app.ComputedReading);
+  rpc List(ComputedReadingListRequest) returns (ComputedReadingListResponse);
+  // Complete collection snapshots, including empty collections.
+  rpc Watch(ComputedReadingWatchRequest) returns (stream ComputedReadingWatchResponse);
+}
+
+message ComputedReadingGetRequest {
+  ComputedReadingRef ref = 1;
+}
+
+message ComputedReadingRef {
+  bytes id = 1 [features.field_presence = IMPLICIT];
+}
+
+message ComputedReadingListRequest {
+  repeated .app.ComputedReadingFilter filters = 1;
+  int32 size = 2 [features.field_presence = IMPLICIT];
+  string after = 3 [features.field_presence = IMPLICIT];
+  bool reverse = 4 [features.field_presence = IMPLICIT];
+}
+
+message ComputedReadingListResponse {
+  repeated .app.ComputedReading items = 1;
+  string next = 2 [features.field_presence = IMPLICIT];
+  .app.ComputedReadingSnapshot metadata = 3;
+}
+
+message ComputedReadingWatchRequest {
+  repeated .app.ComputedReadingFilter filters = 1;
+  // Collection revision last observed; never an authorization grant.
+  string revision = 2 [features.field_presence = IMPLICIT];
+}
+
+message ComputedReadingWatchResponse {
+  // Replace the complete previous collection, including with an empty one.
+  repeated .app.ComputedReading items = 1;
+  .app.ComputedReadingSnapshot metadata = 2;
+}
+
+message ComputedReadingFilter {
+  RobotRef robot = 1;
+  bool history = 2 [features.field_presence = IMPLICIT];
+}

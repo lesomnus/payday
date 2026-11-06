@@ -386,7 +386,6 @@ func snapshotOrNil(v proto.Message) proto.Message {
 // say about.
 type Scope interface {
 	TenantScope(ctx context.Context) (predicate.Tenant, error)
-	JobScope(ctx context.Context) (predicate.Job, error)
 	ThingScope(ctx context.Context) (predicate.Thing, error)
 	CellScope(ctx context.Context) (predicate.Cell, error)
 	RobotScope(ctx context.Context) (predicate.Robot, error)
@@ -394,6 +393,7 @@ type Scope interface {
 	JointScope(ctx context.Context) (predicate.Joint, error)
 	FleetScope(ctx context.Context) (predicate.Fleet, error)
 	ReadingScope(ctx context.Context) (predicate.Reading, error)
+	JobScope(ctx context.Context) (predicate.Job, error)
 	MachineScope(ctx context.Context) (predicate.Machine, error)
 	AccessScope(ctx context.Context) (predicate.Access, error)
 	ArchivedScope(ctx context.Context) (predicate.Archived, error)
@@ -428,9 +428,6 @@ var _ Scope = Unscoped{}
 func (Unscoped) TenantScope(_ context.Context) (predicate.Tenant, error) {
 	return nil, nil
 }
-func (Unscoped) JobScope(_ context.Context) (predicate.Job, error) {
-	return nil, nil
-}
 func (Unscoped) ThingScope(_ context.Context) (predicate.Thing, error) {
 	return nil, nil
 }
@@ -450,6 +447,9 @@ func (Unscoped) FleetScope(_ context.Context) (predicate.Fleet, error) {
 	return nil, nil
 }
 func (Unscoped) ReadingScope(_ context.Context) (predicate.Reading, error) {
+	return nil, nil
+}
+func (Unscoped) JobScope(_ context.Context) (predicate.Job, error) {
 	return nil, nil
 }
 func (Unscoped) MachineScope(_ context.Context) (predicate.Machine, error) {
@@ -541,26 +541,6 @@ func (ss Scopes) TenantScope(ctx context.Context) (predicate.Tenant, error) {
 	}
 
 	return tenant.And(ps...), nil
-}
-
-func (ss Scopes) JobScope(ctx context.Context) (predicate.Job, error) {
-	ps := make([]predicate.Job, 0, len(ss))
-	for _, s := range ss {
-		p, err := s.JobScope(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		ps = append(ps, p)
-	}
-	if len(ps) == 0 {
-		return nil, nil
-	}
-
-	return job.And(ps...), nil
 }
 
 func (ss Scopes) ThingScope(ctx context.Context) (predicate.Thing, error) {
@@ -701,6 +681,26 @@ func (ss Scopes) ReadingScope(ctx context.Context) (predicate.Reading, error) {
 	}
 
 	return reading.And(ps...), nil
+}
+
+func (ss Scopes) JobScope(ctx context.Context) (predicate.Job, error) {
+	ps := make([]predicate.Job, 0, len(ss))
+	for _, s := range ss {
+		p, err := s.JobScope(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if p == nil {
+			continue
+		}
+
+		ps = append(ps, p)
+	}
+	if len(ps) == 0 {
+		return nil, nil
+	}
+
+	return job.And(ps...), nil
 }
 
 func (ss Scopes) MachineScope(ctx context.Context) (predicate.Machine, error) {
@@ -1217,7 +1217,6 @@ func (s Server) WithDriver(drv dialect.Driver) (apptest.Server, error) {
 }
 
 func (s Server) Tenant() apptest.TenantServiceServer   { return TenantServiceServer{Store: s.Store} }
-func (s Server) Job() apptest.JobServiceServer         { return JobServiceServer{Store: s.Store} }
 func (s Server) Thing() apptest.ThingServiceServer     { return ThingServiceServer{Store: s.Store} }
 func (s Server) Cell() apptest.CellServiceServer       { return CellServiceServer{Store: s.Store} }
 func (s Server) Robot() apptest.RobotServiceServer     { return RobotServiceServer{Store: s.Store} }
@@ -1225,6 +1224,7 @@ func (s Server) Pairing() apptest.PairingServiceServer { return PairingServiceSe
 func (s Server) Joint() apptest.JointServiceServer     { return JointServiceServer{Store: s.Store} }
 func (s Server) Fleet() apptest.FleetServiceServer     { return FleetServiceServer{Store: s.Store} }
 func (s Server) Reading() apptest.ReadingServiceServer { return ReadingServiceServer{Store: s.Store} }
+func (s Server) Job() apptest.JobServiceServer         { return JobServiceServer{Store: s.Store} }
 func (s Server) Machine() apptest.MachineServiceServer { return MachineServiceServer{Store: s.Store} }
 func (s Server) Access() apptest.AccessServiceServer   { return AccessServiceServer{Store: s.Store} }
 func (s Server) Archived() apptest.ArchivedServiceServer {
