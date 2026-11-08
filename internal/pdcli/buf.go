@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"time"
 )
 
 // BufVersion is the buf every generation runs, and it is a constant here rather
@@ -135,21 +138,62 @@ func fetchBuf(ctx context.Context, asset string, at string) error {
 
 	url := fmt.Sprintf("https://github.com/bufbuild/buf/releases/download/v%s/buf-%s", BufVersion, asset)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
+	return fetchBufFrom(ctx, url, sum, at)
+}
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
+// bufBackoff is how long a fetch waits before each attempt after the first,
+// so it makes one more attempt than this has entries: five, fifteen seconds
+// of waiting in all.
+//
+// GitHub serves a release through a gateway that answers 504 now and then for
+// a file that is there. In one run of payday's own CI, on 2026-11-08, it did
+// to a `pd gen` and to the tests that fetch buf, and each failed on its one
+// attempt: the red build nobody caused that pinning buf set out to end.
+// Doubling from a second rides out a gateway that is back within seconds, and
+// still gives up on one that is not while whoever ran it is waiting. A var so
+// that a test does not wait for real.
+var bufBackoff = []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second}
 
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", url, res.Status)
-	}
+// bufWaitAtMost is the longest a fetch waits because a server asked it to
+// (Retry-After). A rate limit may ask for an hour, and nothing is printed
+// while a fetch waits, so a wait that long is a `pd gen` nobody can tell from
+// a hung one. A server that asks for more is asked again after this, until
+// the attempts are spent, and its last answer is the error.
+var bufWaitAtMost = 30 * time.Second
 
+// fetchBufFrom is [fetchBuf] from `url`, asked again while what fails is the
+// way to it: a 5xx, a 429, a connection that could not be made or was cut.
+//
+// What would be the same answer asked again is the answer at once -- any
+// other 4xx, which is a release or an asset that does not exist; a file
+// whose digest is not `sum`, which is a wrong file and not a slow one; and a
+// caller that has gone, which is not waited on at all.
+func fetchBufFrom(ctx context.Context, url string, sum string, at string) error {
+	for i := 0; ; i++ {
+		err := fetchBufOnce(ctx, url, sum, at)
+		if err == nil {
+			return nil
+		}
+
+		var t *transient
+		if !errors.As(err, &t) {
+			return err
+		}
+		if i == len(bufBackoff) {
+			return fmt.Errorf("gave up after %d attempts: %w", i+1, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("%w, waiting to try again after %w", ctx.Err(), err)
+		case <-time.After(max(bufBackoff[i], min(t.after, bufWaitAtMost))):
+		}
+	}
+}
+
+// fetchBufOnce is one attempt, into a temporary file of its own, so that an
+// attempt that died leaves nothing the next one has to know about.
+func fetchBufOnce(ctx context.Context, url string, sum string, at string) error {
 	// Into a temporary file beside the destination and renamed onto it, so that
 	// two generations running at once cannot read half of what the other is
 	// writing -- and so that a download that died leaves nothing that looks
@@ -161,7 +205,7 @@ func fetchBuf(ctx context.Context, asset string, at string) error {
 	defer os.Remove(f.Name())
 
 	h := sha256.New()
-	if _, err := io.Copy(io.MultiWriter(f, h), res.Body); err != nil {
+	if err := download(ctx, url, io.MultiWriter(f, h)); err != nil {
 		f.Close()
 		return err
 	}
@@ -177,4 +221,95 @@ func fetchBuf(ctx context.Context, asset string, at string) error {
 	}
 
 	return os.Rename(f.Name(), at)
+}
+
+// download writes what `url` answers into `w`. What fails on the way to it --
+// a 5xx, a 429, a request or a body the network failed -- is [transient]; a
+// write that fails is not.
+func download(ctx context.Context, url string, w io.Writer) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return cut(ctx, err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		err := fmt.Errorf("%s: %s", url, res.Status)
+		if res.StatusCode/100 != 5 && res.StatusCode != http.StatusTooManyRequests {
+			return err
+		}
+
+		return &transient{err: err, after: retryAfter(res.Header.Get("Retry-After"), time.Now())}
+	}
+
+	body := &downloading{r: res.Body}
+	if _, err := io.Copy(w, body); err != nil {
+		if body.err != nil {
+			return cut(ctx, fmt.Errorf("%s: %w", url, err))
+		}
+		return err
+	}
+
+	return nil
+}
+
+// transient is an attempt that failed in a way the next one may not, and how
+// long the server asked to be left before it, when it said.
+type transient struct {
+	err   error
+	after time.Duration
+}
+
+func (e *transient) Error() string { return e.err.Error() }
+func (e *transient) Unwrap() error { return e.err }
+
+// cut is a request the network failed -- refused, reset, timed out, ended
+// early -- which the next attempt may get through. Unless the caller is the
+// one that ended it: that is not the network, and is not asked again.
+func cut(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return err
+	}
+
+	return &transient{err: err}
+}
+
+// downloading is a body that remembers whether it stopped because it could
+// not be read. That is the network, and worth another attempt; a write that
+// failed is this machine's -- a full disk -- and is not, and io.Copy answers
+// both with nothing but the error.
+type downloading struct {
+	r   io.Reader
+	err error
+}
+
+func (v *downloading) Read(p []byte) (int, error) {
+	n, err := v.r.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		v.err = err
+	}
+
+	return n, err
+}
+
+// retryAfter is how long a Retry-After asks to be waited: a number of seconds,
+// or a date (RFC 9110, 10.2.3). Anything else asks for nothing.
+//
+// A number too large to read is as long as one can be, which bufWaitAtMost
+// then cuts down, rather than nothing: it is a server asking for longer than
+// anybody will wait, not one that did not ask.
+func retryAfter(v string, now time.Time) time.Duration {
+	if s, err := strconv.ParseUint(v, 10, 32); err == nil || errors.Is(err, strconv.ErrRange) {
+		return time.Duration(s) * time.Second
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		return max(t.Sub(now), 0)
+	}
+
+	return 0
 }
