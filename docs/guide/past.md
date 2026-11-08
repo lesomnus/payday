@@ -90,7 +90,7 @@ message RobotStopped {
   option (payday.event) = {};
 
   bytes robot = 1;
-  google.protobuf.Timestamp at = 2;
+  google.protobuf.Timestamp date_stopped = 2;
 }
 ```
 

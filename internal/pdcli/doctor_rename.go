@@ -22,8 +22,10 @@ const renamePkg = "github.com/lesomnus/payday/rename"
 // finds a column by its name and drops none, so on a store an earlier build
 // made it adds the new column, empty, beside the old: every row written before
 // reads as never having had a value -- a receipt as read at no time at all
-// (payday#196) -- the schema check a server makes before serving passes, and
-// nothing fails. The values are still there, in a column nothing reads.
+// (payday#196), an event as having happened at none -- the schema check a
+// server makes before serving passes, and nothing fails. The values are still
+// there, in a column nothing reads; and on SQLite, in a table whose index
+// names the column, not even that, since the table is made again without it.
 //
 // Read off the app's own Go, as the access record's wiring is: a call of
 // `rename.Columns` anywhere outside a test is taken for the step, whatever it
@@ -41,7 +43,8 @@ func doctorRenames(l Layout, vs []pdgen.ColumnRename) []Finding {
 
 	return []Finding{{
 		What: fmt.Sprintf("nothing hands pd.ColumnRenames to rename.Columns, so a migration of a store an earlier build "+
-			"made adds each renamed column empty beside the old one, and what the old one holds is no longer read: %s",
+			"made adds each renamed column empty beside the old one, and what the old one holds is no longer read -- "+
+			"on SQLite, a table whose index names one is made again without the old column, and what it held is lost: %s",
 			strings.Join(names, "; ")),
 		Fix: `// in the app's Migrate, before the migration
 if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {

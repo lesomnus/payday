@@ -66,7 +66,7 @@ func exceptions() past.Expiry {
 // stintOver is a stint that ended by `c`: what this app's own expiry takes, and
 // what a preview is told goes of its table.
 func stintOver(c time.Time) predicate.Stint {
-	return entstint.And(entstint.ValidToNotNil(), entstint.ValidToLTE(c))
+	return entstint.And(entstint.DateEndNotNil(), entstint.DateEndLTE(c))
 }
 
 // going is what this app says goes of its own tables that name events, for a
@@ -144,10 +144,10 @@ func (b *built) expired(t *testing.T, ctx context.Context, tenant pdid.Id, w pas
 				return nil
 			}
 			return app.PastExpired_builder{
-				Before: timestamppb.New(v.Before),
-				Facts:  uint32(v.Facts),
-				Events: uint32(v.Events),
-				Stints: uint32(stints),
+				DateBefore: timestamppb.New(v.Before),
+				Facts:      uint32(v.Facts),
+				Events:     uint32(v.Events),
+				Stints:     uint32(stints),
 			}.Build()
 		}
 	}
@@ -295,7 +295,7 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	// A correction of when an event happened, and a retraction of one that
 	// never did: one message, of two kinds.
 	correcting := func(subject, ev pdid.Id, at time.Time) past.Event {
-		return past.Event{Subject: subject, Kind: "correct", Value: app.Corrected_builder{Event: ev.Bytes(), At: timestamppb.New(at)}.Build()}
+		return past.Event{Subject: subject, Kind: "correct", Value: app.Corrected_builder{Event: ev.Bytes(), DateOccurred: timestamppb.New(at)}.Build()}
 	}
 	retracting := func(subject, ev pdid.Id) past.Event {
 		return past.Event{Subject: subject, Kind: "retract", Value: app.Corrected_builder{Event: ev.Bytes()}.Build()}
@@ -386,11 +386,11 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 			req := app.StintAddRequest_builder{
 				Tenant:    app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 				RobotId:   r.GetId(),
-				ValidFrom: timestamppb.New(from),
+				DateStart: timestamppb.New(from),
 				EventId:   op.Id().Bytes(),
 			}.Build()
 			if to != nil {
-				req.SetValidTo(timestamppb.New(*to))
+				req.SetDateEnd(timestamppb.New(*to))
 			}
 			_, err := next.Stint().Add(ctx, req)
 			return err
@@ -654,10 +654,10 @@ func TestTheReceiptSaysHowManyAndNoMore(t *testing.T) {
 	got := &app.PastExpired{}
 	x.NoError(v.Value.UnmarshalTo(got))
 	want := app.PastExpired_builder{
-		Before: timestamppb.New(cutoff),
-		Facts:  uint32(done.Facts),
-		Events: uint32(done.Events),
-		Stints: uint32(stints),
+		DateBefore: timestamppb.New(cutoff),
+		Facts:      uint32(done.Facts),
+		Events:     uint32(done.Events),
+		Stints:     uint32(stints),
 	}.Build()
 	x.True(proto.Equal(want, got), "the receipt: %v, and it says %v", want, got)
 	x.Positive(got.GetFacts())

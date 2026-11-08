@@ -174,7 +174,7 @@ func TestWhatIsNoGrantIsLeftOut(t *testing.T) {
 	f := entitle.Follower{Source: served(t, src), Copy: c}
 
 	noEnd := grant("no-end", acme, "acme.robots", 1, entitle.Limited(1))
-	noEnd.ClearValidUntil()
+	noEnd.ClearDateExpires()
 	noValue := grant("no-value", acme, "acme.robots", 1, entitle.Limited(1))
 	noValue.ClearValue()
 	negative := grant("negative", acme, "acme.robots", 1, entitle.Limited(1))

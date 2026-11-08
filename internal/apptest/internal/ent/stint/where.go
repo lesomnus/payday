@@ -61,14 +61,14 @@ func RobotId(v uuid.UUID) predicate.Stint {
 	return predicate.Stint(sql.FieldEQ(FieldRobotId, v))
 }
 
-// ValidFrom applies equality check predicate on the "valid_from" field. It's identical to ValidFromEQ.
-func ValidFrom(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldEQ(FieldValidFrom, v))
+// DateStart applies equality check predicate on the "date_start" field. It's identical to DateStartEQ.
+func DateStart(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldEQ(FieldDateStart, v))
 }
 
-// ValidTo applies equality check predicate on the "valid_to" field. It's identical to ValidToEQ.
-func ValidTo(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldEQ(FieldValidTo, v))
+// DateEnd applies equality check predicate on the "date_end" field. It's identical to DateEndEQ.
+func DateEnd(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldEQ(FieldDateEnd, v))
 }
 
 // EventId applies equality check predicate on the "event_id" field. It's identical to EventIdEQ.
@@ -126,104 +126,104 @@ func RobotIdLTE(v uuid.UUID) predicate.Stint {
 	return predicate.Stint(sql.FieldLTE(FieldRobotId, v))
 }
 
-// ValidFromEQ applies the EQ predicate on the "valid_from" field.
-func ValidFromEQ(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldEQ(FieldValidFrom, v))
+// DateStartEQ applies the EQ predicate on the "date_start" field.
+func DateStartEQ(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldEQ(FieldDateStart, v))
 }
 
-// ValidFromNEQ applies the NEQ predicate on the "valid_from" field.
-func ValidFromNEQ(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldNEQ(FieldValidFrom, v))
+// DateStartNEQ applies the NEQ predicate on the "date_start" field.
+func DateStartNEQ(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldNEQ(FieldDateStart, v))
 }
 
-// ValidFromIn applies the In predicate on the "valid_from" field.
-func ValidFromIn(vs ...time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldIn(FieldValidFrom, vs...))
+// DateStartIn applies the In predicate on the "date_start" field.
+func DateStartIn(vs ...time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldIn(FieldDateStart, vs...))
 }
 
-// ValidFromNotIn applies the NotIn predicate on the "valid_from" field.
-func ValidFromNotIn(vs ...time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldNotIn(FieldValidFrom, vs...))
+// DateStartNotIn applies the NotIn predicate on the "date_start" field.
+func DateStartNotIn(vs ...time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldNotIn(FieldDateStart, vs...))
 }
 
-// ValidFromGT applies the GT predicate on the "valid_from" field.
-func ValidFromGT(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldGT(FieldValidFrom, v))
+// DateStartGT applies the GT predicate on the "date_start" field.
+func DateStartGT(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldGT(FieldDateStart, v))
 }
 
-// ValidFromGTE applies the GTE predicate on the "valid_from" field.
-func ValidFromGTE(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldGTE(FieldValidFrom, v))
+// DateStartGTE applies the GTE predicate on the "date_start" field.
+func DateStartGTE(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldGTE(FieldDateStart, v))
 }
 
-// ValidFromLT applies the LT predicate on the "valid_from" field.
-func ValidFromLT(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldLT(FieldValidFrom, v))
+// DateStartLT applies the LT predicate on the "date_start" field.
+func DateStartLT(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldLT(FieldDateStart, v))
 }
 
-// ValidFromLTE applies the LTE predicate on the "valid_from" field.
-func ValidFromLTE(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldLTE(FieldValidFrom, v))
+// DateStartLTE applies the LTE predicate on the "date_start" field.
+func DateStartLTE(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldLTE(FieldDateStart, v))
 }
 
-// ValidFromIsNil applies the IsNil predicate on the "valid_from" field.
-func ValidFromIsNil() predicate.Stint {
-	return predicate.Stint(sql.FieldIsNull(FieldValidFrom))
+// DateStartIsNil applies the IsNil predicate on the "date_start" field.
+func DateStartIsNil() predicate.Stint {
+	return predicate.Stint(sql.FieldIsNull(FieldDateStart))
 }
 
-// ValidFromNotNil applies the NotNil predicate on the "valid_from" field.
-func ValidFromNotNil() predicate.Stint {
-	return predicate.Stint(sql.FieldNotNull(FieldValidFrom))
+// DateStartNotNil applies the NotNil predicate on the "date_start" field.
+func DateStartNotNil() predicate.Stint {
+	return predicate.Stint(sql.FieldNotNull(FieldDateStart))
 }
 
-// ValidToEQ applies the EQ predicate on the "valid_to" field.
-func ValidToEQ(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldEQ(FieldValidTo, v))
+// DateEndEQ applies the EQ predicate on the "date_end" field.
+func DateEndEQ(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldEQ(FieldDateEnd, v))
 }
 
-// ValidToNEQ applies the NEQ predicate on the "valid_to" field.
-func ValidToNEQ(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldNEQ(FieldValidTo, v))
+// DateEndNEQ applies the NEQ predicate on the "date_end" field.
+func DateEndNEQ(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldNEQ(FieldDateEnd, v))
 }
 
-// ValidToIn applies the In predicate on the "valid_to" field.
-func ValidToIn(vs ...time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldIn(FieldValidTo, vs...))
+// DateEndIn applies the In predicate on the "date_end" field.
+func DateEndIn(vs ...time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldIn(FieldDateEnd, vs...))
 }
 
-// ValidToNotIn applies the NotIn predicate on the "valid_to" field.
-func ValidToNotIn(vs ...time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldNotIn(FieldValidTo, vs...))
+// DateEndNotIn applies the NotIn predicate on the "date_end" field.
+func DateEndNotIn(vs ...time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldNotIn(FieldDateEnd, vs...))
 }
 
-// ValidToGT applies the GT predicate on the "valid_to" field.
-func ValidToGT(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldGT(FieldValidTo, v))
+// DateEndGT applies the GT predicate on the "date_end" field.
+func DateEndGT(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldGT(FieldDateEnd, v))
 }
 
-// ValidToGTE applies the GTE predicate on the "valid_to" field.
-func ValidToGTE(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldGTE(FieldValidTo, v))
+// DateEndGTE applies the GTE predicate on the "date_end" field.
+func DateEndGTE(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldGTE(FieldDateEnd, v))
 }
 
-// ValidToLT applies the LT predicate on the "valid_to" field.
-func ValidToLT(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldLT(FieldValidTo, v))
+// DateEndLT applies the LT predicate on the "date_end" field.
+func DateEndLT(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldLT(FieldDateEnd, v))
 }
 
-// ValidToLTE applies the LTE predicate on the "valid_to" field.
-func ValidToLTE(v time.Time) predicate.Stint {
-	return predicate.Stint(sql.FieldLTE(FieldValidTo, v))
+// DateEndLTE applies the LTE predicate on the "date_end" field.
+func DateEndLTE(v time.Time) predicate.Stint {
+	return predicate.Stint(sql.FieldLTE(FieldDateEnd, v))
 }
 
-// ValidToIsNil applies the IsNil predicate on the "valid_to" field.
-func ValidToIsNil() predicate.Stint {
-	return predicate.Stint(sql.FieldIsNull(FieldValidTo))
+// DateEndIsNil applies the IsNil predicate on the "date_end" field.
+func DateEndIsNil() predicate.Stint {
+	return predicate.Stint(sql.FieldIsNull(FieldDateEnd))
 }
 
-// ValidToNotNil applies the NotNil predicate on the "valid_to" field.
-func ValidToNotNil() predicate.Stint {
-	return predicate.Stint(sql.FieldNotNull(FieldValidTo))
+// DateEndNotNil applies the NotNil predicate on the "date_end" field.
+func DateEndNotNil() predicate.Stint {
+	return predicate.Stint(sql.FieldNotNull(FieldDateEnd))
 }
 
 // EventIdEQ applies the EQ predicate on the "event_id" field.

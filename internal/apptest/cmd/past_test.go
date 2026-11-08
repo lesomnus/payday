@@ -108,9 +108,9 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 
 	t.Run("by hand, through the servers, refused", func(t *testing.T) {
 		_, err := b.Walled.Event().Add(as, app.EventAddRequest_builder{
-			Tenant:     app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-			Kind:       "robot.move",
-			OccurredAt: timestamppb.Now(),
+			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Kind:         "robot.move",
+			DateOccurred: timestamppb.Now(),
 		}.Build())
 		pdtest.NewX(t).ErrCode(codes.PermissionDenied, err)
 	})
@@ -154,10 +154,10 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 		x := require.New(t)
 
 		v, err := b.beforeThePast(t).Event().Add(ctx, app.EventAddRequest_builder{
-			Tenant:     app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-			Kind:       "robot.oil",
-			OccurredAt: timestamppb.Now(),
-			Desc:       "oiled",
+			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Kind:         "robot.oil",
+			DateOccurred: timestamppb.Now(),
+			Desc:         "oiled",
 		}.Build())
 		x.NoError(err)
 
@@ -196,8 +196,8 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 		x.Equal(`"red"`, got.GetValue())
 		x.Equal(uint32(settings.Number()), got.GetFieldNumber())
 		x.Equal(uint32(mid.Domain()), got.GetDomain())
-		x.Equal(from.UnixMicro(), got.GetValidFrom().AsTime().UnixMicro())
-		x.True(got.HasSupersededAt())
+		x.Equal(from.UnixMicro(), got.GetDateStart().AsTime().UnixMicro())
+		x.True(got.HasDateSuperseded())
 		x.Equal(again.Bytes(), got.GetSupersededBy())
 
 		ls, err := b.Walled.Fact().List(as, app.FactListRequest_builder{Filters: []*app.FactFilter{
@@ -259,7 +259,7 @@ func TestAnEventIsReadBackByItsKind(t *testing.T) {
 		Mode:    app.Mode_MODE_SERVICE,
 		Parts:   []*app.MachineServiced_Part{part("P-1", 2), part("P-2", 1)},
 		Swapped: map[string]*app.MachineServiced_Part{"left": part("P-0", 1)},
-		Due:     timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+		DateDue: timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
 	}.Build()
 
 	var ev pdid.Id

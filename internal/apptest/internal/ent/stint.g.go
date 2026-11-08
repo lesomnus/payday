@@ -20,9 +20,9 @@ func (e *Stint) Proto() *apptest.Stint {
 		x.SetTenant(r)
 	}
 	x.SetRobotId(e.RobotId[:])
-	x.SetValidFrom(timestamppb.New(e.ValidFrom))
-	if e.ValidTo != nil {
-		x.SetValidTo(timestamppb.New(*e.ValidTo))
+	x.SetDateStart(timestamppb.New(e.DateStart))
+	if e.DateEnd != nil {
+		x.SetDateEnd(timestamppb.New(*e.DateEnd))
 	}
 	x.SetEventId(e.EventId[:])
 	x.SetDateCreated(timestamppb.New(e.DateCreated))

@@ -45,16 +45,16 @@ func (_c *EventCreate) SetNillableActorId(v *uuid.UUID) *EventCreate {
 	return _c
 }
 
-// SetOccurredAt sets the "occurred_at" field.
-func (_c *EventCreate) SetOccurredAt(v time.Time) *EventCreate {
-	_c.mutation.SetOccurredAt(v)
+// SetDateOccurred sets the "date_occurred" field.
+func (_c *EventCreate) SetDateOccurred(v time.Time) *EventCreate {
+	_c.mutation.SetDateOccurred(v)
 	return _c
 }
 
-// SetNillableOccurredAt sets the "occurred_at" field if the given value is not nil.
-func (_c *EventCreate) SetNillableOccurredAt(v *time.Time) *EventCreate {
+// SetNillableDateOccurred sets the "date_occurred" field if the given value is not nil.
+func (_c *EventCreate) SetNillableDateOccurred(v *time.Time) *EventCreate {
 	if v != nil {
-		_c.SetOccurredAt(*v)
+		_c.SetDateOccurred(*v)
 	}
 	return _c
 }
@@ -265,9 +265,9 @@ func (_c *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec, error) {
 		_spec.SetField(event.FieldActorId, field.TypeUuid, value)
 		_node.ActorId = &value
 	}
-	if value, ok := _c.mutation.OccurredAt(); ok {
-		_spec.SetField(event.FieldOccurredAt, field.TypeTime, value)
-		_node.OccurredAt = value
+	if value, ok := _c.mutation.DateOccurred(); ok {
+		_spec.SetField(event.FieldDateOccurred, field.TypeTime, value)
+		_node.DateOccurred = value
 	}
 	if value, ok := _c.mutation.Reason(); ok {
 		_spec.SetField(event.FieldReason, field.TypeString, value)

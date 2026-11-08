@@ -161,7 +161,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 	corrected := from.AddDate(0, 0, -3)
 	var second pdid.Id
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: first.Bytes(), At: timestamppb.New(corrected)}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: first.Bytes(), DateOccurred: timestamppb.New(corrected)}.Build()})
 		if err != nil {
 			return err
 		}
@@ -267,7 +267,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 
 	var correction pdid.Id
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), At: timestamppb.New(day(28))}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), DateOccurred: timestamppb.New(day(28))}.Build()})
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 
 	// An operation of another tenant's is none to correct.
 	pdtest.NewX(t).ErrCode(codes.NotFound, b.operate(t, b.elsewhere(t, ctx), func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), At: timestamppb.New(day(1))}.Build()})
+		_, op, err := past.Begin(ctx, s, past.Event{Kind: "correct", Value: app.Corrected_builder{Event: serviced.Bytes(), DateOccurred: timestamppb.New(day(1))}.Build()})
 		if err != nil {
 			return err
 		}

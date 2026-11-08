@@ -348,12 +348,12 @@ func grant(id string, tenant pdid.Id, key string, version uint64, v entitle.Valu
 	}
 
 	b := pdpb.EntitlementGrant_builder{
-		Id:         []byte(id),
-		TenantId:   tenant.Bytes(),
-		Key:        key,
-		Version:    version,
-		ValidFrom:  timestamppb.New(from),
-		ValidUntil: timestamppb.New(until),
+		Id:            []byte(id),
+		TenantId:      tenant.Bytes(),
+		Key:           key,
+		Version:       version,
+		DateEffective: timestamppb.New(from),
+		DateExpires:   timestamppb.New(until),
 	}
 	switch v.Kind() {
 	case entitle.KindOn:

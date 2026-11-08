@@ -26,9 +26,9 @@ func (e *Entitlement) Proto() *apptest.Entitlement {
 	x.SetGrantVersion(e.GrantVersion)
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
-	if e.ValidFrom != nil {
-		x.SetValidFrom(timestamppb.New(*e.ValidFrom))
+	if e.DateEffective != nil {
+		x.SetDateEffective(timestamppb.New(*e.DateEffective))
 	}
-	x.SetValidUntil(timestamppb.New(e.ValidUntil))
+	x.SetDateExpires(timestamppb.New(e.DateExpires))
 	return x
 }

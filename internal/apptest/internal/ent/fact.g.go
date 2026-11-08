@@ -26,10 +26,10 @@ func (e *Fact) Proto() *apptest.Fact {
 	x.SetDateUpdated(timestamppb.New(e.DateUpdated))
 	x.SetDateCreated(timestamppb.New(e.DateCreated))
 	x.SetDomain(e.Domain)
-	x.SetValidFrom(timestamppb.New(e.ValidFrom))
+	x.SetDateStart(timestamppb.New(e.DateStart))
 	x.SetEventId(e.EventId[:])
-	if e.SupersededAt != nil {
-		x.SetSupersededAt(timestamppb.New(*e.SupersededAt))
+	if e.DateSuperseded != nil {
+		x.SetDateSuperseded(timestamppb.New(*e.DateSuperseded))
 	}
 	if e.SupersededBy != nil {
 		x.SetSupersededBy(e.SupersededBy[:])

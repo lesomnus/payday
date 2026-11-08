@@ -51,7 +51,7 @@ message Event {
   }];
 
   // When it happened, which is not always when it was written down.
-  google.protobuf.Timestamp occurred_at = 10 [(orm.field) = {default: ""}];
+  google.protobuf.Timestamp date_occurred = 10 [(orm.field) = {default: ""}];
 
   // Why, in the words of whoever asked. Free text, and nothing can tell whether
   // somebody is named in it, so it is personal: the trail records that it was
@@ -140,7 +140,7 @@ message Event {
             number: 12
           },
           {
-            name: "occurred_at"
+            name: "date_occurred"
             number: 10
           }
         ]

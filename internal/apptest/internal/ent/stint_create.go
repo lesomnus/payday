@@ -30,30 +30,30 @@ func (_c *StintCreate) SetRobotId(v uuid.UUID) *StintCreate {
 	return _c
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_c *StintCreate) SetValidFrom(v time.Time) *StintCreate {
-	_c.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_c *StintCreate) SetDateStart(v time.Time) *StintCreate {
+	_c.mutation.SetDateStart(v)
 	return _c
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_c *StintCreate) SetNillableValidFrom(v *time.Time) *StintCreate {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_c *StintCreate) SetNillableDateStart(v *time.Time) *StintCreate {
 	if v != nil {
-		_c.SetValidFrom(*v)
+		_c.SetDateStart(*v)
 	}
 	return _c
 }
 
-// SetValidTo sets the "valid_to" field.
-func (_c *StintCreate) SetValidTo(v time.Time) *StintCreate {
-	_c.mutation.SetValidTo(v)
+// SetDateEnd sets the "date_end" field.
+func (_c *StintCreate) SetDateEnd(v time.Time) *StintCreate {
+	_c.mutation.SetDateEnd(v)
 	return _c
 }
 
-// SetNillableValidTo sets the "valid_to" field if the given value is not nil.
-func (_c *StintCreate) SetNillableValidTo(v *time.Time) *StintCreate {
+// SetNillableDateEnd sets the "date_end" field if the given value is not nil.
+func (_c *StintCreate) SetNillableDateEnd(v *time.Time) *StintCreate {
 	if v != nil {
-		_c.SetValidTo(*v)
+		_c.SetDateEnd(*v)
 	}
 	return _c
 }
@@ -199,13 +199,13 @@ func (_c *StintCreate) createSpec() (*Stint, *sqlgraph.CreateSpec) {
 		_spec.SetField(stint.FieldRobotId, field.TypeUuid, value)
 		_node.RobotId = value
 	}
-	if value, ok := _c.mutation.ValidFrom(); ok {
-		_spec.SetField(stint.FieldValidFrom, field.TypeTime, value)
-		_node.ValidFrom = value
+	if value, ok := _c.mutation.DateStart(); ok {
+		_spec.SetField(stint.FieldDateStart, field.TypeTime, value)
+		_node.DateStart = value
 	}
-	if value, ok := _c.mutation.ValidTo(); ok {
-		_spec.SetField(stint.FieldValidTo, field.TypeTime, value)
-		_node.ValidTo = &value
+	if value, ok := _c.mutation.DateEnd(); ok {
+		_spec.SetField(stint.FieldDateEnd, field.TypeTime, value)
+		_node.DateEnd = &value
 	}
 	if value, ok := _c.mutation.EventId(); ok {
 		_spec.SetField(stint.FieldEventId, field.TypeUuid, value)

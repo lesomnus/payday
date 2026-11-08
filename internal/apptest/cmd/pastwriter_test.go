@@ -75,12 +75,12 @@ func (b *built) handWritten(t *testing.T, ctx context.Context) ([]byHand, pdid.I
 	require.NoError(t, err)
 	event := func() *app.EventAddRequest {
 		return app.EventAddRequest_builder{
-			Tenant:     tenant,
-			Kind:       "app.MachineStarted",
-			ActorId:    pdid.New(pd.HolderDomain).Bytes(),
-			OccurredAt: timestamppb.Now(),
-			SubjectId:  m.GetId(),
-			Value:      held,
+			Tenant:       tenant,
+			Kind:         "app.MachineStarted",
+			ActorId:      pdid.New(pd.HolderDomain).Bytes(),
+			DateOccurred: timestamppb.Now(),
+			SubjectId:    m.GetId(),
+			Value:        held,
 		}.Build()
 	}
 	said := func(v string) *app.FactAddRequest {
@@ -90,7 +90,7 @@ func (b *built) handWritten(t *testing.T, ctx context.Context) ([]byHand, pdid.I
 			Value:       v,
 			FieldNumber: z.Ptr(uint32(model.Number())),
 			Domain:      z.Ptr(uint32(mid.Domain())),
-			ValidFrom:   timestamppb.Now(),
+			DateStart:   timestamppb.Now(),
 			EventId:     ev.Bytes(),
 		}.Build()
 	}

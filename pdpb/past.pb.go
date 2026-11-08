@@ -39,7 +39,7 @@ const (
 //	  option (payday.event) = {kinds: ["correct", "retract"]};
 //
 //	  bytes event = 1;
-//	  google.protobuf.Timestamp at = 2;
+//	  google.protobuf.Timestamp date_occurred = 2;
 //	}
 //
 // A kind is the operation -- what a list of events is filtered by, and what a

@@ -199,7 +199,7 @@ func TestAnEventSaysWhatItIs(t *testing.T) {
 		Mode:    app.Mode_MODE_SERVICE,
 		Parts:   []*app.MachineServiced_Part{app.MachineServiced_Part_builder{Serial: "P-1", Count: 2}.Build()},
 		Swapped: map[string]*app.MachineServiced_Part{"left": app.MachineServiced_Part_builder{Serial: "P-0", Count: 1}.Build()},
-		Due:     timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+		DateDue: timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
 	}.Build()
 	happened := time.Date(2026, 10, 1, 9, 0, 0, 123456789, time.UTC)
 

@@ -24,15 +24,15 @@ const (
 
 	colCause = "cause_id"
 	colKind  = "kind"
-	colAt    = "occurred_at"
+	colAt    = "date_occurred"
 
 	colDomain       = "domain"
 	colField        = "field_number"
 	colKey          = "key"
 	colValue        = "value"
-	colFrom         = "valid_from"
+	colFrom         = "date_start"
 	colEvent        = "event_id"
-	colSuperseded   = "superseded_at"
+	colSuperseded   = "date_superseded"
 	colSupersededBy = "superseded_by"
 )
 

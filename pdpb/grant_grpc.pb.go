@@ -68,9 +68,9 @@ const (
 // one it hears.
 //
 // So a grant is changed by sending it again at a higher version, and taken
-// away by **ending** it: sent again with `valid_until` at the moment it ends.
+// away by **ending** it: sent again with `date_expires` at the moment it ends.
 // A grant the source stops listing that has not ended is kept by the copy
-// until it does -- a copy never takes away on a guess, and `valid_until` is
+// until it does -- a copy never takes away on a guess, and `date_expires` is
 // what bounds how long that is. Once a grant has ended the source may stop
 // listing it, after a while -- a day is plenty, so that a comparison begun
 // before it ended never finds it gone -- and the copy forgets it at its next
@@ -175,9 +175,9 @@ func (c *grantServiceClient) List(ctx context.Context, in *GrantListRequest, opt
 // one it hears.
 //
 // So a grant is changed by sending it again at a higher version, and taken
-// away by **ending** it: sent again with `valid_until` at the moment it ends.
+// away by **ending** it: sent again with `date_expires` at the moment it ends.
 // A grant the source stops listing that has not ended is kept by the copy
-// until it does -- a copy never takes away on a guess, and `valid_until` is
+// until it does -- a copy never takes away on a guess, and `date_expires` is
 // what bounds how long that is. Once a grant has ended the source may stop
 // listing it, after a while -- a day is plenty, so that a comparison begun
 // before it ended never finds it gone -- and the copy forgets it at its next

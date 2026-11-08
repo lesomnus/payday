@@ -32,6 +32,12 @@ type Column struct {
 // written before reads as never having had a value. Nothing fails. The values
 // are still in the old column, which nothing reads again.
 //
+// On SQLite it is worse where an index names the column, as the past's do. The
+// index has to be made again over the new column, and the migration does that
+// by making the whole table again, from the schema -- without the old column,
+// and so without what it held. Nothing is left to carry, and nothing fails
+// then either.
+//
 // # What it does
 //
 // A column held under its old name alone is renamed -- one change to the
@@ -39,8 +45,8 @@ type Column struct {
 // definition rewritten in place. Nothing is copied, and every row keeps its
 // value.
 //
-// A column held under both is what a migration that ran before this one left:
-// the new one added beside the old. What the old one holds is copied into the
+// A column held under both is what a migration that ran before this one left
+// where it did not make the table again: the new one added beside the old. What the old one holds is copied into the
 // new one wherever the new one is still NULL -- which is every row written
 // before, since a column a migration adds to rows already there is NULL in
 // each -- and the old one is dropped, in one transaction. Rows the build after

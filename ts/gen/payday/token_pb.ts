@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/token.proto.
  */
 export const file_payday_token: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIqIBChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EisKB2V4cGlyZXMYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wInAKBUdyYW50EhIKCmFueV90ZW5hbnQYASABKAgSDwoHdGVuYW50cxgCIAMoDBIPCgdhbnlfc2V0GAMgASgIEgwKBHNldHMYBCADKAwSEgoKYW55X2FjdGlvbhgFIAEoCBIPCgdhY3Rpb25zGAYgAygJMl0KDFRva2VuU2VydmljZRJNCgpJbnRyb3NwZWN0Eh4ucGF5ZGF5LlRva2VuSW50cm9zcGVjdFJlcXVlc3QaHy5wYXlkYXkuVG9rZW5JbnRyb3NwZWN0UmVzcG9uc2VCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp]);
+  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIqcBChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EjAKDGRhdGVfZXhwaXJlcxgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAicAoFR3JhbnQSEgoKYW55X3RlbmFudBgBIAEoCBIPCgd0ZW5hbnRzGAIgAygMEg8KB2FueV9zZXQYAyABKAgSDAoEc2V0cxgEIAMoDBISCgphbnlfYWN0aW9uGAUgASgIEg8KB2FjdGlvbnMYBiADKAkyXQoMVG9rZW5TZXJ2aWNlEk0KCkludHJvc3BlY3QSHi5wYXlkYXkuVG9rZW5JbnRyb3NwZWN0UmVxdWVzdBofLnBheWRheS5Ub2tlbkludHJvc3BlY3RSZXNwb25zZUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message payday.TokenIntrospectRequest
@@ -106,9 +106,9 @@ export type TokenIntrospectResponse = Message<"payday.TokenIntrospectResponse"> 
    * once, at the handshake, and without this would be served for as long as it
    * stays open -- which for a Watch is until somebody hangs up.
    *
-   * @generated from field: google.protobuf.Timestamp expires = 6;
+   * @generated from field: google.protobuf.Timestamp date_expires = 6;
    */
-  expires?: Timestamp | undefined;
+  dateExpires?: Timestamp | undefined;
 };
 
 /**

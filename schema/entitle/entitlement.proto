@@ -71,11 +71,11 @@ message Entitlement {
     default: ""
   }];
 
-  // ValidFrom and ValidUntil are the grant's window: in force from the one,
-  // and no longer from the other. A grant may say no beginning, which is from
-  // always; every grant says when it ends.
-  google.protobuf.Timestamp valid_from = 16 [(orm.field) = {nullable: true}];
-  google.protobuf.Timestamp valid_until = 17 [(orm.field) = {default: ""}];
+  // DateEffective and DateExpires are the grant's window: in force from the
+  // one, and no longer from the other. A grant may say no beginning, which is
+  // from always; every grant says when it ends.
+  google.protobuf.Timestamp date_effective = 16 [(orm.field) = {nullable: true}];
+  google.protobuf.Timestamp date_expires = 17 [(orm.field) = {default: ""}];
 
   option (orm.message) = {
     indexes: [

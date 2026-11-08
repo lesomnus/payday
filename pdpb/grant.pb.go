@@ -25,16 +25,16 @@ const (
 // a grant, which is what [GrantService] is made of. (`Grant` alone is a
 // token's, what a credential allows.)
 type EntitlementGrant struct {
-	state                 protoimpl.MessageState   `protogen:"opaque.v1"`
-	xxx_hidden_Id         []byte                   `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_TenantId   []byte                   `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_Key        string                   `protobuf:"bytes,3,opt,name=key"`
-	xxx_hidden_Version    uint64                   `protobuf:"varint,4,opt,name=version"`
-	xxx_hidden_Value      isEntitlementGrant_Value `protobuf_oneof:"value"`
-	xxx_hidden_ValidFrom  *timestamppb.Timestamp   `protobuf:"bytes,8,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidUntil *timestamppb.Timestamp   `protobuf:"bytes,9,opt,name=valid_until,json=validUntil"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                    protoimpl.MessageState   `protogen:"opaque.v1"`
+	xxx_hidden_Id            []byte                   `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_TenantId      []byte                   `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_Key           string                   `protobuf:"bytes,3,opt,name=key"`
+	xxx_hidden_Version       uint64                   `protobuf:"varint,4,opt,name=version"`
+	xxx_hidden_Value         isEntitlementGrant_Value `protobuf_oneof:"value"`
+	xxx_hidden_DateEffective *timestamppb.Timestamp   `protobuf:"bytes,8,opt,name=date_effective,json=dateEffective"`
+	xxx_hidden_DateExpires   *timestamppb.Timestamp   `protobuf:"bytes,9,opt,name=date_expires,json=dateExpires"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *EntitlementGrant) Reset() {
@@ -117,16 +117,16 @@ func (x *EntitlementGrant) GetUnlimited() *EntitlementGrant_Unlimited {
 	return nil
 }
 
-func (x *EntitlementGrant) GetValidFrom() *timestamppb.Timestamp {
+func (x *EntitlementGrant) GetDateEffective() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateEffective
 	}
 	return nil
 }
 
-func (x *EntitlementGrant) GetValidUntil() *timestamppb.Timestamp {
+func (x *EntitlementGrant) GetDateExpires() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidUntil
+		return x.xxx_hidden_DateExpires
 	}
 	return nil
 }
@@ -169,12 +169,12 @@ func (x *EntitlementGrant) SetUnlimited(v *EntitlementGrant_Unlimited) {
 	x.xxx_hidden_Value = &entitlementGrant_Unlimited_{v}
 }
 
-func (x *EntitlementGrant) SetValidFrom(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidFrom = v
+func (x *EntitlementGrant) SetDateEffective(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateEffective = v
 }
 
-func (x *EntitlementGrant) SetValidUntil(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidUntil = v
+func (x *EntitlementGrant) SetDateExpires(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateExpires = v
 }
 
 func (x *EntitlementGrant) HasValue() bool {
@@ -208,18 +208,18 @@ func (x *EntitlementGrant) HasUnlimited() bool {
 	return ok
 }
 
-func (x *EntitlementGrant) HasValidFrom() bool {
+func (x *EntitlementGrant) HasDateEffective() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidFrom != nil
+	return x.xxx_hidden_DateEffective != nil
 }
 
-func (x *EntitlementGrant) HasValidUntil() bool {
+func (x *EntitlementGrant) HasDateExpires() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidUntil != nil
+	return x.xxx_hidden_DateExpires != nil
 }
 
 func (x *EntitlementGrant) ClearValue() {
@@ -244,12 +244,12 @@ func (x *EntitlementGrant) ClearUnlimited() {
 	}
 }
 
-func (x *EntitlementGrant) ClearValidFrom() {
-	x.xxx_hidden_ValidFrom = nil
+func (x *EntitlementGrant) ClearDateEffective() {
+	x.xxx_hidden_DateEffective = nil
 }
 
-func (x *EntitlementGrant) ClearValidUntil() {
-	x.xxx_hidden_ValidUntil = nil
+func (x *EntitlementGrant) ClearDateExpires() {
+	x.xxx_hidden_DateExpires = nil
 }
 
 const EntitlementGrant_Value_not_set_case case_EntitlementGrant_Value = 0
@@ -307,12 +307,12 @@ type EntitlementGrant_builder struct {
 	// one: a tenant with no grant of a key is entitled to none of it.
 	Unlimited *EntitlementGrant_Unlimited
 	// -- end of xxx_hidden_Value
-	// ValidFrom is when it begins: unset is from the beginning. A grant that
+	// DateEffective is when it begins: unset is from the beginning. A grant that
 	// begins later is the source saying the future -- next period's plan --
 	// which a copy that stops hearing from the source still turns to when it
 	// comes.
-	ValidFrom *timestamppb.Timestamp
-	// ValidUntil is when it ends, and every grant says one: a copy that stops
+	DateEffective *timestamppb.Timestamp
+	// DateExpires is when it ends, and every grant says one: a copy that stops
 	// hearing from its source keeps a grant until then and not forever, and
 	// that is the one bound on how stale a copy can be. A grant meant to last
 	// says a horizon and is sent again before it comes -- the end of the paid
@@ -321,7 +321,7 @@ type EntitlementGrant_builder struct {
 	//
 	// A grant whose window is empty, ending when or before it begins, is in
 	// force never: a grant taken back before it began.
-	ValidUntil *timestamppb.Timestamp
+	DateExpires *timestamppb.Timestamp
 }
 
 func (b0 EntitlementGrant_builder) Build() *EntitlementGrant {
@@ -341,8 +341,8 @@ func (b0 EntitlementGrant_builder) Build() *EntitlementGrant {
 	if b.Unlimited != nil {
 		x.xxx_hidden_Value = &entitlementGrant_Unlimited_{b.Unlimited}
 	}
-	x.xxx_hidden_ValidFrom = b.ValidFrom
-	x.xxx_hidden_ValidUntil = b.ValidUntil
+	x.xxx_hidden_DateEffective = b.DateEffective
+	x.xxx_hidden_DateExpires = b.DateExpires
 	return m0
 }
 
@@ -868,7 +868,7 @@ var File_payday_grant_proto protoreflect.FileDescriptor
 
 const file_payday_grant_proto_rawDesc = "" +
 	"\n" +
-	"\x12payday/grant.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe7\x02\n" +
+	"\x12payday/grant.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf1\x02\n" +
 	"\x10EntitlementGrant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12\x10\n" +
@@ -876,11 +876,9 @@ const file_payday_grant_proto_rawDesc = "" +
 	"\aversion\x18\x04 \x01(\x04R\aversion\x12\x10\n" +
 	"\x02on\x18\x05 \x01(\bH\x00R\x02on\x12\x16\n" +
 	"\x05limit\x18\x06 \x01(\x03H\x00R\x05limit\x12B\n" +
-	"\tunlimited\x18\a \x01(\v2\".payday.EntitlementGrant.UnlimitedH\x00R\tunlimited\x129\n" +
-	"\n" +
-	"valid_from\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x12;\n" +
-	"\vvalid_until\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"validUntil\x1a\v\n" +
+	"\tunlimited\x18\a \x01(\v2\".payday.EntitlementGrant.UnlimitedH\x00R\tunlimited\x12A\n" +
+	"\x0edate_effective\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rdateEffective\x12=\n" +
+	"\fdate_expires\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpires\x1a\v\n" +
 	"\tUnlimitedB\a\n" +
 	"\x05value\"\x13\n" +
 	"\x11GrantWatchRequest\"\x80\x01\n" +
@@ -913,8 +911,8 @@ var file_payday_grant_proto_goTypes = []any{
 }
 var file_payday_grant_proto_depIdxs = []int32{
 	6, // 0: payday.EntitlementGrant.unlimited:type_name -> payday.EntitlementGrant.Unlimited
-	7, // 1: payday.EntitlementGrant.valid_from:type_name -> google.protobuf.Timestamp
-	7, // 2: payday.EntitlementGrant.valid_until:type_name -> google.protobuf.Timestamp
+	7, // 1: payday.EntitlementGrant.date_effective:type_name -> google.protobuf.Timestamp
+	7, // 2: payday.EntitlementGrant.date_expires:type_name -> google.protobuf.Timestamp
 	3, // 3: payday.GrantWatchResponse.ready:type_name -> payday.GrantWatchReady
 	0, // 4: payday.GrantWatchResponse.grant:type_name -> payday.EntitlementGrant
 	0, // 5: payday.GrantListResponse.items:type_name -> payday.EntitlementGrant

@@ -37,8 +37,8 @@ type Stint struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_RobotId     []byte                 `protobuf:"bytes,8,opt,name=robot_id,json=robotId"`
-	xxx_hidden_ValidFrom   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidTo     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=valid_to,json=validTo"`
+	xxx_hidden_DateStart   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=date_start,json=dateStart"`
+	xxx_hidden_DateEnd     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_end,json=dateEnd"`
 	xxx_hidden_EventId     []byte                 `protobuf:"bytes,11,opt,name=event_id,json=eventId"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	unknownFields          protoimpl.UnknownFields
@@ -91,16 +91,16 @@ func (x *Stint) GetRobotId() []byte {
 	return nil
 }
 
-func (x *Stint) GetValidFrom() *timestamppb.Timestamp {
+func (x *Stint) GetDateStart() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateStart
 	}
 	return nil
 }
 
-func (x *Stint) GetValidTo() *timestamppb.Timestamp {
+func (x *Stint) GetDateEnd() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidTo
+		return x.xxx_hidden_DateEnd
 	}
 	return nil
 }
@@ -137,12 +137,12 @@ func (x *Stint) SetRobotId(v []byte) {
 	x.xxx_hidden_RobotId = v
 }
 
-func (x *Stint) SetValidFrom(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidFrom = v
+func (x *Stint) SetDateStart(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateStart = v
 }
 
-func (x *Stint) SetValidTo(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidTo = v
+func (x *Stint) SetDateEnd(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateEnd = v
 }
 
 func (x *Stint) SetEventId(v []byte) {
@@ -163,18 +163,18 @@ func (x *Stint) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
-func (x *Stint) HasValidFrom() bool {
+func (x *Stint) HasDateStart() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidFrom != nil
+	return x.xxx_hidden_DateStart != nil
 }
 
-func (x *Stint) HasValidTo() bool {
+func (x *Stint) HasDateEnd() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidTo != nil
+	return x.xxx_hidden_DateEnd != nil
 }
 
 func (x *Stint) HasDateCreated() bool {
@@ -188,12 +188,12 @@ func (x *Stint) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
-func (x *Stint) ClearValidFrom() {
-	x.xxx_hidden_ValidFrom = nil
+func (x *Stint) ClearDateStart() {
+	x.xxx_hidden_DateStart = nil
 }
 
-func (x *Stint) ClearValidTo() {
-	x.xxx_hidden_ValidTo = nil
+func (x *Stint) ClearDateEnd() {
+	x.xxx_hidden_DateEnd = nil
 }
 
 func (x *Stint) ClearDateCreated() {
@@ -207,9 +207,9 @@ type Stint_builder struct {
 	Tenant *Tenant
 	// The robot, by identifier and not an edge: what a robot was outlives it.
 	RobotId   []byte
-	ValidFrom *timestamppb.Timestamp
+	DateStart *timestamppb.Timestamp
 	// When it ended, and null while it holds.
-	ValidTo *timestamppb.Timestamp
+	DateEnd *timestamppb.Timestamp
 	// The operation that wrote it, which stays while this does.
 	EventId     []byte
 	DateCreated *timestamppb.Timestamp
@@ -222,8 +222,8 @@ func (b0 Stint_builder) Build() *Stint {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_RobotId = b.RobotId
-	x.xxx_hidden_ValidFrom = b.ValidFrom
-	x.xxx_hidden_ValidTo = b.ValidTo
+	x.xxx_hidden_DateStart = b.DateStart
+	x.xxx_hidden_DateEnd = b.DateEnd
 	x.xxx_hidden_EventId = b.EventId
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -233,13 +233,13 @@ func (b0 Stint_builder) Build() *Stint {
 // how many of what went, and from before when -- the past's own rows and the
 // stints the app took before them -- and never what any of them said.
 type PastExpired struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Before *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=before"`
-	xxx_hidden_Facts  uint32                 `protobuf:"varint,2,opt,name=facts"`
-	xxx_hidden_Events uint32                 `protobuf:"varint,3,opt,name=events"`
-	xxx_hidden_Stints uint32                 `protobuf:"varint,4,opt,name=stints"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_DateBefore *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=date_before,json=before"`
+	xxx_hidden_Facts      uint32                 `protobuf:"varint,2,opt,name=facts"`
+	xxx_hidden_Events     uint32                 `protobuf:"varint,3,opt,name=events"`
+	xxx_hidden_Stints     uint32                 `protobuf:"varint,4,opt,name=stints"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PastExpired) Reset() {
@@ -267,9 +267,9 @@ func (x *PastExpired) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *PastExpired) GetBefore() *timestamppb.Timestamp {
+func (x *PastExpired) GetDateBefore() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_Before
+		return x.xxx_hidden_DateBefore
 	}
 	return nil
 }
@@ -295,8 +295,8 @@ func (x *PastExpired) GetStints() uint32 {
 	return 0
 }
 
-func (x *PastExpired) SetBefore(v *timestamppb.Timestamp) {
-	x.xxx_hidden_Before = v
+func (x *PastExpired) SetDateBefore(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateBefore = v
 }
 
 func (x *PastExpired) SetFacts(v uint32) {
@@ -311,31 +311,31 @@ func (x *PastExpired) SetStints(v uint32) {
 	x.xxx_hidden_Stints = v
 }
 
-func (x *PastExpired) HasBefore() bool {
+func (x *PastExpired) HasDateBefore() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_Before != nil
+	return x.xxx_hidden_DateBefore != nil
 }
 
-func (x *PastExpired) ClearBefore() {
-	x.xxx_hidden_Before = nil
+func (x *PastExpired) ClearDateBefore() {
+	x.xxx_hidden_DateBefore = nil
 }
 
 type PastExpired_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Before *timestamppb.Timestamp
-	Facts  uint32
-	Events uint32
-	Stints uint32
+	DateBefore *timestamppb.Timestamp
+	Facts      uint32
+	Events     uint32
+	Stints     uint32
 }
 
 func (b0 PastExpired_builder) Build() *PastExpired {
 	m0 := &PastExpired{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_Before = b.Before
+	x.xxx_hidden_DateBefore = b.DateBefore
 	x.xxx_hidden_Facts = b.Facts
 	x.xxx_hidden_Events = b.Events
 	x.xxx_hidden_Stints = b.Stints
@@ -352,15 +352,15 @@ const file_app_stint_proto_rawDesc = "" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12!\n" +
 	"\brobot_id\x18\b \x01(\fB\x06\xea\x82\x16\x02\x10@R\arobotId\x12B\n" +
 	"\n" +
-	"valid_from\x18\t \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\tvalidFrom\x12=\n" +
-	"\bvalid_to\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampB\x06\xea\x82\x16\x028\x01R\avalidTo\x12'\n" +
+	"date_start\x18\t \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\tdateStart\x12=\n" +
+	"\bdate_end\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampB\x06\xea\x82\x16\x028\x01R\adateEnd\x12'\n" +
 	"\bevent_id\x18\v \x01(\fB\f\xea\x82\x16\x02\x10@\xaa\xc1\x16\x02(\x01R\aeventId\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:)\xca\xfc\x15\x1b\x12\x02\x10\x01\x1a\x15\x12\x05event\x1a\f\n" +
 	"\bevent_id\x10\v\x8a\xbb\x16\x06\b\x14B\x02\n" +
-	"\x00\"\x9a\x01\n" +
-	"\vPastExpired\x122\n" +
-	"\x06before\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x06before\x12\x14\n" +
+	"\x00\"\x9f\x01\n" +
+	"\vPastExpired\x127\n" +
+	"\vdate_before\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x06before\x12\x14\n" +
 	"\x05facts\x18\x02 \x01(\rR\x05facts\x12\x16\n" +
 	"\x06events\x18\x03 \x01(\rR\x06events\x12\x16\n" +
 	"\x06stints\x18\x04 \x01(\rR\x06stints:\x11\x92\xbb\x16\r\n" +
@@ -375,10 +375,10 @@ var file_app_stint_proto_goTypes = []any{
 }
 var file_app_stint_proto_depIdxs = []int32{
 	2, // 0: app.Stint.tenant:type_name -> app.Tenant
-	3, // 1: app.Stint.valid_from:type_name -> google.protobuf.Timestamp
-	3, // 2: app.Stint.valid_to:type_name -> google.protobuf.Timestamp
+	3, // 1: app.Stint.date_start:type_name -> google.protobuf.Timestamp
+	3, // 2: app.Stint.date_end:type_name -> google.protobuf.Timestamp
 	3, // 3: app.Stint.date_created:type_name -> google.protobuf.Timestamp
-	3, // 4: app.PastExpired.before:type_name -> google.protobuf.Timestamp
+	3, // 4: app.PastExpired.date_before:type_name -> google.protobuf.Timestamp
 	5, // [5:5] is the sub-list for method output_type
 	5, // [5:5] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
