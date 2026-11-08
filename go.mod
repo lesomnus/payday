@@ -14,8 +14,8 @@ toolchain go1.27.3
 // retraction is published in, and it retracts itself, so that `latest` is the
 // tip of main again.
 retract (
-	v0.1.0 // Tagged by accident; payday tags no versions.
 	v0.1.1 // Publishes this retraction, and nothing else.
+	v0.1.0 // Tagged by accident; payday tags no versions.
 )
 
 require (
