@@ -22,13 +22,14 @@ in its schema. Nothing changes for an app that renamed nothing:
 
   It moves the table of an entity the schema renamed (`(payday.entity).formerly`,
   [the schema guide](guide/schema.md#formerly--when-you-rename-an-entity)) onto
-  its new name with its rows: on PostgreSQL with its indexes, its primary key
-  and the foreign keys named after it, one transaction of changes to the
-  catalog; on SQLite the table renamed in place and the old indexes dropped for
-  the migration to make again, while a foreign key keeps its name there, which
-  nothing reads. A store holding both tables, the new one empty, has the empty
-  one dropped; one with rows in both is refused (`rename.ErrBoth`). `pd doctor`
-  says so when nothing moves a renamed table.
+  its new name with its rows: on PostgreSQL with its indexes, its primary key,
+  the foreign keys and (on 18) the NOT NULL constraints named after it, one
+  transaction of changes to the catalog; on SQLite the table renamed in place
+  and the old indexes dropped for the migration to make again, while a foreign
+  key keeps its name there, which nothing reads. A store holding both tables,
+  the new one empty, has the empty one dropped; one with rows in both is
+  refused (`rename.ErrBoth`). `pd doctor` says so when nothing moves a renamed
+  table.
 - **`pdid.Formerly`** is new and generated: each old name of a renamed entity
   -- its word and its full name -- answers the entity's domain in `DomainOf`
   and `Lookup`, after what is registered now. The trail reads a chunk of its

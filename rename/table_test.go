@@ -24,8 +24,9 @@ func tableExists(t *testing.T, db *sql.DB, d, name string) bool {
 	return n > 0
 }
 
-// constraints is the names of the constraints of `table` of these kinds, as
-// PostgreSQL keeps them.
+// constraints is the names of the constraints of `table`, as PostgreSQL keeps
+// them -- but its columns' NOT NULL, which 18 keeps as constraints and 17 does
+// not ([namedAfter] holds those to the table's name).
 func constraints(t *testing.T, db *sql.DB, table string) []string {
 	t.Helper()
 
@@ -33,7 +34,31 @@ func constraints(t *testing.T, db *sql.DB, table string) []string {
 		SELECT c.conname FROM pg_constraint c
 		JOIN pg_class t ON t.oid = c.conrelid
 		JOIN pg_namespace n ON n.oid = t.relnamespace
-		WHERE n.nspname = current_schema() AND t.relname = $1 ORDER BY c.conname`, table)
+		WHERE n.nspname = current_schema() AND t.relname = $1 AND c.contype <> 'n' ORDER BY c.conname`, table)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	out := []string{}
+	for rows.Next() {
+		var v string
+		require.NoError(t, rows.Scan(&v))
+		out = append(out, v)
+	}
+	require.NoError(t, rows.Err())
+
+	return out
+}
+
+// namedAfter is every constraint and index in the schema, as PostgreSQL keeps
+// them, whose name has `table`'s in it.
+func namedAfter(t *testing.T, db *sql.DB, table string) []string {
+	t.Helper()
+
+	rows, err := db.QueryContext(t.Context(), `
+		SELECT c.conname FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = current_schema() AND strpos(c.conname, $1) > 0
+		UNION ALL
+		SELECT indexname FROM pg_indexes WHERE schemaname = current_schema() AND strpos(indexname, $1) > 0`, table)
 	require.NoError(t, err)
 	defer rows.Close()
 
@@ -126,6 +151,8 @@ func TestTables(t *testing.T) {
 			x.False(has(t, db, d, "workcell_host"))
 			x.ElementsMatch([]string{"cell_pkey", "cell_tenant_tenant"}, constraints(t, db, "cell"))
 			x.ElementsMatch([]string{"robot_pkey", "robot_cell_cell"}, constraints(t, db, "robot"))
+			// Nor anything else -- on 18, the NOT NULL of each of its columns.
+			x.Empty(namedAfter(t, db, "workcell"), "named after the table it was")
 		} else {
 			// SQLite renames no index: the migration makes them again.
 			x.False(has(t, db, d, "workcell_page"))

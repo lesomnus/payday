@@ -40,6 +40,9 @@ var ErrBoth = errors.New("the table is there under both its names, with rows in 
 // What ent named after the table: its indexes, `<table>_<name>`; its primary
 // key on PostgreSQL, `<table>_pkey`; its foreign keys, `<table>_<other>_<edge>`;
 // and the foreign keys of other tables that point at it, `<other>_<table>_<edge>`.
+// And what PostgreSQL 18 named after it: each column's NOT NULL, which it keeps
+// as a constraint of its own, `<table>_<column>_not_null`, and which nothing
+// makes again -- left, a database moved is named otherwise than one made new.
 // Under the old names a migration finds none of them -- it makes each index
 // again from every row, beside the old one, and on PostgreSQL drops each
 // foreign key and adds it again, which checks every row.
@@ -228,12 +231,14 @@ func (p postgres) move(ctx context.Context, q querier, v Table) error {
 		}
 	}
 
-	// Its own constraints that are no index's: its foreign keys, and a check.
+	// Its own constraints that are no index's: its foreign keys, a check, and
+	// its columns' NOT NULL, which PostgreSQL 18 keeps as a constraint of its
+	// own, named after the table it was made in.
 	own, err := names(ctx, q, `
 		SELECT c.conname FROM pg_constraint c
 		JOIN pg_class t ON t.oid = c.conrelid
 		JOIN pg_namespace n ON n.oid = t.relnamespace
-		WHERE n.nspname = current_schema() AND t.relname = $1 AND c.contype IN ('f', 'c')`, v.To)
+		WHERE n.nspname = current_schema() AND t.relname = $1 AND c.contype IN ('f', 'c', 'n')`, v.To)
 	if err != nil {
 		return fmt.Errorf("its constraints: %w", err)
 	}
