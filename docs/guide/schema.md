@@ -161,6 +161,11 @@ nothing moves the table.
 - What a client sent is not reached: the service is the new name's, and the
   old one answers Unimplemented. What the trail kept of a write -- its
   `action`, the message a patch names -- stays as it was written.
+- A configuration file that names the kind by a word it had
+  (`audit.by.<old word>`) goes on configuring it. One that names it under two
+  of its words -- the old and the new, or two old ones -- is refused where the
+  process comes up: each key is the whole of the kind's settings, and which
+  one held would be chance. Say it once, under the word it has now.
 
 ### Erasure — required, one way or the other
 

@@ -176,6 +176,36 @@ func TestAKindTheAppDoesNotHaveIsRefused(t *testing.T) {
 	})
 }
 
+// TestARenamedKindIsConfiguredByEitherWordAndNotBoth.
+//
+// Robot was Droid (`formerly`), so a file written before the rename goes on
+// configuring robots under `audit.by.droid`. One that names them under both
+// words is refused: each key is the whole of the kind's settings, and which
+// of the two stood would be chance.
+func TestARenamedKindIsConfiguredByEitherWordAndNotBoth(t *testing.T) {
+	x := require.New(t)
+
+	robot, ok := pdid.DomainOf("robot")
+	x.True(ok)
+
+	for _, word := range []string{"droid", "robot"} {
+		p, err := config.AuditConfig{
+			By: map[string]config.AuditKeepConfig{word: {Retain: time.Hour, Discard: true}},
+		}.Policy()
+		x.NoError(err)
+		x.Equal(time.Hour, p.For(robot).Retain, word)
+	}
+
+	c := config.AuditConfig{By: map[string]config.AuditKeepConfig{
+		"droid": {Retain: time.Hour, Discard: true},
+		"robot": {Retain: 2 * time.Hour, Discard: true},
+	}}
+	_, err := c.Policy()
+	x.EqualError(err, "audit.by.droid and audit.by.robot name one kind, robot: say it once, as audit.by.robot")
+	_, err = c.Contents()
+	x.EqualError(err, "audit.by.droid and audit.by.robot name one kind, robot: say it once, as audit.by.robot")
+}
+
 // TestTheArchiveIsSplitByKindSoThatTheSecondClockCanBe.
 //
 // The second clock is per kind as well, and [trail.Policy.Purge] decides from

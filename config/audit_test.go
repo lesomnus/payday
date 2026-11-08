@@ -18,6 +18,7 @@ import (
 
 	"github.com/lesomnus/payday/audit"
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdtest"
 	"github.com/lesomnus/payday/trail"
 )
@@ -241,5 +242,61 @@ func TestTheKeysAreWhatTheConfigurationSays(t *testing.T) {
 		if err != nil {
 			x.NotContains(err.Error(), "AGE-SECRET-KEY", "an error printed a private key")
 		}
+	}
+}
+
+// TestAKindIsNamedUnderOneKey.
+//
+// A kind's word now and each word it had before the schema renamed it
+// (`formerly`, payday#212) all name it, and each key of `by:` is read as the
+// whole of its kind's settings -- so two keys of one kind would each set it,
+// and which stood would be the order a map is walked in. Either word alone is
+// the kind; a file that names it twice is refused where the configuration is
+// read, by both of its readers, with the keys and the one to keep.
+func TestAKindIsNamedUnderOneKey(t *testing.T) {
+	// Gizmo, which was called Gadget, and Widget before that.
+	gizmo := pdid.Domain(240)
+	pdid.Register("config.test.Gizmo", gizmo, "gizmo")
+	pdid.Formerly("config.test.Gadget", gizmo, "gadget")
+	pdid.Formerly("config.test.Widget", gizmo, "widget")
+
+	kept := config.AuditKeepConfig{Retain: time.Hour, Discard: true, Content: "value"}
+
+	for _, word := range []string{"gizmo", "gadget", "widget"} {
+		t.Run(word+" alone is the kind", func(t *testing.T) {
+			x := require.New(t)
+
+			c := config.AuditConfig{By: map[string]config.AuditKeepConfig{word: kept}}
+
+			p, err := c.Policy()
+			x.NoError(err)
+			x.Equal(time.Hour, p.For(gizmo).Retain)
+			x.True(p.For(gizmo).Discard)
+
+			v, err := c.Contents()
+			x.NoError(err)
+			x.Equal("value", v.By[gizmo].String())
+		})
+	}
+
+	for keys, want := range map[[2]string]string{
+		{"gadget", "gizmo"}:  "audit.by.gadget and audit.by.gizmo name one kind, gizmo: say it once, as audit.by.gizmo",
+		{"gadget", "widget"}: "audit.by.gadget and audit.by.widget name one kind, gizmo: say it once, as audit.by.gizmo",
+		{"Gizmo", "gizmo"}:   "audit.by.Gizmo and audit.by.gizmo name one kind, gizmo: say it once, as audit.by.gizmo",
+	} {
+		t.Run(keys[0]+" and "+keys[1]+" are refused", func(t *testing.T) {
+			x := require.New(t)
+
+			c := config.AuditConfig{By: map[string]config.AuditKeepConfig{
+				keys[0]: kept,
+				keys[1]: {Retain: 2 * time.Hour, Discard: true, Content: "fields"},
+			}}
+
+			_, err := c.Policy()
+			x.EqualError(err, want)
+
+			_, err = c.Contents()
+			x.EqualError(err, want)
+		})
 	}
 }
