@@ -522,7 +522,7 @@ type MachineServiced struct {
 	xxx_hidden_Mode    Mode                             `protobuf:"varint,3,opt,name=mode,enum=app.Mode"`
 	xxx_hidden_Parts   *[]*MachineServiced_Part         `protobuf:"bytes,4,rep,name=parts"`
 	xxx_hidden_Swapped map[string]*MachineServiced_Part `protobuf:"bytes,5,rep,name=swapped" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	xxx_hidden_Due     *timestamppb.Timestamp           `protobuf:"bytes,6,opt,name=due"`
+	xxx_hidden_DateDue *timestamppb.Timestamp           `protobuf:"bytes,6,opt,name=date_due,json=due"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -589,9 +589,9 @@ func (x *MachineServiced) GetSwapped() map[string]*MachineServiced_Part {
 	return nil
 }
 
-func (x *MachineServiced) GetDue() *timestamppb.Timestamp {
+func (x *MachineServiced) GetDateDue() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_Due
+		return x.xxx_hidden_DateDue
 	}
 	return nil
 }
@@ -622,19 +622,19 @@ func (x *MachineServiced) SetSwapped(v map[string]*MachineServiced_Part) {
 	x.xxx_hidden_Swapped = v
 }
 
-func (x *MachineServiced) SetDue(v *timestamppb.Timestamp) {
-	x.xxx_hidden_Due = v
+func (x *MachineServiced) SetDateDue(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateDue = v
 }
 
-func (x *MachineServiced) HasDue() bool {
+func (x *MachineServiced) HasDateDue() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_Due != nil
+	return x.xxx_hidden_DateDue != nil
 }
 
-func (x *MachineServiced) ClearDue() {
-	x.xxx_hidden_Due = nil
+func (x *MachineServiced) ClearDateDue() {
+	x.xxx_hidden_DateDue = nil
 }
 
 type MachineServiced_builder struct {
@@ -647,7 +647,7 @@ type MachineServiced_builder struct {
 	Parts []*MachineServiced_Part
 	// What was taken out, by the slot it was in.
 	Swapped map[string]*MachineServiced_Part
-	Due     *timestamppb.Timestamp
+	DateDue *timestamppb.Timestamp
 }
 
 func (b0 MachineServiced_builder) Build() *MachineServiced {
@@ -659,7 +659,7 @@ func (b0 MachineServiced_builder) Build() *MachineServiced {
 	x.xxx_hidden_Mode = b.Mode
 	x.xxx_hidden_Parts = &b.Parts
 	x.xxx_hidden_Swapped = b.Swapped
-	x.xxx_hidden_Due = b.Due
+	x.xxx_hidden_DateDue = b.DateDue
 	return m0
 }
 
@@ -735,11 +735,11 @@ func (b0 MachineStarted_builder) Build() *MachineStarted {
 // `retract` was added after `correct`, as a kind may be: the lock keeps every
 // kind the message ever held, and a message only ever takes more.
 type Corrected struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Event []byte                 `protobuf:"bytes,1,opt,name=event"`
-	xxx_hidden_At    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Event        []byte                 `protobuf:"bytes,1,opt,name=event"`
+	xxx_hidden_DateOccurred *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=date_occurred,json=at"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Corrected) Reset() {
@@ -774,9 +774,9 @@ func (x *Corrected) GetEvent() []byte {
 	return nil
 }
 
-func (x *Corrected) GetAt() *timestamppb.Timestamp {
+func (x *Corrected) GetDateOccurred() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_At
+		return x.xxx_hidden_DateOccurred
 	}
 	return nil
 }
@@ -788,26 +788,26 @@ func (x *Corrected) SetEvent(v []byte) {
 	x.xxx_hidden_Event = v
 }
 
-func (x *Corrected) SetAt(v *timestamppb.Timestamp) {
-	x.xxx_hidden_At = v
+func (x *Corrected) SetDateOccurred(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateOccurred = v
 }
 
-func (x *Corrected) HasAt() bool {
+func (x *Corrected) HasDateOccurred() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_At != nil
+	return x.xxx_hidden_DateOccurred != nil
 }
 
-func (x *Corrected) ClearAt() {
-	x.xxx_hidden_At = nil
+func (x *Corrected) ClearDateOccurred() {
+	x.xxx_hidden_DateOccurred = nil
 }
 
 type Corrected_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Event []byte
-	At    *timestamppb.Timestamp
+	Event        []byte
+	DateOccurred *timestamppb.Timestamp
 }
 
 func (b0 Corrected_builder) Build() *Corrected {
@@ -815,7 +815,7 @@ func (b0 Corrected_builder) Build() *Corrected {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Event = b.Event
-	x.xxx_hidden_At = b.At
+	x.xxx_hidden_DateOccurred = b.DateOccurred
 	return m0
 }
 
@@ -999,14 +999,14 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x04axes\x18\x01 \x01(\rR\x04axes\x12\x14\n" +
 	"\x05reach\x18\x02 \x01(\x01R\x05reach:'\xca\xfc\x15\x1d\x12\x02\x10\x01\x1a\x17\x12\tby_tenant\x1a\n" +
 	"\n" +
-	"\x06tenant\x10\x02\x8a\xbb\x16\x02\b\x13\"\x9a\x03\n" +
+	"\x06tenant\x10\x02\x8a\xbb\x16\x02\b\x13\"\x9f\x03\n" +
 	"\x0fMachineServiced\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\fR\amachine\x12\x0e\n" +
 	"\x02by\x18\x02 \x01(\fR\x02by\x12\x1d\n" +
 	"\x04mode\x18\x03 \x01(\x0e2\t.app.ModeR\x04mode\x12/\n" +
 	"\x05parts\x18\x04 \x03(\v2\x19.app.MachineServiced.PartR\x05parts\x12;\n" +
-	"\aswapped\x18\x05 \x03(\v2!.app.MachineServiced.SwappedEntryR\aswapped\x12,\n" +
-	"\x03due\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x03due\x1aU\n" +
+	"\aswapped\x18\x05 \x03(\v2!.app.MachineServiced.SwappedEntryR\aswapped\x121\n" +
+	"\bdate_due\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x03due\x1aU\n" +
 	"\fSwappedEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
 	"\x05value\x18\x02 \x01(\v2\x19.app.MachineServiced.PartR\x05value:\x028\x01\x1a4\n" +
@@ -1015,10 +1015,10 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\rR\x05count:\x15\x92\xbb\x16\x11\n" +
 	"\x0fmachine.service\"0\n" +
 	"\x0eMachineStarted\x12\x18\n" +
-	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"e\n" +
+	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"p\n" +
 	"\tCorrected\x12\x14\n" +
-	"\x05event\x18\x01 \x01(\fR\x05event\x12*\n" +
-	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\x16\x92\xbb\x16\x12\n" +
+	"\x05event\x18\x01 \x01(\fR\x05event\x125\n" +
+	"\rdate_occurred\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\x16\x92\xbb\x16\x12\n" +
 	"\acorrect\n" +
 	"\aretract*K\n" +
 	"\x04Mode\x12\x14\n" +
@@ -1056,8 +1056,8 @@ var file_app_machine_proto_depIdxs = []int32{
 	0,  // 9: app.MachineServiced.mode:type_name -> app.Mode
 	8,  // 10: app.MachineServiced.parts:type_name -> app.MachineServiced.Part
 	7,  // 11: app.MachineServiced.swapped:type_name -> app.MachineServiced.SwappedEntry
-	11, // 12: app.MachineServiced.due:type_name -> google.protobuf.Timestamp
-	11, // 13: app.Corrected.at:type_name -> google.protobuf.Timestamp
+	11, // 12: app.MachineServiced.date_due:type_name -> google.protobuf.Timestamp
+	11, // 13: app.Corrected.date_occurred:type_name -> google.protobuf.Timestamp
 	8,  // 14: app.MachineServiced.SwappedEntry.value:type_name -> app.MachineServiced.Part
 	15, // [15:15] is the sub-list for method output_type
 	15, // [15:15] is the sub-list for method input_type

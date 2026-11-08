@@ -44,43 +44,43 @@ func (_u *StintUpdate) SetNillableRobotId(v *uuid.UUID) *StintUpdate {
 	return _u
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_u *StintUpdate) SetValidFrom(v time.Time) *StintUpdate {
-	_u.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_u *StintUpdate) SetDateStart(v time.Time) *StintUpdate {
+	_u.mutation.SetDateStart(v)
 	return _u
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_u *StintUpdate) SetNillableValidFrom(v *time.Time) *StintUpdate {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_u *StintUpdate) SetNillableDateStart(v *time.Time) *StintUpdate {
 	if v != nil {
-		_u.SetValidFrom(*v)
+		_u.SetDateStart(*v)
 	}
 	return _u
 }
 
-// ClearValidFrom clears the value of the "valid_from" field.
-func (_u *StintUpdate) ClearValidFrom() *StintUpdate {
-	_u.mutation.ClearValidFrom()
+// ClearDateStart clears the value of the "date_start" field.
+func (_u *StintUpdate) ClearDateStart() *StintUpdate {
+	_u.mutation.ClearDateStart()
 	return _u
 }
 
-// SetValidTo sets the "valid_to" field.
-func (_u *StintUpdate) SetValidTo(v time.Time) *StintUpdate {
-	_u.mutation.SetValidTo(v)
+// SetDateEnd sets the "date_end" field.
+func (_u *StintUpdate) SetDateEnd(v time.Time) *StintUpdate {
+	_u.mutation.SetDateEnd(v)
 	return _u
 }
 
-// SetNillableValidTo sets the "valid_to" field if the given value is not nil.
-func (_u *StintUpdate) SetNillableValidTo(v *time.Time) *StintUpdate {
+// SetNillableDateEnd sets the "date_end" field if the given value is not nil.
+func (_u *StintUpdate) SetNillableDateEnd(v *time.Time) *StintUpdate {
 	if v != nil {
-		_u.SetValidTo(*v)
+		_u.SetDateEnd(*v)
 	}
 	return _u
 }
 
-// ClearValidTo clears the value of the "valid_to" field.
-func (_u *StintUpdate) ClearValidTo() *StintUpdate {
-	_u.mutation.ClearValidTo()
+// ClearDateEnd clears the value of the "date_end" field.
+func (_u *StintUpdate) ClearDateEnd() *StintUpdate {
+	_u.mutation.ClearDateEnd()
 	return _u
 }
 
@@ -162,23 +162,23 @@ func (_u *StintUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if e, ok := _u.mutation.FieldExpr(stint.FieldRobotId); ok {
 		_spec.SetField(stint.FieldRobotId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.ValidFrom(); ok {
-		_spec.SetField(stint.FieldValidFrom, field.TypeTime, value)
+	if value, ok := _u.mutation.DateStart(); ok {
+		_spec.SetField(stint.FieldDateStart, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(stint.FieldValidFrom); ok {
-		_spec.SetField(stint.FieldValidFrom, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(stint.FieldDateStart); ok {
+		_spec.SetField(stint.FieldDateStart, field.TypeTime, e)
 	}
-	if _u.mutation.ValidFromCleared() {
-		_spec.ClearField(stint.FieldValidFrom, field.TypeTime)
+	if _u.mutation.DateStartCleared() {
+		_spec.ClearField(stint.FieldDateStart, field.TypeTime)
 	}
-	if value, ok := _u.mutation.ValidTo(); ok {
-		_spec.SetField(stint.FieldValidTo, field.TypeTime, value)
+	if value, ok := _u.mutation.DateEnd(); ok {
+		_spec.SetField(stint.FieldDateEnd, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(stint.FieldValidTo); ok {
-		_spec.SetField(stint.FieldValidTo, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(stint.FieldDateEnd); ok {
+		_spec.SetField(stint.FieldDateEnd, field.TypeTime, e)
 	}
-	if _u.mutation.ValidToCleared() {
-		_spec.ClearField(stint.FieldValidTo, field.TypeTime)
+	if _u.mutation.DateEndCleared() {
+		_spec.ClearField(stint.FieldDateEnd, field.TypeTime)
 	}
 	if value, ok := _u.mutation.EventId(); ok {
 		_spec.SetField(stint.FieldEventId, field.TypeUuid, value)
@@ -225,43 +225,43 @@ func (_u *StintUpdateOne) SetNillableRobotId(v *uuid.UUID) *StintUpdateOne {
 	return _u
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_u *StintUpdateOne) SetValidFrom(v time.Time) *StintUpdateOne {
-	_u.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_u *StintUpdateOne) SetDateStart(v time.Time) *StintUpdateOne {
+	_u.mutation.SetDateStart(v)
 	return _u
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_u *StintUpdateOne) SetNillableValidFrom(v *time.Time) *StintUpdateOne {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_u *StintUpdateOne) SetNillableDateStart(v *time.Time) *StintUpdateOne {
 	if v != nil {
-		_u.SetValidFrom(*v)
+		_u.SetDateStart(*v)
 	}
 	return _u
 }
 
-// ClearValidFrom clears the value of the "valid_from" field.
-func (_u *StintUpdateOne) ClearValidFrom() *StintUpdateOne {
-	_u.mutation.ClearValidFrom()
+// ClearDateStart clears the value of the "date_start" field.
+func (_u *StintUpdateOne) ClearDateStart() *StintUpdateOne {
+	_u.mutation.ClearDateStart()
 	return _u
 }
 
-// SetValidTo sets the "valid_to" field.
-func (_u *StintUpdateOne) SetValidTo(v time.Time) *StintUpdateOne {
-	_u.mutation.SetValidTo(v)
+// SetDateEnd sets the "date_end" field.
+func (_u *StintUpdateOne) SetDateEnd(v time.Time) *StintUpdateOne {
+	_u.mutation.SetDateEnd(v)
 	return _u
 }
 
-// SetNillableValidTo sets the "valid_to" field if the given value is not nil.
-func (_u *StintUpdateOne) SetNillableValidTo(v *time.Time) *StintUpdateOne {
+// SetNillableDateEnd sets the "date_end" field if the given value is not nil.
+func (_u *StintUpdateOne) SetNillableDateEnd(v *time.Time) *StintUpdateOne {
 	if v != nil {
-		_u.SetValidTo(*v)
+		_u.SetDateEnd(*v)
 	}
 	return _u
 }
 
-// ClearValidTo clears the value of the "valid_to" field.
-func (_u *StintUpdateOne) ClearValidTo() *StintUpdateOne {
-	_u.mutation.ClearValidTo()
+// ClearDateEnd clears the value of the "date_end" field.
+func (_u *StintUpdateOne) ClearDateEnd() *StintUpdateOne {
+	_u.mutation.ClearDateEnd()
 	return _u
 }
 
@@ -373,23 +373,23 @@ func (_u *StintUpdateOne) sqlSave(ctx context.Context) (_node *Stint, err error)
 	if e, ok := _u.mutation.FieldExpr(stint.FieldRobotId); ok {
 		_spec.SetField(stint.FieldRobotId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.ValidFrom(); ok {
-		_spec.SetField(stint.FieldValidFrom, field.TypeTime, value)
+	if value, ok := _u.mutation.DateStart(); ok {
+		_spec.SetField(stint.FieldDateStart, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(stint.FieldValidFrom); ok {
-		_spec.SetField(stint.FieldValidFrom, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(stint.FieldDateStart); ok {
+		_spec.SetField(stint.FieldDateStart, field.TypeTime, e)
 	}
-	if _u.mutation.ValidFromCleared() {
-		_spec.ClearField(stint.FieldValidFrom, field.TypeTime)
+	if _u.mutation.DateStartCleared() {
+		_spec.ClearField(stint.FieldDateStart, field.TypeTime)
 	}
-	if value, ok := _u.mutation.ValidTo(); ok {
-		_spec.SetField(stint.FieldValidTo, field.TypeTime, value)
+	if value, ok := _u.mutation.DateEnd(); ok {
+		_spec.SetField(stint.FieldDateEnd, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(stint.FieldValidTo); ok {
-		_spec.SetField(stint.FieldValidTo, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(stint.FieldDateEnd); ok {
+		_spec.SetField(stint.FieldDateEnd, field.TypeTime, e)
 	}
-	if _u.mutation.ValidToCleared() {
-		_spec.ClearField(stint.FieldValidTo, field.TypeTime)
+	if _u.mutation.DateEndCleared() {
+		_spec.ClearField(stint.FieldDateEnd, field.TypeTime)
 	}
 	if value, ok := _u.mutation.EventId(); ok {
 		_spec.SetField(stint.FieldEventId, field.TypeUuid, value)

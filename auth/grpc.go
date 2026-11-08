@@ -106,7 +106,7 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 			return err
 		}
 
-		if !id.Expires.IsZero() {
+		if !id.DateExpires.IsZero() {
 			// Cancelled with a cause rather than given a deadline, so that a
 			// stream cut for this is told apart from one that ran out of the
 			// time its caller asked for. The two want different answers: get
@@ -115,7 +115,7 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 			ctx, cancel = context.WithCancelCause(ctx)
 			defer cancel(nil)
 
-			t := time.AfterFunc(time.Until(id.Expires), func() { cancel(ErrExpired) })
+			t := time.AfterFunc(time.Until(id.DateExpires), func() { cancel(ErrExpired) })
 			defer t.Stop()
 		}
 		if id.Changed != nil {

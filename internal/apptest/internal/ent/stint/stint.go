@@ -14,10 +14,10 @@ const (
 	FieldId = "id"
 	// FieldRobotId holds the string denoting the robot_id field in the database.
 	FieldRobotId = "robot_id"
-	// FieldValidFrom holds the string denoting the valid_from field in the database.
-	FieldValidFrom = "valid_from"
-	// FieldValidTo holds the string denoting the valid_to field in the database.
-	FieldValidTo = "valid_to"
+	// FieldDateStart holds the string denoting the date_start field in the database.
+	FieldDateStart = "date_start"
+	// FieldDateEnd holds the string denoting the date_end field in the database.
+	FieldDateEnd = "date_end"
 	// FieldEventId holds the string denoting the event_id field in the database.
 	FieldEventId = "event_id"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
@@ -41,8 +41,8 @@ const (
 var Columns = []string{
 	FieldId,
 	FieldRobotId,
-	FieldValidFrom,
-	FieldValidTo,
+	FieldDateStart,
+	FieldDateEnd,
 	FieldEventId,
 	FieldDateCreated,
 	FieldTenantId,
@@ -71,14 +71,14 @@ func ByRobotId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRobotId, opts...).ToFunc()
 }
 
-// ByValidFrom orders the results by the valid_from field.
-func ByValidFrom(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldValidFrom, opts...).ToFunc()
+// ByDateStart orders the results by the date_start field.
+func ByDateStart(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateStart, opts...).ToFunc()
 }
 
-// ByValidTo orders the results by the valid_to field.
-func ByValidTo(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldValidTo, opts...).ToFunc()
+// ByDateEnd orders the results by the date_end field.
+func ByDateEnd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateEnd, opts...).ToFunc()
 }
 
 // ByEventId orders the results by the event_id field.

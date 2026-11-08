@@ -242,9 +242,9 @@ type Row struct {
 	Key    string
 	Value  Value
 
-	// From and Until are the grant's window: in force from the one, and no
-	// longer from the other.
-	From, Until time.Time
+	// DateEffective and DateExpires are the grant's window: in force from the
+	// one, and no longer from the other.
+	DateEffective, DateExpires time.Time
 
 	// Grant and Version are the grant this copies, by the source's
 	// identifier, and the version of it.
@@ -253,11 +253,11 @@ type Row struct {
 }
 
 // In is whether the grant is in force at `at`.
-func (r Row) In(at time.Time) bool { return !at.Before(r.From) && at.Before(r.Until) }
+func (r Row) In(at time.Time) bool { return !at.Before(r.DateEffective) && at.Before(r.DateExpires) }
 
 // Ended is whether the grant is over at `at`: in force no longer, and never
 // again. One that has not begun has not ended.
-func (r Row) Ended(at time.Time) bool { return !at.Before(r.Until) }
+func (r Row) Ended(at time.Time) bool { return !at.Before(r.DateExpires) }
 
 // Entitlement is what a tenant has of one key at one moment: the value of the
 // grant that decides it, and that grant.
@@ -288,7 +288,7 @@ func Decide(key string, rows []Row, at time.Time) Entitlement {
 		if r.Key != key || !r.In(at) {
 			continue
 		}
-		if by == nil || r.From.After(by.From) || (r.From.Equal(by.From) && bytes.Compare(r.Grant, by.Grant) > 0) {
+		if by == nil || r.DateEffective.After(by.DateEffective) || (r.DateEffective.Equal(by.DateEffective) && bytes.Compare(r.Grant, by.Grant) > 0) {
 			by = r
 		}
 	}
@@ -402,7 +402,7 @@ func All(ctx context.Context, r Reader) ([]Row, error) {
 			return c
 		}
 
-		return a.From.Compare(b.From)
+		return a.DateEffective.Compare(b.DateEffective)
 	})
 
 	return rows, nil

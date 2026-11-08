@@ -115,9 +115,9 @@ type FactKeep struct {
 type Expired struct {
 	Tenant pdid.Id
 
-	// Before is where the window begins: what was over before it is what
+	// DateBefore is where the window begins: what was over before it is what
 	// went. The zero time for a window of forever, of which nothing goes.
-	Before time.Time
+	DateBefore time.Time
 
 	// Held is what the legal holds on the tenant are for, while one kept
 	// everything.
@@ -205,7 +205,7 @@ func Expire(ctx context.Context, s Store, tenant pdid.Id, w Window, now time.Tim
 	if w.Keep <= 0 {
 		return out, nil
 	}
-	out.Before = moment(now.Add(-w.Keep))
+	out.DateBefore = moment(now.Add(-w.Keep))
 	if w.Held() {
 		out.Held = slices.Clone(w.Holds)
 		return out, nil
@@ -218,10 +218,10 @@ func Expire(ctx context.Context, s Store, tenant pdid.Id, w Window, now time.Tim
 	}
 
 	act := x.act()
-	if out.Facts, err = expireFacts(ctx, s, tenant, out.Before, keep, act); err != nil {
+	if out.Facts, err = expireFacts(ctx, s, tenant, out.DateBefore, keep, act); err != nil {
 		return out, err
 	}
-	if out.Events, err = expireEvents(ctx, s, tenant, out.Before, x.KeepKinds, ps, act); err != nil {
+	if out.Events, err = expireEvents(ctx, s, tenant, out.DateBefore, x.KeepKinds, ps, act); err != nil {
 		return out, err
 	}
 
@@ -391,7 +391,7 @@ func Preview(ctx context.Context, s Store, tenant pdid.Id, w Window, now time.Ti
 		return out, nil
 	}
 	c := moment(now.Add(-w.Keep))
-	out.Before = c
+	out.DateBefore = c
 	if w.Held() {
 		out.Held = slices.Clone(w.Holds)
 		return out, nil

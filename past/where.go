@@ -24,15 +24,15 @@ const (
 
 	colCause = "cause_id"
 	colKind  = "kind"
-	colAt    = "occurred_at"
+	colAt    = "date_occurred"
 
 	colDomain       = "domain"
 	colField        = "field_number"
 	colKey          = "key"
 	colValue        = "value"
-	colFrom         = "valid_from"
+	colFrom         = "date_start"
 	colEvent        = "event_id"
-	colSuperseded   = "superseded_at"
+	colSuperseded   = "date_superseded"
 	colSupersededBy = "superseded_by"
 )
 
@@ -111,9 +111,9 @@ func visible(r FactRow, k Known) bool {
 		return true
 	case k.At != nil:
 		at := *k.At
-		return !r.Recorded.After(at) && (r.Superseded == nil || r.Superseded.After(at))
+		return !r.Recorded.After(at) && (r.DateSuperseded == nil || r.DateSuperseded.After(at))
 	default:
-		return r.Superseded == nil
+		return r.DateSuperseded == nil
 	}
 }
 

@@ -66,9 +66,9 @@ func ActorId(v uuid.UUID) predicate.Event {
 	return predicate.Event(sql.FieldEQ(FieldActorId, v))
 }
 
-// OccurredAt applies equality check predicate on the "occurred_at" field. It's identical to OccurredAtEQ.
-func OccurredAt(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldEQ(FieldOccurredAt, v))
+// DateOccurred applies equality check predicate on the "date_occurred" field. It's identical to DateOccurredEQ.
+func DateOccurred(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldDateOccurred, v))
 }
 
 // Reason applies equality check predicate on the "reason" field. It's identical to ReasonEQ.
@@ -226,54 +226,54 @@ func ActorIdNotNil() predicate.Event {
 	return predicate.Event(sql.FieldNotNull(FieldActorId))
 }
 
-// OccurredAtEQ applies the EQ predicate on the "occurred_at" field.
-func OccurredAtEQ(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldEQ(FieldOccurredAt, v))
+// DateOccurredEQ applies the EQ predicate on the "date_occurred" field.
+func DateOccurredEQ(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldDateOccurred, v))
 }
 
-// OccurredAtNEQ applies the NEQ predicate on the "occurred_at" field.
-func OccurredAtNEQ(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldNEQ(FieldOccurredAt, v))
+// DateOccurredNEQ applies the NEQ predicate on the "date_occurred" field.
+func DateOccurredNEQ(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldNEQ(FieldDateOccurred, v))
 }
 
-// OccurredAtIn applies the In predicate on the "occurred_at" field.
-func OccurredAtIn(vs ...time.Time) predicate.Event {
-	return predicate.Event(sql.FieldIn(FieldOccurredAt, vs...))
+// DateOccurredIn applies the In predicate on the "date_occurred" field.
+func DateOccurredIn(vs ...time.Time) predicate.Event {
+	return predicate.Event(sql.FieldIn(FieldDateOccurred, vs...))
 }
 
-// OccurredAtNotIn applies the NotIn predicate on the "occurred_at" field.
-func OccurredAtNotIn(vs ...time.Time) predicate.Event {
-	return predicate.Event(sql.FieldNotIn(FieldOccurredAt, vs...))
+// DateOccurredNotIn applies the NotIn predicate on the "date_occurred" field.
+func DateOccurredNotIn(vs ...time.Time) predicate.Event {
+	return predicate.Event(sql.FieldNotIn(FieldDateOccurred, vs...))
 }
 
-// OccurredAtGT applies the GT predicate on the "occurred_at" field.
-func OccurredAtGT(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldGT(FieldOccurredAt, v))
+// DateOccurredGT applies the GT predicate on the "date_occurred" field.
+func DateOccurredGT(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldGT(FieldDateOccurred, v))
 }
 
-// OccurredAtGTE applies the GTE predicate on the "occurred_at" field.
-func OccurredAtGTE(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldGTE(FieldOccurredAt, v))
+// DateOccurredGTE applies the GTE predicate on the "date_occurred" field.
+func DateOccurredGTE(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldGTE(FieldDateOccurred, v))
 }
 
-// OccurredAtLT applies the LT predicate on the "occurred_at" field.
-func OccurredAtLT(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldLT(FieldOccurredAt, v))
+// DateOccurredLT applies the LT predicate on the "date_occurred" field.
+func DateOccurredLT(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldLT(FieldDateOccurred, v))
 }
 
-// OccurredAtLTE applies the LTE predicate on the "occurred_at" field.
-func OccurredAtLTE(v time.Time) predicate.Event {
-	return predicate.Event(sql.FieldLTE(FieldOccurredAt, v))
+// DateOccurredLTE applies the LTE predicate on the "date_occurred" field.
+func DateOccurredLTE(v time.Time) predicate.Event {
+	return predicate.Event(sql.FieldLTE(FieldDateOccurred, v))
 }
 
-// OccurredAtIsNil applies the IsNil predicate on the "occurred_at" field.
-func OccurredAtIsNil() predicate.Event {
-	return predicate.Event(sql.FieldIsNull(FieldOccurredAt))
+// DateOccurredIsNil applies the IsNil predicate on the "date_occurred" field.
+func DateOccurredIsNil() predicate.Event {
+	return predicate.Event(sql.FieldIsNull(FieldDateOccurred))
 }
 
-// OccurredAtNotNil applies the NotNil predicate on the "occurred_at" field.
-func OccurredAtNotNil() predicate.Event {
-	return predicate.Event(sql.FieldNotNull(FieldOccurredAt))
+// DateOccurredNotNil applies the NotNil predicate on the "date_occurred" field.
+func DateOccurredNotNil() predicate.Event {
+	return predicate.Event(sql.FieldNotNull(FieldDateOccurred))
 }
 
 // ReasonEQ applies the EQ predicate on the "reason" field.

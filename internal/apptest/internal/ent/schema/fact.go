@@ -34,10 +34,10 @@ func (Fact) Fields() []ent.Field {
 		field.Uint32("domain").
 			Optional().
 			Default(0),
-		field.Time("valid_from").
+		field.Time("date_start").
 			Optional(),
 		field.Uuid("event_id"),
-		field.Time("superseded_at").
+		field.Time("date_superseded").
 			Nillable().
 			Optional(),
 		field.Uuid("superseded_by").
@@ -62,9 +62,9 @@ func (Fact) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("tenant_id", "date_created", "id").
 			StorageKey("fact_page"),
-		index.Fields("subject_id", "field_number", "key", "valid_from").
+		index.Fields("subject_id", "field_number", "key", "date_start").
 			StorageKey("fact_subject"),
-		index.Fields("tenant_id", "domain", "field_number", "key", "valid_from").
+		index.Fields("tenant_id", "domain", "field_number", "key", "date_start").
 			StorageKey("fact_field"),
 		index.Fields("event_id").
 			StorageKey("fact_event"),

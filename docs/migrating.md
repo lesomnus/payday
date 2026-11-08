@@ -3,6 +3,129 @@
 What an app has to change when payday does. Newest first, and each entry says
 how to tell whether it applies to you.
 
+## The past's times, the copy's, a grant's and a token's are `date_*`
+
+**Applies if** your app declares a past or entitlements, serves or follows
+`GrantService`, or answers `TokenService.Introspect`. For an app that declares
+neither a past nor entitlements, `pd.ColumnRenames` gains nothing and its store
+does not move.
+
+Every other time payday keeps is a `date_*`, and these kept names of their own.
+Each is the field it was, at its number:
+
+| message | number | was | is |
+| --- | ---: | --- | --- |
+| `Event` | 10 | `occurred_at` | `date_occurred` |
+| `Fact` | 17 | `valid_from` | `date_start` |
+| `Fact` | 20 | `superseded_at` | `date_superseded` |
+| `Entitlement` | 16 | `valid_from` | `date_effective` |
+| `Entitlement` | 17 | `valid_until` | `date_expires` |
+| `payday.EntitlementGrant` | 8 | `valid_from` | `date_effective` |
+| `payday.EntitlementGrant` | 9 | `valid_until` | `date_expires` |
+| `payday.TokenIntrospectResponse` | 6 | `expires` | `date_expires` |
+
+The first five are the app's own columns, in the copies `pd gen` writes; the
+last three are payday's wire. The binary wire is the one it was, so a source
+and a follower, or a token service and its callers, built on either side of
+this still understand each other. A JSON client reads and writes the new names
+-- `dateOccurred`, `dateEffective` -- and one generated before reads no time.
+
+- **Move the columns before you migrate.** `pd.ColumnRenames` holds them for
+  the tables your app has, so an app that calls `rename.Columns` before
+  `Create` -- `pd new`'s `Migrate` does, and so does one that took `date_read`
+  below -- changes nothing:
+
+  ```go
+  if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
+  	return err
+  }
+  ```
+
+  Without it, nothing fails -- the schema check a server makes before serving
+  passes too -- and nothing reads right. The migration adds each column, empty,
+  beside the old one: every event reads as having happened at no time, every
+  fact as holding from no time and never superseded, and every grant the copy
+  holds as long ended, so `entitle.Has` and `entitle.Limit` answer that no
+  tenant has anything until its source sends each grant again at a higher
+  version. **On SQLite it loses them**: `event` and `fact`, whose indexes name
+  these columns, are made again from the schema without the old ones, and what
+  they held is gone -- `rename.Columns` run afterwards finds nothing to carry.
+  `pd doctor` says so of an app that calls no `rename.Columns`.
+
+  With it, each column is renamed with what it holds, and the indexes on it
+  with it: one change to the catalog on PostgreSQL, and the table's definition
+  rewritten in place on SQLite. The indexes keep their names.
+- **With migration files**, a plan drops each old column and adds the new one,
+  which loses the same values. Write the renames into the planned directory by
+  hand before you plan, for the tables your app has:
+
+  ```sql
+  ALTER TABLE event RENAME COLUMN occurred_at TO date_occurred;
+  ALTER TABLE fact RENAME COLUMN valid_from TO date_start;
+  ALTER TABLE fact RENAME COLUMN superseded_at TO date_superseded;
+  ALTER TABLE entitlement RENAME COLUMN valid_from TO date_effective;
+  ALTER TABLE entitlement RENAME COLUMN valid_until TO date_expires;
+  ```
+
+- **Rename them in your own code.** In the generated Go, `OccurredAt`,
+  `ValidFrom`, `SupersededAt`, `ValidUntil` and the token's `Expires` are
+  `DateOccurred`, `DateStart` or `DateEffective`, `DateSuperseded` and
+  `DateExpires`, with their `Get`, `Set`, `Has` and `Clear`, and so are ent's
+  fields and predicates (`fact.DateStartLTE`, `event.FieldDateOccurred`).
+  payday's own Go calls them by the same names now, as `notify.Receipt.DateRead`
+  does its receipt's:
+
+  | was | is |
+  | --- | --- |
+  | `past.Event.At`, `past.EventRow.At`, `(*past.Op).At()` | `DateOccurred` |
+  | `past.Fact.From`, `past.FactRow.From`, `past.Statement.From` | `DateStart` |
+  | `past.FactRow.Superseded` | `DateSuperseded` |
+  | `past.Expired.Before` | `DateBefore` |
+  | `entitle.Row.From`, `entitle.Row.Until` | `DateEffective`, `DateExpires` |
+  | `auth.Identity.Expires` | `DateExpires` |
+
+  `past.Line.At` keeps its name: a timeline's moment is an event's or a
+  statement's, and neither name is true of both. So does
+  `authsession.Session.Expires`, a session's own end and no field of these.
+  In TypeScript, `occurredAt` is `dateOccurred` and the rest alike. In SQL of
+  your own, the columns -- a PostgreSQL rename carries a constraint or a
+  partial index that names one, and a script that makes one for a new store
+  says the new name -- and in the JSON a `pdcmd` command is handed,
+  `{"dateOccurred": ...}` where it was `{"occurredAt": ...}`.
+- **The times in your own event messages** are yours to rename, and if you do,
+  keep the JSON name: `google.protobuf.Timestamp date_due = 6 [json_name =
+  "due"];`. An event's value is kept as JSON, so the past's lock refuses a
+  field whose JSON name changed, and takes one that kept it as no change at
+  all.
+- **A replica of the build before** writes the old columns, which the
+  migration takes away: its past's writes and its follower fail until it is
+  replaced. Migrate with it stopped.
+- **A source of grants** sets a grant's window as `date_effective` and
+  `date_expires`. **A token service** that answers through
+  `auth.Introspection` changes nothing; one that builds
+  `TokenIntrospectResponse` itself sets `date_expires`.
+
+What the apps on payday change:
+
+- **loft** declares a past and entitlements, and its `migrate` calls
+  `rename.Indexes` and not `rename.Columns`. It needs `rename.Columns` now:
+  after `stashFacts`, which reads a `fact` of the shape before payday's past
+  by its old names and sets it aside, and before `Create`. Its own time rows,
+  which are named the same way, are a list of its own beside
+  `pd.ColumnRenames`. `moveFacts`, its
+  `cli/pg.sql`, its reports' SQL and its pages that read `occurredAt` and
+  `supersededAt` say the new names, and so does its Go that writes and reads
+  the past by payday's: `past.Event{At: ...}` in the domain's operations is
+  `DateOccurred`, and a statement's and a row's `From` and `Superseded` are
+  `DateStart` and `DateSuperseded`.
+- **roster** declares neither, so nothing of its store moves. Its key service
+  builds `TokenIntrospectResponse` itself (`server/keys/service.go`) and sets
+  `DateExpires`, and the `auth.Identity` it answers with
+  (`server/keys/acting.go`) carries it as `DateExpires` too.
+- **levyan** declares neither either. It is a source of grants, and sets
+  `DateEffective` and `DateExpires` (`server/api/grants.go`); its follower's
+  test (`cli/grants_test.go`) reads `entitle.Row`s by the same names.
+
 ## The entity commands are the schema's words: `list`, with `ls` its alias
 
 **Applies if** your app mounts `pdcmd`'s tree, or reads the name of one of its

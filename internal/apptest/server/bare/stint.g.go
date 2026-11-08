@@ -144,13 +144,13 @@ func (st StintServiceServer) create(ctx context.Context, req *apptest.StintAddRe
 	} else {
 		q.SetRobotId(v)
 	}
-	if req.HasValidFrom() {
-		q.SetValidFrom(req.GetValidFrom().AsTime())
+	if req.HasDateStart() {
+		q.SetDateStart(req.GetDateStart().AsTime())
 	} else {
-		q.SetValidFrom(st.now())
+		q.SetDateStart(st.now())
 	}
-	if req.HasValidTo() {
-		q.SetValidTo(req.GetValidTo().AsTime())
+	if req.HasDateEnd() {
+		q.SetDateEnd(req.GetDateEnd().AsTime())
 	}
 	if v, err := entuuid.FromBytes(req.GetEventId()); err != nil {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "event_id: %s", err)
@@ -292,11 +292,11 @@ func StintSelectedFields(m *apptest.StintSelect) []string {
 	if m.GetRobotId() {
 		vs = append(vs, stint.FieldRobotId)
 	}
-	if m.GetValidFrom() {
-		vs = append(vs, stint.FieldValidFrom)
+	if m.GetDateStart() {
+		vs = append(vs, stint.FieldDateStart)
 	}
-	if m.GetValidTo() {
-		vs = append(vs, stint.FieldValidTo)
+	if m.GetDateEnd() {
+		vs = append(vs, stint.FieldDateEnd)
 	}
 	if m.GetEventId() {
 		vs = append(vs, stint.FieldEventId)
@@ -373,7 +373,7 @@ func StintGetKey(ctx context.Context, db *ent.Client, ref *apptest.StintRef) (uu
 var stintOrmEntity = ormpatch.MustEntityOf(apptest.File_app_stint_proto, "Stint")
 
 var stintPatchColumns = entpatch.Columns{
-	1: stint.FieldId, 2: stint.TenantColumn, 8: stint.FieldRobotId, 9: stint.FieldValidFrom, 10: stint.FieldValidTo, 11: stint.FieldEventId, 15: stint.FieldDateCreated}
+	1: stint.FieldId, 2: stint.TenantColumn, 8: stint.FieldRobotId, 9: stint.FieldDateStart, 10: stint.FieldDateEnd, 11: stint.FieldEventId, 15: stint.FieldDateCreated}
 
 func (s StintServiceServer) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
 	if !req.HasPatch() {

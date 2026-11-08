@@ -135,13 +135,13 @@ func (r Resolver) Resolve(ctx context.Context, id auth.Identity) (*frame.Frame, 
 	}
 
 	f, err := r.Next.Resolve(ctx, auth.Identity{
-		Authority: id.Authority,
-		Changed:   id.Changed,
-		Method:    id.Method,
-		Id:        m.Holder.String(),
-		TenantId:  m.Tenant.String(),
-		Grant:     id.Grant,
-		Expires:   id.Expires,
+		Authority:   id.Authority,
+		Changed:     id.Changed,
+		Method:      id.Method,
+		Id:          m.Holder.String(),
+		TenantId:    m.Tenant.String(),
+		Grant:       id.Grant,
+		DateExpires: id.DateExpires,
 	})
 	if err != nil {
 		return nil, err

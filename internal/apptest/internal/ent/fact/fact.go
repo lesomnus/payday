@@ -26,12 +26,12 @@ const (
 	FieldDateCreated = "date_created"
 	// FieldDomain holds the string denoting the domain field in the database.
 	FieldDomain = "domain"
-	// FieldValidFrom holds the string denoting the valid_from field in the database.
-	FieldValidFrom = "valid_from"
+	// FieldDateStart holds the string denoting the date_start field in the database.
+	FieldDateStart = "date_start"
 	// FieldEventId holds the string denoting the event_id field in the database.
 	FieldEventId = "event_id"
-	// FieldSupersededAt holds the string denoting the superseded_at field in the database.
-	FieldSupersededAt = "superseded_at"
+	// FieldDateSuperseded holds the string denoting the date_superseded field in the database.
+	FieldDateSuperseded = "date_superseded"
 	// FieldSupersededBy holds the string denoting the superseded_by field in the database.
 	FieldSupersededBy = "superseded_by"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
@@ -59,9 +59,9 @@ var Columns = []string{
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDomain,
-	FieldValidFrom,
+	FieldDateStart,
 	FieldEventId,
-	FieldSupersededAt,
+	FieldDateSuperseded,
 	FieldSupersededBy,
 	FieldTenantId,
 }
@@ -126,9 +126,9 @@ func ByDomain(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDomain, opts...).ToFunc()
 }
 
-// ByValidFrom orders the results by the valid_from field.
-func ByValidFrom(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldValidFrom, opts...).ToFunc()
+// ByDateStart orders the results by the date_start field.
+func ByDateStart(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateStart, opts...).ToFunc()
 }
 
 // ByEventId orders the results by the event_id field.
@@ -136,9 +136,9 @@ func ByEventId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEventId, opts...).ToFunc()
 }
 
-// BySupersededAt orders the results by the superseded_at field.
-func BySupersededAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSupersededAt, opts...).ToFunc()
+// ByDateSuperseded orders the results by the date_superseded field.
+func ByDateSuperseded(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateSuperseded, opts...).ToFunc()
 }
 
 // BySupersededBy orders the results by the superseded_by field.

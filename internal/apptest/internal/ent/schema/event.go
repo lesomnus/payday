@@ -27,7 +27,7 @@ func (Event) Fields() []ent.Field {
 		field.Uuid("actor_id").
 			Nillable().
 			Optional(),
-		field.Time("occurred_at").
+		field.Time("date_occurred").
 			Optional(),
 		field.String("reason"),
 		field.Uuid("subject_id").
@@ -64,7 +64,7 @@ func (Event) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("tenant_id", "date_created", "id").
 			StorageKey("event_page"),
-		index.Fields("subject_id", "occurred_at").
+		index.Fields("subject_id", "date_occurred").
 			StorageKey("event_subject"),
 		index.Fields("cause_id").
 			StorageKey("event_cause"),

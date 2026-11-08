@@ -22,9 +22,9 @@ func (Stint) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 		field.Uuid("robot_id"),
-		field.Time("valid_from").
+		field.Time("date_start").
 			Optional(),
-		field.Time("valid_to").
+		field.Time("date_end").
 			Nillable().
 			Optional(),
 		field.Uuid("event_id"),

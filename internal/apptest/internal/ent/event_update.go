@@ -65,23 +65,23 @@ func (_u *EventUpdate) ClearActorId() *EventUpdate {
 	return _u
 }
 
-// SetOccurredAt sets the "occurred_at" field.
-func (_u *EventUpdate) SetOccurredAt(v time.Time) *EventUpdate {
-	_u.mutation.SetOccurredAt(v)
+// SetDateOccurred sets the "date_occurred" field.
+func (_u *EventUpdate) SetDateOccurred(v time.Time) *EventUpdate {
+	_u.mutation.SetDateOccurred(v)
 	return _u
 }
 
-// SetNillableOccurredAt sets the "occurred_at" field if the given value is not nil.
-func (_u *EventUpdate) SetNillableOccurredAt(v *time.Time) *EventUpdate {
+// SetNillableDateOccurred sets the "date_occurred" field if the given value is not nil.
+func (_u *EventUpdate) SetNillableDateOccurred(v *time.Time) *EventUpdate {
 	if v != nil {
-		_u.SetOccurredAt(*v)
+		_u.SetDateOccurred(*v)
 	}
 	return _u
 }
 
-// ClearOccurredAt clears the value of the "occurred_at" field.
-func (_u *EventUpdate) ClearOccurredAt() *EventUpdate {
-	_u.mutation.ClearOccurredAt()
+// ClearDateOccurred clears the value of the "date_occurred" field.
+func (_u *EventUpdate) ClearDateOccurred() *EventUpdate {
+	_u.mutation.ClearDateOccurred()
 	return _u
 }
 
@@ -264,14 +264,14 @@ func (_u *EventUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ActorIdCleared() {
 		_spec.ClearField(event.FieldActorId, field.TypeUuid)
 	}
-	if value, ok := _u.mutation.OccurredAt(); ok {
-		_spec.SetField(event.FieldOccurredAt, field.TypeTime, value)
+	if value, ok := _u.mutation.DateOccurred(); ok {
+		_spec.SetField(event.FieldDateOccurred, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(event.FieldOccurredAt); ok {
-		_spec.SetField(event.FieldOccurredAt, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(event.FieldDateOccurred); ok {
+		_spec.SetField(event.FieldDateOccurred, field.TypeTime, e)
 	}
-	if _u.mutation.OccurredAtCleared() {
-		_spec.ClearField(event.FieldOccurredAt, field.TypeTime)
+	if _u.mutation.DateOccurredCleared() {
+		_spec.ClearField(event.FieldDateOccurred, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Reason(); ok {
 		_spec.SetField(event.FieldReason, field.TypeString, value)
@@ -393,23 +393,23 @@ func (_u *EventUpdateOne) ClearActorId() *EventUpdateOne {
 	return _u
 }
 
-// SetOccurredAt sets the "occurred_at" field.
-func (_u *EventUpdateOne) SetOccurredAt(v time.Time) *EventUpdateOne {
-	_u.mutation.SetOccurredAt(v)
+// SetDateOccurred sets the "date_occurred" field.
+func (_u *EventUpdateOne) SetDateOccurred(v time.Time) *EventUpdateOne {
+	_u.mutation.SetDateOccurred(v)
 	return _u
 }
 
-// SetNillableOccurredAt sets the "occurred_at" field if the given value is not nil.
-func (_u *EventUpdateOne) SetNillableOccurredAt(v *time.Time) *EventUpdateOne {
+// SetNillableDateOccurred sets the "date_occurred" field if the given value is not nil.
+func (_u *EventUpdateOne) SetNillableDateOccurred(v *time.Time) *EventUpdateOne {
 	if v != nil {
-		_u.SetOccurredAt(*v)
+		_u.SetDateOccurred(*v)
 	}
 	return _u
 }
 
-// ClearOccurredAt clears the value of the "occurred_at" field.
-func (_u *EventUpdateOne) ClearOccurredAt() *EventUpdateOne {
-	_u.mutation.ClearOccurredAt()
+// ClearDateOccurred clears the value of the "date_occurred" field.
+func (_u *EventUpdateOne) ClearDateOccurred() *EventUpdateOne {
+	_u.mutation.ClearDateOccurred()
 	return _u
 }
 
@@ -622,14 +622,14 @@ func (_u *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error)
 	if _u.mutation.ActorIdCleared() {
 		_spec.ClearField(event.FieldActorId, field.TypeUuid)
 	}
-	if value, ok := _u.mutation.OccurredAt(); ok {
-		_spec.SetField(event.FieldOccurredAt, field.TypeTime, value)
+	if value, ok := _u.mutation.DateOccurred(); ok {
+		_spec.SetField(event.FieldDateOccurred, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(event.FieldOccurredAt); ok {
-		_spec.SetField(event.FieldOccurredAt, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(event.FieldDateOccurred); ok {
+		_spec.SetField(event.FieldDateOccurred, field.TypeTime, e)
 	}
-	if _u.mutation.OccurredAtCleared() {
-		_spec.ClearField(event.FieldOccurredAt, field.TypeTime)
+	if _u.mutation.DateOccurredCleared() {
+		_spec.ClearField(event.FieldDateOccurred, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Reason(); ok {
 		_spec.SetField(event.FieldReason, field.TypeString, value)

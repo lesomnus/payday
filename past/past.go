@@ -266,8 +266,9 @@ type EventRow struct {
 	// Actor is who asked, and pdid.Nil for the deployment's own work.
 	Actor pdid.Id
 
-	// At is when it happened, which is not always when it was written down.
-	At time.Time
+	// DateOccurred is when it happened, which is not always when it was
+	// written down.
+	DateOccurred time.Time
 
 	// Reason is why, in the words of whoever asked: personal, and so never on
 	// the trail. Empty once it was redacted ([Redact]).
@@ -308,10 +309,10 @@ type FactRow struct {
 	// cleared, and empty for a value withheld.
 	Value string
 
-	// From is when the value became true; Recorded is when it was written
+	// DateStart is when the value became true; Recorded is when it was written
 	// down, which is when it was known.
-	From     time.Time
-	Recorded time.Time
+	DateStart time.Time
+	Recorded  time.Time
 
 	// Event is the event that wrote it.
 	Event pdid.Id
@@ -319,10 +320,10 @@ type FactRow struct {
 	// Version is the row's `date_updated`, what a Patch of it is held to.
 	Version time.Time
 
-	// Superseded is when a correction or a later fact replaced it, and
+	// DateSuperseded is when a correction or a later fact replaced it, and
 	// SupersededBy the event that did; nil and pdid.Nil while it stands.
-	Superseded   *time.Time
-	SupersededBy pdid.Id
+	DateSuperseded *time.Time
+	SupersededBy   pdid.Id
 }
 
 // Slot is which of a subject's fields a fact is about: the field, and for a

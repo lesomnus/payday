@@ -91,8 +91,8 @@ func Subject(_ context.Context, t *oidc.IDToken) (auth.Identity, error) {
 		// the issuer was told to put it in and answers a narrower grant --
 		// which is the direction that is safe to get wrong, since a grant only
 		// ever takes away.
-		Grant:   frame.Whole(),
-		Expires: t.Expiry,
+		Grant:       frame.Whole(),
+		DateExpires: t.Expiry,
 	}, nil
 }
 
@@ -191,8 +191,8 @@ func Verifier(v *oidc.IDTokenVerifier, claims Claims) auth.Handler {
 			// reason [auth.TokenStore] gives: how somebody authenticated is not
 			// the answer's to give.
 			id.Method = Method
-			if id.Expires.IsZero() && !t.Expiry.IsZero() {
-				id.Expires = t.Expiry
+			if id.DateExpires.IsZero() && !t.Expiry.IsZero() {
+				id.DateExpires = t.Expiry
 			}
 
 			return id, nil

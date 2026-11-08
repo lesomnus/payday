@@ -28,9 +28,9 @@ import (
 type Fact struct {
 	Subject pdid.Id
 
-	// From is when the values became true, and the operation's own moment --
-	// when it happened -- when it is zero.
-	From time.Time
+	// DateStart is when the values became true, and the operation's own
+	// moment -- when it happened -- when it is zero.
+	DateStart time.Time
 
 	Values []Value
 }
@@ -419,8 +419,8 @@ func (o *Op) statements(event pdid.Id, at time.Time, facts []Fact) ([]statement,
 		}
 
 		from := at
-		if !f.From.IsZero() {
-			from = moment(f.From)
+		if !f.DateStart.IsZero() {
+			from = moment(f.DateStart)
 		}
 		out = append(out, statement{event: event, subject: f.Subject, from: from, rows: rows})
 	}
@@ -464,15 +464,15 @@ func (o *Op) write(ctx context.Context, sts []statement) error {
 	for _, st := range sts {
 		for _, r := range st.rows {
 			rows = append(rows, FactRow{
-				Tenant:   o.tenant,
-				Subject:  st.subject,
-				Domain:   st.subject.Domain(),
-				Field:    r.Field,
-				Key:      r.Key,
-				Value:    r.value,
-				From:     st.from,
-				Event:    st.event,
-				Recorded: o.now,
+				Tenant:    o.tenant,
+				Subject:   st.subject,
+				Domain:    st.subject.Domain(),
+				Field:     r.Field,
+				Key:       r.Key,
+				Value:     r.value,
+				DateStart: st.from,
+				Event:     st.event,
+				Recorded:  o.now,
 			})
 		}
 	}
@@ -513,7 +513,7 @@ func (o *Op) supersedeAt(ctx context.Context, sts []statement) error {
 
 		for _, r := range rows {
 			for _, st := range by[r.Subject] {
-				if !st.from.Equal(moment(r.From)) {
+				if !st.from.Equal(moment(r.DateStart)) {
 					continue
 				}
 				if slices.ContainsFunc(st.rows, func(v said) bool { return v.Slot == r.Slot() }) {

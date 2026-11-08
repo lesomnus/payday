@@ -93,7 +93,7 @@ func TestAVerifiedTokenIsAnIdentity(t *testing.T) {
 
 	x.Equal("0199c3f4-2a10-8002-8a03-9f2e1c4d5b02", id.Id)
 	x.Equal(authoidc.Method, id.Method)
-	x.False(id.Expires.IsZero(), "the expiry the token carried was dropped")
+	x.False(id.DateExpires.IsZero(), "the expiry the token carried was dropped")
 
 	// Nothing was narrowed, because the token said nothing about being
 	// narrowed. A grant only ever takes away, so "said nothing" has to mean
@@ -211,7 +211,7 @@ func TestTheClaimsAreTheDeploymentsToName(t *testing.T) {
 
 	// Filled in even though the claims function did not, because the token
 	// carried one and a stream has to be cut when it runs out.
-	x.False(id.Expires.IsZero())
+	x.False(id.DateExpires.IsZero())
 
 	// And the method is this package's answer rather than the claims
 	// function's, for the reason a token store does not get to say it either.

@@ -91,14 +91,14 @@ func DateCreated(v time.Time) predicate.Entitlement {
 	return predicate.Entitlement(sql.FieldEQ(FieldDateCreated, v))
 }
 
-// ValidFrom applies equality check predicate on the "valid_from" field. It's identical to ValidFromEQ.
-func ValidFrom(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldValidFrom, v))
+// DateEffective applies equality check predicate on the "date_effective" field. It's identical to DateEffectiveEQ.
+func DateEffective(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateEffective, v))
 }
 
-// ValidUntil applies equality check predicate on the "valid_until" field. It's identical to ValidUntilEQ.
-func ValidUntil(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldValidUntil, v))
+// DateExpires applies equality check predicate on the "date_expires" field. It's identical to DateExpiresEQ.
+func DateExpires(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateExpires, v))
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
@@ -421,104 +421,104 @@ func DateCreatedNotNil() predicate.Entitlement {
 	return predicate.Entitlement(sql.FieldNotNull(FieldDateCreated))
 }
 
-// ValidFromEQ applies the EQ predicate on the "valid_from" field.
-func ValidFromEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldValidFrom, v))
+// DateEffectiveEQ applies the EQ predicate on the "date_effective" field.
+func DateEffectiveEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateEffective, v))
 }
 
-// ValidFromNEQ applies the NEQ predicate on the "valid_from" field.
-func ValidFromNEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNEQ(FieldValidFrom, v))
+// DateEffectiveNEQ applies the NEQ predicate on the "date_effective" field.
+func DateEffectiveNEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNEQ(FieldDateEffective, v))
 }
 
-// ValidFromIn applies the In predicate on the "valid_from" field.
-func ValidFromIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIn(FieldValidFrom, vs...))
+// DateEffectiveIn applies the In predicate on the "date_effective" field.
+func DateEffectiveIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIn(FieldDateEffective, vs...))
 }
 
-// ValidFromNotIn applies the NotIn predicate on the "valid_from" field.
-func ValidFromNotIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotIn(FieldValidFrom, vs...))
+// DateEffectiveNotIn applies the NotIn predicate on the "date_effective" field.
+func DateEffectiveNotIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotIn(FieldDateEffective, vs...))
 }
 
-// ValidFromGT applies the GT predicate on the "valid_from" field.
-func ValidFromGT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGT(FieldValidFrom, v))
+// DateEffectiveGT applies the GT predicate on the "date_effective" field.
+func DateEffectiveGT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGT(FieldDateEffective, v))
 }
 
-// ValidFromGTE applies the GTE predicate on the "valid_from" field.
-func ValidFromGTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGTE(FieldValidFrom, v))
+// DateEffectiveGTE applies the GTE predicate on the "date_effective" field.
+func DateEffectiveGTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGTE(FieldDateEffective, v))
 }
 
-// ValidFromLT applies the LT predicate on the "valid_from" field.
-func ValidFromLT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLT(FieldValidFrom, v))
+// DateEffectiveLT applies the LT predicate on the "date_effective" field.
+func DateEffectiveLT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLT(FieldDateEffective, v))
 }
 
-// ValidFromLTE applies the LTE predicate on the "valid_from" field.
-func ValidFromLTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLTE(FieldValidFrom, v))
+// DateEffectiveLTE applies the LTE predicate on the "date_effective" field.
+func DateEffectiveLTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLTE(FieldDateEffective, v))
 }
 
-// ValidFromIsNil applies the IsNil predicate on the "valid_from" field.
-func ValidFromIsNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIsNull(FieldValidFrom))
+// DateEffectiveIsNil applies the IsNil predicate on the "date_effective" field.
+func DateEffectiveIsNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIsNull(FieldDateEffective))
 }
 
-// ValidFromNotNil applies the NotNil predicate on the "valid_from" field.
-func ValidFromNotNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotNull(FieldValidFrom))
+// DateEffectiveNotNil applies the NotNil predicate on the "date_effective" field.
+func DateEffectiveNotNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotNull(FieldDateEffective))
 }
 
-// ValidUntilEQ applies the EQ predicate on the "valid_until" field.
-func ValidUntilEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldValidUntil, v))
+// DateExpiresEQ applies the EQ predicate on the "date_expires" field.
+func DateExpiresEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateExpires, v))
 }
 
-// ValidUntilNEQ applies the NEQ predicate on the "valid_until" field.
-func ValidUntilNEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNEQ(FieldValidUntil, v))
+// DateExpiresNEQ applies the NEQ predicate on the "date_expires" field.
+func DateExpiresNEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNEQ(FieldDateExpires, v))
 }
 
-// ValidUntilIn applies the In predicate on the "valid_until" field.
-func ValidUntilIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIn(FieldValidUntil, vs...))
+// DateExpiresIn applies the In predicate on the "date_expires" field.
+func DateExpiresIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIn(FieldDateExpires, vs...))
 }
 
-// ValidUntilNotIn applies the NotIn predicate on the "valid_until" field.
-func ValidUntilNotIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotIn(FieldValidUntil, vs...))
+// DateExpiresNotIn applies the NotIn predicate on the "date_expires" field.
+func DateExpiresNotIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotIn(FieldDateExpires, vs...))
 }
 
-// ValidUntilGT applies the GT predicate on the "valid_until" field.
-func ValidUntilGT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGT(FieldValidUntil, v))
+// DateExpiresGT applies the GT predicate on the "date_expires" field.
+func DateExpiresGT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGT(FieldDateExpires, v))
 }
 
-// ValidUntilGTE applies the GTE predicate on the "valid_until" field.
-func ValidUntilGTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGTE(FieldValidUntil, v))
+// DateExpiresGTE applies the GTE predicate on the "date_expires" field.
+func DateExpiresGTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGTE(FieldDateExpires, v))
 }
 
-// ValidUntilLT applies the LT predicate on the "valid_until" field.
-func ValidUntilLT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLT(FieldValidUntil, v))
+// DateExpiresLT applies the LT predicate on the "date_expires" field.
+func DateExpiresLT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLT(FieldDateExpires, v))
 }
 
-// ValidUntilLTE applies the LTE predicate on the "valid_until" field.
-func ValidUntilLTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLTE(FieldValidUntil, v))
+// DateExpiresLTE applies the LTE predicate on the "date_expires" field.
+func DateExpiresLTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLTE(FieldDateExpires, v))
 }
 
-// ValidUntilIsNil applies the IsNil predicate on the "valid_until" field.
-func ValidUntilIsNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIsNull(FieldValidUntil))
+// DateExpiresIsNil applies the IsNil predicate on the "date_expires" field.
+func DateExpiresIsNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIsNull(FieldDateExpires))
 }
 
-// ValidUntilNotNil applies the NotNil predicate on the "valid_until" field.
-func ValidUntilNotNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotNull(FieldValidUntil))
+// DateExpiresNotNil applies the NotNil predicate on the "date_expires" field.
+func DateExpiresNotNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotNull(FieldDateExpires))
 }
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.

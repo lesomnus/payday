@@ -30,10 +30,10 @@ message Stint {
   // The robot, by identifier and not an edge: what a robot was outlives it.
   bytes robot_id = 8 [(orm.field) = {type: TYPE_UUID}];
 
-  google.protobuf.Timestamp valid_from = 9 [(orm.field) = {default: ""}];
+  google.protobuf.Timestamp date_start = 9 [(orm.field) = {default: ""}];
 
   // When it ended, and null while it holds.
-  google.protobuf.Timestamp valid_to = 10 [(orm.field) = {nullable: true}];
+  google.protobuf.Timestamp date_end = 10 [(orm.field) = {nullable: true}];
 
   // The operation that wrote it, which stays while this does.
   bytes event_id = 11 [
@@ -74,7 +74,7 @@ message Stint {
 message PastExpired {
   option (payday.event) = {kinds: "past.expire"};
 
-  google.protobuf.Timestamp before = 1;
+  google.protobuf.Timestamp date_before = 1 [json_name = "before"];
   uint32 facts = 2;
   uint32 events = 3;
   uint32 stints = 4;

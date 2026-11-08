@@ -13,7 +13,7 @@ option features.field_presence = IMPLICIT;
 // app that declares a past, as `event.proto` beside this is.
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
-// Fact is one field of one resource from a moment on: "from `valid_from`, field
+// Fact is one field of one resource from a moment on: "from `date_start`, field
 // `field_number` of `subject_id` was `value`" (payday#151).
 //
 // It is typed by the resource's own descriptor rather than by a table of facts
@@ -25,8 +25,8 @@ option go_package = "github.com/lesomnus/payday/internal/apptest";
 // One row per field and not one per moment, so that a field can be read as it
 // was at any moment, corrected after the fact, and kept for as long as its own
 // rule says. A row is written once and changed only by being superseded:
-// `superseded_at` and `superseded_by` are set once, by a Patch, when a correction
-// or a later fact replaces it.
+// `date_superseded` and `superseded_by` are set once, by a Patch, when a
+// correction or a later fact replaces it.
 //
 // **The numbers declared here are payday's.** An overlay in
 // `proto/ext/payday/fact.ext.proto` adds fields at the ones left empty -- 11
@@ -79,7 +79,7 @@ message Fact {
 
   // When the value became true, which is not when it was written down:
   // `date_created` is when it was known.
-  google.protobuf.Timestamp valid_from = 17 [(orm.field) = {default: ""}];
+  google.protobuf.Timestamp date_start = 17 [(orm.field) = {default: ""}];
 
   // The event that wrote this, which stays while this does.
   bytes event_id = 19 [
@@ -91,7 +91,7 @@ message Fact {
   // did. The deployment's to say and never a request's, so an Add refuses the
   // first; both are written once, by the Patch that supersedes the row. The
   // event stays while this does, as the one that wrote it does.
-  google.protobuf.Timestamp superseded_at = 20 [
+  google.protobuf.Timestamp date_superseded = 20 [
     (orm.field) = {nullable: true},
     (payday.field) = {stamped: true}
   ];
@@ -149,7 +149,7 @@ message Fact {
             number: 9
           },
           {
-            name: "valid_from"
+            name: "date_start"
             number: 17
           }
         ]
@@ -176,7 +176,7 @@ message Fact {
             number: 9
           },
           {
-            name: "valid_from"
+            name: "date_start"
             number: 17
           }
         ]

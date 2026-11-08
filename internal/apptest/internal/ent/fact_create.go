@@ -90,16 +90,16 @@ func (_c *FactCreate) SetNillableDomain(v *uint32) *FactCreate {
 	return _c
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_c *FactCreate) SetValidFrom(v time.Time) *FactCreate {
-	_c.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_c *FactCreate) SetDateStart(v time.Time) *FactCreate {
+	_c.mutation.SetDateStart(v)
 	return _c
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_c *FactCreate) SetNillableValidFrom(v *time.Time) *FactCreate {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_c *FactCreate) SetNillableDateStart(v *time.Time) *FactCreate {
 	if v != nil {
-		_c.SetValidFrom(*v)
+		_c.SetDateStart(*v)
 	}
 	return _c
 }
@@ -110,16 +110,16 @@ func (_c *FactCreate) SetEventId(v uuid.UUID) *FactCreate {
 	return _c
 }
 
-// SetSupersededAt sets the "superseded_at" field.
-func (_c *FactCreate) SetSupersededAt(v time.Time) *FactCreate {
-	_c.mutation.SetSupersededAt(v)
+// SetDateSuperseded sets the "date_superseded" field.
+func (_c *FactCreate) SetDateSuperseded(v time.Time) *FactCreate {
+	_c.mutation.SetDateSuperseded(v)
 	return _c
 }
 
-// SetNillableSupersededAt sets the "superseded_at" field if the given value is not nil.
-func (_c *FactCreate) SetNillableSupersededAt(v *time.Time) *FactCreate {
+// SetNillableDateSuperseded sets the "date_superseded" field if the given value is not nil.
+func (_c *FactCreate) SetNillableDateSuperseded(v *time.Time) *FactCreate {
 	if v != nil {
-		_c.SetSupersededAt(*v)
+		_c.SetDateSuperseded(*v)
 	}
 	return _c
 }
@@ -309,17 +309,17 @@ func (_c *FactCreate) createSpec() (*Fact, *sqlgraph.CreateSpec) {
 		_spec.SetField(fact.FieldDomain, field.TypeUint32, value)
 		_node.Domain = value
 	}
-	if value, ok := _c.mutation.ValidFrom(); ok {
-		_spec.SetField(fact.FieldValidFrom, field.TypeTime, value)
-		_node.ValidFrom = value
+	if value, ok := _c.mutation.DateStart(); ok {
+		_spec.SetField(fact.FieldDateStart, field.TypeTime, value)
+		_node.DateStart = value
 	}
 	if value, ok := _c.mutation.EventId(); ok {
 		_spec.SetField(fact.FieldEventId, field.TypeUuid, value)
 		_node.EventId = value
 	}
-	if value, ok := _c.mutation.SupersededAt(); ok {
-		_spec.SetField(fact.FieldSupersededAt, field.TypeTime, value)
-		_node.SupersededAt = &value
+	if value, ok := _c.mutation.DateSuperseded(); ok {
+		_spec.SetField(fact.FieldDateSuperseded, field.TypeTime, value)
+		_node.DateSuperseded = &value
 	}
 	if value, ok := _c.mutation.SupersededBy(); ok {
 		_spec.SetField(fact.FieldSupersededBy, field.TypeUuid, value)

@@ -30,8 +30,8 @@ type StintAddRequest struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_RobotId     []byte                 `protobuf:"bytes,8,opt,name=robot_id,json=robotId"`
-	xxx_hidden_ValidFrom   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidTo     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=valid_to,json=validTo"`
+	xxx_hidden_DateStart   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=date_start,json=dateStart"`
+	xxx_hidden_DateEnd     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_end,json=dateEnd"`
 	xxx_hidden_EventId     []byte                 `protobuf:"bytes,11,opt,name=event_id,json=eventId"`
 	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
@@ -86,16 +86,16 @@ func (x *StintAddRequest) GetRobotId() []byte {
 	return nil
 }
 
-func (x *StintAddRequest) GetValidFrom() *timestamppb.Timestamp {
+func (x *StintAddRequest) GetDateStart() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateStart
 	}
 	return nil
 }
 
-func (x *StintAddRequest) GetValidTo() *timestamppb.Timestamp {
+func (x *StintAddRequest) GetDateEnd() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidTo
+		return x.xxx_hidden_DateEnd
 	}
 	return nil
 }
@@ -133,12 +133,12 @@ func (x *StintAddRequest) SetRobotId(v []byte) {
 	x.xxx_hidden_RobotId = v
 }
 
-func (x *StintAddRequest) SetValidFrom(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidFrom = v
+func (x *StintAddRequest) SetDateStart(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateStart = v
 }
 
-func (x *StintAddRequest) SetValidTo(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidTo = v
+func (x *StintAddRequest) SetDateEnd(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateEnd = v
 }
 
 func (x *StintAddRequest) SetEventId(v []byte) {
@@ -166,18 +166,18 @@ func (x *StintAddRequest) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
-func (x *StintAddRequest) HasValidFrom() bool {
+func (x *StintAddRequest) HasDateStart() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidFrom != nil
+	return x.xxx_hidden_DateStart != nil
 }
 
-func (x *StintAddRequest) HasValidTo() bool {
+func (x *StintAddRequest) HasDateEnd() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidTo != nil
+	return x.xxx_hidden_DateEnd != nil
 }
 
 func (x *StintAddRequest) HasDateCreated() bool {
@@ -196,12 +196,12 @@ func (x *StintAddRequest) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
-func (x *StintAddRequest) ClearValidFrom() {
-	x.xxx_hidden_ValidFrom = nil
+func (x *StintAddRequest) ClearDateStart() {
+	x.xxx_hidden_DateStart = nil
 }
 
-func (x *StintAddRequest) ClearValidTo() {
-	x.xxx_hidden_ValidTo = nil
+func (x *StintAddRequest) ClearDateEnd() {
+	x.xxx_hidden_DateEnd = nil
 }
 
 func (x *StintAddRequest) ClearDateCreated() {
@@ -214,8 +214,8 @@ type StintAddRequest_builder struct {
 	Id          []byte
 	Tenant      *TenantRef
 	RobotId     []byte
-	ValidFrom   *timestamppb.Timestamp
-	ValidTo     *timestamppb.Timestamp
+	DateStart   *timestamppb.Timestamp
+	DateEnd     *timestamppb.Timestamp
 	EventId     []byte
 	DateCreated *timestamppb.Timestamp
 }
@@ -230,8 +230,8 @@ func (b0 StintAddRequest_builder) Build() *StintAddRequest {
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_RobotId = b.RobotId
-	x.xxx_hidden_ValidFrom = b.ValidFrom
-	x.xxx_hidden_ValidTo = b.ValidTo
+	x.xxx_hidden_DateStart = b.DateStart
+	x.xxx_hidden_DateEnd = b.DateEnd
 	x.xxx_hidden_EventId = b.EventId
 	x.xxx_hidden_DateCreated = b.DateCreated
 	return m0
@@ -368,8 +368,8 @@ type StintSelect struct {
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_RobotId     bool                   `protobuf:"varint,8,opt,name=robot_id,json=robotId"`
-	xxx_hidden_ValidFrom   bool                   `protobuf:"varint,9,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidTo     bool                   `protobuf:"varint,10,opt,name=valid_to,json=validTo"`
+	xxx_hidden_DateStart   bool                   `protobuf:"varint,9,opt,name=date_start,json=dateStart"`
+	xxx_hidden_DateEnd     bool                   `protobuf:"varint,10,opt,name=date_end,json=dateEnd"`
 	xxx_hidden_EventId     bool                   `protobuf:"varint,11,opt,name=event_id,json=eventId"`
 	xxx_hidden_DateCreated bool                   `protobuf:"varint,15,opt,name=date_created,json=dateCreated"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
@@ -424,16 +424,16 @@ func (x *StintSelect) GetRobotId() bool {
 	return false
 }
 
-func (x *StintSelect) GetValidFrom() bool {
+func (x *StintSelect) GetDateStart() bool {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateStart
 	}
 	return false
 }
 
-func (x *StintSelect) GetValidTo() bool {
+func (x *StintSelect) GetDateEnd() bool {
 	if x != nil {
-		return x.xxx_hidden_ValidTo
+		return x.xxx_hidden_DateEnd
 	}
 	return false
 }
@@ -466,13 +466,13 @@ func (x *StintSelect) SetRobotId(v bool) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
-func (x *StintSelect) SetValidFrom(v bool) {
-	x.xxx_hidden_ValidFrom = v
+func (x *StintSelect) SetDateStart(v bool) {
+	x.xxx_hidden_DateStart = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
-func (x *StintSelect) SetValidTo(v bool) {
-	x.xxx_hidden_ValidTo = v
+func (x *StintSelect) SetDateEnd(v bool) {
+	x.xxx_hidden_DateEnd = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
@@ -507,14 +507,14 @@ func (x *StintSelect) HasRobotId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
-func (x *StintSelect) HasValidFrom() bool {
+func (x *StintSelect) HasDateStart() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
-func (x *StintSelect) HasValidTo() bool {
+func (x *StintSelect) HasDateEnd() bool {
 	if x == nil {
 		return false
 	}
@@ -549,14 +549,14 @@ func (x *StintSelect) ClearRobotId() {
 	x.xxx_hidden_RobotId = false
 }
 
-func (x *StintSelect) ClearValidFrom() {
+func (x *StintSelect) ClearDateStart() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_ValidFrom = false
+	x.xxx_hidden_DateStart = false
 }
 
-func (x *StintSelect) ClearValidTo() {
+func (x *StintSelect) ClearDateEnd() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_ValidTo = false
+	x.xxx_hidden_DateEnd = false
 }
 
 func (x *StintSelect) ClearEventId() {
@@ -575,8 +575,8 @@ type StintSelect_builder struct {
 	All         *bool
 	Tenant      *TenantSelect
 	RobotId     *bool
-	ValidFrom   *bool
-	ValidTo     *bool
+	DateStart   *bool
+	DateEnd     *bool
 	EventId     *bool
 	DateCreated *bool
 }
@@ -594,13 +594,13 @@ func (b0 StintSelect_builder) Build() *StintSelect {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_RobotId = *b.RobotId
 	}
-	if b.ValidFrom != nil {
+	if b.DateStart != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
-		x.xxx_hidden_ValidFrom = *b.ValidFrom
+		x.xxx_hidden_DateStart = *b.DateStart
 	}
-	if b.ValidTo != nil {
+	if b.DateEnd != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
-		x.xxx_hidden_ValidTo = *b.ValidTo
+		x.xxx_hidden_DateEnd = *b.DateEnd
 	}
 	if b.EventId != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
@@ -710,9 +710,9 @@ type StintPatchRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Ref         *StintRef              `protobuf:"bytes,1,opt,name=ref"`
 	xxx_hidden_RobotId     []byte                 `protobuf:"bytes,16,opt,name=robot_id,json=robotId"`
-	xxx_hidden_ValidFrom   *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidTo     *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=valid_to,json=validTo"`
-	xxx_hidden_ValidToNull bool                   `protobuf:"varint,21,opt,name=valid_to_null,json=validToNull"`
+	xxx_hidden_DateStart   *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=date_start,json=dateStart"`
+	xxx_hidden_DateEnd     *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=date_end,json=dateEnd"`
+	xxx_hidden_DateEndNull bool                   `protobuf:"varint,21,opt,name=date_end_null,json=dateEndNull"`
 	xxx_hidden_EventId     []byte                 `protobuf:"bytes,22,opt,name=event_id,json=eventId"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -759,23 +759,23 @@ func (x *StintPatchRequest) GetRobotId() []byte {
 	return nil
 }
 
-func (x *StintPatchRequest) GetValidFrom() *timestamppb.Timestamp {
+func (x *StintPatchRequest) GetDateStart() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateStart
 	}
 	return nil
 }
 
-func (x *StintPatchRequest) GetValidTo() *timestamppb.Timestamp {
+func (x *StintPatchRequest) GetDateEnd() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidTo
+		return x.xxx_hidden_DateEnd
 	}
 	return nil
 }
 
-func (x *StintPatchRequest) GetValidToNull() bool {
+func (x *StintPatchRequest) GetDateEndNull() bool {
 	if x != nil {
-		return x.xxx_hidden_ValidToNull
+		return x.xxx_hidden_DateEndNull
 	}
 	return false
 }
@@ -799,16 +799,16 @@ func (x *StintPatchRequest) SetRobotId(v []byte) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
-func (x *StintPatchRequest) SetValidFrom(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidFrom = v
+func (x *StintPatchRequest) SetDateStart(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateStart = v
 }
 
-func (x *StintPatchRequest) SetValidTo(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidTo = v
+func (x *StintPatchRequest) SetDateEnd(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateEnd = v
 }
 
-func (x *StintPatchRequest) SetValidToNull(v bool) {
-	x.xxx_hidden_ValidToNull = v
+func (x *StintPatchRequest) SetDateEndNull(v bool) {
+	x.xxx_hidden_DateEndNull = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
 }
 
@@ -834,21 +834,21 @@ func (x *StintPatchRequest) HasRobotId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
-func (x *StintPatchRequest) HasValidFrom() bool {
+func (x *StintPatchRequest) HasDateStart() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidFrom != nil
+	return x.xxx_hidden_DateStart != nil
 }
 
-func (x *StintPatchRequest) HasValidTo() bool {
+func (x *StintPatchRequest) HasDateEnd() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidTo != nil
+	return x.xxx_hidden_DateEnd != nil
 }
 
-func (x *StintPatchRequest) HasValidToNull() bool {
+func (x *StintPatchRequest) HasDateEndNull() bool {
 	if x == nil {
 		return false
 	}
@@ -871,17 +871,17 @@ func (x *StintPatchRequest) ClearRobotId() {
 	x.xxx_hidden_RobotId = nil
 }
 
-func (x *StintPatchRequest) ClearValidFrom() {
-	x.xxx_hidden_ValidFrom = nil
+func (x *StintPatchRequest) ClearDateStart() {
+	x.xxx_hidden_DateStart = nil
 }
 
-func (x *StintPatchRequest) ClearValidTo() {
-	x.xxx_hidden_ValidTo = nil
+func (x *StintPatchRequest) ClearDateEnd() {
+	x.xxx_hidden_DateEnd = nil
 }
 
-func (x *StintPatchRequest) ClearValidToNull() {
+func (x *StintPatchRequest) ClearDateEndNull() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_ValidToNull = false
+	x.xxx_hidden_DateEndNull = false
 }
 
 func (x *StintPatchRequest) ClearEventId() {
@@ -894,13 +894,13 @@ type StintPatchRequest_builder struct {
 
 	Ref       *StintRef
 	RobotId   []byte
-	ValidFrom *timestamppb.Timestamp
-	ValidTo   *timestamppb.Timestamp
-	// Clear valid_to instead of writing it.
+	DateStart *timestamppb.Timestamp
+	DateEnd   *timestamppb.Timestamp
+	// Clear date_end instead of writing it.
 	// It takes a field of its own because an unset value already means
 	// "leave it alone", so no value could have meant NULL. It wins
-	// outright: setting both this and valid_to clears.
-	ValidToNull *bool
+	// outright: setting both this and date_end clears.
+	DateEndNull *bool
 	EventId     []byte
 }
 
@@ -913,11 +913,11 @@ func (b0 StintPatchRequest_builder) Build() *StintPatchRequest {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_RobotId = b.RobotId
 	}
-	x.xxx_hidden_ValidFrom = b.ValidFrom
-	x.xxx_hidden_ValidTo = b.ValidTo
-	if b.ValidToNull != nil {
+	x.xxx_hidden_DateStart = b.DateStart
+	x.xxx_hidden_DateEnd = b.DateEnd
+	if b.DateEndNull != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
-		x.xxx_hidden_ValidToNull = *b.ValidToNull
+		x.xxx_hidden_DateEndNull = *b.DateEndNull
 	}
 	if b.EventId != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
@@ -1109,9 +1109,9 @@ const file_app_stint_svc_g_proto_rawDesc = "" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12 \n" +
 	"\brobot_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\arobotId\x129\n" +
 	"\n" +
-	"valid_from\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
-	"\bvalid_to\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x12 \n" +
+	"date_start\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tdateStart\x125\n" +
+	"\bdate_end\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\adateEnd\x12 \n" +
 	"\bevent_id\x18\v \x01(\fB\x05\xaa\x01\x02\b\x02R\aeventId\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"#\n" +
 	"\bStintRef\x12\x10\n" +
@@ -1122,9 +1122,9 @@ const file_app_stint_svc_g_proto_rawDesc = "" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x19\n" +
 	"\brobot_id\x18\b \x01(\bR\arobotId\x12\x1d\n" +
 	"\n" +
-	"valid_from\x18\t \x01(\bR\tvalidFrom\x12\x19\n" +
-	"\bvalid_to\x18\n" +
-	" \x01(\bR\avalidTo\x12\x19\n" +
+	"date_start\x18\t \x01(\bR\tdateStart\x12\x19\n" +
+	"\bdate_end\x18\n" +
+	" \x01(\bR\adateEnd\x12\x19\n" +
 	"\bevent_id\x18\v \x01(\bR\aeventId\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"\\\n" +
 	"\x0fStintGetRequest\x12\x1f\n" +
@@ -1134,9 +1134,9 @@ const file_app_stint_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.StintRefR\x03ref\x12\x19\n" +
 	"\brobot_id\x18\x10 \x01(\fR\arobotId\x129\n" +
 	"\n" +
-	"valid_from\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
-	"\bvalid_to\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x12\"\n" +
-	"\rvalid_to_null\x18\x15 \x01(\bR\vvalidToNull\x12\x19\n" +
+	"date_start\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tdateStart\x125\n" +
+	"\bdate_end\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\adateEnd\x12\"\n" +
+	"\rdate_end_null\x18\x15 \x01(\bR\vdateEndNull\x12\x19\n" +
 	"\bevent_id\x18\x16 \x01(\fR\aeventId\"X\n" +
 	"\x11StintApplyRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.StintRefR\x03ref\x12\"\n" +
@@ -1171,15 +1171,15 @@ var file_app_stint_svc_g_proto_goTypes = []any{
 }
 var file_app_stint_svc_g_proto_depIdxs = []int32{
 	7,  // 0: app.StintAddRequest.tenant:type_name -> app.TenantRef
-	8,  // 1: app.StintAddRequest.valid_from:type_name -> google.protobuf.Timestamp
-	8,  // 2: app.StintAddRequest.valid_to:type_name -> google.protobuf.Timestamp
+	8,  // 1: app.StintAddRequest.date_start:type_name -> google.protobuf.Timestamp
+	8,  // 2: app.StintAddRequest.date_end:type_name -> google.protobuf.Timestamp
 	8,  // 3: app.StintAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	9,  // 4: app.StintSelect.tenant:type_name -> app.TenantSelect
 	1,  // 5: app.StintGetRequest.ref:type_name -> app.StintRef
 	2,  // 6: app.StintGetRequest.select:type_name -> app.StintSelect
 	1,  // 7: app.StintPatchRequest.ref:type_name -> app.StintRef
-	8,  // 8: app.StintPatchRequest.valid_from:type_name -> google.protobuf.Timestamp
-	8,  // 9: app.StintPatchRequest.valid_to:type_name -> google.protobuf.Timestamp
+	8,  // 8: app.StintPatchRequest.date_start:type_name -> google.protobuf.Timestamp
+	8,  // 9: app.StintPatchRequest.date_end:type_name -> google.protobuf.Timestamp
 	1,  // 10: app.StintApplyRequest.ref:type_name -> app.StintRef
 	10, // 11: app.StintApplyRequest.patch:type_name -> patch.Patch
 	0,  // 12: app.StintService.Add:input_type -> app.StintAddRequest

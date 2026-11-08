@@ -33,12 +33,12 @@ type Fact struct {
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// Domain holds the value of the "domain" field.
 	Domain uint32 `json:"domain,omitempty"`
-	// ValidFrom holds the value of the "valid_from" field.
-	ValidFrom time.Time `json:"valid_from,omitempty"`
+	// DateStart holds the value of the "date_start" field.
+	DateStart time.Time `json:"date_start,omitempty"`
 	// EventId holds the value of the "event_id" field.
 	EventId uuid.UUID `json:"event_id,omitempty"`
-	// SupersededAt holds the value of the "superseded_at" field.
-	SupersededAt *time.Time `json:"superseded_at,omitempty"`
+	// DateSuperseded holds the value of the "date_superseded" field.
+	DateSuperseded *time.Time `json:"date_superseded,omitempty"`
 	// SupersededBy holds the value of the "superseded_by" field.
 	SupersededBy *uuid.UUID `json:"superseded_by,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
@@ -78,7 +78,7 @@ func (*Fact) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case fact.FieldKey, fact.FieldValue:
 			values[i] = new(sql.NullString)
-		case fact.FieldDateUpdated, fact.FieldDateCreated, fact.FieldValidFrom, fact.FieldSupersededAt:
+		case fact.FieldDateUpdated, fact.FieldDateCreated, fact.FieldDateStart, fact.FieldDateSuperseded:
 			values[i] = new(sql.NullTime)
 		case fact.FieldSupersededBy:
 			values[i] = new(sql.Null[uuid.UUID])
@@ -147,11 +147,11 @@ func (_m *Fact) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Domain = uint32(value.Int64)
 			}
-		case fact.FieldValidFrom:
+		case fact.FieldDateStart:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field valid_from", values[i])
+				return fmt.Errorf("unexpected type %T for field date_start", values[i])
 			} else if value.Valid {
-				_m.ValidFrom = value.Time
+				_m.DateStart = value.Time
 			}
 		case fact.FieldEventId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -159,12 +159,12 @@ func (_m *Fact) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.EventId = *value
 			}
-		case fact.FieldSupersededAt:
+		case fact.FieldDateSuperseded:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field superseded_at", values[i])
+				return fmt.Errorf("unexpected type %T for field date_superseded", values[i])
 			} else if value.Valid {
-				_m.SupersededAt = new(time.Time)
-				*_m.SupersededAt = value.Time
+				_m.DateSuperseded = new(time.Time)
+				*_m.DateSuperseded = value.Time
 			}
 		case fact.FieldSupersededBy:
 			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
@@ -241,14 +241,14 @@ func (_m *Fact) String() string {
 	builder.WriteString("domain=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Domain))
 	builder.WriteString(", ")
-	builder.WriteString("valid_from=")
-	builder.WriteString(_m.ValidFrom.Format(time.ANSIC))
+	builder.WriteString("date_start=")
+	builder.WriteString(_m.DateStart.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("event_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.EventId))
 	builder.WriteString(", ")
-	if v := _m.SupersededAt; v != nil {
-		builder.WriteString("superseded_at=")
+	if v := _m.DateSuperseded; v != nil {
+		builder.WriteString("date_superseded=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")

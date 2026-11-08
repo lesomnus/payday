@@ -232,6 +232,11 @@ var EventKinds = map[string]protoreflect.MessageType{
 // before a migration, which otherwise adds each beside the old one, empty.
 var ColumnRenames = []rename.Column{
 	{Table: "notificationreceiptrecord", From: "data_read", To: "date_read"},
+	{Table: "event", From: "occurred_at", To: "date_occurred"},
+	{Table: "fact", From: "valid_from", To: "date_start"},
+	{Table: "fact", From: "superseded_at", To: "date_superseded"},
+	{Table: "entitlement", From: "valid_from", To: "date_effective"},
+	{Table: "entitlement", From: "valid_until", To: "date_expires"},
 }
 
 // IndexRenames are the indexes this schema names, by what an earlier build
@@ -255,11 +260,11 @@ var IndexRenames = []rename.Index{
 	{Table: "entitlement", From: "entitlement_grant_id", To: "entitlement_grant"},
 	{Table: "entitlement", From: "entitlement_tenant_id_key", To: "entitlement_key"},
 	{Table: "event", From: "event_tenant_id_date_created_id", To: "event_page"},
-	{Table: "event", From: "event_subject_id_occurred_at", To: "event_subject"},
+	{Table: "event", From: "event_subject_id_date_occurred", To: "event_subject"},
 	{Table: "event", From: "event_cause_id", To: "event_cause"},
 	{Table: "fact", From: "fact_tenant_id_date_created_id", To: "fact_page"},
-	{Table: "fact", From: "fact_subject_id_field_number_key_valid_from", To: "fact_subject"},
-	{Table: "fact", From: "fact_tenant_id_domain_field_number_key_valid_from", To: "fact_field"},
+	{Table: "fact", From: "fact_subject_id_field_number_key_date_start", To: "fact_subject"},
+	{Table: "fact", From: "fact_tenant_id_domain_field_number_key_date_start", To: "fact_field"},
 	{Table: "fact", From: "fact_event_id", To: "fact_event"},
 	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
 	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
@@ -4847,8 +4852,8 @@ func (s Gate) Fact() apptest.FactServiceServer {
 // It is what an Add is asked, and an AddMany of every item it carries;
 // see [Gate.Fact].
 func (s gateFact) admit(ctx context.Context, req *apptest.FactAddRequest) (*apptest.FactAddRequest, error) {
-	if req.HasSupersededAt() {
-		return nil, pderr.Invalidf("superseded_at", "is established by this deployment and not asserted by a request")
+	if req.HasDateSuperseded() {
+		return nil, pderr.Invalidf("date_superseded", "is established by this deployment and not asserted by a request")
 	}
 
 	if ref := req.GetTenant(); ref != nil {
@@ -11722,12 +11727,12 @@ func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id
 	reqs := make([]*apptest.EventAddRequest, len(vs))
 	for i, v := range vs {
 		req := apptest.EventAddRequest_builder{
-			Tenant:      apptest.TenantRef_builder{Id: v.Tenant.Bytes()}.Build(),
-			Kind:        v.Kind,
-			OccurredAt:  timestamppb.New(v.At),
-			Reason:      v.Reason,
-			DateCreated: timestamppb.New(v.Recorded),
-			Value:       v.Value,
+			Tenant:       apptest.TenantRef_builder{Id: v.Tenant.Bytes()}.Build(),
+			Kind:         v.Kind,
+			DateOccurred: timestamppb.New(v.DateOccurred),
+			Reason:       v.Reason,
+			DateCreated:  timestamppb.New(v.Recorded),
+			Value:        v.Value,
 		}.Build()
 		if !v.Id.IsZero() {
 			req.SetId(v.Id.Bytes())
@@ -11792,7 +11797,7 @@ func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {
 			Value:       v.Value,
 			FieldNumber: &field,
 			Domain:      &domain,
-			ValidFrom:   timestamppb.New(v.From),
+			DateStart:   timestamppb.New(v.DateStart),
 			EventId:     v.Event.Bytes(),
 			DateCreated: timestamppb.New(v.Recorded),
 		}.Build()
@@ -11818,10 +11823,10 @@ func (s pastStore) Supersede(ctx context.Context, vs []past.FactRow, at time.Tim
 
 	for _, v := range vs {
 		if _, err := s.next.Fact().Patch(ctx, apptest.FactPatchRequest_builder{
-			Ref:          apptest.FactRef_builder{Id: v.Id.Bytes()}.Build(),
-			DateUpdated:  timestamppb.New(v.Version),
-			SupersededAt: timestamppb.New(at),
-			SupersededBy: by.Bytes(),
+			Ref:            apptest.FactRef_builder{Id: v.Id.Bytes()}.Build(),
+			DateUpdated:    timestamppb.New(v.Version),
+			DateSuperseded: timestamppb.New(at),
+			SupersededBy:   by.Bytes(),
 		}.Build()); err != nil {
 			return err
 		}
@@ -11851,14 +11856,14 @@ func (s pastStore) Events(ctx context.Context, q past.Select) ([]past.EventRow, 
 	out := make([]past.EventRow, len(vs))
 	for i, v := range vs {
 		r := past.EventRow{
-			Id:       pdid.Id(v.Id),
-			Tenant:   pdid.Id(v.TenantId),
-			Kind:     v.Kind,
-			At:       v.OccurredAt,
-			Reason:   v.Reason,
-			Trace:    v.TraceId,
-			Value:    v.Value,
-			Recorded: v.DateCreated,
+			Id:           pdid.Id(v.Id),
+			Tenant:       pdid.Id(v.TenantId),
+			Kind:         v.Kind,
+			DateOccurred: v.DateOccurred,
+			Reason:       v.Reason,
+			Trace:        v.TraceId,
+			Value:        v.Value,
+			Recorded:     v.DateCreated,
 		}
 		if v.ActorId != nil {
 			r.Actor = pdid.Id(*v.ActorId)
@@ -11896,18 +11901,18 @@ func (s pastStore) Facts(ctx context.Context, q past.Select) ([]past.FactRow, er
 	out := make([]past.FactRow, len(vs))
 	for i, v := range vs {
 		r := past.FactRow{
-			Id:         pdid.Id(v.Id),
-			Tenant:     pdid.Id(v.TenantId),
-			Subject:    pdid.Id(v.SubjectId),
-			Domain:     pdid.Domain(v.Domain),
-			Field:      protoreflect.FieldNumber(v.FieldNumber),
-			Key:        v.Key,
-			Value:      v.Value,
-			From:       v.ValidFrom,
-			Recorded:   v.DateCreated,
-			Event:      pdid.Id(v.EventId),
-			Version:    v.DateUpdated,
-			Superseded: v.SupersededAt,
+			Id:             pdid.Id(v.Id),
+			Tenant:         pdid.Id(v.TenantId),
+			Subject:        pdid.Id(v.SubjectId),
+			Domain:         pdid.Domain(v.Domain),
+			Field:          protoreflect.FieldNumber(v.FieldNumber),
+			Key:            v.Key,
+			Value:          v.Value,
+			DateStart:      v.DateStart,
+			Recorded:       v.DateCreated,
+			Event:          pdid.Id(v.EventId),
+			Version:        v.DateUpdated,
+			DateSuperseded: v.DateSuperseded,
 		}
 		if v.SupersededBy != nil {
 			r.SupersededBy = pdid.Id(*v.SupersededBy)
@@ -13283,14 +13288,14 @@ func (r entitlementReader) Rows(ctx context.Context, tenant pdid.Id, key string,
 // entitlementRow is a row of the copy as the `entitle` package reads one.
 func entitlementRow(v *ent.Entitlement) entitle.Row {
 	return entitle.Row{
-		Id:      pdid.Id(v.Id),
-		Tenant:  pdid.Id(v.TenantId),
-		Key:     v.Key,
-		Value:   entitlementValue(v.Value, v.Amount),
-		From:    entitlementFrom(v.ValidFrom),
-		Until:   v.ValidUntil,
-		Grant:   v.GrantId,
-		Version: v.GrantVersion,
+		Id:            pdid.Id(v.Id),
+		Tenant:        pdid.Id(v.TenantId),
+		Key:           v.Key,
+		Value:         entitlementValue(v.Value, v.Amount),
+		DateEffective: entitlementFrom(v.DateEffective),
+		DateExpires:   v.DateExpires,
+		Grant:         v.GrantId,
+		Version:       v.GrantVersion,
 	}
 }
 
@@ -13455,11 +13460,11 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetAmount(amount).
 			SetGrantId(r.Grant).
 			SetGrantVersion(r.Version).
-			SetValidUntil(r.Until).
+			SetDateExpires(r.DateExpires).
 			SetDateUpdated(now).
 			SetDateCreated(now)
-		if !r.From.IsZero() {
-			q.SetValidFrom(r.From)
+		if !r.DateEffective.IsZero() {
+			q.SetDateEffective(r.DateEffective)
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err
@@ -13469,12 +13474,12 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetValue(int32(value)).
 			SetAmount(amount).
 			SetGrantVersion(r.Version).
-			SetValidUntil(r.Until).
+			SetDateExpires(r.DateExpires).
 			SetDateUpdated(now)
-		if r.From.IsZero() {
-			q.ClearValidFrom()
+		if r.DateEffective.IsZero() {
+			q.ClearDateEffective()
 		} else {
-			q.SetValidFrom(r.From)
+			q.SetDateEffective(r.DateEffective)
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err
@@ -14910,7 +14915,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 1, Name: entEvent.FieldId, Type: 64, Nullable: false, Key: 0},
 				{Number: 2, Name: entEvent.TenantColumn, Type: 64, Nullable: false, Key: 1},
 				{Number: 8, Name: entEvent.FieldKind, Type: 9, Nullable: false, Key: 0},
-				{Number: 10, Name: entEvent.FieldOccurredAt, Type: 65, Nullable: false, Key: 0},
+				{Number: 10, Name: entEvent.FieldDateOccurred, Type: 65, Nullable: false, Key: 0},
 				{Number: 11, Name: entEvent.FieldReason, Type: 9, Nullable: false, Key: 0},
 				{Number: 13, Name: entEvent.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
 				{Number: 15, Name: entEvent.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
@@ -14952,9 +14957,9 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 13, Name: entFact.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
 				{Number: 15, Name: entFact.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 				{Number: 16, Name: entFact.FieldDomain, Type: 13, Nullable: false, Key: 0},
-				{Number: 17, Name: entFact.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
+				{Number: 17, Name: entFact.FieldDateStart, Type: 65, Nullable: false, Key: 0},
 				{Number: 19, Name: entFact.FieldEventId, Type: 64, Nullable: false, Key: 0},
-				{Number: 20, Name: entFact.FieldSupersededAt, Type: 65, Nullable: true, Key: 0},
+				{Number: 20, Name: entFact.FieldDateSuperseded, Type: 65, Nullable: true, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err
@@ -15294,8 +15299,8 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 1, Name: entStint.FieldId, Type: 64, Nullable: false, Key: 0},
 				{Number: 2, Name: entStint.TenantColumn, Type: 64, Nullable: false, Key: 1},
 				{Number: 8, Name: entStint.FieldRobotId, Type: 64, Nullable: false, Key: 0},
-				{Number: 9, Name: entStint.FieldValidFrom, Type: 65, Nullable: false, Key: 0},
-				{Number: 10, Name: entStint.FieldValidTo, Type: 65, Nullable: true, Key: 0},
+				{Number: 9, Name: entStint.FieldDateStart, Type: 65, Nullable: false, Key: 0},
+				{Number: 10, Name: entStint.FieldDateEnd, Type: 65, Nullable: true, Key: 0},
 				{Number: 11, Name: entStint.FieldEventId, Type: 64, Nullable: false, Key: 0},
 				{Number: 15, Name: entStint.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 			}, v)

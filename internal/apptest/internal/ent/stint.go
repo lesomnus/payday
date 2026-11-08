@@ -21,10 +21,10 @@ type Stint struct {
 	Id uuid.UUID `json:"id,omitempty"`
 	// RobotId holds the value of the "robot_id" field.
 	RobotId uuid.UUID `json:"robot_id,omitempty"`
-	// ValidFrom holds the value of the "valid_from" field.
-	ValidFrom time.Time `json:"valid_from,omitempty"`
-	// ValidTo holds the value of the "valid_to" field.
-	ValidTo *time.Time `json:"valid_to,omitempty"`
+	// DateStart holds the value of the "date_start" field.
+	DateStart time.Time `json:"date_start,omitempty"`
+	// DateEnd holds the value of the "date_end" field.
+	DateEnd *time.Time `json:"date_end,omitempty"`
 	// EventId holds the value of the "event_id" field.
 	EventId uuid.UUID `json:"event_id,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
@@ -62,7 +62,7 @@ func (*Stint) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case stint.FieldValidFrom, stint.FieldValidTo, stint.FieldDateCreated:
+		case stint.FieldDateStart, stint.FieldDateEnd, stint.FieldDateCreated:
 			values[i] = new(sql.NullTime)
 		case stint.FieldId, stint.FieldRobotId, stint.FieldEventId, stint.FieldTenantId:
 			values[i] = new(uuid.UUID)
@@ -93,18 +93,18 @@ func (_m *Stint) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.RobotId = *value
 			}
-		case stint.FieldValidFrom:
+		case stint.FieldDateStart:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field valid_from", values[i])
+				return fmt.Errorf("unexpected type %T for field date_start", values[i])
 			} else if value.Valid {
-				_m.ValidFrom = value.Time
+				_m.DateStart = value.Time
 			}
-		case stint.FieldValidTo:
+		case stint.FieldDateEnd:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field valid_to", values[i])
+				return fmt.Errorf("unexpected type %T for field date_end", values[i])
 			} else if value.Valid {
-				_m.ValidTo = new(time.Time)
-				*_m.ValidTo = value.Time
+				_m.DateEnd = new(time.Time)
+				*_m.DateEnd = value.Time
 			}
 		case stint.FieldEventId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -168,11 +168,11 @@ func (_m *Stint) String() string {
 	builder.WriteString("robot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RobotId))
 	builder.WriteString(", ")
-	builder.WriteString("valid_from=")
-	builder.WriteString(_m.ValidFrom.Format(time.ANSIC))
+	builder.WriteString("date_start=")
+	builder.WriteString(_m.DateStart.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := _m.ValidTo; v != nil {
-		builder.WriteString("valid_to=")
+	if v := _m.DateEnd; v != nil {
+		builder.WriteString("date_end=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")

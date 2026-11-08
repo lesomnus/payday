@@ -162,18 +162,18 @@ func (st FactServiceServer) create(ctx context.Context, req *apptest.FactAddRequ
 	} else {
 		q.SetDomain(0)
 	}
-	if req.HasValidFrom() {
-		q.SetValidFrom(req.GetValidFrom().AsTime())
+	if req.HasDateStart() {
+		q.SetDateStart(req.GetDateStart().AsTime())
 	} else {
-		q.SetValidFrom(st.now())
+		q.SetDateStart(st.now())
 	}
 	if v, err := entuuid.FromBytes(req.GetEventId()); err != nil {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "event_id: %s", err)
 	} else {
 		q.SetEventId(v)
 	}
-	if req.HasSupersededAt() {
-		q.SetSupersededAt(req.GetSupersededAt().AsTime())
+	if req.HasDateSuperseded() {
+		q.SetDateSuperseded(req.GetDateSuperseded().AsTime())
 	}
 	if req.HasSupersededBy() {
 		if v, err := entuuid.FromBytes(req.GetSupersededBy()); err != nil {
@@ -454,14 +454,14 @@ func FactSelectedFields(m *apptest.FactSelect) []string {
 	if m.GetDomain() {
 		vs = append(vs, fact.FieldDomain)
 	}
-	if m.GetValidFrom() {
-		vs = append(vs, fact.FieldValidFrom)
+	if m.GetDateStart() {
+		vs = append(vs, fact.FieldDateStart)
 	}
 	if m.GetEventId() {
 		vs = append(vs, fact.FieldEventId)
 	}
-	if m.GetSupersededAt() {
-		vs = append(vs, fact.FieldSupersededAt)
+	if m.GetDateSuperseded() {
+		vs = append(vs, fact.FieldDateSuperseded)
 	}
 	if m.GetSupersededBy() {
 		vs = append(vs, fact.FieldSupersededBy)
@@ -535,7 +535,7 @@ func FactGetKey(ctx context.Context, db *ent.Client, ref *apptest.FactRef) (uuid
 var factOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_fact_proto, "Fact")
 
 var factPatchColumns = entpatch.Columns{
-	1: fact.FieldId, 2: fact.TenantColumn, 8: fact.FieldSubjectId, 9: fact.FieldKey, 10: fact.FieldValue, 12: fact.FieldFieldNumber, 13: fact.FieldDateUpdated, 15: fact.FieldDateCreated, 16: fact.FieldDomain, 17: fact.FieldValidFrom, 19: fact.FieldEventId, 20: fact.FieldSupersededAt, 21: fact.FieldSupersededBy}
+	1: fact.FieldId, 2: fact.TenantColumn, 8: fact.FieldSubjectId, 9: fact.FieldKey, 10: fact.FieldValue, 12: fact.FieldFieldNumber, 13: fact.FieldDateUpdated, 15: fact.FieldDateCreated, 16: fact.FieldDomain, 17: fact.FieldDateStart, 19: fact.FieldEventId, 20: fact.FieldDateSuperseded, 21: fact.FieldSupersededBy}
 
 func (s FactServiceServer) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
 	if !req.HasPatch() {

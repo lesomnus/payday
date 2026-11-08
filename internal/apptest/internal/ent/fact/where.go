@@ -91,9 +91,9 @@ func Domain(v uint32) predicate.Fact {
 	return predicate.Fact(sql.FieldEQ(FieldDomain, v))
 }
 
-// ValidFrom applies equality check predicate on the "valid_from" field. It's identical to ValidFromEQ.
-func ValidFrom(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldEQ(FieldValidFrom, v))
+// DateStart applies equality check predicate on the "date_start" field. It's identical to DateStartEQ.
+func DateStart(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldEQ(FieldDateStart, v))
 }
 
 // EventId applies equality check predicate on the "event_id" field. It's identical to EventIdEQ.
@@ -101,9 +101,9 @@ func EventId(v uuid.UUID) predicate.Fact {
 	return predicate.Fact(sql.FieldEQ(FieldEventId, v))
 }
 
-// SupersededAt applies equality check predicate on the "superseded_at" field. It's identical to SupersededAtEQ.
-func SupersededAt(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldEQ(FieldSupersededAt, v))
+// DateSuperseded applies equality check predicate on the "date_superseded" field. It's identical to DateSupersededEQ.
+func DateSuperseded(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldEQ(FieldDateSuperseded, v))
 }
 
 // SupersededBy applies equality check predicate on the "superseded_by" field. It's identical to SupersededByEQ.
@@ -476,54 +476,54 @@ func DomainNotNil() predicate.Fact {
 	return predicate.Fact(sql.FieldNotNull(FieldDomain))
 }
 
-// ValidFromEQ applies the EQ predicate on the "valid_from" field.
-func ValidFromEQ(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldEQ(FieldValidFrom, v))
+// DateStartEQ applies the EQ predicate on the "date_start" field.
+func DateStartEQ(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldEQ(FieldDateStart, v))
 }
 
-// ValidFromNEQ applies the NEQ predicate on the "valid_from" field.
-func ValidFromNEQ(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldNEQ(FieldValidFrom, v))
+// DateStartNEQ applies the NEQ predicate on the "date_start" field.
+func DateStartNEQ(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldNEQ(FieldDateStart, v))
 }
 
-// ValidFromIn applies the In predicate on the "valid_from" field.
-func ValidFromIn(vs ...time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldIn(FieldValidFrom, vs...))
+// DateStartIn applies the In predicate on the "date_start" field.
+func DateStartIn(vs ...time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldIn(FieldDateStart, vs...))
 }
 
-// ValidFromNotIn applies the NotIn predicate on the "valid_from" field.
-func ValidFromNotIn(vs ...time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldNotIn(FieldValidFrom, vs...))
+// DateStartNotIn applies the NotIn predicate on the "date_start" field.
+func DateStartNotIn(vs ...time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldNotIn(FieldDateStart, vs...))
 }
 
-// ValidFromGT applies the GT predicate on the "valid_from" field.
-func ValidFromGT(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldGT(FieldValidFrom, v))
+// DateStartGT applies the GT predicate on the "date_start" field.
+func DateStartGT(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldGT(FieldDateStart, v))
 }
 
-// ValidFromGTE applies the GTE predicate on the "valid_from" field.
-func ValidFromGTE(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldGTE(FieldValidFrom, v))
+// DateStartGTE applies the GTE predicate on the "date_start" field.
+func DateStartGTE(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldGTE(FieldDateStart, v))
 }
 
-// ValidFromLT applies the LT predicate on the "valid_from" field.
-func ValidFromLT(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldLT(FieldValidFrom, v))
+// DateStartLT applies the LT predicate on the "date_start" field.
+func DateStartLT(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldLT(FieldDateStart, v))
 }
 
-// ValidFromLTE applies the LTE predicate on the "valid_from" field.
-func ValidFromLTE(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldLTE(FieldValidFrom, v))
+// DateStartLTE applies the LTE predicate on the "date_start" field.
+func DateStartLTE(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldLTE(FieldDateStart, v))
 }
 
-// ValidFromIsNil applies the IsNil predicate on the "valid_from" field.
-func ValidFromIsNil() predicate.Fact {
-	return predicate.Fact(sql.FieldIsNull(FieldValidFrom))
+// DateStartIsNil applies the IsNil predicate on the "date_start" field.
+func DateStartIsNil() predicate.Fact {
+	return predicate.Fact(sql.FieldIsNull(FieldDateStart))
 }
 
-// ValidFromNotNil applies the NotNil predicate on the "valid_from" field.
-func ValidFromNotNil() predicate.Fact {
-	return predicate.Fact(sql.FieldNotNull(FieldValidFrom))
+// DateStartNotNil applies the NotNil predicate on the "date_start" field.
+func DateStartNotNil() predicate.Fact {
+	return predicate.Fact(sql.FieldNotNull(FieldDateStart))
 }
 
 // EventIdEQ applies the EQ predicate on the "event_id" field.
@@ -566,54 +566,54 @@ func EventIdLTE(v uuid.UUID) predicate.Fact {
 	return predicate.Fact(sql.FieldLTE(FieldEventId, v))
 }
 
-// SupersededAtEQ applies the EQ predicate on the "superseded_at" field.
-func SupersededAtEQ(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldEQ(FieldSupersededAt, v))
+// DateSupersededEQ applies the EQ predicate on the "date_superseded" field.
+func DateSupersededEQ(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldEQ(FieldDateSuperseded, v))
 }
 
-// SupersededAtNEQ applies the NEQ predicate on the "superseded_at" field.
-func SupersededAtNEQ(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldNEQ(FieldSupersededAt, v))
+// DateSupersededNEQ applies the NEQ predicate on the "date_superseded" field.
+func DateSupersededNEQ(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldNEQ(FieldDateSuperseded, v))
 }
 
-// SupersededAtIn applies the In predicate on the "superseded_at" field.
-func SupersededAtIn(vs ...time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldIn(FieldSupersededAt, vs...))
+// DateSupersededIn applies the In predicate on the "date_superseded" field.
+func DateSupersededIn(vs ...time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldIn(FieldDateSuperseded, vs...))
 }
 
-// SupersededAtNotIn applies the NotIn predicate on the "superseded_at" field.
-func SupersededAtNotIn(vs ...time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldNotIn(FieldSupersededAt, vs...))
+// DateSupersededNotIn applies the NotIn predicate on the "date_superseded" field.
+func DateSupersededNotIn(vs ...time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldNotIn(FieldDateSuperseded, vs...))
 }
 
-// SupersededAtGT applies the GT predicate on the "superseded_at" field.
-func SupersededAtGT(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldGT(FieldSupersededAt, v))
+// DateSupersededGT applies the GT predicate on the "date_superseded" field.
+func DateSupersededGT(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldGT(FieldDateSuperseded, v))
 }
 
-// SupersededAtGTE applies the GTE predicate on the "superseded_at" field.
-func SupersededAtGTE(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldGTE(FieldSupersededAt, v))
+// DateSupersededGTE applies the GTE predicate on the "date_superseded" field.
+func DateSupersededGTE(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldGTE(FieldDateSuperseded, v))
 }
 
-// SupersededAtLT applies the LT predicate on the "superseded_at" field.
-func SupersededAtLT(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldLT(FieldSupersededAt, v))
+// DateSupersededLT applies the LT predicate on the "date_superseded" field.
+func DateSupersededLT(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldLT(FieldDateSuperseded, v))
 }
 
-// SupersededAtLTE applies the LTE predicate on the "superseded_at" field.
-func SupersededAtLTE(v time.Time) predicate.Fact {
-	return predicate.Fact(sql.FieldLTE(FieldSupersededAt, v))
+// DateSupersededLTE applies the LTE predicate on the "date_superseded" field.
+func DateSupersededLTE(v time.Time) predicate.Fact {
+	return predicate.Fact(sql.FieldLTE(FieldDateSuperseded, v))
 }
 
-// SupersededAtIsNil applies the IsNil predicate on the "superseded_at" field.
-func SupersededAtIsNil() predicate.Fact {
-	return predicate.Fact(sql.FieldIsNull(FieldSupersededAt))
+// DateSupersededIsNil applies the IsNil predicate on the "date_superseded" field.
+func DateSupersededIsNil() predicate.Fact {
+	return predicate.Fact(sql.FieldIsNull(FieldDateSuperseded))
 }
 
-// SupersededAtNotNil applies the NotNil predicate on the "superseded_at" field.
-func SupersededAtNotNil() predicate.Fact {
-	return predicate.Fact(sql.FieldNotNull(FieldSupersededAt))
+// DateSupersededNotNil applies the NotNil predicate on the "date_superseded" field.
+func DateSupersededNotNil() predicate.Fact {
+	return predicate.Fact(sql.FieldNotNull(FieldDateSuperseded))
 }
 
 // SupersededByEQ applies the EQ predicate on the "superseded_by" field.

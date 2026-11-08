@@ -532,7 +532,7 @@ func (s *Sessions) Handler() auth.Handler {
 			// handshake and would otherwise outlive the session by however long
 			// somebody leaves the tab open -- which is what the idle clock is
 			// for, and a stream being open is not use.
-			Expires: v.Until(),
+			DateExpires: v.Until(),
 		}, nil
 	})
 }
