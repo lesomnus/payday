@@ -7,6 +7,17 @@ go 1.27.0
 // (internal/pdcli/template/go.mod.tmpl). Renovate moves the two together.
 toolchain go1.27.3
 
+// v0.1.0 is a tag that was pushed on 2026-10-29 and deleted since. The module
+// proxy keeps every version it was ever asked for, so `go get @latest` kept
+// resolving to it -- far behind main -- and an app moved onto main was told it
+// had been downgraded. payday tags no versions: v0.1.1 is only the version this
+// retraction is published in, and it retracts itself, so that `latest` is the
+// tip of main again.
+retract (
+	v0.1.0 // Tagged by accident; payday tags no versions.
+	v0.1.1 // Publishes this retraction, and nothing else.
+)
+
 require (
 	cel.dev/cel-go v0.32.0
 	connectrpc.com/cors v0.1.0
