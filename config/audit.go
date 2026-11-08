@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -126,7 +128,9 @@ type AuditConfig struct {
 
 	// By is the kinds that are not like the rest, keyed by the name the schema
 	// registered -- `holder`, `robot`, `audit`. A kind named here that this app
-	// does not have is refused rather than ignored.
+	// does not have is refused rather than ignored. A word a kind had before
+	// the schema renamed it names it too (`(payday.entity).formerly`), and a
+	// kind named under two keys is refused; see [AuditConfig.once].
 	By map[string]AuditKeepConfig `yaml:"by"`
 
 	// Checkpoints is where a pass leaves what the archive held when it ended,
@@ -547,6 +551,9 @@ func (c AuditConfig) Contents() (audit.Contents, error) {
 	}
 	out.Default = v
 
+	if err := c.once(); err != nil {
+		return out, err
+	}
 	for name, k := range c.By {
 		if strings.TrimSpace(k.Content) == "" {
 			continue
@@ -607,6 +614,9 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 		p.Archive = flob.NewOsStores(c.Archive)
 	}
 
+	if err := c.once(); err != nil {
+		return trail.Policy{}, err
+	}
 	if len(c.By) > 0 {
 		p.By = map[pdid.Domain]trail.Keep{}
 	}
@@ -692,6 +702,56 @@ func (c AuditConfig) Policy() (trail.Policy, error) {
 	}
 
 	return p, nil
+}
+
+// once refuses a `by:` that names one kind under two keys.
+//
+// A kind is written more than one way: its word now; a word it had before the
+// schema renamed it, which answers for it (`(payday.entity).formerly`,
+// payday#212) so that a deployment's file goes on meaning what it meant; its
+// number, as the archive labels a kind nothing registers (`d17`); and in any
+// case. Each key is read as the whole of its kind's settings, so two keys of
+// one kind would each set it, and the one that stood would be whichever a
+// walk of the map came to last -- a window or a floor nobody could tell from
+// the file, and not the same one each time the process came up. Refused
+// rather than merged, since which of the two was meant is the deployment's to
+// say, and refused in [AuditConfig.Contents] and [AuditConfig.Policy] alike,
+// whichever the process reads first.
+//
+// A key that names no kind is left to the caller, which refuses it as it
+// always has.
+func (c AuditConfig) once() error {
+	keys := map[pdid.Domain][]string{}
+	for name := range c.By {
+		if d, err := trail.DomainOf(name); err == nil {
+			keys[d] = append(keys[d], name)
+		}
+	}
+
+	said := []string{}
+	for _, d := range slices.Sorted(maps.Keys(keys)) {
+		names := keys[d]
+		if len(names) < 2 {
+			continue
+		}
+
+		slices.Sort(names)
+		for i, v := range names {
+			names[i] = "audit.by." + v
+		}
+
+		word, ok := pdid.Domains()[d]
+		if !ok || word == "" {
+			word = fmt.Sprintf("d%d", uint8(d))
+		}
+		said = append(said, fmt.Sprintf("%s and %s name one kind, %s: say it once, as audit.by.%s",
+			strings.Join(names[:len(names)-1], ", "), names[len(names)-1], word, word))
+	}
+	if len(said) > 0 {
+		return errors.New(strings.Join(said, "; "))
+	}
+
+	return nil
 }
 
 // window answers whether a kind's block says anything about its own windows,

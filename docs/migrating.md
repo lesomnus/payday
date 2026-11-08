@@ -35,6 +35,13 @@ in its schema. Nothing changes for an app that renamed nothing:
   and `Lookup`, after what is registered now. The trail reads a chunk of its
   archive labelled with an old word as the kind it was: checked with its rows,
   cut by its window, and counted under its name now.
+- **`audit.by` names a kind once.** An old word configures the kind it was,
+  and a file that names one kind under two keys -- the word it has now and one
+  it had, two it had, or one word in two cases -- is refused where the process
+  comes up, by `AuditConfig.Policy` and `Contents` alike: each key is the whole
+  of the kind's settings, and which of the two held was the order a map is
+  walked in. The error names the keys; keep one, under the word the kind has
+  now.
 
 What the apps on payday change:
 
