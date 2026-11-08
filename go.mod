@@ -25,7 +25,7 @@ require (
 	filippo.io/age v1.3.2
 	github.com/bufbuild/protocompile v0.14.2-0.20260605203730-cd7c3c124e10
 	github.com/coreos/go-oidc/v3 v3.20.0
-	github.com/go-jose/go-jose/v4 v4.1.4
+	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-tpm v0.9.8
 	github.com/jackc/pgx/v5 v5.10.0
