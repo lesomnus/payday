@@ -111,9 +111,9 @@ func visible(r FactRow, k Known) bool {
 		return true
 	case k.At != nil:
 		at := *k.At
-		return !r.Recorded.After(at) && (r.Superseded == nil || r.Superseded.After(at))
+		return !r.Recorded.After(at) && (r.DateSuperseded == nil || r.DateSuperseded.After(at))
 	default:
-		return r.Superseded == nil
+		return r.DateSuperseded == nil
 	}
 }
 

@@ -143,7 +143,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 		}
 		first = op.Id()
 
-		return op.Set(ctx, past.Fact{Subject: mid, From: from, Values: []past.Value{
+		return op.Set(ctx, past.Fact{Subject: mid, DateStart: from, Values: []past.Value{
 			past.To(model, protoreflect.ValueOfString("X-2")),
 			past.To(hours, protoreflect.ValueOfInt64(10)),
 			past.To(mode, protoreflect.ValueOfEnum(protoreflect.EnumNumber(app.Mode_MODE_RUN))),
@@ -154,7 +154,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 	x.NoError(err)
 	x.Len(sts, 1)
 	x.Equal(first, sts[0].Event)
-	x.True(from.Equal(sts[0].From))
+	x.True(from.Equal(sts[0].DateStart))
 	x.Len(sts[0].Rows, 3)
 	before := sts[0].Rows[1].Recorded
 
@@ -177,7 +177,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 		x.NoError(err)
 		x.Len(got, 2)
 		x.Equal(second, got[0].Event, "the correction holds from earlier")
-		x.True(corrected.Equal(got[0].From))
+		x.True(corrected.Equal(got[0].DateStart))
 		x.Len(got[0].Rows, 1)
 		x.Equal(`10`, got[0].Rows[0].Value)
 
@@ -193,7 +193,7 @@ func TestAStatementIsReadBackAsWritten(t *testing.T) {
 		x.Len(got, 2)
 		x.Len(got[1].Rows, 3, "the statement as it was written, the corrected row in it")
 		x.Equal(second, got[1].Rows[1].SupersededBy)
-		x.NotNil(got[1].Rows[1].Superseded)
+		x.NotNil(got[1].Rows[1].DateSuperseded)
 	})
 
 	t.Run("as known before the correction", func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 
 	var serviced pdid.Id
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-		ctx, op, err := past.Begin(ctx, s, past.Event{At: day(15), Value: app.MachineServiced_builder{Machine: a.GetId()}.Build()})
+		ctx, op, err := past.Begin(ctx, s, past.Event{DateOccurred: day(15), Value: app.MachineServiced_builder{Machine: a.GetId()}.Build()})
 		if err != nil {
 			return err
 		}
@@ -284,7 +284,7 @@ func TestAWholeEventIsCorrected(t *testing.T) {
 	x.NoError(err)
 	x.Len(got, 2, "a statement for each machine")
 	for _, st := range got {
-		x.True(day(28).Equal(st.From))
+		x.True(day(28).Equal(st.DateStart))
 	}
 
 	all, err := past.Facts(as, s, past.FactQuery{Events: []pdid.Id{serviced}, Known: past.Known{All: true}})
@@ -362,10 +362,10 @@ func TestAStateIsWhatWasKnownThen(t *testing.T) {
 	}
 
 	on(t, day(10, 1), func(ctx context.Context, op *past.Op) error {
-		return op.Set(ctx, past.Fact{Subject: rid, From: day(9, 1), Values: []past.Value{in(roomA)}})
+		return op.Set(ctx, past.Fact{Subject: rid, DateStart: day(9, 1), Values: []past.Value{in(roomA)}})
 	})
 	on(t, day(10, 5), func(ctx context.Context, op *past.Op) error {
-		return op.Set(ctx, past.Fact{Subject: rid, From: day(9, 15), Values: []past.Value{in(roomB)}})
+		return op.Set(ctx, past.Fact{Subject: rid, DateStart: day(9, 15), Values: []past.Value{in(roomB)}})
 	})
 	s := b.pastOf(t, b.Drv)
 	sts, err := past.Facts(as, s, past.FactQuery{Subjects: []pdid.Id{rid}})
@@ -611,7 +611,7 @@ func TestAValueSaidAgainForAMomentReplacesIt(t *testing.T) {
 				return err
 			}
 			ev = op.Id()
-			return op.Set(ctx, past.Fact{Subject: mid, From: from, Values: []past.Value{past.To(model, protoreflect.ValueOfString(v))}})
+			return op.Set(ctx, past.Fact{Subject: mid, DateStart: from, Values: []past.Value{past.To(model, protoreflect.ValueOfString(v))}})
 		}))
 		return ev
 	}

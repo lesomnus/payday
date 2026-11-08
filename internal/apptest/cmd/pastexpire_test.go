@@ -108,7 +108,7 @@ func (b *built) done(t *testing.T, ctx context.Context, at time.Time, ev past.Ev
 // sets is a step that says `vs` of `subject` from `from`.
 func sets(subject pdid.Id, from time.Time, vs ...past.Value) step {
 	return func(ctx context.Context, _ app.Server, _ past.Store, op *past.Op) error {
-		return op.Set(ctx, past.Fact{Subject: subject, From: from, Values: vs})
+		return op.Set(ctx, past.Fact{Subject: subject, DateStart: from, Values: vs})
 	}
 }
 
@@ -144,7 +144,7 @@ func (b *built) expired(t *testing.T, ctx context.Context, tenant pdid.Id, w pas
 				return nil
 			}
 			return app.PastExpired_builder{
-				DateBefore: timestamppb.New(v.Before),
+				DateBefore: timestamppb.New(v.DateBefore),
 				Facts:      uint32(v.Facts),
 				Events:     uint32(v.Events),
 				Stints:     uint32(stints),
@@ -475,8 +475,8 @@ func writeHistory(t *testing.T, b *built, ctx context.Context) *history {
 	h.event(kc, true, "its child, a service")
 
 	// Before the cut on one side and after it on the other.
-	h.event(b.done(t, as, oct(15), past.Event{At: sep(1), Value: started}, nil), true, "a start written down after the cut")
-	h.event(b.done(t, as, sep(1), past.Event{At: oct(15), Value: started}, nil), true, "a start that happens after the cut")
+	h.event(b.done(t, as, oct(15), past.Event{DateOccurred: sep(1), Value: started}, nil), true, "a start written down after the cut")
+	h.event(b.done(t, as, sep(1), past.Event{DateOccurred: oct(15), Value: started}, nil), true, "a start that happens after the cut")
 
 	return h
 }
@@ -487,8 +487,8 @@ func ptr[T any](v T) *T { return &v }
 func sameExpired(t *testing.T, want, got past.Expired, msg string) {
 	t.Helper()
 
-	require.True(t, want.Before.Equal(got.Before), "%s: before %s, and %s", msg, want.Before, got.Before)
-	want.Before, got.Before = time.Time{}, time.Time{}
+	require.True(t, want.DateBefore.Equal(got.DateBefore), "%s: before %s, and %s", msg, want.DateBefore, got.DateBefore)
+	want.DateBefore, got.DateBefore = time.Time{}, time.Time{}
 	require.Equal(t, want, got, msg)
 }
 
@@ -501,7 +501,7 @@ func TestAnExpiryIsWhatItsDryRunSays(t *testing.T) {
 	b, ctx := build(t)
 	h := writeHistory(t, b, ctx)
 
-	want := past.Expired{Tenant: b.Tenant, Before: cutoff, Facts: gone(h.facts), Events: gone(h.events)}
+	want := past.Expired{Tenant: b.Tenant, DateBefore: cutoff, Facts: gone(h.facts), Events: gone(h.events)}
 
 	seen, err := past.Preview(b.as(ctx), b.pastOf(t, b.Drv), b.Tenant, window, expiredOn, exceptions(), going)
 	x.NoError(err)
@@ -609,7 +609,7 @@ func TestASecondPassTakesNothing(t *testing.T) {
 	left := b.census(t, ctx)
 	second, stints, err := b.expired(t, ctx, b.Tenant, window, expiredOn, exceptions(), false)
 	x.NoError(err)
-	sameExpired(t, past.Expired{Tenant: b.Tenant, Before: cutoff}, second, "the second pass")
+	sameExpired(t, past.Expired{Tenant: b.Tenant, DateBefore: cutoff}, second, "the second pass")
 	x.Zero(stints)
 	x.Equal(left, b.census(t, ctx), "and wrote nothing, a receipt among it")
 }
@@ -698,7 +698,7 @@ func TestAHoldKeepsEverything(t *testing.T) {
 	before := b.census(t, ctx)
 	got, _, err := b.expired(t, ctx, b.Tenant, held, expiredOn, saying, false)
 	x.NoError(err)
-	sameExpired(t, past.Expired{Tenant: b.Tenant, Before: cutoff, Held: []string{"case 7"}}, got, "under a hold")
+	sameExpired(t, past.Expired{Tenant: b.Tenant, DateBefore: cutoff, Held: []string{"case 7"}}, got, "under a hold")
 	x.Equal(before, b.census(t, ctx), "something went under a hold")
 	x.False(asked, "a receipt was asked for under a hold")
 
@@ -710,7 +710,7 @@ func TestAHoldKeepsEverything(t *testing.T) {
 
 	seen, err := past.Preview(b.as(ctx), b.pastOf(t, b.Drv), b.Tenant, held, expiredOn, exceptions(), going)
 	x.NoError(err)
-	sameExpired(t, past.Expired{Tenant: b.Tenant, Before: cutoff, Held: []string{"case 7"}}, seen, "a preview under a hold")
+	sameExpired(t, past.Expired{Tenant: b.Tenant, DateBefore: cutoff, Held: []string{"case 7"}}, seen, "a preview under a hold")
 }
 
 // TestAnExceptionOutlivesTheWindow: a fact of a value no window ends stays

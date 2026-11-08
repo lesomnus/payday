@@ -142,14 +142,14 @@ func dating(t *testing.T, b *built, ctx context.Context, src *grants, alias stri
 	var written past.FactRow
 	x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
 		ctx, op, err := past.Begin(ctx, s, past.Event{
-			Subject: mid,
-			At:      time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC),
-			Value:   app.MachineStarted_builder{Machine: m.GetId()}.Build(),
+			Subject:      mid,
+			DateOccurred: time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC),
+			Value:        app.MachineStarted_builder{Machine: m.GetId()}.Build(),
 		})
 		if err != nil {
 			return err
 		}
-		if err := op.Set(ctx, past.Fact{Subject: mid, From: time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC), Values: []past.Value{
+		if err := op.Set(ctx, past.Fact{Subject: mid, DateStart: time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC), Values: []past.Value{
 			past.To(model, protoreflect.ValueOfString("X-2")),
 		}}); err != nil {
 			return err

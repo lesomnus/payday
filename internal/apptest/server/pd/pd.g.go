@@ -11729,7 +11729,7 @@ func (s pastStore) AddEvents(ctx context.Context, vs []past.EventRow) ([]pdid.Id
 		req := apptest.EventAddRequest_builder{
 			Tenant:       apptest.TenantRef_builder{Id: v.Tenant.Bytes()}.Build(),
 			Kind:         v.Kind,
-			DateOccurred: timestamppb.New(v.At),
+			DateOccurred: timestamppb.New(v.DateOccurred),
 			Reason:       v.Reason,
 			DateCreated:  timestamppb.New(v.Recorded),
 			Value:        v.Value,
@@ -11797,7 +11797,7 @@ func (s pastStore) AddFacts(ctx context.Context, vs []past.FactRow) error {
 			Value:       v.Value,
 			FieldNumber: &field,
 			Domain:      &domain,
-			DateStart:   timestamppb.New(v.From),
+			DateStart:   timestamppb.New(v.DateStart),
 			EventId:     v.Event.Bytes(),
 			DateCreated: timestamppb.New(v.Recorded),
 		}.Build()
@@ -11856,14 +11856,14 @@ func (s pastStore) Events(ctx context.Context, q past.Select) ([]past.EventRow, 
 	out := make([]past.EventRow, len(vs))
 	for i, v := range vs {
 		r := past.EventRow{
-			Id:       pdid.Id(v.Id),
-			Tenant:   pdid.Id(v.TenantId),
-			Kind:     v.Kind,
-			At:       v.DateOccurred,
-			Reason:   v.Reason,
-			Trace:    v.TraceId,
-			Value:    v.Value,
-			Recorded: v.DateCreated,
+			Id:           pdid.Id(v.Id),
+			Tenant:       pdid.Id(v.TenantId),
+			Kind:         v.Kind,
+			DateOccurred: v.DateOccurred,
+			Reason:       v.Reason,
+			Trace:        v.TraceId,
+			Value:        v.Value,
+			Recorded:     v.DateCreated,
 		}
 		if v.ActorId != nil {
 			r.Actor = pdid.Id(*v.ActorId)
@@ -11901,18 +11901,18 @@ func (s pastStore) Facts(ctx context.Context, q past.Select) ([]past.FactRow, er
 	out := make([]past.FactRow, len(vs))
 	for i, v := range vs {
 		r := past.FactRow{
-			Id:         pdid.Id(v.Id),
-			Tenant:     pdid.Id(v.TenantId),
-			Subject:    pdid.Id(v.SubjectId),
-			Domain:     pdid.Domain(v.Domain),
-			Field:      protoreflect.FieldNumber(v.FieldNumber),
-			Key:        v.Key,
-			Value:      v.Value,
-			From:       v.DateStart,
-			Recorded:   v.DateCreated,
-			Event:      pdid.Id(v.EventId),
-			Version:    v.DateUpdated,
-			Superseded: v.DateSuperseded,
+			Id:             pdid.Id(v.Id),
+			Tenant:         pdid.Id(v.TenantId),
+			Subject:        pdid.Id(v.SubjectId),
+			Domain:         pdid.Domain(v.Domain),
+			Field:          protoreflect.FieldNumber(v.FieldNumber),
+			Key:            v.Key,
+			Value:          v.Value,
+			DateStart:      v.DateStart,
+			Recorded:       v.DateCreated,
+			Event:          pdid.Id(v.EventId),
+			Version:        v.DateUpdated,
+			DateSuperseded: v.DateSuperseded,
 		}
 		if v.SupersededBy != nil {
 			r.SupersededBy = pdid.Id(*v.SupersededBy)
@@ -13288,14 +13288,14 @@ func (r entitlementReader) Rows(ctx context.Context, tenant pdid.Id, key string,
 // entitlementRow is a row of the copy as the `entitle` package reads one.
 func entitlementRow(v *ent.Entitlement) entitle.Row {
 	return entitle.Row{
-		Id:      pdid.Id(v.Id),
-		Tenant:  pdid.Id(v.TenantId),
-		Key:     v.Key,
-		Value:   entitlementValue(v.Value, v.Amount),
-		From:    entitlementFrom(v.DateEffective),
-		Until:   v.DateExpires,
-		Grant:   v.GrantId,
-		Version: v.GrantVersion,
+		Id:            pdid.Id(v.Id),
+		Tenant:        pdid.Id(v.TenantId),
+		Key:           v.Key,
+		Value:         entitlementValue(v.Value, v.Amount),
+		DateEffective: entitlementFrom(v.DateEffective),
+		DateExpires:   v.DateExpires,
+		Grant:         v.GrantId,
+		Version:       v.GrantVersion,
 	}
 }
 
@@ -13460,11 +13460,11 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetAmount(amount).
 			SetGrantId(r.Grant).
 			SetGrantVersion(r.Version).
-			SetDateExpires(r.Until).
+			SetDateExpires(r.DateExpires).
 			SetDateUpdated(now).
 			SetDateCreated(now)
-		if !r.From.IsZero() {
-			q.SetDateEffective(r.From)
+		if !r.DateEffective.IsZero() {
+			q.SetDateEffective(r.DateEffective)
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err
@@ -13474,12 +13474,12 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetValue(int32(value)).
 			SetAmount(amount).
 			SetGrantVersion(r.Version).
-			SetDateExpires(r.Until).
+			SetDateExpires(r.DateExpires).
 			SetDateUpdated(now)
-		if r.From.IsZero() {
+		if r.DateEffective.IsZero() {
 			q.ClearDateEffective()
 		} else {
-			q.SetDateEffective(r.From)
+			q.SetDateEffective(r.DateEffective)
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err

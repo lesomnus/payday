@@ -37,8 +37,9 @@ type Event struct {
 	// for an operation about nothing in particular.
 	Subject pdid.Id
 
-	// At is when it happened, and the moment it is written down when zero.
-	At time.Time
+	// DateOccurred is when it happened, and the moment it is written down
+	// when zero.
+	DateOccurred time.Time
 
 	// Reason is why, in the words of whoever asked: personal, and kept off
 	// the trail ([Redact]).
@@ -77,9 +78,9 @@ type Op struct {
 // Id is the operation's event.
 func (o *Op) Id() pdid.Id { return o.event }
 
-// At is when the operation happened, which is what a fact it writes holds
-// from when it says no moment of its own.
-func (o *Op) At() time.Time { return o.at }
+// DateOccurred is when the operation happened, which is what a fact it
+// writes holds from when it says no moment of its own.
+func (o *Op) DateOccurred() time.Time { return o.at }
 
 // Recorded is when the operation was written down.
 func (o *Op) Recorded() time.Time { return o.now }
@@ -187,8 +188,8 @@ func Begin(ctx context.Context, s Store, ev Event) (context.Context, *Op, error)
 
 	o := &Op{s: s, tenant: f.Tenant, actor: f.Actor, trace: traceOf(ctx), now: now(s)}
 	o.at = o.now
-	if !ev.At.IsZero() {
-		o.at = moment(ev.At)
+	if !ev.DateOccurred.IsZero() {
+		o.at = moment(ev.DateOccurred)
 	}
 
 	if err := o.agree(ctx, []pdid.Id{ev.Subject}, nil); err != nil {
@@ -196,17 +197,17 @@ func Begin(ctx context.Context, s Store, ev Event) (context.Context, *Op, error)
 	}
 
 	ids, err := s.AddEvents(ctx, []EventRow{{
-		Id:       ev.Id,
-		Tenant:   o.tenant,
-		Kind:     kind,
-		Actor:    o.actor,
-		At:       o.at,
-		Reason:   ev.Reason,
-		Subject:  ev.Subject,
-		Trace:    o.trace,
-		Cause:    causeOf(ctx, drv),
-		Value:    value,
-		Recorded: o.now,
+		Id:           ev.Id,
+		Tenant:       o.tenant,
+		Kind:         kind,
+		Actor:        o.actor,
+		DateOccurred: o.at,
+		Reason:       ev.Reason,
+		Subject:      ev.Subject,
+		Trace:        o.trace,
+		Cause:        causeOf(ctx, drv),
+		Value:        value,
+		Recorded:     o.now,
 	}})
 	if err != nil {
 		return ctx, nil, err
@@ -258,21 +259,21 @@ func (o *Op) Batch(ctx context.Context, children []Child) ([]*Op, error) {
 		}
 
 		at := o.at
-		if !c.Event.At.IsZero() {
-			at = moment(c.Event.At)
+		if !c.Event.DateOccurred.IsZero() {
+			at = moment(c.Event.DateOccurred)
 		}
 		rows[i] = EventRow{
-			Id:       c.Event.Id,
-			Tenant:   o.tenant,
-			Kind:     kind,
-			Actor:    o.actor,
-			At:       at,
-			Reason:   c.Event.Reason,
-			Subject:  c.Event.Subject,
-			Trace:    o.trace,
-			Cause:    o.event,
-			Value:    value,
-			Recorded: o.now,
+			Id:           c.Event.Id,
+			Tenant:       o.tenant,
+			Kind:         kind,
+			Actor:        o.actor,
+			DateOccurred: at,
+			Reason:       c.Event.Reason,
+			Subject:      c.Event.Subject,
+			Trace:        o.trace,
+			Cause:        o.event,
+			Value:        value,
+			Recorded:     o.now,
 		}
 		subjects = append(subjects, c.Event.Subject)
 	}
@@ -289,7 +290,7 @@ func (o *Op) Batch(ctx context.Context, children []Child) ([]*Op, error) {
 	}
 	facts := make([][]statement, len(children))
 	for i, c := range children {
-		sts, err := o.statements(pdid.Nil, rows[i].At, c.Facts)
+		sts, err := o.statements(pdid.Nil, rows[i].DateOccurred, c.Facts)
 		if err != nil {
 			return nil, fmt.Errorf("child %d: %w", i, err)
 		}
@@ -304,7 +305,7 @@ func (o *Op) Batch(ctx context.Context, children []Child) ([]*Op, error) {
 	out := make([]*Op, len(children))
 	var sts []statement
 	for i, id := range ids {
-		out[i] = &Op{s: o.s, event: id, tenant: o.tenant, actor: o.actor, trace: o.trace, at: rows[i].At, now: o.now}
+		out[i] = &Op{s: o.s, event: id, tenant: o.tenant, actor: o.actor, trace: o.trace, at: rows[i].DateOccurred, now: o.now}
 		for _, st := range facts[i] {
 			st.event = id
 			sts = append(sts, st)

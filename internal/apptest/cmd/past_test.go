@@ -87,7 +87,7 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 			return err
 		}
 
-		return op.Set(ctx, past.Fact{Subject: mid, From: from, Values: []past.Value{
+		return op.Set(ctx, past.Fact{Subject: mid, DateStart: from, Values: []past.Value{
 			past.Entry(settings, protoreflect.ValueOfString("colour").MapKey(), protoreflect.ValueOfString("red")),
 			past.Cleared(serviced),
 			past.To(operator, protoreflect.ValueOfString("Kim")),
@@ -182,7 +182,7 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 			}
 			again = op.Id()
 
-			return op.Set(ctx, past.Fact{Subject: mid, From: from, Values: []past.Value{
+			return op.Set(ctx, past.Fact{Subject: mid, DateStart: from, Values: []past.Value{
 				past.Entry(settings, protoreflect.ValueOfString("colour").MapKey(), protoreflect.ValueOfString("blue")),
 			}})
 		}))

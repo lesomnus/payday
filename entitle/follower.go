@@ -667,12 +667,12 @@ func grantOf(g *pdpb.EntitlementGrant) (Row, error) {
 	if err := g.GetDateExpires().CheckValid(); err != nil {
 		return r, fmt.Errorf("date_expires: %w", err)
 	}
-	r.Until = g.GetDateExpires().AsTime()
+	r.DateExpires = g.GetDateExpires().AsTime()
 	if g.HasDateEffective() {
 		if err := g.GetDateEffective().CheckValid(); err != nil {
 			return r, fmt.Errorf("date_effective: %w", err)
 		}
-		r.From = g.GetDateEffective().AsTime()
+		r.DateEffective = g.GetDateEffective().AsTime()
 	}
 
 	return r, nil

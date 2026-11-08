@@ -67,18 +67,31 @@ this still understand each other. A JSON client reads and writes the new names
   ALTER TABLE entitlement RENAME COLUMN valid_until TO date_expires;
   ```
 
-- **Rename them in your own code.** In Go, `OccurredAt`, `ValidFrom`,
-  `SupersededAt`, `ValidUntil` and the token's `Expires` are `DateOccurred`,
-  `DateStart` or `DateEffective`, `DateSuperseded` and `DateExpires`, with
-  their `Get`, `Set`, `Has` and `Clear`, and so are ent's fields and
-  predicates (`fact.DateStartLTE`, `event.FieldDateOccurred`). In TypeScript,
-  `occurredAt` is `dateOccurred` and the rest alike. In SQL of your own, the
-  columns -- a PostgreSQL rename carries a constraint or a partial index that
-  names one, and a script that makes one for a new store says the new name --
-  and in the JSON a `pdcmd` command is handed, `{"dateOccurred": ...}` where it
-  was `{"occurredAt": ...}`. What payday's own Go calls them does not move:
-  `past.Event.At`, `past.FactRow.From` and `Superseded`, `entitle.Row.From`
-  and `Until`, `auth.Identity.Expires`.
+- **Rename them in your own code.** In the generated Go, `OccurredAt`,
+  `ValidFrom`, `SupersededAt`, `ValidUntil` and the token's `Expires` are
+  `DateOccurred`, `DateStart` or `DateEffective`, `DateSuperseded` and
+  `DateExpires`, with their `Get`, `Set`, `Has` and `Clear`, and so are ent's
+  fields and predicates (`fact.DateStartLTE`, `event.FieldDateOccurred`).
+  payday's own Go calls them by the same names now, as `notify.Receipt.DateRead`
+  does its receipt's:
+
+  | was | is |
+  | --- | --- |
+  | `past.Event.At`, `past.EventRow.At`, `(*past.Op).At()` | `DateOccurred` |
+  | `past.Fact.From`, `past.FactRow.From`, `past.Statement.From` | `DateStart` |
+  | `past.FactRow.Superseded` | `DateSuperseded` |
+  | `past.Expired.Before` | `DateBefore` |
+  | `entitle.Row.From`, `entitle.Row.Until` | `DateEffective`, `DateExpires` |
+  | `auth.Identity.Expires` | `DateExpires` |
+
+  `past.Line.At` keeps its name: a timeline's moment is an event's or a
+  statement's, and neither name is true of both. So does
+  `authsession.Session.Expires`, a session's own end and no field of these.
+  In TypeScript, `occurredAt` is `dateOccurred` and the rest alike. In SQL of
+  your own, the columns -- a PostgreSQL rename carries a constraint or a
+  partial index that names one, and a script that makes one for a new store
+  says the new name -- and in the JSON a `pdcmd` command is handed,
+  `{"dateOccurred": ...}` where it was `{"occurredAt": ...}`.
 - **The times in your own event messages** are yours to rename, and if you do,
   keep the JSON name: `google.protobuf.Timestamp date_due = 6 [json_name =
   "due"];`. An event's value is kept as JSON, so the past's lock refuses a
@@ -95,17 +108,23 @@ this still understand each other. A JSON client reads and writes the new names
 What the apps on payday change:
 
 - **loft** declares a past and entitlements, and its `migrate` calls
-  `rename.Indexes` and not `rename.Columns`. It calls it after `stashFacts`,
-  which reads a `fact` of the shape before payday's past by its old names and
-  sets it aside, and before `Create`; its own time rows, which are named the
-  same way, are a list of its own beside `pd.ColumnRenames`. `moveFacts`, its
+  `rename.Indexes` and not `rename.Columns`. It needs `rename.Columns` now:
+  after `stashFacts`, which reads a `fact` of the shape before payday's past
+  by its old names and sets it aside, and before `Create`. Its own time rows,
+  which are named the same way, are a list of its own beside
+  `pd.ColumnRenames`. `moveFacts`, its
   `cli/pg.sql`, its reports' SQL and its pages that read `occurredAt` and
-  `supersededAt` say the new names.
+  `supersededAt` say the new names, and so does its Go that writes and reads
+  the past by payday's: `past.Event{At: ...}` in the domain's operations is
+  `DateOccurred`, and a statement's and a row's `From` and `Superseded` are
+  `DateStart` and `DateSuperseded`.
 - **roster** declares neither, so nothing of its store moves. Its key service
   builds `TokenIntrospectResponse` itself (`server/keys/service.go`) and sets
-  `DateExpires`.
+  `DateExpires`, and the `auth.Identity` it answers with
+  (`server/keys/acting.go`) carries it as `DateExpires` too.
 - **levyan** declares neither either. It is a source of grants, and sets
-  `DateEffective` and `DateExpires` (`server/api/grants.go`).
+  `DateEffective` and `DateExpires` (`server/api/grants.go`); its follower's
+  test (`cli/grants_test.go`) reads `entitle.Row`s by the same names.
 
 ## The entity commands are the schema's words: `list`, with `ls` its alias
 

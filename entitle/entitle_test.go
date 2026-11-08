@@ -61,7 +61,7 @@ func TestTheGrantThatBeganLastDecides(t *testing.T) {
 	now := time.Now()
 	day := 24 * time.Hour
 	row := func(grant string, v entitle.Value, from, until time.Time) entitle.Row {
-		return entitle.Row{Key: "acme.robots", Value: v, From: from, Until: until, Grant: []byte(grant), Version: 1}
+		return entitle.Row{Key: "acme.robots", Value: v, DateEffective: from, DateExpires: until, Grant: []byte(grant), Version: 1}
 	}
 
 	// This period's, in its grace, and the next one's, begun: the next decides
@@ -78,7 +78,7 @@ func TestTheGrantThatBeganLastDecides(t *testing.T) {
 	got = entitle.Decide("acme.robots", []entitle.Row{
 		row("later", entitle.Unlimited, now.Add(day), now.Add(30*day)),
 		row("over", entitle.Unlimited, now.Add(-30*day), now.Add(-day)),
-		{Key: "acme.export", Value: entitle.On, From: now.Add(-day), Until: now.Add(day), Grant: []byte("x")},
+		{Key: "acme.export", Value: entitle.On, DateEffective: now.Add(-day), DateExpires: now.Add(day), Grant: []byte("x")},
 	}, now)
 	x.Equal(entitle.None, got.Value)
 	x.Nil(got.Grant)
@@ -142,7 +142,7 @@ func TestReadsAnswerForTheFramesTenant(t *testing.T) {
 	now := time.Now()
 	mine, theirs := pdid.New(1), pdid.New(1)
 	in := func(tenant pdid.Id, key string, v entitle.Value) entitle.Row {
-		return entitle.Row{Tenant: tenant, Key: key, Value: v, From: now.Add(-time.Hour), Until: now.Add(time.Hour), Grant: []byte(key + tenant.String()), Version: 1}
+		return entitle.Row{Tenant: tenant, Key: key, Value: v, DateEffective: now.Add(-time.Hour), DateExpires: now.Add(time.Hour), Grant: []byte(key + tenant.String()), Version: 1}
 	}
 	r := &reader{tx: true, rows: []entitle.Row{
 		in(mine, "acme.export", entitle.On),
