@@ -38,6 +38,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # The one job with a buf on the PATH, because it is the one that runs
+      # buf itself: `format`, `lint`, `build` and `breaking` below. `pd`
+      # fetches the buf it pins and never reads the PATH (`PD_BUF` aside), so
+      # a job that only generates has no use for one -- and installing one
+      # anyway was a download that could fail it, as it failed `new` on
+      # 2026-11-08 for a binary nothing there runs.
       - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           setup_only: true
@@ -170,10 +176,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
-        with:
-          setup_only: true
 
       - name: payday
         run: go test ./... -count=1
@@ -335,9 +337,6 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
-      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
-        with:
-          setup_only: true
 
       - run: go tool pd new github.com/acme/widget "${GITHUB_WORKSPACE}/widget"
         working-directory: payday
@@ -492,9 +491,6 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
-      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
-        with:
-          setup_only: true
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
