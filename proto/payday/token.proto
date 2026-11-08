@@ -111,7 +111,7 @@ message TokenIntrospectResponse {
   // credential every time and is refused at the next one; a stream reads it
   // once, at the handshake, and without this would be served for as long as it
   // stays open -- which for a Watch is until somebody hangs up.
-  google.protobuf.Timestamp expires = 6;
+  google.protobuf.Timestamp date_expires = 6;
 }
 
 // Grant is `frame.Grant` as it crosses: three axes, each either narrowed to a

@@ -199,13 +199,13 @@ func TestAnEventSaysWhatItIs(t *testing.T) {
 		Mode:    app.Mode_MODE_SERVICE,
 		Parts:   []*app.MachineServiced_Part{app.MachineServiced_Part_builder{Serial: "P-1", Count: 2}.Build()},
 		Swapped: map[string]*app.MachineServiced_Part{"left": app.MachineServiced_Part_builder{Serial: "P-0", Count: 1}.Build()},
-		Due:     timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+		DateDue: timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
 	}.Build()
 	happened := time.Date(2026, 10, 1, 9, 0, 0, 123456789, time.UTC)
 
 	var serviced, started pdid.Id
 	require.NoError(t, b.operate(t, traced, func(ctx context.Context, s past.Store) error {
-		_, op, err := past.Begin(ctx, s, past.Event{Subject: mid, At: happened, Reason: "due", Value: sent})
+		_, op, err := past.Begin(ctx, s, past.Event{Subject: mid, DateOccurred: happened, Reason: "due", Value: sent})
 		if err != nil {
 			return err
 		}
@@ -232,8 +232,8 @@ func TestAnEventSaysWhatItIs(t *testing.T) {
 		x.Equal(mid, v.Subject)
 		x.Equal("due", v.Reason)
 		x.Equal(traceId[:], v.Trace)
-		x.True(happened.Truncate(time.Microsecond).Equal(v.At), "%v, to the microsecond every database keeps", v.At)
-		x.False(v.Recorded.Before(v.At))
+		x.True(happened.Truncate(time.Microsecond).Equal(v.DateOccurred), "%v, to the microsecond every database keeps", v.DateOccurred)
+		x.False(v.Recorded.Before(v.DateOccurred))
 
 		typ, ok := pd.EventKinds[v.Kind]
 		x.True(ok)
@@ -392,7 +392,7 @@ func TestAnOperationCalledInsideAnotherIsPartOfIt(t *testing.T) {
 		c, err := op.Child(ctx, past.Event{Subject: rid, Value: moved(r.GetId())})
 		x.NoError(err)
 		child = c.Id()
-		x.Equal(op.At(), c.At(), "when the operation was, as it said nothing of its own")
+		x.Equal(op.DateOccurred(), c.DateOccurred(), "when the operation was, as it said nothing of its own")
 
 		return nil
 	}))

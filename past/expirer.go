@@ -141,6 +141,6 @@ func (e Expirer) expire(ctx context.Context, tenant pdid.Id) {
 			"tenant", tenant, "err", err)
 	case x.Total() > 0:
 		log.From(ctx).InfoContext(ctx, "past: expired",
-			"tenant", tenant, "before", x.Before.Format(time.RFC3339), "facts", x.Facts, "events", x.Events)
+			"tenant", tenant, "before", x.DateBefore.Format(time.RFC3339), "facts", x.Facts, "events", x.Events)
 	}
 }

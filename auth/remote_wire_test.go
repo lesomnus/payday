@@ -153,13 +153,13 @@ func TestRemoteOverTheWire(t *testing.T) {
 
 		v := admin()
 		v.Grant = frame.Whole()
-		v.Expires = at
+		v.DateExpires = at
 
 		c := dial(t, &tokens{vs: map[string]auth.Identity{"rk_short": v}})
 
 		id, err := auth.Remote(c).Lookup(t.Context(), "rk_short")
 		x.NoError(err)
-		x.True(at.Equal(id.Expires), "the expiry is what the store said")
+		x.True(at.Equal(id.DateExpires), "the expiry is what the store said")
 		x.True(id.Valid(time.Now()))
 		x.False(id.Valid(at.Add(time.Second)))
 

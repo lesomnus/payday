@@ -24,7 +24,7 @@ message EventAddRequest {
   TenantRef tenant = 2;
   string kind = 8 [features.field_presence = IMPLICIT];
   bytes actor_id = 9;
-  google.protobuf.Timestamp occurred_at = 10;
+  google.protobuf.Timestamp date_occurred = 10;
   string reason = 11 [features.field_presence = IMPLICIT];
   bytes subject_id = 12;
   google.protobuf.Timestamp date_created = 15;
@@ -58,7 +58,7 @@ message EventSelect {
   TenantSelect tenant = 2;
   bool kind = 8;
   bool actor_id = 9;
-  bool occurred_at = 10;
+  bool date_occurred = 10;
   bool reason = 11;
   bool subject_id = 12;
   bool date_updated = 13;

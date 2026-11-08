@@ -227,9 +227,9 @@ func TestAStateIsWhatWasKnown(t *testing.T) {
 
 	// 10/1: from 9/1 in A. 10/5: to B on 9/15. 10/9: the move was on 9/12,
 	// so #2 is superseded and #3 written in its place.
-	f1 := FactRow{Id: pdid.New(18), Field: 3, Value: `"A"`, From: day(9, 1), Recorded: day(10, 1)}
-	f2 := FactRow{Id: pdid.New(18), Field: 3, Value: `"B"`, From: day(9, 15), Recorded: day(10, 5), Superseded: at(day(10, 9))}
-	f3 := FactRow{Id: pdid.New(18), Field: 3, Value: `"B"`, From: day(9, 12), Recorded: day(10, 9)}
+	f1 := FactRow{Id: pdid.New(18), Field: 3, Value: `"A"`, DateStart: day(9, 1), Recorded: day(10, 1)}
+	f2 := FactRow{Id: pdid.New(18), Field: 3, Value: `"B"`, DateStart: day(9, 15), Recorded: day(10, 5), DateSuperseded: at(day(10, 9))}
+	f3 := FactRow{Id: pdid.New(18), Field: 3, Value: `"B"`, DateStart: day(9, 12), Recorded: day(10, 9)}
 	rows := []FactRow{f3, f1, f2}
 
 	for _, c := range []struct {
@@ -269,7 +269,7 @@ func TestAStateIsWhatWasKnown(t *testing.T) {
 
 		// 10/12: it was in C from 9/5 -- recorded after the others, and
 		// holding from before two of them.
-		f4 := FactRow{Id: pdid.New(18), Field: 3, Value: `"C"`, From: day(9, 5), Recorded: day(10, 12)}
+		f4 := FactRow{Id: pdid.New(18), Field: 3, Value: `"C"`, DateStart: day(9, 5), Recorded: day(10, 12)}
 		rows := append(rows, f4)
 
 		x.Equal(f4.Id, fold(rows, day(9, 6), Known{})[cell].Id)
@@ -280,7 +280,7 @@ func TestAStateIsWhatWasKnown(t *testing.T) {
 	t.Run("a field cleared holds nothing from then", func(t *testing.T) {
 		x := require.New(t)
 
-		f5 := FactRow{Id: pdid.New(18), Field: 3, Value: Null, From: day(9, 25), Recorded: day(10, 10)}
+		f5 := FactRow{Id: pdid.New(18), Field: 3, Value: Null, DateStart: day(9, 25), Recorded: day(10, 10)}
 		rows := append(rows, f5)
 
 		_, ok := fold(rows, day(9, 26), Known{})[cell]
@@ -293,7 +293,7 @@ func TestAStateIsWhatWasKnown(t *testing.T) {
 
 		// Both standing, which a write through Set never leaves -- it
 		// supersedes the first -- and a read still answers one.
-		g := FactRow{Id: pdid.New(18), Field: 3, Value: `"D"`, From: day(9, 12), Recorded: day(10, 10)}
+		g := FactRow{Id: pdid.New(18), Field: 3, Value: `"D"`, DateStart: day(9, 12), Recorded: day(10, 10)}
 		x.Equal(g.Id, fold([]FactRow{g, f3}, day(9, 13), Known{})[cell].Id)
 	})
 }
@@ -309,7 +309,7 @@ func TestFactsAreReadBackAsTheStatementsTheyWere(t *testing.T) {
 	ev, other := pdid.New(17), pdid.New(17)
 	a, b := pdid.New(19), pdid.New(19)
 	row := func(event, subject pdid.Id, from int, field protoreflect.FieldNumber) FactRow {
-		return FactRow{Id: pdid.New(18), Event: event, Subject: subject, From: day(from), Field: field, Recorded: day(30)}
+		return FactRow{Id: pdid.New(18), Event: event, Subject: subject, DateStart: day(from), Field: field, Recorded: day(30)}
 	}
 
 	got := regroup([]FactRow{
@@ -326,7 +326,7 @@ func TestFactsAreReadBackAsTheStatementsTheyWere(t *testing.T) {
 	}
 	var vs []said
 	for _, st := range got {
-		v := said{st.Event, st.Subject, st.From.Day(), nil}
+		v := said{st.Event, st.Subject, st.DateStart.Day(), nil}
 		for _, r := range st.Rows {
 			v.fields = append(v.fields, r.Field)
 		}

@@ -40,7 +40,7 @@ func (b *built) serviced(t *testing.T, ctx context.Context, m *app.Machine, by p
 				Mode:    app.Mode_MODE_SERVICE,
 				Parts:   []*app.MachineServiced_Part{app.MachineServiced_Part_builder{Serial: "P-1", Count: 2}.Build()},
 				Swapped: map[string]*app.MachineServiced_Part{"left": app.MachineServiced_Part_builder{Serial: "P-0", Count: 1}.Build()},
-				Due:     timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+				DateDue: timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
 			}.Build(),
 		})
 		if err != nil {
@@ -240,7 +240,7 @@ func TestAnEventIsSaidInTheLanguageNearestTheReaders(t *testing.T) {
 			"mode: MODE_SERVICE, "+
 			`parts: [{serial: "P-1", count: 2}], `+
 			`swapped: {"left": {serial: "P-0", count: 1}}, `+
-			"due: 2026-11-01 00:00"+
+			"date_due: 2026-11-01 00:00"+
 			"}", r.Say(vs[0]))
 		x.NoError(r.Err())
 
@@ -281,7 +281,7 @@ func TestEachKindOfAMessageIsSaidInItsOwnWords(t *testing.T) {
 	recorded := func(kind string, at *timestamppb.Timestamp) pdid.Id {
 		var id pdid.Id
 		x.NoError(b.operate(t, as, func(ctx context.Context, s past.Store) error {
-			_, op, err := past.Begin(ctx, s, past.Event{Kind: kind, Value: app.Corrected_builder{Event: ev.Bytes(), At: at}.Build()})
+			_, op, err := past.Begin(ctx, s, past.Event{Kind: kind, Value: app.Corrected_builder{Event: ev.Bytes(), DateOccurred: at}.Build()})
 			if err != nil {
 				return err
 			}
@@ -341,11 +341,11 @@ func TestAnEventFromBeforeThePastIsSaidAsItWasWritten(t *testing.T) {
 	sink := b.beforeThePast(t)
 	before := func(desc string) pdid.Id {
 		v, err := sink.Event().Add(ctx, app.EventAddRequest_builder{
-			Tenant:     app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-			Kind:       "robot.oil",
-			ActorId:    alice.Bytes(),
-			OccurredAt: timestamppb.New(time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)),
-			Desc:       desc,
+			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Kind:         "robot.oil",
+			ActorId:      alice.Bytes(),
+			DateOccurred: timestamppb.New(time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)),
+			Desc:         desc,
 		}.Build())
 		x.NoError(err)
 

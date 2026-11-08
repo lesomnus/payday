@@ -621,7 +621,7 @@ key, as `order` does:
 list: {
   order:  [{field: {name: "date_created"}, desc: true}, {field: {name: "id"}, desc: true}]
   orders: [
-    {name: "occurred", order: [{field: {name: "occurred_at"}}, {field: {name: "id"}}]},
+    {name: "occurred", order: [{field: {name: "date_occurred"}}, {field: {name: "id"}}]},
     {name: "alias_desc", order: [{field: {name: "alias"}, desc: true}, {field: {name: "id"}}]}
   ]
   max: 100

@@ -78,6 +78,16 @@ var columnRenames = []struct {
 	// A receipt's first read was `data_read`, a typo of the `date_*` every
 	// other time payday keeps is named by (payday#196).
 	{pdpb.Own_OWN_NOTIFICATION_RECEIPT, "data_read", "date_read"},
+
+	// The times the past and the copy of entitlements kept under names of
+	// their own, which are `date_*` as every other time payday keeps is: when
+	// an event happened, when a fact began to hold and when it was
+	// superseded, and a grant's window.
+	{pdpb.Own_OWN_EVENT, "occurred_at", "date_occurred"},
+	{pdpb.Own_OWN_FACT, "valid_from", "date_start"},
+	{pdpb.Own_OWN_FACT, "superseded_at", "date_superseded"},
+	{pdpb.Own_OWN_ENTITLEMENT, "valid_from", "date_effective"},
+	{pdpb.Own_OWN_ENTITLEMENT, "valid_until", "date_expires"},
 }
 
 // ColumnRename is one column of payday's own entities that an earlier build

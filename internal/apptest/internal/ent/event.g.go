@@ -23,7 +23,7 @@ func (e *Event) Proto() *apptest.Event {
 	if e.ActorId != nil {
 		x.SetActorId(e.ActorId[:])
 	}
-	x.SetOccurredAt(timestamppb.New(e.OccurredAt))
+	x.SetDateOccurred(timestamppb.New(e.DateOccurred))
 	x.SetReason(e.Reason)
 	if e.SubjectId != nil {
 		x.SetSubjectId(e.SubjectId[:])

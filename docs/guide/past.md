@@ -90,7 +90,7 @@ message RobotStopped {
   option (payday.event) = {};
 
   bytes robot = 1;
-  google.protobuf.Timestamp at = 2;
+  google.protobuf.Timestamp date_stopped = 2;
 }
 ```
 
@@ -420,8 +420,8 @@ return tx.Commit()
   from the caller's frame -- a call with none is refused, and so is a frame of
   no tenant -- the trace from the span, the kind from the message's own
   `(payday.event)`, which the app's schema must declare too. The moment it is
-  written down is taken by `Begin`, to the microsecond; `Event.At` says when it
-  happened, when that is another moment.
+  written down is taken by `Begin`, to the microsecond; `Event.DateOccurred`
+  says when it happened, when that is another moment.
 - **Which of its message's kinds.** A message of one kind is its event's kind,
   and `Event.Kind` may say it or not. A message of several cannot say which
   operation it was, so the event does -- `past.Event{Kind: "robot.unpark",
@@ -499,9 +499,9 @@ statement it was.
 
 ```go
 op.Set(ctx, past.Fact{
-	Subject: machine,
-	From:    serviced,                      // when it became true; the operation's moment when zero
-	Values:  past.Changes(before, after),   // what the write changed
+	Subject:   machine,
+	DateStart: serviced,                    // when it became true; the operation's moment when zero
+	Values:    past.Changes(before, after), // what the write changed
 })
 ```
 

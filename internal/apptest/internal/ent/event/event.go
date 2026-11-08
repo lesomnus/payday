@@ -18,8 +18,8 @@ const (
 	FieldKind = "kind"
 	// FieldActorId holds the string denoting the actor_id field in the database.
 	FieldActorId = "actor_id"
-	// FieldOccurredAt holds the string denoting the occurred_at field in the database.
-	FieldOccurredAt = "occurred_at"
+	// FieldDateOccurred holds the string denoting the date_occurred field in the database.
+	FieldDateOccurred = "date_occurred"
 	// FieldReason holds the string denoting the reason field in the database.
 	FieldReason = "reason"
 	// FieldSubjectId holds the string denoting the subject_id field in the database.
@@ -56,7 +56,7 @@ var Columns = []string{
 	FieldId,
 	FieldKind,
 	FieldActorId,
-	FieldOccurredAt,
+	FieldDateOccurred,
 	FieldReason,
 	FieldSubjectId,
 	FieldDateUpdated,
@@ -103,9 +103,9 @@ func ByActorId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldActorId, opts...).ToFunc()
 }
 
-// ByOccurredAt orders the results by the occurred_at field.
-func ByOccurredAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldOccurredAt, opts...).ToFunc()
+// ByDateOccurred orders the results by the date_occurred field.
+func ByDateOccurred(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateOccurred, opts...).ToFunc()
 }
 
 // ByReason orders the results by the reason field.

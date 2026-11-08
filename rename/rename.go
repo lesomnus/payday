@@ -14,10 +14,14 @@
 // schema declares, `robot_page` (protobuf-orm/protoc-gen-orm-ent#15). And a
 // column of one of payday's own entities was misnamed once: a notification
 // receipt's first read was `data_read`, where every other time payday keeps is
-// a `date_*`, and is `date_read` now (payday#196). A migration drops no column
-// either, so it adds the new one, empty, beside the old -- and that one fails
-// worse than an index, since the rows written before read as never having had
-// a value. `pd gen` writes what both mean for an app's schema, as
+// a `date_*`, and is `date_read` now (payday#196); and so were the times of the
+// past and of the copy of entitlements, `occurred_at`, `valid_from`,
+// `superseded_at` and `valid_until`, which are `date_*` now too. A migration
+// drops no column either, so it adds the new one, empty, beside the old -- and
+// that one fails worse than an index, since the rows written before read as
+// never having had a value. On SQLite a table whose index names the column is
+// made again instead, without the old one: what it held is gone, and there is
+// nothing left to move. `pd gen` writes what both mean for an app's schema, as
 // `pd.ColumnRenames` and `pd.IndexRenames`, and an app's `Migrate` hands them
 // here before it creates:
 //

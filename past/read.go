@@ -97,10 +97,10 @@ type FactQuery struct {
 // A correction of one field supersedes that field's row alone, and the row it
 // writes in its place is a statement of its own, the correcting event's.
 type Statement struct {
-	Event   pdid.Id
-	Subject pdid.Id
-	From    time.Time
-	Rows    []FactRow
+	Event     pdid.Id
+	Subject   pdid.Id
+	DateStart time.Time
+	Rows      []FactRow
 }
 
 // Facts reads facts back as the statements they were written in, regrouped
@@ -164,12 +164,12 @@ func regroup(rows []FactRow) []Statement {
 	at := map[key]int{}
 	var out []Statement
 	for _, r := range rows {
-		k := key{r.Event, r.Subject, r.From.UnixMicro()}
+		k := key{r.Event, r.Subject, r.DateStart.UnixMicro()}
 		i, ok := at[k]
 		if !ok {
 			i = len(out)
 			at[k] = i
-			out = append(out, Statement{Event: r.Event, Subject: r.Subject, From: r.From})
+			out = append(out, Statement{Event: r.Event, Subject: r.Subject, DateStart: r.DateStart})
 		}
 		out[i].Rows = append(out[i].Rows, r)
 	}
@@ -192,7 +192,7 @@ func regroup(rows []FactRow) []Statement {
 		return v
 	}
 	slices.SortStableFunc(out, func(a, b Statement) int {
-		if c := a.From.Compare(b.From); c != 0 {
+		if c := a.DateStart.Compare(b.DateStart); c != 0 {
 			return c
 		}
 		if c := first(a).Compare(first(b)); c != 0 {
@@ -287,7 +287,7 @@ func knownOf(k Known) []func(*sql.Selector) {
 func fold(rows []FactRow, at time.Time, k Known) map[Slot]FactRow {
 	rows = slices.Clone(rows)
 	slices.SortStableFunc(rows, func(a, b FactRow) int {
-		if c := a.From.Compare(b.From); c != 0 {
+		if c := a.DateStart.Compare(b.DateStart); c != 0 {
 			return c
 		}
 		if c := a.Recorded.Compare(b.Recorded); c != 0 {
@@ -298,7 +298,7 @@ func fold(rows []FactRow, at time.Time, k Known) map[Slot]FactRow {
 
 	out := map[Slot]FactRow{}
 	for _, r := range rows {
-		if r.From.After(at) || !visible(r, k) {
+		if r.DateStart.After(at) || !visible(r, k) {
 			continue
 		}
 		if r.Value == Null {
@@ -456,10 +456,10 @@ func Timeline(ctx context.Context, s Store, subject pdid.Id, known Known) ([]Lin
 
 	out := make([]Line, 0, len(sts)+len(evs))
 	for i := range evs {
-		out = append(out, Line{At: evs[i].At, Event: &evs[i]})
+		out = append(out, Line{At: evs[i].DateOccurred, Event: &evs[i]})
 	}
 	for i := range sts {
-		out = append(out, Line{At: sts[i].From, Event: byId[sts[i].Event], Statement: &sts[i]})
+		out = append(out, Line{At: sts[i].DateStart, Event: byId[sts[i].Event], Statement: &sts[i]})
 	}
 
 	recorded := func(e Line) time.Time {

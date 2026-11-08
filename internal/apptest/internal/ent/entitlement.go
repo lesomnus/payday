@@ -33,10 +33,10 @@ type Entitlement struct {
 	DateUpdated time.Time `json:"date_updated,omitempty"`
 	// DateCreated holds the value of the "date_created" field.
 	DateCreated time.Time `json:"date_created,omitempty"`
-	// ValidFrom holds the value of the "valid_from" field.
-	ValidFrom *time.Time `json:"valid_from,omitempty"`
-	// ValidUntil holds the value of the "valid_until" field.
-	ValidUntil time.Time `json:"valid_until,omitempty"`
+	// DateEffective holds the value of the "date_effective" field.
+	DateEffective *time.Time `json:"date_effective,omitempty"`
+	// DateExpires holds the value of the "date_expires" field.
+	DateExpires time.Time `json:"date_expires,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -76,7 +76,7 @@ func (*Entitlement) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case entitlement.FieldKey:
 			values[i] = new(sql.NullString)
-		case entitlement.FieldDateUpdated, entitlement.FieldDateCreated, entitlement.FieldValidFrom, entitlement.FieldValidUntil:
+		case entitlement.FieldDateUpdated, entitlement.FieldDateCreated, entitlement.FieldDateEffective, entitlement.FieldDateExpires:
 			values[i] = new(sql.NullTime)
 		case entitlement.FieldId, entitlement.FieldTenantId:
 			values[i] = new(uuid.UUID)
@@ -146,18 +146,18 @@ func (_m *Entitlement) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DateCreated = value.Time
 			}
-		case entitlement.FieldValidFrom:
+		case entitlement.FieldDateEffective:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field valid_from", values[i])
+				return fmt.Errorf("unexpected type %T for field date_effective", values[i])
 			} else if value.Valid {
-				_m.ValidFrom = new(time.Time)
-				*_m.ValidFrom = value.Time
+				_m.DateEffective = new(time.Time)
+				*_m.DateEffective = value.Time
 			}
-		case entitlement.FieldValidUntil:
+		case entitlement.FieldDateExpires:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field valid_until", values[i])
+				return fmt.Errorf("unexpected type %T for field date_expires", values[i])
 			} else if value.Valid {
-				_m.ValidUntil = value.Time
+				_m.DateExpires = value.Time
 			}
 		case entitlement.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -227,13 +227,13 @@ func (_m *Entitlement) String() string {
 	builder.WriteString("date_created=")
 	builder.WriteString(_m.DateCreated.Format(time.ANSIC))
 	builder.WriteString(", ")
-	if v := _m.ValidFrom; v != nil {
-		builder.WriteString("valid_from=")
+	if v := _m.DateEffective; v != nil {
+		builder.WriteString("date_effective=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("valid_until=")
-	builder.WriteString(_m.ValidUntil.Format(time.ANSIC))
+	builder.WriteString("date_expires=")
+	builder.WriteString(_m.DateExpires.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))

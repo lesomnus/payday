@@ -179,9 +179,9 @@ type Identity struct {
 	// attenuation answers [frame.Whole]; see [frame.Grant].
 	Grant frame.Grant
 
-	// Expires is when this credential stops working, and the zero time is one
-	// that does not. Only a [TokenStore] fills it: a header and a certificate
-	// have nowhere to carry an expiry.
+	// DateExpires is when this credential stops working, and the zero time is
+	// one that does not. Only a [TokenStore] fills it: a header and a
+	// certificate have nowhere to carry an expiry.
 	//
 	// It is here rather than being the store's private business because a
 	// **stream** needs it. A unary call carries its credential every time and
@@ -189,7 +189,7 @@ type Identity struct {
 	// without this would go on being served for as long as it stays open --
 	// which for a Watch is until somebody hangs up. See [Identity.Valid] and
 	// the note on cutting a stream in [InterceptorStream].
-	Expires time.Time
+	DateExpires time.Time
 }
 
 // Valid reports whether this credential is still good at `at`.
@@ -202,7 +202,7 @@ type Identity struct {
 // finds out at the next one; a stream carries it once at the handshake and
 // would otherwise go on being served forever. See [InterceptorStream].
 func (v Identity) Valid(at time.Time) bool {
-	return v.Expires.IsZero() || at.Before(v.Expires)
+	return v.DateExpires.IsZero() || at.Before(v.DateExpires)
 }
 
 // NamesNobody reports whether this identity says who the caller is at all.

@@ -79,8 +79,8 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 		if v := modeEn[m.GetMode()]; v != "" {
 			vs = append(vs, "left it "+v)
 		}
-		if m.HasDue() {
-			vs = append(vs, "due "+r.Time(m.GetDue().AsTime()))
+		if m.HasDateDue() {
+			vs = append(vs, "due "+r.Time(m.GetDateDue().AsTime()))
 		}
 		return strings.Join(vs, "; ")
 	})
@@ -99,8 +99,8 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 		if v := modeKo[m.GetMode()]; v != "" {
 			vs = append(vs, v+"(으)로 둠")
 		}
-		if m.HasDue() {
-			vs = append(vs, "다음 정비 "+r.Time(m.GetDue().AsTime()))
+		if m.HasDateDue() {
+			vs = append(vs, "다음 정비 "+r.Time(m.GetDateDue().AsTime()))
 		}
 		return strings.Join(vs, "; ")
 	})
@@ -122,16 +122,16 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 	// kind, and rows of it say so still: a message that takes a kind leaves
 	// the rows of its others as they were written.
 	past.SayKind(s, "correct", "en", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
-		if !m.HasAt() {
+		if !m.HasDateOccurred() {
 			return fmt.Sprintf("%s said an earlier event never happened", actor(r, ev, "The deployment"))
 		}
-		return fmt.Sprintf("%s said an earlier event happened on %s", actor(r, ev, "The deployment"), r.Time(m.GetAt().AsTime()))
+		return fmt.Sprintf("%s said an earlier event happened on %s", actor(r, ev, "The deployment"), r.Time(m.GetDateOccurred().AsTime()))
 	})
 	past.SayKind(s, "correct", "ko", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
-		if !m.HasAt() {
+		if !m.HasDateOccurred() {
 			return fmt.Sprintf("%s: 이전 기록을 없던 일로 함", actor(r, ev, "시스템"))
 		}
-		return fmt.Sprintf("%s: 이전 기록을 %s의 일로 고침", actor(r, ev, "시스템"), r.Time(m.GetAt().AsTime()))
+		return fmt.Sprintf("%s: 이전 기록을 %s의 일로 고침", actor(r, ev, "시스템"), r.Time(m.GetDateOccurred().AsTime()))
 	})
 	past.SayKind(s, "retract", "en", func(r *past.Reading, ev past.EventRow, m *app.Corrected) string {
 		return fmt.Sprintf("%s took back an earlier event, which never happened", actor(r, ev, "The deployment"))
@@ -144,11 +144,11 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 	// It names nobody and says nothing of what went, which is gone.
 	past.Say(s, "en", func(r *past.Reading, ev past.EventRow, m *app.PastExpired) string {
 		return fmt.Sprintf("%s let go of what was over before %s (facts: %d, events: %d, stints: %d)",
-			actor(r, ev, "The deployment"), r.Time(m.GetBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
+			actor(r, ev, "The deployment"), r.Time(m.GetDateBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
 	})
 	past.Say(s, "ko", func(r *past.Reading, ev past.EventRow, m *app.PastExpired) string {
 		return fmt.Sprintf("%s: %s 이전에 끝난 기록 정리 (사실 %d건, 이벤트 %d건, 배치 %d건)",
-			actor(r, ev, "시스템"), r.Time(m.GetBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
+			actor(r, ev, "시스템"), r.Time(m.GetDateBefore().AsTime()), m.GetFacts(), m.GetEvents(), m.GetStints())
 	})
 
 	// A row from before: the sentence it was written with, which marks who

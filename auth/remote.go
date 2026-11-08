@@ -104,8 +104,8 @@ func IdentityFrom(v *pdpb.TokenIntrospectResponse) (Identity, error) {
 	}
 
 	id.Grant = g
-	if u := v.GetExpires(); u != nil {
-		id.Expires = u.AsTime()
+	if u := v.GetDateExpires(); u != nil {
+		id.DateExpires = u.AsTime()
 	}
 
 	return id, nil
@@ -124,8 +124,8 @@ func Introspection(id Identity) (*pdpb.TokenIntrospectResponse, error) {
 		Alias:  id.Alias,
 		Grant:  grantOf(id.Grant),
 	}
-	if !id.Expires.IsZero() {
-		res.Expires = timestamppb.New(id.Expires)
+	if !id.DateExpires.IsZero() {
+		res.DateExpires = timestamppb.New(id.DateExpires)
 	}
 
 	if s := id.Id; s != "" {

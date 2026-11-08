@@ -26,10 +26,10 @@ const (
 	FieldDateUpdated = "date_updated"
 	// FieldDateCreated holds the string denoting the date_created field in the database.
 	FieldDateCreated = "date_created"
-	// FieldValidFrom holds the string denoting the valid_from field in the database.
-	FieldValidFrom = "valid_from"
-	// FieldValidUntil holds the string denoting the valid_until field in the database.
-	FieldValidUntil = "valid_until"
+	// FieldDateEffective holds the string denoting the date_effective field in the database.
+	FieldDateEffective = "date_effective"
+	// FieldDateExpires holds the string denoting the date_expires field in the database.
+	FieldDateExpires = "date_expires"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
@@ -55,8 +55,8 @@ var Columns = []string{
 	FieldGrantVersion,
 	FieldDateUpdated,
 	FieldDateCreated,
-	FieldValidFrom,
-	FieldValidUntil,
+	FieldDateEffective,
+	FieldDateExpires,
 	FieldTenantId,
 }
 
@@ -108,14 +108,14 @@ func ByDateCreated(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateCreated, opts...).ToFunc()
 }
 
-// ByValidFrom orders the results by the valid_from field.
-func ByValidFrom(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldValidFrom, opts...).ToFunc()
+// ByDateEffective orders the results by the date_effective field.
+func ByDateEffective(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateEffective, opts...).ToFunc()
 }
 
-// ByValidUntil orders the results by the valid_until field.
-func ByValidUntil(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldValidUntil, opts...).ToFunc()
+// ByDateExpires orders the results by the date_expires field.
+func ByDateExpires(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateExpires, opts...).ToFunc()
 }
 
 // ByTenantId orders the results by the tenant_id field.

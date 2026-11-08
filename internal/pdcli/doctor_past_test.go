@@ -307,7 +307,7 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		l := genApp(t)
 
 		b, _ := lockOf(t, l)
-		editMachine(t, l, "  google.protobuf.Timestamp due = 6;\n", "")
+		editMachine(t, l, "  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n", "")
 
 		v := findingOf(t, l, "past.lock")
 		x.True(v.Fatal, "pd gen stops on it")

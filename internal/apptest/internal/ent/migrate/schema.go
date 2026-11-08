@@ -183,8 +183,8 @@ var (
 		{Name: "grant_version", Type: field.TypeUint64},
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
-		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
-		{Name: "valid_until", Type: field.TypeTime, Nullable: true},
+		{Name: "date_effective", Type: field.TypeTime, Nullable: true},
+		{Name: "date_expires", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},
 	}
 	// EntitlementTable holds the schema information for the "entitlement" table.
@@ -218,7 +218,7 @@ var (
 		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "kind", Type: field.TypeString},
 		{Name: "actor_id", Type: field.TypeUuid, Nullable: true},
-		{Name: "occurred_at", Type: field.TypeTime, Nullable: true},
+		{Name: "date_occurred", Type: field.TypeTime, Nullable: true},
 		{Name: "reason", Type: field.TypeString},
 		{Name: "subject_id", Type: field.TypeUuid, Nullable: true},
 		{Name: "date_updated", Type: field.TypeTime},
@@ -270,9 +270,9 @@ var (
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "domain", Type: field.TypeUint32, Nullable: true, Default: 0},
-		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
+		{Name: "date_start", Type: field.TypeTime, Nullable: true},
 		{Name: "event_id", Type: field.TypeUuid},
-		{Name: "superseded_at", Type: field.TypeTime, Nullable: true},
+		{Name: "date_superseded", Type: field.TypeTime, Nullable: true},
 		{Name: "superseded_by", Type: field.TypeUuid, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},
 	}
@@ -764,8 +764,8 @@ var (
 	StintColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUuid, Unique: true},
 		{Name: "robot_id", Type: field.TypeUuid},
-		{Name: "valid_from", Type: field.TypeTime, Nullable: true},
-		{Name: "valid_to", Type: field.TypeTime, Nullable: true},
+		{Name: "date_start", Type: field.TypeTime, Nullable: true},
+		{Name: "date_end", Type: field.TypeTime, Nullable: true},
 		{Name: "event_id", Type: field.TypeUuid},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},

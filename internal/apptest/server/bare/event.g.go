@@ -143,10 +143,10 @@ func (st EventServiceServer) create(ctx context.Context, req *apptest.EventAddRe
 			q.SetActorId(v)
 		}
 	}
-	if req.HasOccurredAt() {
-		q.SetOccurredAt(req.GetOccurredAt().AsTime())
+	if req.HasDateOccurred() {
+		q.SetDateOccurred(req.GetDateOccurred().AsTime())
 	} else {
-		q.SetOccurredAt(st.now())
+		q.SetDateOccurred(st.now())
 	}
 	q.SetReason(req.GetReason())
 	if req.HasSubjectId() {
@@ -435,8 +435,8 @@ func EventSelectedFields(m *apptest.EventSelect) []string {
 	if m.GetActorId() {
 		vs = append(vs, event.FieldActorId)
 	}
-	if m.GetOccurredAt() {
-		vs = append(vs, event.FieldOccurredAt)
+	if m.GetDateOccurred() {
+		vs = append(vs, event.FieldDateOccurred)
 	}
 	if m.GetReason() {
 		vs = append(vs, event.FieldReason)

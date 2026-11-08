@@ -140,23 +140,23 @@ func (_u *FactUpdate) ClearDomain() *FactUpdate {
 	return _u
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_u *FactUpdate) SetValidFrom(v time.Time) *FactUpdate {
-	_u.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_u *FactUpdate) SetDateStart(v time.Time) *FactUpdate {
+	_u.mutation.SetDateStart(v)
 	return _u
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_u *FactUpdate) SetNillableValidFrom(v *time.Time) *FactUpdate {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_u *FactUpdate) SetNillableDateStart(v *time.Time) *FactUpdate {
 	if v != nil {
-		_u.SetValidFrom(*v)
+		_u.SetDateStart(*v)
 	}
 	return _u
 }
 
-// ClearValidFrom clears the value of the "valid_from" field.
-func (_u *FactUpdate) ClearValidFrom() *FactUpdate {
-	_u.mutation.ClearValidFrom()
+// ClearDateStart clears the value of the "date_start" field.
+func (_u *FactUpdate) ClearDateStart() *FactUpdate {
+	_u.mutation.ClearDateStart()
 	return _u
 }
 
@@ -174,23 +174,23 @@ func (_u *FactUpdate) SetNillableEventId(v *uuid.UUID) *FactUpdate {
 	return _u
 }
 
-// SetSupersededAt sets the "superseded_at" field.
-func (_u *FactUpdate) SetSupersededAt(v time.Time) *FactUpdate {
-	_u.mutation.SetSupersededAt(v)
+// SetDateSuperseded sets the "date_superseded" field.
+func (_u *FactUpdate) SetDateSuperseded(v time.Time) *FactUpdate {
+	_u.mutation.SetDateSuperseded(v)
 	return _u
 }
 
-// SetNillableSupersededAt sets the "superseded_at" field if the given value is not nil.
-func (_u *FactUpdate) SetNillableSupersededAt(v *time.Time) *FactUpdate {
+// SetNillableDateSuperseded sets the "date_superseded" field if the given value is not nil.
+func (_u *FactUpdate) SetNillableDateSuperseded(v *time.Time) *FactUpdate {
 	if v != nil {
-		_u.SetSupersededAt(*v)
+		_u.SetDateSuperseded(*v)
 	}
 	return _u
 }
 
-// ClearSupersededAt clears the value of the "superseded_at" field.
-func (_u *FactUpdate) ClearSupersededAt() *FactUpdate {
-	_u.mutation.ClearSupersededAt()
+// ClearDateSuperseded clears the value of the "date_superseded" field.
+func (_u *FactUpdate) ClearDateSuperseded() *FactUpdate {
+	_u.mutation.ClearDateSuperseded()
 	return _u
 }
 
@@ -323,14 +323,14 @@ func (_u *FactUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DomainCleared() {
 		_spec.ClearField(fact.FieldDomain, field.TypeUint32)
 	}
-	if value, ok := _u.mutation.ValidFrom(); ok {
-		_spec.SetField(fact.FieldValidFrom, field.TypeTime, value)
+	if value, ok := _u.mutation.DateStart(); ok {
+		_spec.SetField(fact.FieldDateStart, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(fact.FieldValidFrom); ok {
-		_spec.SetField(fact.FieldValidFrom, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(fact.FieldDateStart); ok {
+		_spec.SetField(fact.FieldDateStart, field.TypeTime, e)
 	}
-	if _u.mutation.ValidFromCleared() {
-		_spec.ClearField(fact.FieldValidFrom, field.TypeTime)
+	if _u.mutation.DateStartCleared() {
+		_spec.ClearField(fact.FieldDateStart, field.TypeTime)
 	}
 	if value, ok := _u.mutation.EventId(); ok {
 		_spec.SetField(fact.FieldEventId, field.TypeUuid, value)
@@ -338,14 +338,14 @@ func (_u *FactUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if e, ok := _u.mutation.FieldExpr(fact.FieldEventId); ok {
 		_spec.SetField(fact.FieldEventId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.SupersededAt(); ok {
-		_spec.SetField(fact.FieldSupersededAt, field.TypeTime, value)
+	if value, ok := _u.mutation.DateSuperseded(); ok {
+		_spec.SetField(fact.FieldDateSuperseded, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(fact.FieldSupersededAt); ok {
-		_spec.SetField(fact.FieldSupersededAt, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(fact.FieldDateSuperseded); ok {
+		_spec.SetField(fact.FieldDateSuperseded, field.TypeTime, e)
 	}
-	if _u.mutation.SupersededAtCleared() {
-		_spec.ClearField(fact.FieldSupersededAt, field.TypeTime)
+	if _u.mutation.DateSupersededCleared() {
+		_spec.ClearField(fact.FieldDateSuperseded, field.TypeTime)
 	}
 	if value, ok := _u.mutation.SupersededBy(); ok {
 		_spec.SetField(fact.FieldSupersededBy, field.TypeUuid, value)
@@ -488,23 +488,23 @@ func (_u *FactUpdateOne) ClearDomain() *FactUpdateOne {
 	return _u
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_u *FactUpdateOne) SetValidFrom(v time.Time) *FactUpdateOne {
-	_u.mutation.SetValidFrom(v)
+// SetDateStart sets the "date_start" field.
+func (_u *FactUpdateOne) SetDateStart(v time.Time) *FactUpdateOne {
+	_u.mutation.SetDateStart(v)
 	return _u
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_u *FactUpdateOne) SetNillableValidFrom(v *time.Time) *FactUpdateOne {
+// SetNillableDateStart sets the "date_start" field if the given value is not nil.
+func (_u *FactUpdateOne) SetNillableDateStart(v *time.Time) *FactUpdateOne {
 	if v != nil {
-		_u.SetValidFrom(*v)
+		_u.SetDateStart(*v)
 	}
 	return _u
 }
 
-// ClearValidFrom clears the value of the "valid_from" field.
-func (_u *FactUpdateOne) ClearValidFrom() *FactUpdateOne {
-	_u.mutation.ClearValidFrom()
+// ClearDateStart clears the value of the "date_start" field.
+func (_u *FactUpdateOne) ClearDateStart() *FactUpdateOne {
+	_u.mutation.ClearDateStart()
 	return _u
 }
 
@@ -522,23 +522,23 @@ func (_u *FactUpdateOne) SetNillableEventId(v *uuid.UUID) *FactUpdateOne {
 	return _u
 }
 
-// SetSupersededAt sets the "superseded_at" field.
-func (_u *FactUpdateOne) SetSupersededAt(v time.Time) *FactUpdateOne {
-	_u.mutation.SetSupersededAt(v)
+// SetDateSuperseded sets the "date_superseded" field.
+func (_u *FactUpdateOne) SetDateSuperseded(v time.Time) *FactUpdateOne {
+	_u.mutation.SetDateSuperseded(v)
 	return _u
 }
 
-// SetNillableSupersededAt sets the "superseded_at" field if the given value is not nil.
-func (_u *FactUpdateOne) SetNillableSupersededAt(v *time.Time) *FactUpdateOne {
+// SetNillableDateSuperseded sets the "date_superseded" field if the given value is not nil.
+func (_u *FactUpdateOne) SetNillableDateSuperseded(v *time.Time) *FactUpdateOne {
 	if v != nil {
-		_u.SetSupersededAt(*v)
+		_u.SetDateSuperseded(*v)
 	}
 	return _u
 }
 
-// ClearSupersededAt clears the value of the "superseded_at" field.
-func (_u *FactUpdateOne) ClearSupersededAt() *FactUpdateOne {
-	_u.mutation.ClearSupersededAt()
+// ClearDateSuperseded clears the value of the "date_superseded" field.
+func (_u *FactUpdateOne) ClearDateSuperseded() *FactUpdateOne {
+	_u.mutation.ClearDateSuperseded()
 	return _u
 }
 
@@ -701,14 +701,14 @@ func (_u *FactUpdateOne) sqlSave(ctx context.Context) (_node *Fact, err error) {
 	if _u.mutation.DomainCleared() {
 		_spec.ClearField(fact.FieldDomain, field.TypeUint32)
 	}
-	if value, ok := _u.mutation.ValidFrom(); ok {
-		_spec.SetField(fact.FieldValidFrom, field.TypeTime, value)
+	if value, ok := _u.mutation.DateStart(); ok {
+		_spec.SetField(fact.FieldDateStart, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(fact.FieldValidFrom); ok {
-		_spec.SetField(fact.FieldValidFrom, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(fact.FieldDateStart); ok {
+		_spec.SetField(fact.FieldDateStart, field.TypeTime, e)
 	}
-	if _u.mutation.ValidFromCleared() {
-		_spec.ClearField(fact.FieldValidFrom, field.TypeTime)
+	if _u.mutation.DateStartCleared() {
+		_spec.ClearField(fact.FieldDateStart, field.TypeTime)
 	}
 	if value, ok := _u.mutation.EventId(); ok {
 		_spec.SetField(fact.FieldEventId, field.TypeUuid, value)
@@ -716,14 +716,14 @@ func (_u *FactUpdateOne) sqlSave(ctx context.Context) (_node *Fact, err error) {
 	if e, ok := _u.mutation.FieldExpr(fact.FieldEventId); ok {
 		_spec.SetField(fact.FieldEventId, field.TypeUuid, e)
 	}
-	if value, ok := _u.mutation.SupersededAt(); ok {
-		_spec.SetField(fact.FieldSupersededAt, field.TypeTime, value)
+	if value, ok := _u.mutation.DateSuperseded(); ok {
+		_spec.SetField(fact.FieldDateSuperseded, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(fact.FieldSupersededAt); ok {
-		_spec.SetField(fact.FieldSupersededAt, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(fact.FieldDateSuperseded); ok {
+		_spec.SetField(fact.FieldDateSuperseded, field.TypeTime, e)
 	}
-	if _u.mutation.SupersededAtCleared() {
-		_spec.ClearField(fact.FieldSupersededAt, field.TypeTime)
+	if _u.mutation.DateSupersededCleared() {
+		_spec.ClearField(fact.FieldDateSuperseded, field.TypeTime)
 	}
 	if value, ok := _u.mutation.SupersededBy(); ok {
 		_spec.SetField(fact.FieldSupersededBy, field.TypeUuid, value)

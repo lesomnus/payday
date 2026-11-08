@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/fact_svc.g.proto.
  */
 export const file_app_payday_fact_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChthcHAvcGF5ZGF5L2ZhY3Rfc3ZjLmcucHJvdG8SA2FwcCLsAgoORmFjdEFkZFJlcXVlc3QSCgoCaWQYASABKAwSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIZCgpzdWJqZWN0X2lkGAggASgMQgWqAQIIAhISCgNrZXkYCSABKAlCBaoBAggCEhQKBXZhbHVlGAogASgJQgWqAQIIAhIUCgxmaWVsZF9udW1iZXIYDCABKA0SMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZkb21haW4YECABKA0SLgoKdmFsaWRfZnJvbRgRIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoIZXZlbnRfaWQYEyABKAxCBaoBAggCEjEKDXN1cGVyc2VkZWRfYXQYFCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKDXN1cGVyc2VkZWRfYnkYFSABKAwiOAoSRmFjdEFkZE1hbnlSZXF1ZXN0EiIKBWl0ZW1zGAEgAygLMhMuYXBwLkZhY3RBZGRSZXF1ZXN0Ii8KE0ZhY3RBZGRNYW55UmVzcG9uc2USGAoFaXRlbXMYASADKAsyCS5hcHAuRmFjdCJMCg5GYWN0R2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuRmFjdFNlbGVjdCIeCgdGYWN0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IpICCgpGYWN0U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EhIKCnN1YmplY3RfaWQYCCABKAgSCwoDa2V5GAkgASgIEg0KBXZhbHVlGAogASgIEhQKDGZpZWxkX251bWJlchgMIAEoCBIUCgxkYXRlX3VwZGF0ZWQYDSABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEg4KBmRvbWFpbhgQIAEoCBISCgp2YWxpZF9mcm9tGBEgASgIEhAKCGV2ZW50X2lkGBMgASgIEhUKDXN1cGVyc2VkZWRfYXQYFCABKAgSFQoNc3VwZXJzZWRlZF9ieRgVIAEoCCKVAwoQRmFjdFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhISCgpzdWJqZWN0X2lkGBAgASgMEgsKA2tleRgSIAEoCRINCgV2YWx1ZRgUIAEoCRIUCgxmaWVsZF9udW1iZXIYGCABKA0SMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgSDgoGZG9tYWluGCAgASgNEi4KCnZhbGlkX2Zyb20YIiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGV2ZW50X2lkGCYgASgMEjEKDXN1cGVyc2VkZWRfYXQYKCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEnN1cGVyc2VkZWRfYXRfbnVsbBgpIAEoCBIVCg1zdXBlcnNlZGVkX2J5GCogASgMEhoKEnN1cGVyc2VkZWRfYnlfbnVsbBgrIAEoCCJKChBGYWN0QXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5GYWN0UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2gidgoPRmFjdExpc3RSZXF1ZXN0EiAKB2ZpbHRlcnMYASADKAsyDy5hcHAuRmFjdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAIiQQoQRmFjdExpc3RSZXNwb25zZRIYCgVpdGVtcxgBIAMoCzIJLmFwcC5GYWN0EhMKBG5leHQYAiABKAlCBaoBAggCIlEKCkZhY3RGaWx0ZXISGQoDcmVmGAEgASgLMgwuYXBwLkZhY3RSZWYSEgoKc3ViamVjdF9pZBgCIAEoDBIUCgxmaWVsZF9udW1iZXIYAyABKA0ypAIKC0ZhY3RTZXJ2aWNlEiUKA0FkZBITLmFwcC5GYWN0QWRkUmVxdWVzdBoJLmFwcC5GYWN0EjwKB0FkZE1hbnkSFy5hcHAuRmFjdEFkZE1hbnlSZXF1ZXN0GhguYXBwLkZhY3RBZGRNYW55UmVzcG9uc2USJQoDR2V0EhMuYXBwLkZhY3RHZXRSZXF1ZXN0GgkuYXBwLkZhY3QSKQoFUGF0Y2gSFS5hcHAuRmFjdFBhdGNoUmVxdWVzdBoJLmFwcC5GYWN0EikKBUFwcGx5EhUuYXBwLkZhY3RBcHBseVJlcXVlc3QaCS5hcHAuRmFjdBIzCgRMaXN0EhQuYXBwLkZhY3RMaXN0UmVxdWVzdBoVLmFwcC5GYWN0TGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_fact, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChthcHAvcGF5ZGF5L2ZhY3Rfc3ZjLmcucHJvdG8SA2FwcCLuAgoORmFjdEFkZFJlcXVlc3QSCgoCaWQYASABKAwSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIZCgpzdWJqZWN0X2lkGAggASgMQgWqAQIIAhISCgNrZXkYCSABKAlCBaoBAggCEhQKBXZhbHVlGAogASgJQgWqAQIIAhIUCgxmaWVsZF9udW1iZXIYDCABKA0SMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIOCgZkb21haW4YECABKA0SLgoKZGF0ZV9zdGFydBgRIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoIZXZlbnRfaWQYEyABKAxCBaoBAggCEjMKD2RhdGVfc3VwZXJzZWRlZBgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNc3VwZXJzZWRlZF9ieRgVIAEoDCI4ChJGYWN0QWRkTWFueVJlcXVlc3QSIgoFaXRlbXMYASADKAsyEy5hcHAuRmFjdEFkZFJlcXVlc3QiLwoTRmFjdEFkZE1hbnlSZXNwb25zZRIYCgVpdGVtcxgBIAMoCzIJLmFwcC5GYWN0IkwKDkZhY3RHZXRSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5GYWN0UmVmEh8KBnNlbGVjdBgCIAEoCzIPLmFwcC5GYWN0U2VsZWN0Ih4KB0ZhY3RSZWYSDAoCaWQYASABKAxIAEIFCgNrZXkilAIKCkZhY3RTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSEgoKc3ViamVjdF9pZBgIIAEoCBILCgNrZXkYCSABKAgSDQoFdmFsdWUYCiABKAgSFAoMZmllbGRfbnVtYmVyGAwgASgIEhQKDGRhdGVfdXBkYXRlZBgNIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgSDgoGZG9tYWluGBAgASgIEhIKCmRhdGVfc3RhcnQYESABKAgSEAoIZXZlbnRfaWQYEyABKAgSFwoPZGF0ZV9zdXBlcnNlZGVkGBQgASgIEhUKDXN1cGVyc2VkZWRfYnkYFSABKAgimQMKEEZhY3RQYXRjaFJlcXVlc3QSGQoDcmVmGAEgASgLMgwuYXBwLkZhY3RSZWYSEgoKc3ViamVjdF9pZBgQIAEoDBILCgNrZXkYEiABKAkSDQoFdmFsdWUYFCABKAkSFAoMZmllbGRfbnVtYmVyGBggASgNEjAKDGRhdGVfdXBkYXRlZBgaIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV91cGRhdGVkX2ZvcmNlGBsgASgIEg4KBmRvbWFpbhggIAEoDRIuCgpkYXRlX3N0YXJ0GCIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghldmVudF9pZBgmIAEoDBIzCg9kYXRlX3N1cGVyc2VkZWQYKCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhwKFGRhdGVfc3VwZXJzZWRlZF9udWxsGCkgASgIEhUKDXN1cGVyc2VkZWRfYnkYKiABKAwSGgoSc3VwZXJzZWRlZF9ieV9udWxsGCsgASgIIkoKEEZhY3RBcHBseVJlcXVlc3QSGQoDcmVmGAEgASgLMgwuYXBwLkZhY3RSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCJ2Cg9GYWN0TGlzdFJlcXVlc3QSIAoHZmlsdGVycxgBIAMoCzIPLmFwcC5GYWN0RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAhIWCgdyZXZlcnNlGAQgASgIQgWqAQIIAiJBChBGYWN0TGlzdFJlc3BvbnNlEhgKBWl0ZW1zGAEgAygLMgkuYXBwLkZhY3QSEwoEbmV4dBgCIAEoCUIFqgECCAIiUQoKRmFjdEZpbHRlchIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhISCgpzdWJqZWN0X2lkGAIgASgMEhQKDGZpZWxkX251bWJlchgDIAEoDTKkAgoLRmFjdFNlcnZpY2USJQoDQWRkEhMuYXBwLkZhY3RBZGRSZXF1ZXN0GgkuYXBwLkZhY3QSPAoHQWRkTWFueRIXLmFwcC5GYWN0QWRkTWFueVJlcXVlc3QaGC5hcHAuRmFjdEFkZE1hbnlSZXNwb25zZRIlCgNHZXQSEy5hcHAuRmFjdEdldFJlcXVlc3QaCS5hcHAuRmFjdBIpCgVQYXRjaBIVLmFwcC5GYWN0UGF0Y2hSZXF1ZXN0GgkuYXBwLkZhY3QSKQoFQXBwbHkSFS5hcHAuRmFjdEFwcGx5UmVxdWVzdBoJLmFwcC5GYWN0EjMKBExpc3QSFC5hcHAuRmFjdExpc3RSZXF1ZXN0GhUuYXBwLkZhY3RMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_fact, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.FactAddRequest
@@ -65,9 +65,9 @@ export type FactAddRequest = Message<"app.FactAddRequest"> & {
   domain: number;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_from = 17;
+   * @generated from field: google.protobuf.Timestamp date_start = 17;
    */
-  validFrom?: Timestamp | undefined;
+  dateStart?: Timestamp | undefined;
 
   /**
    * @generated from field: bytes event_id = 19 [features.field_presence = IMPLICIT];
@@ -75,9 +75,9 @@ export type FactAddRequest = Message<"app.FactAddRequest"> & {
   eventId: Uint8Array;
 
   /**
-   * @generated from field: google.protobuf.Timestamp superseded_at = 20;
+   * @generated from field: google.protobuf.Timestamp date_superseded = 20;
    */
-  supersededAt?: Timestamp | undefined;
+  dateSuperseded?: Timestamp | undefined;
 
   /**
    * @generated from field: bytes superseded_by = 21;
@@ -221,9 +221,9 @@ export type FactSelect = Message<"app.FactSelect"> & {
   domain: boolean;
 
   /**
-   * @generated from field: bool valid_from = 17;
+   * @generated from field: bool date_start = 17;
    */
-  validFrom: boolean;
+  dateStart: boolean;
 
   /**
    * @generated from field: bool event_id = 19;
@@ -231,9 +231,9 @@ export type FactSelect = Message<"app.FactSelect"> & {
   eventId: boolean;
 
   /**
-   * @generated from field: bool superseded_at = 20;
+   * @generated from field: bool date_superseded = 20;
    */
-  supersededAt: boolean;
+  dateSuperseded: boolean;
 
   /**
    * @generated from field: bool superseded_by = 21;
@@ -307,9 +307,9 @@ export type FactPatchRequest = Message<"app.FactPatchRequest"> & {
   domain: number;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_from = 34;
+   * @generated from field: google.protobuf.Timestamp date_start = 34;
    */
-  validFrom?: Timestamp | undefined;
+  dateStart?: Timestamp | undefined;
 
   /**
    * @generated from field: bytes event_id = 38;
@@ -317,19 +317,19 @@ export type FactPatchRequest = Message<"app.FactPatchRequest"> & {
   eventId: Uint8Array;
 
   /**
-   * @generated from field: google.protobuf.Timestamp superseded_at = 40;
+   * @generated from field: google.protobuf.Timestamp date_superseded = 40;
    */
-  supersededAt?: Timestamp | undefined;
+  dateSuperseded?: Timestamp | undefined;
 
   /**
-   * Clear superseded_at instead of writing it.
+   * Clear date_superseded instead of writing it.
    * It takes a field of its own because an unset value already means
    * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and superseded_at clears.
+   * outright: setting both this and date_superseded clears.
    *
-   * @generated from field: bool superseded_at_null = 41;
+   * @generated from field: bool date_superseded_null = 41;
    */
-  supersededAtNull: boolean;
+  dateSupersededNull: boolean;
 
   /**
    * @generated from field: bytes superseded_by = 42;

@@ -41,22 +41,22 @@ const (
 // 17 are the ones an app adopting its own events into this table has needed --
 // and indexes, and nothing else.
 type Event struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant      *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Kind        string                 `protobuf:"bytes,8,opt,name=kind"`
-	xxx_hidden_ActorId     []byte                 `protobuf:"bytes,9,opt,name=actor_id,json=actorId"`
-	xxx_hidden_OccurredAt  *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=occurred_at,json=occurredAt"`
-	xxx_hidden_Reason      string                 `protobuf:"bytes,11,opt,name=reason"`
-	xxx_hidden_SubjectId   []byte                 `protobuf:"bytes,12,opt,name=subject_id,json=subjectId"`
-	xxx_hidden_DateUpdated *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
-	xxx_hidden_DateCreated *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_TraceId     []byte                 `protobuf:"bytes,16,opt,name=trace_id,json=traceId"`
-	xxx_hidden_CauseId     []byte                 `protobuf:"bytes,18,opt,name=cause_id,json=causeId"`
-	xxx_hidden_Value       *anypb.Any             `protobuf:"bytes,19,opt,name=value"`
-	xxx_hidden_Desc        string                 `protobuf:"bytes,6,opt,name=desc"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id           []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant       *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Kind         string                 `protobuf:"bytes,8,opt,name=kind"`
+	xxx_hidden_ActorId      []byte                 `protobuf:"bytes,9,opt,name=actor_id,json=actorId"`
+	xxx_hidden_DateOccurred *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_occurred,json=dateOccurred"`
+	xxx_hidden_Reason       string                 `protobuf:"bytes,11,opt,name=reason"`
+	xxx_hidden_SubjectId    []byte                 `protobuf:"bytes,12,opt,name=subject_id,json=subjectId"`
+	xxx_hidden_DateUpdated  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
+	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_TraceId      []byte                 `protobuf:"bytes,16,opt,name=trace_id,json=traceId"`
+	xxx_hidden_CauseId      []byte                 `protobuf:"bytes,18,opt,name=cause_id,json=causeId"`
+	xxx_hidden_Value        *anypb.Any             `protobuf:"bytes,19,opt,name=value"`
+	xxx_hidden_Desc         string                 `protobuf:"bytes,6,opt,name=desc"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Event) Reset() {
@@ -112,9 +112,9 @@ func (x *Event) GetActorId() []byte {
 	return nil
 }
 
-func (x *Event) GetOccurredAt() *timestamppb.Timestamp {
+func (x *Event) GetDateOccurred() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_OccurredAt
+		return x.xxx_hidden_DateOccurred
 	}
 	return nil
 }
@@ -197,8 +197,8 @@ func (x *Event) SetActorId(v []byte) {
 	x.xxx_hidden_ActorId = v
 }
 
-func (x *Event) SetOccurredAt(v *timestamppb.Timestamp) {
-	x.xxx_hidden_OccurredAt = v
+func (x *Event) SetDateOccurred(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateOccurred = v
 }
 
 func (x *Event) SetReason(v string) {
@@ -249,11 +249,11 @@ func (x *Event) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
-func (x *Event) HasOccurredAt() bool {
+func (x *Event) HasDateOccurred() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_OccurredAt != nil
+	return x.xxx_hidden_DateOccurred != nil
 }
 
 func (x *Event) HasDateUpdated() bool {
@@ -281,8 +281,8 @@ func (x *Event) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
-func (x *Event) ClearOccurredAt() {
-	x.xxx_hidden_OccurredAt = nil
+func (x *Event) ClearDateOccurred() {
+	x.xxx_hidden_DateOccurred = nil
 }
 
 func (x *Event) ClearDateUpdated() {
@@ -308,7 +308,7 @@ type Event_builder struct {
 	// The holder that asked, and empty for the deployment's own work.
 	ActorId []byte
 	// When it happened, which is not always when it was written down.
-	OccurredAt *timestamppb.Timestamp
+	DateOccurred *timestamppb.Timestamp
 	// Why, in the words of whoever asked. Free text, and nothing can tell whether
 	// somebody is named in it, so it is personal: the trail records that it was
 	// written and never what it said.
@@ -347,7 +347,7 @@ func (b0 Event_builder) Build() *Event {
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Kind = b.Kind
 	x.xxx_hidden_ActorId = b.ActorId
-	x.xxx_hidden_OccurredAt = b.OccurredAt
+	x.xxx_hidden_DateOccurred = b.DateOccurred
 	x.xxx_hidden_Reason = b.Reason
 	x.xxx_hidden_SubjectId = b.SubjectId
 	x.xxx_hidden_DateUpdated = b.DateUpdated
@@ -363,15 +363,14 @@ var File_app_payday_event_proto protoreflect.FileDescriptor
 
 const file_app_payday_event_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xc6\x06\n" +
+	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xcc\x06\n" +
 	"\x05Event\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1a\n" +
 	"\x04kind\x18\b \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04kind\x12#\n" +
-	"\bactor_id\x18\t \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\aactorId\x12D\n" +
-	"\voccurred_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\n" +
-	"occurredAt\x12\x1e\n" +
+	"\bactor_id\x18\t \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\aactorId\x12H\n" +
+	"\rdate_occurred\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\fdateOccurred\x12\x1e\n" +
 	"\x06reason\x18\v \x01(\tB\x06\xaa\xc1\x16\x02\x18\x01R\x06reason\x12'\n" +
 	"\n" +
 	"subject_id\x18\f \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\tsubjectId\x12F\n" +
@@ -380,14 +379,14 @@ const file_app_payday_event_proto_rawDesc = "" +
 	"\btrace_id\x18\x10 \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\x18\x00R\atraceId\x12)\n" +
 	"\bcause_id\x18\x12 \x01(\fB\x0e\xea\x82\x16\x04\x10@8\x01\xaa\xc1\x16\x02(\x01R\acauseId\x128\n" +
 	"\x05value\x18\x13 \x01(\v2\x14.google.protobuf.AnyB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x18\x00R\x05value\x12\x1a\n" +
-	"\x04desc\x18\x06 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04desc:\xe5\x01\xca\xfc\x15{\x12\b\x82\x01\x02\x12\x00\x8a\x01\x00\x1a,\x12\x04page\x1a\n" +
+	"\x04desc\x18\x06 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04desc:\xe7\x01\xca\xfc\x15}\x12\b\x82\x01\x02\x12\x00\x8a\x01\x00\x1a,\x12\x04page\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +
-	"\x02id\x10\x01\x1a*\x12\asubject\x1a\x0e\n" +
+	"\x02id\x10\x01\x1a,\x12\asubject\x1a\x0e\n" +
 	"\n" +
-	"subject_id\x10\f\x1a\x0f\n" +
-	"\voccurred_at\x10\n" +
+	"subject_id\x10\f\x1a\x11\n" +
+	"\rdate_occurred\x10\n" +
 	"\x1a\x15\x12\x05cause\x1a\f\n" +
 	"\bcause_id\x10\x12\x8a\xbb\x16b\b\x112X\n" +
 	"\x12\n" +
@@ -415,7 +414,7 @@ var file_app_payday_event_proto_goTypes = []any{
 }
 var file_app_payday_event_proto_depIdxs = []int32{
 	1, // 0: app.Event.tenant:type_name -> app.Tenant
-	2, // 1: app.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	2, // 1: app.Event.date_occurred:type_name -> google.protobuf.Timestamp
 	2, // 2: app.Event.date_updated:type_name -> google.protobuf.Timestamp
 	2, // 3: app.Event.date_created:type_name -> google.protobuf.Timestamp
 	3, // 4: app.Event.value:type_name -> google.protobuf.Any

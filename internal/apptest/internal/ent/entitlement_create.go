@@ -74,30 +74,30 @@ func (_c *EntitlementCreate) SetNillableDateCreated(v *time.Time) *EntitlementCr
 	return _c
 }
 
-// SetValidFrom sets the "valid_from" field.
-func (_c *EntitlementCreate) SetValidFrom(v time.Time) *EntitlementCreate {
-	_c.mutation.SetValidFrom(v)
+// SetDateEffective sets the "date_effective" field.
+func (_c *EntitlementCreate) SetDateEffective(v time.Time) *EntitlementCreate {
+	_c.mutation.SetDateEffective(v)
 	return _c
 }
 
-// SetNillableValidFrom sets the "valid_from" field if the given value is not nil.
-func (_c *EntitlementCreate) SetNillableValidFrom(v *time.Time) *EntitlementCreate {
+// SetNillableDateEffective sets the "date_effective" field if the given value is not nil.
+func (_c *EntitlementCreate) SetNillableDateEffective(v *time.Time) *EntitlementCreate {
 	if v != nil {
-		_c.SetValidFrom(*v)
+		_c.SetDateEffective(*v)
 	}
 	return _c
 }
 
-// SetValidUntil sets the "valid_until" field.
-func (_c *EntitlementCreate) SetValidUntil(v time.Time) *EntitlementCreate {
-	_c.mutation.SetValidUntil(v)
+// SetDateExpires sets the "date_expires" field.
+func (_c *EntitlementCreate) SetDateExpires(v time.Time) *EntitlementCreate {
+	_c.mutation.SetDateExpires(v)
 	return _c
 }
 
-// SetNillableValidUntil sets the "valid_until" field if the given value is not nil.
-func (_c *EntitlementCreate) SetNillableValidUntil(v *time.Time) *EntitlementCreate {
+// SetNillableDateExpires sets the "date_expires" field if the given value is not nil.
+func (_c *EntitlementCreate) SetNillableDateExpires(v *time.Time) *EntitlementCreate {
 	if v != nil {
-		_c.SetValidUntil(*v)
+		_c.SetDateExpires(*v)
 	}
 	return _c
 }
@@ -259,13 +259,13 @@ func (_c *EntitlementCreate) createSpec() (*Entitlement, *sqlgraph.CreateSpec) {
 		_spec.SetField(entitlement.FieldDateCreated, field.TypeTime, value)
 		_node.DateCreated = value
 	}
-	if value, ok := _c.mutation.ValidFrom(); ok {
-		_spec.SetField(entitlement.FieldValidFrom, field.TypeTime, value)
-		_node.ValidFrom = &value
+	if value, ok := _c.mutation.DateEffective(); ok {
+		_spec.SetField(entitlement.FieldDateEffective, field.TypeTime, value)
+		_node.DateEffective = &value
 	}
-	if value, ok := _c.mutation.ValidUntil(); ok {
-		_spec.SetField(entitlement.FieldValidUntil, field.TypeTime, value)
-		_node.ValidUntil = value
+	if value, ok := _c.mutation.DateExpires(); ok {
+		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, value)
+		_node.DateExpires = value
 	}
 	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

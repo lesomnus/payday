@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/stint_svc.g.proto.
  */
 export const file_app_stint_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvc3RpbnRfc3ZjLmcucHJvdG8SA2FwcCL/AQoPU3RpbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFwoIcm9ib3RfaWQYCCABKAxCBaoBAggCEi4KCnZhbGlkX2Zyb20YCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCHZhbGlkX3RvGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCghldmVudF9pZBgLIAEoDEIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIfCghTdGludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSKdAQoLU3RpbnRTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSEAoIcm9ib3RfaWQYCCABKAgSEgoKdmFsaWRfZnJvbRgJIAEoCBIQCgh2YWxpZF90bxgKIAEoCBIQCghldmVudF9pZBgLIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiTwoPU3RpbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5TdGludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuU3RpbnRTZWxlY3QiyAEKEVN0aW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5TdGludFJlZhIQCghyb2JvdF9pZBgQIAEoDBIuCgp2YWxpZF9mcm9tGBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCgh2YWxpZF90bxgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNdmFsaWRfdG9fbnVsbBgVIAEoCBIQCghldmVudF9pZBgWIAEoDCJMChFTdGludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJTdGludEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIMusBCgxTdGludFNlcnZpY2USJwoDQWRkEhQuYXBwLlN0aW50QWRkUmVxdWVzdBoKLmFwcC5TdGludBInCgNHZXQSFC5hcHAuU3RpbnRHZXRSZXF1ZXN0GgouYXBwLlN0aW50EisKBVBhdGNoEhYuYXBwLlN0aW50UGF0Y2hSZXF1ZXN0GgouYXBwLlN0aW50EisKBUFwcGx5EhYuYXBwLlN0aW50QXBwbHlSZXF1ZXN0GgouYXBwLlN0aW50Ei8KBUVyYXNlEg0uYXBwLlN0aW50UmVmGhcuYXBwLlN0aW50RXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant_svc_g, file_app_stint, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChVhcHAvc3RpbnRfc3ZjLmcucHJvdG8SA2FwcCL/AQoPU3RpbnRBZGRSZXF1ZXN0EgoKAmlkGAEgASgMEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFwoIcm9ib3RfaWQYCCABKAxCBaoBAggCEi4KCmRhdGVfc3RhcnQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGRhdGVfZW5kGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIXCghldmVudF9pZBgLIAEoDEIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIfCghTdGludFJlZhIMCgJpZBgBIAEoDEgAQgUKA2tleSKdAQoLU3RpbnRTZWxlY3QSCwoDYWxsGAEgASgIEiEKBnRlbmFudBgCIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QSEAoIcm9ib3RfaWQYCCABKAgSEgoKZGF0ZV9zdGFydBgJIAEoCBIQCghkYXRlX2VuZBgKIAEoCBIQCghldmVudF9pZBgLIAEoCBIUCgxkYXRlX2NyZWF0ZWQYDyABKAgiTwoPU3RpbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5TdGludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuU3RpbnRTZWxlY3QiyAEKEVN0aW50UGF0Y2hSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5TdGludFJlZhIQCghyb2JvdF9pZBgQIAEoDBIuCgpkYXRlX3N0YXJ0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghkYXRlX2VuZBgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGF0ZV9lbmRfbnVsbBgVIAEoCBIQCghldmVudF9pZBgWIAEoDCJMChFTdGludEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJTdGludEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIMusBCgxTdGludFNlcnZpY2USJwoDQWRkEhQuYXBwLlN0aW50QWRkUmVxdWVzdBoKLmFwcC5TdGludBInCgNHZXQSFC5hcHAuU3RpbnRHZXRSZXF1ZXN0GgouYXBwLlN0aW50EisKBVBhdGNoEhYuYXBwLlN0aW50UGF0Y2hSZXF1ZXN0GgouYXBwLlN0aW50EisKBUFwcGx5EhYuYXBwLlN0aW50QXBwbHlSZXF1ZXN0GgouYXBwLlN0aW50Ei8KBUVyYXNlEg0uYXBwLlN0aW50UmVmGhcuYXBwLlN0aW50RXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant_svc_g, file_app_stint, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.StintAddRequest
@@ -43,14 +43,14 @@ export type StintAddRequest = Message<"app.StintAddRequest"> & {
   robotId: Uint8Array;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_from = 9;
+   * @generated from field: google.protobuf.Timestamp date_start = 9;
    */
-  validFrom?: Timestamp | undefined;
+  dateStart?: Timestamp | undefined;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_to = 10;
+   * @generated from field: google.protobuf.Timestamp date_end = 10;
    */
-  validTo?: Timestamp | undefined;
+  dateEnd?: Timestamp | undefined;
 
   /**
    * @generated from field: bytes event_id = 11 [features.field_presence = IMPLICIT];
@@ -113,14 +113,14 @@ export type StintSelect = Message<"app.StintSelect"> & {
   robotId: boolean;
 
   /**
-   * @generated from field: bool valid_from = 9;
+   * @generated from field: bool date_start = 9;
    */
-  validFrom: boolean;
+  dateStart: boolean;
 
   /**
-   * @generated from field: bool valid_to = 10;
+   * @generated from field: bool date_end = 10;
    */
-  validTo: boolean;
+  dateEnd: boolean;
 
   /**
    * @generated from field: bool event_id = 11;
@@ -177,24 +177,24 @@ export type StintPatchRequest = Message<"app.StintPatchRequest"> & {
   robotId: Uint8Array;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_from = 18;
+   * @generated from field: google.protobuf.Timestamp date_start = 18;
    */
-  validFrom?: Timestamp | undefined;
+  dateStart?: Timestamp | undefined;
 
   /**
-   * @generated from field: google.protobuf.Timestamp valid_to = 20;
+   * @generated from field: google.protobuf.Timestamp date_end = 20;
    */
-  validTo?: Timestamp | undefined;
+  dateEnd?: Timestamp | undefined;
 
   /**
-   * Clear valid_to instead of writing it.
+   * Clear date_end instead of writing it.
    * It takes a field of its own because an unset value already means
    * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and valid_to clears.
+   * outright: setting both this and date_end clears.
    *
-   * @generated from field: bool valid_to_null = 21;
+   * @generated from field: bool date_end_null = 21;
    */
-  validToNull: boolean;
+  dateEndNull: boolean;
 
   /**
    * @generated from field: bytes event_id = 22;

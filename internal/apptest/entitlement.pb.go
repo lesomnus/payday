@@ -97,20 +97,20 @@ func (x EntitlementValue) Number() protoreflect.EnumNumber {
 // them. An overlay in `proto/ext/payday/entitlement.ext.proto` adds indexes,
 // and fields at the numbers left empty.
 type Entitlement struct {
-	state                   protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id           []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Tenant       *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
-	xxx_hidden_Key          string                 `protobuf:"bytes,8,opt,name=key"`
-	xxx_hidden_Value        EntitlementValue       `protobuf:"varint,9,opt,name=value,enum=app.EntitlementValue"`
-	xxx_hidden_Amount       int64                  `protobuf:"varint,10,opt,name=amount"`
-	xxx_hidden_GrantId      []byte                 `protobuf:"bytes,11,opt,name=grant_id,json=grantId"`
-	xxx_hidden_GrantVersion uint64                 `protobuf:"varint,12,opt,name=grant_version,json=grantVersion"`
-	xxx_hidden_DateUpdated  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
-	xxx_hidden_DateCreated  *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
-	xxx_hidden_ValidFrom    *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=valid_from,json=validFrom"`
-	xxx_hidden_ValidUntil   *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=valid_until,json=validUntil"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id            []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Tenant        *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Key           string                 `protobuf:"bytes,8,opt,name=key"`
+	xxx_hidden_Value         EntitlementValue       `protobuf:"varint,9,opt,name=value,enum=app.EntitlementValue"`
+	xxx_hidden_Amount        int64                  `protobuf:"varint,10,opt,name=amount"`
+	xxx_hidden_GrantId       []byte                 `protobuf:"bytes,11,opt,name=grant_id,json=grantId"`
+	xxx_hidden_GrantVersion  uint64                 `protobuf:"varint,12,opt,name=grant_version,json=grantVersion"`
+	xxx_hidden_DateUpdated   *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
+	xxx_hidden_DateCreated   *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
+	xxx_hidden_DateEffective *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=date_effective,json=dateEffective"`
+	xxx_hidden_DateExpires   *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=date_expires,json=dateExpires"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Entitlement) Reset() {
@@ -201,16 +201,16 @@ func (x *Entitlement) GetDateCreated() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Entitlement) GetValidFrom() *timestamppb.Timestamp {
+func (x *Entitlement) GetDateEffective() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidFrom
+		return x.xxx_hidden_DateEffective
 	}
 	return nil
 }
 
-func (x *Entitlement) GetValidUntil() *timestamppb.Timestamp {
+func (x *Entitlement) GetDateExpires() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_ValidUntil
+		return x.xxx_hidden_DateExpires
 	}
 	return nil
 }
@@ -257,12 +257,12 @@ func (x *Entitlement) SetDateCreated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateCreated = v
 }
 
-func (x *Entitlement) SetValidFrom(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidFrom = v
+func (x *Entitlement) SetDateEffective(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateEffective = v
 }
 
-func (x *Entitlement) SetValidUntil(v *timestamppb.Timestamp) {
-	x.xxx_hidden_ValidUntil = v
+func (x *Entitlement) SetDateExpires(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateExpires = v
 }
 
 func (x *Entitlement) HasTenant() bool {
@@ -286,18 +286,18 @@ func (x *Entitlement) HasDateCreated() bool {
 	return x.xxx_hidden_DateCreated != nil
 }
 
-func (x *Entitlement) HasValidFrom() bool {
+func (x *Entitlement) HasDateEffective() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidFrom != nil
+	return x.xxx_hidden_DateEffective != nil
 }
 
-func (x *Entitlement) HasValidUntil() bool {
+func (x *Entitlement) HasDateExpires() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_ValidUntil != nil
+	return x.xxx_hidden_DateExpires != nil
 }
 
 func (x *Entitlement) ClearTenant() {
@@ -312,12 +312,12 @@ func (x *Entitlement) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
 }
 
-func (x *Entitlement) ClearValidFrom() {
-	x.xxx_hidden_ValidFrom = nil
+func (x *Entitlement) ClearDateEffective() {
+	x.xxx_hidden_DateEffective = nil
 }
 
-func (x *Entitlement) ClearValidUntil() {
-	x.xxx_hidden_ValidUntil = nil
+func (x *Entitlement) ClearDateExpires() {
+	x.xxx_hidden_DateExpires = nil
 }
 
 type Entitlement_builder struct {
@@ -340,11 +340,11 @@ type Entitlement_builder struct {
 	GrantVersion uint64
 	DateUpdated  *timestamppb.Timestamp
 	DateCreated  *timestamppb.Timestamp
-	// ValidFrom and ValidUntil are the grant's window: in force from the one,
-	// and no longer from the other. A grant may say no beginning, which is from
-	// always; every grant says when it ends.
-	ValidFrom  *timestamppb.Timestamp
-	ValidUntil *timestamppb.Timestamp
+	// DateEffective and DateExpires are the grant's window: in force from the
+	// one, and no longer from the other. A grant may say no beginning, which is
+	// from always; every grant says when it ends.
+	DateEffective *timestamppb.Timestamp
+	DateExpires   *timestamppb.Timestamp
 }
 
 func (b0 Entitlement_builder) Build() *Entitlement {
@@ -360,8 +360,8 @@ func (b0 Entitlement_builder) Build() *Entitlement {
 	x.xxx_hidden_GrantVersion = b.GrantVersion
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
-	x.xxx_hidden_ValidFrom = b.ValidFrom
-	x.xxx_hidden_ValidUntil = b.ValidUntil
+	x.xxx_hidden_DateEffective = b.DateEffective
+	x.xxx_hidden_DateExpires = b.DateExpires
 	return m0
 }
 
@@ -369,7 +369,7 @@ var File_app_payday_entitlement_proto protoreflect.FileDescriptor
 
 const file_app_payday_entitlement_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/entitlement.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xec\x04\n" +
+	"\x1capp/payday/entitlement.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xf6\x04\n" +
 	"\vEntitlement\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1e\n" +
@@ -380,11 +380,9 @@ const file_app_payday_entitlement_proto_rawDesc = "" +
 	"\bgrant_id\x18\v \x01(\fB\b\xea\x82\x16\x04\x10\f@\x01R\agrantId\x12#\n" +
 	"\rgrant_version\x18\f \x01(\x04R\fgrantVersion\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12A\n" +
-	"\n" +
-	"valid_from\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xea\x82\x16\x028\x01R\tvalidFrom\x12D\n" +
-	"\vvalid_until\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\n" +
-	"validUntil:I\xca\xfc\x155\x1a\x17\x12\x05grant\x1a\f\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12I\n" +
+	"\x0edate_effective\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xea\x82\x16\x028\x01R\rdateEffective\x12F\n" +
+	"\fdate_expires\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\vdateExpires:I\xca\xfc\x155\x1a\x17\x12\x05grant\x1a\f\n" +
 	"\bgrant_id\x10\v0\x01\x1a\x1a\x12\x03key\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x02\x1a\a\n" +
@@ -411,8 +409,8 @@ var file_app_payday_entitlement_proto_depIdxs = []int32{
 	0, // 1: app.Entitlement.value:type_name -> app.EntitlementValue
 	3, // 2: app.Entitlement.date_updated:type_name -> google.protobuf.Timestamp
 	3, // 3: app.Entitlement.date_created:type_name -> google.protobuf.Timestamp
-	3, // 4: app.Entitlement.valid_from:type_name -> google.protobuf.Timestamp
-	3, // 5: app.Entitlement.valid_until:type_name -> google.protobuf.Timestamp
+	3, // 4: app.Entitlement.date_effective:type_name -> google.protobuf.Timestamp
+	3, // 5: app.Entitlement.date_expires:type_name -> google.protobuf.Timestamp
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name

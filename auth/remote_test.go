@@ -144,10 +144,10 @@ func TestIntrospectionIdentity(t *testing.T) {
 
 		at := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 		res, err := auth.Introspection(auth.Identity{
-			Id:       who.String(),
-			TenantId: tenant.String(),
-			Grant:    frame.Whole(),
-			Expires:  at,
+			Id:          who.String(),
+			TenantId:    tenant.String(),
+			Grant:       frame.Whole(),
+			DateExpires: at,
 		})
 		x.NoError(err)
 		x.Equal(who.Bytes(), res.GetId())
@@ -157,7 +157,7 @@ func TestIntrospectionIdentity(t *testing.T) {
 		x.NoError(err)
 		x.Equal(who.String(), got.Id)
 		x.Equal(tenant.String(), got.TenantId)
-		x.True(at.Equal(got.Expires))
+		x.True(at.Equal(got.DateExpires))
 	})
 
 	t.Run("by alias", func(t *testing.T) {
@@ -178,7 +178,7 @@ func TestIntrospectionIdentity(t *testing.T) {
 
 		// No expiry is a credential that does not stop working, and it has to
 		// survive as that rather than as the zero time meaning "long ago".
-		x.True(got.Expires.IsZero())
+		x.True(got.DateExpires.IsZero())
 	})
 
 	t.Run("bytes that are not an identifier are refused", func(t *testing.T) {
