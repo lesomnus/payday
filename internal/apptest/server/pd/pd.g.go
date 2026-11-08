@@ -175,6 +175,7 @@ func init() {
 	pdid.Register("app.Tally", TallyDomain, "tally")
 	pdid.Register("app.Tenant", TenantDomain, "tenant")
 	pdid.Register("shared.Thing", ThingDomain, "thing")
+	pdid.Formerly("app.Droid", RobotDomain, "droid")
 
 	pdid.RegisterTenant(TenantDomain)
 }
@@ -225,6 +226,15 @@ var EventKinds = map[string]protoreflect.MessageType{
 	"past.expire":        (*apptest.PastExpired)(nil).ProtoReflect().Type(),
 	"retract":            (*apptest.Corrected)(nil).ProtoReflect().Type(),
 	"robot.move":         (*apptest.RobotMoved)(nil).ProtoReflect().Type(),
+}
+
+// TableRenames are the tables of this schema's entities that an earlier
+// build made under the name the entity had then (`(payday.entity).formerly`).
+// Hand them to `rename.Tables` first, before `rename.Columns`, `rename.Indexes`
+// and the migration, which otherwise makes each again, empty, beside the one
+// with the rows.
+var TableRenames = []rename.Table{
+	{From: "droid", To: "robot"},
 }
 
 // ColumnRenames are the columns of payday's own entities in this schema that

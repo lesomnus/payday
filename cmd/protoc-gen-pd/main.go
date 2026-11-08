@@ -230,6 +230,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitPayday(out, o.Payday)
 	pdgen.EmitDomains(out, s)
 	pdgen.EmitEventKinds(out, s)
+	pdgen.EmitTableRenames(out, s)
 	pdgen.EmitColumnRenames(out, s)
 	pdgen.EmitIndexRenames(out, s)
 	pdgen.EmitMinter(out, s, paths)

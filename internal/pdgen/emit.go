@@ -145,6 +145,15 @@ func EmitDomains(g *protogen.GeneratedFile, s *Schema) {
 		g.P("	", pkgPdid.Ident("Register"), "(", strconv.Quote(string(v.FullName())), ", ",
 			v.GoName(), "Domain, ", strconv.Quote(v.Name), ")")
 	}
+	// What an earlier build called them, which is read back from what it
+	// wrote down -- a chunk of the trail's archive labelled with the word, a
+	// configuration file that names it (`(payday.entity).formerly`).
+	for _, v := range vs {
+		for _, f := range v.Formerly {
+			g.P("	", pkgPdid.Ident("Formerly"), "(", strconv.Quote(string(f.FullName)), ", ",
+				v.GoName(), "Domain, ", strconv.Quote(f.Name), ")")
+		}
+	}
 	if t := s.Own(pdpb.Own_OWN_TENANT); t != nil {
 		// Which of them is the wall, said as a number rather than as a name,
 		// because the name is the app's: these entities may be in the app's own

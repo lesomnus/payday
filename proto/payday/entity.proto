@@ -275,6 +275,59 @@ message Entity {
     }
   }
 
+  // Formerly is what this entity was called before a build renamed it: each
+  // name its message had, in this package, and the word a person wrote it as
+  // then where that was not the message's in kebab-case.
+  //
+  //	formerly: [{message: "TenantDomain"}]
+  //
+  // # Why a rename says so
+  //
+  // Because an entity's name is written down where nothing moves it. Its
+  // table is named after it, and a migration finds a table by its name: one
+  // renamed is made again, empty, and the rows stay in the old one, which
+  // nothing reads again. The trail's archive labels each chunk with the word
+  // of the kind its rows are about, and a chunk is never written again: one
+  // labelled with a word nothing answers to is of no kind -- kept or destroyed
+  // by the pass about everything else rather than by its own kind's window,
+  // and not read with that kind's rows when they are checked against the
+  // trail. And a configuration file names a kind by that word
+  // (`audit.by.<kind>`).
+  //
+  // Said here, what an earlier build wrote under the old name is read as this
+  // entity's. `pd gen` writes `pd.TableRenames`, which `rename.Tables` moves
+  // before a migration -- the table, with its rows and what ent named after
+  // it -- and registers each name with `pdid.Formerly`, so that the old word
+  // and the old full name are this entity's domain wherever they are read
+  // back.
+  //
+  // # What it does not reach
+  //
+  // A name an earlier build sent rather than kept. The service is the new
+  // name's, and a caller of the old one is answered Unimplemented; its
+  // methods' names are new in the policy an app writes of them. And what the
+  // trail keeps of a write -- its `action`, the message a patch names -- stays
+  // as it was written, which is what a record of what happened is.
+  //
+  // Only ever added to: a deployment may migrate from any build before. And a
+  // name here is never given to another entity, as a domain number is not --
+  // `pd gen` refuses a schema in which one entity is called, or was called,
+  // what another was.
+  repeated Former formerly = 11;
+
+  // Former is a name an entity had. See [Entity.formerly].
+  message Former {
+    // Message is the message's name then, in this package: `TenantDomain`.
+    // Its table was that in lower case, and its full name that in this
+    // package.
+    string message = 1;
+
+    // Name is the word a person wrote it as then. Left out, it is `message`
+    // in kebab-case, as an entity's `name` is -- so it is written only for an
+    // entity that declared its own then.
+    string name = 2;
+  }
+
   // Global is an entity that is not behind the wall -- a table the whole
   // deployment shares.
   //

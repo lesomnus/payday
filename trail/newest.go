@@ -46,8 +46,9 @@ import (
 type Newest struct {
 	a flob.Stores
 
-	// chunks is every chunk the manifest accounts for, by kind; "" is a chunk
-	// that says nothing of its kind, which a format before kinds wrote.
+	// chunks is every chunk the manifest accounts for, by the name of its kind
+	// now ([chunksByKind]); "" is a chunk that says nothing of its kind, which a
+	// format before kinds wrote.
 	chunks map[string][]Chunk
 }
 
@@ -118,12 +119,20 @@ func (p Policy) Newest(ctx context.Context, s Store) (*Newest, error) {
 			"chunks", len(rest), "see", "`trail verify`")
 	}
 
-	n := &Newest{a: x.raw(), chunks: map[string][]Chunk{}}
+	return &Newest{a: x.raw(), chunks: chunksByKind(cs)}, nil
+}
+
+// chunksByKind is `cs` by the name of the kind each is of, as [filed] reads its
+// label: a renamed kind's chunks under its name now, whichever name they were
+// labelled with.
+func chunksByKind(cs []Chunk) map[string][]Chunk {
+	out := map[string][]Chunk{}
 	for _, c := range cs {
-		n.chunks[c.Kind] = append(n.chunks[c.Kind], c)
+		k := filed(c.Kind)
+		out[k] = append(out[k], c)
 	}
 
-	return n, nil
+	return out
 }
 
 // Of is the newest row the archive holds about each of `ids`, all of them

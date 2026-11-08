@@ -1855,10 +1855,7 @@ func (x *pass) carry(ctx context.Context, going []Chunk) {
 		log.From(ctx).WarnContext(ctx, "trail: carrying forward", "err", err)
 		return
 	}
-	n := &Newest{a: x.raw(), chunks: map[string][]Chunk{}}
-	for _, c := range cs {
-		n.chunks[c.Kind] = append(n.chunks[c.Kind], c)
-	}
+	n := &Newest{a: x.raw(), chunks: chunksByKind(cs)}
 
 	for _, d := range slices.Sorted(maps.Keys(byKind)) {
 		lines := byKind[d]
@@ -2082,7 +2079,7 @@ func (p Policy) Preview(ctx context.Context, s Store, tenant pdid.Id, t Tenant) 
 			continue
 		}
 
-		kind := c.Kind
+		kind := filed(c.Kind)
 		if kind == "" {
 			kind = "*"
 		}

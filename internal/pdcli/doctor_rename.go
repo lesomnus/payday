@@ -32,7 +32,7 @@ const renamePkg = "github.com/lesomnus/payday/rename"
 // is handed -- an app that wrote its own list is an app that decided. A test
 // does not count, and neither does generated Go.
 func doctorRenames(l Layout, vs []pdgen.ColumnRename) []Finding {
-	if len(vs) == 0 || callsRenameColumns(l) {
+	if len(vs) == 0 || callsRename(l, "Columns") {
 		return nil
 	}
 
@@ -46,7 +46,7 @@ func doctorRenames(l Layout, vs []pdgen.ColumnRename) []Finding {
 			"made adds each renamed column empty beside the old one, and what the old one holds is no longer read -- "+
 			"on SQLite, a table whose index names one is made again without the old column, and what it held is lost: %s",
 			strings.Join(names, "; ")),
-		Fix: `// in the app's Migrate, before the migration
+		Fix: `// in the app's Migrate, after rename.Tables and before the migration
 if err := rename.Columns(ctx, s.Db, s.Dialect, pd.ColumnRenames); err != nil {
 	return err
 }
@@ -55,9 +55,40 @@ docs/migrating.md has the rest.`,
 	}}
 }
 
-// callsRenameColumns is whether the app's own Go, outside its tests and what
-// is generated, calls `rename.Columns`.
-func callsRenameColumns(l Layout) bool {
+// A table of an entity the schema renamed (`(payday.entity).formerly`), and
+// nothing that moves it before a migration.
+//
+// It fails as a column does, and worse: a migration finds a table by its name
+// and drops none, so on a store an earlier build made it makes the renamed
+// entity's table again, empty, and every row it had stays in the old one --
+// the schema check a server makes before serving passes, and the app serves
+// an empty table. Read off the app's own Go, as the column's step is.
+func doctorTableRenames(l Layout, vs []pdgen.TableRename) []Finding {
+	if len(vs) == 0 || callsRename(l, "Tables") {
+		return nil
+	}
+
+	names := make([]string, len(vs))
+	for i, v := range vs {
+		names[i] = fmt.Sprintf("%s, which an earlier build called %s", v.To, v.From)
+	}
+
+	return []Finding{{
+		What: fmt.Sprintf("nothing hands pd.TableRenames to rename.Tables, so a migration of a store an earlier build "+
+			"made makes each renamed entity's table again, empty, and its rows stay in the old one, read by nothing: %s",
+			strings.Join(names, "; ")),
+		Fix: `// first in the app's Migrate: before rename.Columns, rename.Indexes and the migration
+if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
+	return err
+}
+
+docs/migrating.md has the rest.`,
+	}}
+}
+
+// callsRename is whether the app's own Go, outside its tests and what is
+// generated, calls `rename.<fn>`.
+func callsRename(l Layout, fn string) bool {
 	found := false
 	_ = filepath.WalkDir(l.Work, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || found {
@@ -90,7 +121,7 @@ func callsRenameColumns(l Layout) bool {
 				return !found
 			}
 			sel, ok := c.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "Columns" {
+			if !ok || sel.Sel.Name != fn {
 				return !found
 			}
 			if x, ok := sel.X.(*ast.Ident); ok && x.Name == rename {

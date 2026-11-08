@@ -328,6 +328,14 @@ message Robot {
   };
   option (payday.entity) = {
     domain: 7
+    // What it was called before, said as an app that renamed an entity says
+    // it: a store an earlier build made holds the robots in `droid`, which
+    // `cli.Migrate` moves here before anything else (`pd.TableRenames`), and
+    // the word `droid` reads as this domain still (`pdid.Formerly`). On Robot
+    // because Robot has the most named after its table -- three indexes,
+    // three foreign keys of its own, and six of the five tables that point at
+    // it -- which is what a move has to carry.
+    formerly: [{message: "Droid"}]
     list: {
       order: [
         {field: {name: "date_created"}},
