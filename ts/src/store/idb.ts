@@ -156,16 +156,17 @@ const KEEP = 7 * 24 * 60 * 60 * 1000
  * every use of it after that fails saying why -- and a page that would rather
  * keep it cannot hold up the deploy after it.
  *
- * A page that does not let go is one written before mirrors did, holding
- * the mirror at an older version. Opening it then is refused, where it used
- * to wait for as long as that page stayed open.
+ * A page that does not let go -- one whose script cannot run to be asked, or
+ * one that holds on regardless -- keeps the mirror at the version it opened.
+ * Opening it then is refused, rather than waiting for as long as that page
+ * stays open.
  */
 export async function openDisk(entities: readonly EntityDesc[], at: At, opts: DiskOpts = {}): Promise<Disk> {
 	const stamp = await stampOf(entities)
 	const name = nameOf(at)
 
-	// Version 2 is the queue: a mirror written before it gains the table and
-	// keeps everything else.
+	// Version 2: the tables a mirror holds, the queue's among them. One that
+	// lacks any is given it, and keeps everything else.
 	const req = indexedDB.open(name, 2)
 	req.onupgradeneeded = (): void => {
 		const db = req.result
@@ -197,8 +198,8 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 /**
  * deleteDisk removes one caller's mirror entirely, for a test or a wipe.
  *
- * Refused rather than waited on while a page written before mirrors let go of
- * themselves is holding it open; see [openDisk].
+ * Refused rather than waited on while a page that does not let go is holding
+ * it open; see [openDisk].
  */
 export async function deleteDisk(at: At): Promise<void> {
 	const name = nameOf(at)
@@ -489,10 +490,10 @@ class Mirror implements Disk {
  * schema changed this, and a deploy that did not, did not.
  */
 async function stampOf(entities: readonly EntityDesc[]): Promise<string> {
-	// The shape of a record here, not only the shape of an entity. An entry
-	// written before this carried a timestamp would read back with none, and
-	// "no timestamp" is indistinguishable from "written at zero" -- so the
-	// mirror is thrown away once instead, which is what it is for.
+	// The shape of a record here, not only the shape of an entity. An entry of
+	// another shape read back as this one is wrong with nothing failing -- one
+	// that carried no timestamp reads as written at zero -- so a mirror of
+	// another shape is thrown away instead, which is what it is for.
 	const parts: string[] = ['payday/idb@2']
 
 	for (const e of [...entities].sort((a, b) => (a.typeName < b.typeName ? -1 : a.typeName > b.typeName ? 1 : 0))) {

@@ -136,9 +136,6 @@ type EventMessage_builder struct {
 	// Each is chosen once, like a field's number: a row says which message its
 	// value is by its kind, so the lock refuses a kind dropped or moved to
 	// another message, and a message may only take more.
-	//
-	// At 1, where `string kind` was until payday#171: a declaration compiled
-	// against that is read as its one kind.
 	Kinds []string
 }
 
