@@ -83,6 +83,18 @@ keyed on the version of payday this app requires -- or every job fetches it
 again, from a server that answers 504 now and then. `PD_BUF` names a buf to run
 instead, for a machine with no route to GitHub.
 
+Whatever this app does with buf itself -- a module of its own that it lints,
+formats or checks for breaks -- runs that buf too:
+
+```sh
+go tool pd buf lint api          # buf, at the version every generation runs
+```
+
+The rest of the line is buf's, as written, and so are the streams and the exit
+status: a finding is 100, as it is from buf. A buf found any other way -- on the
+`PATH`, or the newest one in that cache -- is whichever one the machine has,
+and on a machine that has run two paydays that is not always this one's.
+
 ## Upgrading payday
 
 ```sh

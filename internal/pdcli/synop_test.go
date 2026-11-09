@@ -43,7 +43,8 @@ func TestASynopsisSaysWhatTheParserTakes(t *testing.T) {
 				continue
 			}
 
-			bracketed := strings.Contains(c.Synop, "["+name+"]")
+			// `[NAME...]` is the same offer, of as many as are given.
+			bracketed := strings.Contains(c.Synop, "["+name+"]") || strings.Contains(c.Synop, "["+name+"...]")
 			if bracketed == a.IsOptional() {
 				continue
 			}

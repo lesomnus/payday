@@ -9,9 +9,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -127,6 +130,77 @@ func Buf(ctx context.Context) (string, error) {
 	}
 
 	return at, nil
+}
+
+// runBuf is `pd buf`: the buf [Buf] answers, run with args on the streams it
+// is given and in the working directory. A status other than 0 is answered as
+// an [exitStatus], which [Main] exits with.
+func runBuf(ctx context.Context, args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	name, err := Buf(ctx)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	// A signal sent to pd is passed on to buf, and buf's answer to it is the
+	// status -- as `go tool` passes on to pd the ones it is sent. Left to the
+	// default, one stops pd alone: buf runs on with nobody waiting for it, and
+	// the status is pd's death rather than buf's answer. These two because
+	// every platform pd builds for has them; a terminal's others reach buf
+	// from the terminal, which sends them to the whole process group. And none
+	// pd was started ignoring: buf would have started ignoring it too, and a
+	// signal pd catches is one buf starts with the default for.
+	var forward []os.Signal
+	for _, v := range []os.Signal{os.Interrupt, syscall.SIGTERM} {
+		if !signal.Ignored(v) {
+			forward = append(forward, v)
+		}
+	}
+
+	sig := make(chan os.Signal, 1)
+	if len(forward) > 0 {
+		// Never with none: that is every signal there is.
+		signal.Notify(sig, forward...)
+	}
+	defer func() {
+		signal.Stop(sig)
+		close(sig)
+	}()
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() {
+		for v := range sig {
+			// Not on Windows, which has no signals to send and has already
+			// given buf the console's Ctrl-C.
+			_ = cmd.Process.Signal(v)
+		}
+	}()
+
+	err = cmd.Wait()
+
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.Exited() {
+		return exitStatus(exit.ExitCode())
+	}
+	if err != nil {
+		return fmt.Errorf("buf: %w", err)
+	}
+
+	return nil
+}
+
+// exitStatus is what a program pd ran exited with, other than 0. It said what
+// it had to on its own stderr, so the status is all there is left to pass on.
+type exitStatus int
+
+func (v exitStatus) Error() string {
+	return fmt.Sprintf("exit status %d", int(v))
 }
 
 // fetchBuf downloads one asset and puts it at `at`, whole or not at all.
