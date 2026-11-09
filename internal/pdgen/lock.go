@@ -329,15 +329,6 @@ func (l *Lock) union(next *Lock) *Lock {
 	return v
 }
 
-// ErrLockOfEvents is a lock a payday from before a message could hold several
-// kinds (payday#171) wrote: it records each event message's one kind, under
-// `events`, where a lock now records each kind's message, under `kinds`. The
-// same record the other way round, which is a hand edit to make once.
-var ErrLockOfEvents = errors.New(`records each event message's kind under "events", as a payday from ` +
-	`before payday#171 wrote it, and a lock now records each kind's message under "kinds": write each ` +
-	`"app.Message": "kind" of "events" as "kind": "app.Message" under "kinds", and run pd gen again. A ` +
-	`lock no deployment ever wrote a row under may be deleted instead, for pd gen to write from the schema`)
-
 // ReadLock is a lock as it is committed, and an empty one for none at all.
 //
 // A key it does not know is refused rather than dropped. The lock is written
@@ -354,13 +345,6 @@ func ReadLock(b []byte) (*Lock, error) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		var old struct {
-			Events json.RawMessage `json:"events"`
-		}
-		if json.Unmarshal(b, &old) == nil && old.Events != nil {
-			return nil, ErrLockOfEvents
-		}
-
 		return nil, err
 	}
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {

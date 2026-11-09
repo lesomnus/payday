@@ -92,13 +92,7 @@ func (r run) lock(ctx context.Context) error {
 }
 
 // unreadLock is why the lock `name` could not be read, as `pd gen` and `pd
-// doctor` both say it: a lock of the payday before a message held several
-// kinds in the words that say how it is written now, and anything else as the
-// JSON it is.
+// doctor` both say it: as the JSON it is.
 func unreadLock(name string, err error) string {
-	if errors.Is(err, pdgen.ErrLockOfEvents) {
-		return fmt.Sprintf("%s %s", name, err)
-	}
-
 	return fmt.Sprintf("%s: %s; it is JSON `pd gen` writes, and a hand edit of it has to stay that", name, err)
 }

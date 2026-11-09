@@ -346,22 +346,6 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		still(t, l, b)
 	})
 
-	t.Run("of the payday before a message held several kinds", func(t *testing.T) {
-		x := require.New(t)
-		l := genApp(t)
-
-		// Each event message by its one kind, as that payday wrote it.
-		b := []byte(`{"events": {"app.MachineServiced": "machine.service"}, "messages": {}}` + "\n")
-		x.NoError(os.WriteFile(filepath.Join(l.Root, l.DirPd(), pdcli.LockFile), b, 0o644))
-
-		f := findingOf(t, l, "past.lock")
-		x.True(f.Fatal, "pd gen stops on it")
-		x.Contains(f.What, `pd gen would refuse this schema: proto/app/payday/past.lock records each event message's kind under "events"`)
-		x.Contains(f.What, `write each "app.Message": "kind" of "events" as "kind": "app.Message" under "kinds"`)
-		x.NotContains(f.What, "hand edit of it has to stay that", "it is JSON, and the JSON is not what is wrong")
-		still(t, l, b)
-	})
-
 	t.Run("not there", func(t *testing.T) {
 		x := require.New(t)
 		l := genApp(t)
