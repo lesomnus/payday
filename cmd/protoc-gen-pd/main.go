@@ -232,7 +232,7 @@ func run(ctx context.Context, p *protogen.Plugin, o opts) error {
 	pdgen.EmitEventKinds(out, s)
 	pdgen.EmitTableRenames(out, s)
 	pdgen.EmitColumnRenames(out, s)
-	pdgen.EmitIndexRenames(out, s)
+	pdgen.EmitIndexRenames(out)
 	pdgen.EmitMinter(out, s, paths)
 	pdgen.EmitWall(out, s, paths)
 	pdgen.EmitGrouped(out, s, paths)

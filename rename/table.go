@@ -75,7 +75,7 @@ var ErrBoth = errors.New("the table is there under both its names, with rows in 
 // It is run before a migration, by one process at a time, as the migration
 // is, and before [Columns] and [Indexes], which look for what they move on
 // the table by the name it has now: a column an earlier build named otherwise,
-// and an index it named after its columns, are on the old table until this
+// and an index it named otherwise, are on the old table until this
 // has moved it.
 func Tables(ctx context.Context, db *sql.DB, d string, vs []Table) error {
 	if len(vs) == 0 {

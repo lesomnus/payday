@@ -32,8 +32,8 @@ type Former struct {
 }
 
 // TableOf is the table an entity's rows are in, as protoc-gen-orm-ent names
-// it: its message's name in lower case. Written out a second time here, as
-// [EmitIndexRenames] writes out its index names.
+// it: its message's name in lower case. Written out a second time here: the
+// name is protoc-gen-orm-ent's, and what is moved has to agree with it.
 func TableOf(e graph.Entity) string { return strings.ToLower(e.Name()) }
 
 // identifier is a message name protobuf would take.

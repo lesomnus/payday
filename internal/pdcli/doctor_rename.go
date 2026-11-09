@@ -21,16 +21,17 @@ const renamePkg = "github.com/lesomnus/payday/rename"
 // It is the one migration step whose absence nothing else reports. A migration
 // finds a column by its name and drops none, so on a store an earlier build
 // made it adds the new column, empty, beside the old: every row written before
-// reads as never having had a value -- a receipt as read at no time at all
-// (payday#196), an event as having happened at none -- the schema check a
-// server makes before serving passes, and nothing fails. The values are still
-// there, in a column nothing reads; and on SQLite, in a table whose index
-// names the column, not even that, since the table is made again without it.
+// reads as never having had a value, the schema check a server makes before
+// serving passes, and nothing fails. The values are still there, in a column
+// nothing reads; and on SQLite, in a table whose index names the column, not
+// even that, since the table is made again without it.
 //
-// Read off the app's own Go, as the access record's wiring is: a call of
-// `rename.Columns` anywhere outside a test is taken for the step, whatever it
-// is handed -- an app that wrote its own list is an app that decided. A test
-// does not count, and neither does generated Go.
+// Asked only of a column payday has renamed, and there is none until the first
+// app launches ([pdgen.ColumnRenames]). Read off the app's own Go, as the
+// access record's wiring is: a call of `rename.Columns` anywhere outside a
+// test is taken for the step, whatever it is handed -- an app that wrote its
+// own list is an app that decided. A test does not count, and neither does
+// generated Go.
 func doctorRenames(l Layout, vs []pdgen.ColumnRename) []Finding {
 	if len(vs) == 0 || callsRename(l, "Columns") {
 		return nil

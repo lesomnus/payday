@@ -240,62 +240,12 @@ var TableRenames = []rename.Table{
 // ColumnRenames are the columns of payday's own entities in this schema that
 // an earlier build stored under another name. Hand them to `rename.Columns`
 // before a migration, which otherwise adds each beside the old one, empty.
-var ColumnRenames = []rename.Column{
-	{Table: "notificationreceiptrecord", From: "data_read", To: "date_read"},
-	{Table: "event", From: "occurred_at", To: "date_occurred"},
-	{Table: "fact", From: "valid_from", To: "date_start"},
-	{Table: "fact", From: "superseded_at", To: "date_superseded"},
-	{Table: "entitlement", From: "valid_from", To: "date_effective"},
-	{Table: "entitlement", From: "valid_until", To: "date_expires"},
-}
+var ColumnRenames = []rename.Column{}
 
-// IndexRenames are the indexes this schema names, by what an earlier build
-// stored each under: the name made of its columns, where protoc-gen-orm-ent
-// now stores it under the one it declares. Hand them to `rename.Indexes`
-// before a migration, which makes again whatever it does not find by name.
-var IndexRenames = []rename.Index{
-	{Table: "access", From: "access_tenant_id_date_created", To: "access_access"},
-	{Table: "access", From: "access_actor_tenant_id_date_created", To: "access_by_actor_tenant"},
-	{Table: "access", From: "access_actor_id_date_created", To: "access_by_actor"},
-	{Table: "access", From: "access_date_created_id", To: "access_by_time"},
-	{Table: "archived", From: "archived_namespace_digest", To: "archived_blob"},
-	{Table: "audit", From: "audit_object_id", To: "audit_object"},
-	{Table: "audit", From: "audit_tenant_id_date_created", To: "audit_trail"},
-	{Table: "audit", From: "audit_actor_tenant_id_date_created", To: "audit_by_actor_tenant"},
-	{Table: "audit", From: "audit_counterpart_tenant_id_date_created", To: "audit_by_counterpart"},
-	{Table: "audit", From: "audit_domain_date_created", To: "audit_by_domain"},
-	{Table: "audit", From: "audit_tenant_id_domain_date_created", To: "audit_by_tenant_domain"},
-	{Table: "audit", From: "audit_actor_id_date_created", To: "audit_by_actor"},
-	{Table: "audit", From: "audit_date_created_id", To: "audit_by_time"},
-	{Table: "entitlement", From: "entitlement_grant_id", To: "entitlement_grant"},
-	{Table: "entitlement", From: "entitlement_tenant_id_key", To: "entitlement_key"},
-	{Table: "event", From: "event_tenant_id_date_created_id", To: "event_page"},
-	{Table: "event", From: "event_subject_id_date_occurred", To: "event_subject"},
-	{Table: "event", From: "event_cause_id", To: "event_cause"},
-	{Table: "fact", From: "fact_tenant_id_date_created_id", To: "fact_page"},
-	{Table: "fact", From: "fact_subject_id_field_number_key_date_start", To: "fact_subject"},
-	{Table: "fact", From: "fact_tenant_id_domain_field_number_key_date_start", To: "fact_field"},
-	{Table: "fact", From: "fact_event_id", To: "fact_event"},
-	{Table: "fact", From: "fact_superseded_by", To: "fact_superseded"},
-	{Table: "holder", From: "holder_alias_tenant_id", To: "holder_slug"},
-	{Table: "holder", From: "holder_tenant_id_date_created_id", To: "holder_page"},
-	{Table: "holder", From: "holder_account_tenant_id", To: "holder_by_account"},
-	{Table: "machine", From: "machine_tenant_id", To: "machine_by_tenant"},
-	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_notification_id_reader_id", To: "notificationreceiptrecord_receipt"},
-	{Table: "notificationreceiptrecord", From: "notificationreceiptrecord_tenant_id_reader_id_notification_id", To: "notificationreceiptrecord_reader"},
-	{Table: "notificationrecord", From: "notificationrecord_tenant_id_producer_idempotency_key", To: "notificationrecord_publication"},
-	{Table: "notificationrecord", From: "notificationrecord_tenant_id_topic_key_date_created_id", To: "notificationrecord_page"},
-	{Table: "notificationrecord", From: "notificationrecord_date_created_id", To: "notificationrecord_age"},
-	{Table: "outbox", From: "outbox_id", To: "outbox_queue"},
-	{Table: "owed", From: "owed_date_created_id", To: "owed_owed"},
-	{Table: "reading", From: "reading_tenant_id_date_created", To: "reading_wall"},
-	{Table: "robot", From: "robot_tenant_id_date_created_id", To: "robot_page"},
-	{Table: "robot", From: "robot_alias_tenant_id", To: "robot_slug"},
-	{Table: "robot", From: "robot_tenant_id_alias_id", To: "robot_by_alias"},
-	{Table: "stint", From: "stint_event_id", To: "stint_event"},
-	{Table: "tenant", From: "tenant_date_created_id", To: "tenant_page"},
-	{Table: "thing", From: "thing_date_created_id", To: "thing_page"},
-}
+// IndexRenames are the indexes of this schema that an earlier build stored
+// under another name. Hand them to `rename.Indexes` before a migration, which
+// makes again whatever it does not find by name.
+var IndexRenames = []rename.Index{}
 
 // Minter answers with the [bare.Minter] that gives every new row an
 // identifier of its entity's domain, and refuses one of another.
