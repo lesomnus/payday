@@ -142,24 +142,35 @@ func fetchBuf(ctx context.Context, asset string, at string) error {
 }
 
 // bufBackoff is how long a fetch waits before each attempt after the first,
-// so it makes one more attempt than this has entries: five, fifteen seconds
-// of waiting in all.
+// so it makes one more attempt than this has entries: seven, and a minute and
+// three seconds of waiting in all.
 //
 // GitHub serves a release through a gateway that answers 504 now and then for
 // a file that is there. In one run of payday's own CI, on 2026-11-08, it did
 // to a `pd gen` and to the tests that fetch buf, and each failed on its one
-// attempt: the red build nobody caused that pinning buf set out to end.
-// Doubling from a second rides out a gateway that is back within seconds, and
-// still gives up on one that is not while whoever ran it is waiting. A var so
-// that a test does not wait for real.
-var bufBackoff = []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second}
+// attempt: the red build nobody caused that pinning buf set out to end. On
+// 2026-11-09 it did to a `pd gen` for longer than the five attempts and
+// fifteen seconds this waited then. Doubling from a second rides out a
+// gateway that is back within seconds; going on for a minute rides out one
+// that is back within that; and a fetch still gives up, while whoever ran it
+// is waiting, on one that is not. A machine that would fetch buf on every
+// run -- a CI runner, which starts with an empty cache -- is better off not
+// fetching it at all: payday's own CI keeps the one it fetched
+// (`.github/actions/buf`). A var so that a test does not wait for real.
+var bufBackoff = []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 32 * time.Second}
 
 // bufWaitAtMost is the longest a fetch waits because a server asked it to
-// (Retry-After). A rate limit may ask for an hour, and nothing is printed
-// while a fetch waits, so a wait that long is a `pd gen` nobody can tell from
-// a hung one. A server that asks for more is asked again after this, until
-// the attempts are spent, and its last answer is the error.
+// (Retry-After). A rate limit may ask for an hour, and a `pd gen` that waits
+// that long is one nobody can tell from a hung one, whatever it said before
+// it began. A server that asks for more is asked again after this, until the
+// attempts are spent, and its last answer is the error.
 var bufWaitAtMost = 30 * time.Second
+
+// bufSay is where a fetch says that it is about to wait, for what and for how
+// long: a minute of saying nothing is a `pd gen` that looks hung, and a run
+// that got through on its third attempt says so in its log. A var so that a
+// test can hear it.
+var bufSay io.Writer = os.Stderr
 
 // fetchBufFrom is [fetchBuf] from `url`, asked again while what fails is the
 // way to it: a 5xx, a 429, a connection that could not be made or was cut.
@@ -183,10 +194,13 @@ func fetchBufFrom(ctx context.Context, url string, sum string, at string) error 
 			return fmt.Errorf("gave up after %d attempts: %w", i+1, err)
 		}
 
+		wait := max(bufBackoff[i], min(t.after, bufWaitAtMost))
+		fmt.Fprintf(bufSay, "pd: fetch buf: %v; attempt %d of %d in %s\n", err, i+2, len(bufBackoff)+1, wait)
+
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("%w, waiting to try again after %w", ctx.Err(), err)
-		case <-time.After(max(bufBackoff[i], min(t.after, bufWaitAtMost))):
+		case <-time.After(wait):
 		}
 	}
 }

@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -36,7 +38,9 @@ var (
 // on it, and how many requests it was sent.
 //
 // The waits between attempts are a millisecond each, as many as there are, so
-// that a test counts the attempts a fetch makes without waiting for them.
+// that a test counts the attempts a fetch makes without waiting for them. What
+// a fetch says while it waits is kept out of the test's output; a test that
+// listens sets bufSay itself.
 func releases(t *testing.T, answers ...http.HandlerFunc) (string, *atomic.Int32) {
 	t.Helper()
 
@@ -47,6 +51,10 @@ func releases(t *testing.T, answers ...http.HandlerFunc) (string, *atomic.Int32)
 	was := bufBackoff
 	bufBackoff = waits
 	t.Cleanup(func() { bufBackoff = was })
+
+	said := bufSay
+	bufSay = io.Discard
+	t.Cleanup(func() { bufSay = said })
 
 	n := &atomic.Int32{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +103,8 @@ func left(t *testing.T, at string) []string {
 //
 // What failed payday's CI: GitHub's gateway answered 504 for a release that
 // was there. Asked again, it is fetched, and each attempt that failed left
-// nothing behind.
+// nothing behind -- and said, before it waited, what it was answered and
+// which attempt was next.
 func TestAGatewayThatTimesOutIsAskedAgain(t *testing.T) {
 	x := require.New(t)
 
@@ -104,6 +113,8 @@ func TestAGatewayThatTimesOutIsAskedAgain(t *testing.T) {
 		answering(http.StatusGatewayTimeout),
 		sending(released),
 	)
+	said := &strings.Builder{}
+	bufSay = said
 	at := into(t)
 
 	x.NoError(fetchBufFrom(t.Context(), url, releasedSum, at))
@@ -117,6 +128,37 @@ func TestAGatewayThatTimesOutIsAskedAgain(t *testing.T) {
 	s, err := os.Stat(at)
 	x.NoError(err)
 	x.NotZero(s.Mode()&0o100, "it is run")
+
+	all := len(bufBackoff) + 1
+	x.Equal(
+		fmt.Sprintf("pd: fetch buf: %s: 504 Gateway Timeout; attempt 2 of %d in 1ms\n", url, all)+
+			fmt.Sprintf("pd: fetch buf: %s: 504 Gateway Timeout; attempt 3 of %d in 1ms\n", url, all),
+		said.String(),
+	)
+}
+
+// TestAFetchAsksForAMinute.
+//
+// The schedule itself, which every other test here shortens to a millisecond
+// a wait: seven attempts, the waits doubling from a second to a minute and
+// three seconds in all, and no server kept waited on for longer than
+// bufWaitAtMost. Five attempts and fifteen seconds were not enough on
+// 2026-11-09.
+func TestAFetchAsksForAMinute(t *testing.T) {
+	x := require.New(t)
+
+	x.Len(bufBackoff, 6, "seven attempts")
+	x.Equal(time.Second, bufBackoff[0])
+
+	var all time.Duration
+	for i, v := range bufBackoff {
+		if i > 0 {
+			x.Equal(2*bufBackoff[i-1], v, "each wait twice the one before")
+		}
+		all += v
+	}
+	x.Equal(63*time.Second, all)
+	x.Equal(30*time.Second, bufWaitAtMost)
 }
 
 // TestAServerThatStaysDownIsGivenUpOn.

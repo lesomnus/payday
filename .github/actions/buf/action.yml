@@ -1,0 +1,83 @@
+# The buf `pd` pins, kept between runs, for every job that runs `pd`.
+#
+# `pd` runs the buf it pins (`pdcli.BufVersion`, `internal/pdcli/buf.go`) and
+# never one it finds on the PATH: it fetches the release from GitHub into the
+# user's cache the first time, checked against its digest, and finds it there
+# after. A runner starts with an empty cache, so every job that generated
+# fetched the same file again -- and GitHub's releases answer 504, for a file
+# that is there, for longer than a fetch waits. On 2026-11-08 they failed a
+# `pd gen` here and two in roster, and on 2026-11-09 one here gave up after
+# five attempts.
+#
+# So it is fetched once for each version and kept in the Actions cache under
+# that version: a job that finds it there downloads nothing. A job that does
+# not fetches it as `pd` does -- the digest checked, and asked again for a
+# minute -- and saves it at once, so that the next run finds it however this
+# one ends.
+name: pd's buf
+description: The buf this payday pins, from the Actions cache, or fetched once and saved there.
+
+inputs:
+  payday:
+    description: Where payday is checked out, from the workspace.
+    default: .
+
+outputs:
+  dir:
+    description: The directory the buf is in, which is where `pd` looks for it.
+    value: ${{ steps.pin.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    # Read off the source, so that the version is said in one place and the
+    # cache moves when it does; `TestTheBufCIRunsIsTheBufThisPaydayPins` holds
+    # the line to the form read here. The directory is where `pdcli.Buf` keeps
+    # it: os.UserCacheDir, as it is on Linux, and then `payday/buf/<version>`.
+    - id: pin
+      shell: bash
+      env:
+        PAYDAY: ${{ inputs.payday }}
+      run: |
+        v="$(sed -n 's/^const BufVersion = "\([^"]*\)"$/\1/p' "${PAYDAY}/internal/pdcli/buf.go")"
+        if [ -z "${v}" ]; then
+          echo "no BufVersion in ${PAYDAY}/internal/pdcli/buf.go" >&2
+          exit 1
+        fi
+        echo "version=${v}" >> "${GITHUB_OUTPUT}"
+        echo "dir=${XDG_CACHE_HOME:-${HOME}/.cache}/payday/buf/${v}" >> "${GITHUB_OUTPUT}"
+
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pin.outputs.dir }}
+        key: payday-buf-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
+
+    # `pd`'s own fetch, in the test that then runs what it fetched.
+    - if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.payday }}
+      run: go test -count=1 -run '^TestTheBufThisPaydayPinsIsTheBufThatRuns$' ./internal/pdcli/
+
+    # That it is where `pd` looks, and is the one pinned, whether it was found
+    # or fetched. A directory `pd` does not look in would hold nothing to save:
+    # `actions/cache/save` would warn and go on, and every run after would
+    # fetch the binary again without anything failing.
+    - shell: bash
+      env:
+        DIR: ${{ steps.pin.outputs.dir }}
+        VERSION: ${{ steps.pin.outputs.version }}
+      run: |
+        have="$("${DIR}/buf" --version)"
+        if [ "${have}" != "${VERSION}" ]; then
+          echo "${DIR}/buf is ${have}, and payday pins ${VERSION}" >&2
+          exit 1
+        fi
+
+    # Now rather than when the job ends, which is when `actions/cache` saves,
+    # and only for a job that passed.
+    - if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pin.outputs.dir }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}

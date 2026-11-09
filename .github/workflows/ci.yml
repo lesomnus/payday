@@ -38,14 +38,33 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # The buf `pd` pins, kept between runs rather than fetched from GitHub's
+      # releases by every job (`.github/actions/buf` says why). Every job that
+      # runs `pd` has it: this one, `postgres`, `new` and `floor`.
+      - id: buf
+        uses: ./.github/actions/buf
+
       # The one job with a buf on the PATH, because it is the one that runs
       # buf itself: `format`, `lint`, `build` and `breaking` below. `pd`
       # fetches the buf it pins and never reads the PATH (`PD_BUF` aside), so
       # a job that only generates has no use for one -- and installing one
       # anyway was a download that could fail it, as it failed `new` on
       # 2026-11-08 for a binary nothing there runs.
+      #
+      # And it is `pd`'s buf, at `pd`'s version. buf-action given no version
+      # takes the latest release -- 1.75.0 on 2026-11-08, where `pd` pins
+      # 1.72.0 -- so these checks ran a buf no generation runs, and fetched it
+      # on every run. Given one, it takes a buf on the PATH that is that
+      # version and fetches nothing, so it finds the one above. The version
+      # moves by hand with `pdcli.BufVersion`, and never alone:
+      # `TestTheBufCIRunsIsTheBufThisPaydayPins` fails it when it differs.
+      - name: pd's buf, on the PATH
+        env:
+          DIR: ${{ steps.buf.outputs.dir }}
+        run: echo "${DIR}" >> "${GITHUB_PATH}"
       - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
+          version: 1.72.0
           setup_only: true
 
       # The public notification contract is compiled without private storage
@@ -176,6 +195,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # For the tests that generate, which run `pd`'s buf.
+      - uses: ./.github/actions/buf
 
       - name: payday
         run: go test ./... -count=1
@@ -337,6 +358,10 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+      # The widget's `pd` is this checkout's, so its buf is this one's.
+      - uses: ./payday/.github/actions/buf
+        with:
+          payday: payday
 
       - run: go tool pd new github.com/acme/widget "${GITHUB_WORKSPACE}/widget"
         working-directory: payday
@@ -491,6 +516,9 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+      - uses: ./payday/.github/actions/buf
+        with:
+          payday: payday
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
