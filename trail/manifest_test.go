@@ -581,12 +581,11 @@ func TestAnActDecidesByTheManifest(t *testing.T) {
 // TestWhatIsNotItsDigestIsWrittenAgainByNothing.
 //
 // Every act that writes a chunk again -- a pass folding a month, a subject's
-// erasure, a tenant leaving, a file of a version before filed by tenant --
-// copies what the chunk says into a chunk the manifest accounts for. A chunk
-// whose bytes are not its digest any more says what somebody wrote beneath its
-// name, so none of them copies it: each stops at it, erases nothing, and leaves
-// it for Verify, which says `altered`. The erasures go on with the rest, and
-// say which they could not check.
+// erasure, a tenant leaving -- copies what the chunk says into a chunk the
+// manifest accounts for. A chunk whose bytes are not its digest any more says
+// what somebody wrote beneath its name, so none of them copies it: each stops
+// at it, erases nothing, and leaves it for Verify, which says `altered`. The
+// erasures go on with the rest, and say which they could not check.
 func TestWhatIsNotItsDigestIsWrittenAgainByNothing(t *testing.T) {
 	ctx := t.Context()
 
@@ -709,69 +708,6 @@ func TestWhatIsNotItsDigestIsWrittenAgainByNothing(t *testing.T) {
 		}
 		x.Equal(2, leaves, "what the purge did is not receipted")
 	})
-
-	t.Run("a file of a version before", func(t *testing.T) {
-		tenant := newTenant()
-		row := func(i int, v string) []byte {
-			return fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(), domain: person,
-				created: time.Date(2020, 1, 1+i%28, 0, 0, 0, 0, time.UTC), value: v}.doc()
-		}
-		c := Chunk{Namespace: LegacyNamespace, Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), Name: "audit-2020-01.person.0" + Ext}
-
-		// More rows than one chunk holds, so that a chunk is written before
-		// the file is read to its end.
-		docs := make([][]byte, chunkRows+1)
-		for i := range docs {
-			docs[i] = row(i, "what it said")
-		}
-		changed := slices.Clone(docs)
-		changed[len(changed)-1] = row(0, "what somebody else says")
-
-		t.Run("whose bytes were changed", func(t *testing.T) {
-			x := require.New(t)
-
-			dir := t.TempDir()
-			a := flob.NewOsStores(dir)
-			d, _, err := put(ctx, a, c, docs)
-			x.NoError(err)
-			c := c
-			c.Digest = d
-			alter(t, dir, c, changed...)
-
-			// Through the manifest, which says whether anything was written
-			// at all.
-			s := &fakeStore{}
-			_, err = refile(ctx, Policy{Signer: signer, Archive: a}.manifested(s), "run", nil, c)
-			x.ErrorIs(err, ErrAltered)
-
-			x.Empty(s.archived, "rows of a file that is not its digest were filed, even if taken back")
-			cs, err := chunksIn(ctx, a, LegacyNamespace)
-			x.NoError(err)
-			x.Len(cs, 1, "a file that is not its digest was erased")
-		})
-
-		t.Run("as it was filed", func(t *testing.T) {
-			x := require.New(t)
-
-			a := flob.NewMemStores()
-			d, _, err := put(ctx, a, c, docs)
-			x.NoError(err)
-			c := c
-			c.Digest = d
-
-			swapped := swapping{Stores: a, ns: LegacyNamespace, then: gz(t, changed...)}
-
-			_, err = refile(ctx, swapped, "run", nil, c)
-			x.ErrorIs(err, ErrAltered)
-
-			cs, err := chunksIn(ctx, a, tenant.String())
-			x.NoError(err)
-			x.Empty(cs, "what was filed of a file that changed as it was read was kept")
-			cs, err = chunksIn(ctx, a, LegacyNamespace)
-			x.NoError(err)
-			x.Len(cs, 1)
-		})
-	})
 }
 
 // digestsOf is the chunks' digests, in order.
@@ -783,61 +719,6 @@ func digestsOf(cs []Chunk) []flob.Digest {
 
 	return out
 }
-
-// swapping is an archive whose blobs of one namespace read as they are until
-// they are read again from the start, and as `then` after: a file changed on
-// the disk between two reads of it.
-type swapping struct {
-	flob.Stores
-	ns   string
-	then []byte
-}
-
-func (s swapping) Use(ns string) flob.Store {
-	v := s.Stores.Use(ns)
-	if ns != s.ns {
-		return v
-	}
-
-	return swappingStore{Store: v, then: s.then}
-}
-
-type swappingStore struct {
-	flob.Store
-	then []byte
-}
-
-func (s swappingStore) Unwrap() flob.Store { return s.Store }
-
-func (s swappingStore) Open(ctx context.Context, d flob.Digest) (io.ReadSeekCloser, flob.Info, error) {
-	r, info, err := s.Store.Open(ctx, d)
-	if err != nil {
-		return r, info, err
-	}
-	defer r.Close()
-
-	now, err := io.ReadAll(r)
-	if err != nil {
-		return nil, info, err
-	}
-
-	return &swapped{Reader: bytes.NewReader(now), then: s.then}, info, nil
-}
-
-type swapped struct {
-	*bytes.Reader
-	then []byte
-}
-
-func (s *swapped) Seek(offset int64, whence int) (int64, error) {
-	if offset == 0 && whence == io.SeekStart && s.then != nil {
-		s.Reader, s.then = bytes.NewReader(s.then), nil
-	}
-
-	return s.Reader.Seek(offset, whence)
-}
-
-func (s *swapped) Close() error { return nil }
 
 // TestWhatIsInFlightIsNoFindingAndACrashIsSettled.
 //

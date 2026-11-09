@@ -858,16 +858,8 @@ func (p Policy) Pass(ctx context.Context, s Store) {
 	}
 
 	if x.m != nil {
-		// Asked before verifying, which may fill the manifest: the files a
-		// version before wrote are taken in by the archive's first pass --
-		// the one that takes the archive as it is -- and by no pass after it.
-		first := x.first(ctx)
 		x.verify(ctx)
 		x.retell(ctx)
-		if first {
-			x.adopt(ctx)
-		}
-		x.refile(ctx)
 
 		// And the tenants that retired, which the manifest says now that it
 		// has been read.
@@ -1261,41 +1253,6 @@ func (x *pass) turn(ctx context.Context) (context.Context, func(), error) {
 	return held, give, nil
 }
 
-// first answers whether this pass is the archive's first, before it has ever
-// had a checkpoint taken; see [Policy.unchecked]. One that cannot tell is not.
-func (x *pass) first(ctx context.Context) bool {
-	ok, err := x.p.unchecked(ctx, x.s)
-	if err != nil {
-		log.From(ctx).WarnContext(ctx, "trail: whether the archive has had a checkpoint", "err", err)
-
-		return false
-	}
-
-	return ok
-}
-
-// adopt takes in the files a version before this one left in the archive's
-// directory, so that a deployment upgrading has nothing to run.
-//
-// On the archive's first pass alone (see [Pass]). The manifest is the account
-// of what the deployment wrote into the archive, and a file adopted into it is
-// signed in as the deployment's: after the first checkpoint, a file of that
-// format in the directory is one somebody else put there, and taking it in
-// would sign whatever it says. [Policy.Verify] finds it instead.
-func (x *pass) adopt(ctx context.Context) {
-	root, ok := rootOf(x.p.Archive)
-	if !ok {
-		return
-	}
-
-	n, err := Adopt(ctx, x.p.Archive, root)
-	if err != nil {
-		log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "err", err, "adopted", n)
-	} else if n > 0 {
-		log.From(ctx).InfoContext(ctx, "trail: the files of a version before", "adopted", n, "into", LegacyNamespace)
-	}
-}
-
 // answer is one tenant's answer, asked once a pass. Nobody -- the zero tenant
 // -- is the deployment, and is never asked.
 //
@@ -1522,13 +1479,9 @@ func kindOf(name string) (pdid.Domain, bool) {
 // judge is how a namespace's chunks are decided -- each one's window, and
 // whether a hold is on it -- and nil for a namespace this did not write. It
 // counts whose holds into `h` when there is one.
-//
-// A chunk of [LegacyNamespace] holds everybody's rows together, so whether a
-// hold is on it is a question about each of its rows, which [pass.spend] asks
-// and this does not.
 func (x *pass) judge(ctx context.Context, ns string) func(Chunk, *Held) (Keep, bool, bool) {
 	switch ns {
-	case LegacyNamespace, DeploymentNamespace:
+	case DeploymentNamespace:
 		return func(c Chunk, _ *Held) (Keep, bool, bool) {
 			d, ok := kindOf(c.Kind)
 			if !ok {
@@ -1580,14 +1533,10 @@ func (x *pass) judge(ctx context.Context, ns string) func(Chunk, *Held) (Keep, b
 	}
 }
 
-// spend destroys a chunk whose window has run out, or what of it no hold
-// keeps, and answers how many of its rows went. A dry one destroys nothing and
-// answers the same. What a hold kept is counted into `h`.
-//
-// A chunk is held whole or not at all, except one of [LegacyNamespace]: a file
-// from before held every tenant's rows together, and a hold on one of them is
-// no reason to keep the others' past their window. So that one is written
-// again with what is held, and only what is held.
+// spend destroys a chunk whose window has run out, unless a hold keeps it, and
+// answers how many of its rows went. A dry one destroys nothing and answers
+// the same. A chunk is held whole or not at all, and what a hold kept is
+// counted into `h`.
 func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, act string, dry bool, h *Held) (int, error) {
 	a := x.p.Archive
 	if held {
@@ -1595,31 +1544,9 @@ func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, 
 		return 0, nil
 	}
 
-	if c.Namespace == LegacyNamespace && x.p.Tenants != nil {
-		v, err := edit(ctx, a, c, dry, nil, func(line []byte, v head) ([]byte, mark, error) {
-			if x.held(ctx, v.tenants(), pdid.Domain(v.Domain), true, h) {
-				return line, heldBack, nil
-			}
-
-			return nil, dropped, nil
-		})
-		if err != nil {
-			return 0, err
-		}
-
-		h.keep(v.held, 0)
-		if !dry && v.dropped > 0 {
-			x.r.add(Receipt{
-				Act: act, Where: "archive", Tenant: c.Namespace, Kind: c.Kind, Month: Month(c.Month),
-				Before: before.UTC(), Rows: v.dropped, Chunks: btoi(v.left == 0), Held: v.held,
-			})
-		}
-
-		return v.dropped, nil
-	}
-
-	// A chunk adopted from a directory never said how many rows it holds, and
-	// a receipt that says nothing is worth less than one that counts.
+	// A chunk whose labels never said how many rows it holds -- none a pass
+	// writes -- is counted, since a receipt that says nothing is worth less
+	// than one that counts.
 	if c.Rows == 0 {
 		v, err := edit(ctx, a, c, true, nil, func([]byte, head) ([]byte, mark, error) { return nil, dropped, nil })
 		if err != nil {
@@ -1714,9 +1641,7 @@ func (x *pass) archive(ctx context.Context) {
 				continue
 			}
 
-			if ns != LegacyNamespace {
-				v.rest = append(v.rest, c)
-			}
+			v.rest = append(v.rest, c)
 		}
 
 		plans = append(plans, v)
@@ -1788,8 +1713,7 @@ func (x *pass) archive(ctx context.Context) {
 // had been made into, a year after anybody could have looked.
 //
 // A line that keeps no digest has nothing to carry: a row written before
-// digests, which is accepted once rather than carried forever, and a chunk of
-// [LegacyNamespace], written before there were any. Neither is read.
+// digests began, which is accepted once rather than carried forever.
 //
 // What it cannot do is go wrong quietly. A chunk it cannot read is destroyed
 // all the same -- the window is an obligation, and a check of the rows is what
@@ -1798,11 +1722,7 @@ func (x *pass) carry(ctx context.Context, going []Chunk) {
 	// The newest line about each thing, among the chunks about to go.
 	byKind := map[pdid.Domain]map[pdid.Id]Last{}
 	for _, c := range going {
-		if c.Namespace == LegacyNamespace {
-			continue
-		}
-
-		err := readChunk(ctx, x.raw(), c, nil, nil, true, func(h head, _ []byte) error {
+		err := readChunk(ctx, x.raw(), c, nil, true, func(h head, _ []byte) error {
 			if h.Digest == "" {
 				return nil
 			}

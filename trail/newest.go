@@ -175,7 +175,7 @@ func (n *Newest) All(ctx context.Context, kind pdid.Domain) (map[pdid.Id]Last, e
 func (n *Newest) lines(ctx context.Context, kind pdid.Domain, which func(head) (pdid.Id, bool)) (map[pdid.Id]Last, error) {
 	out := map[pdid.Id]Last{}
 	for _, c := range slices.Concat(n.chunks[nameOf(kind)], n.chunks[""]) {
-		err := readChunk(ctx, n.a, c, nil, nil, true, func(h head, _ []byte) error {
+		err := readChunk(ctx, n.a, c, nil, true, func(h head, _ []byte) error {
 			id, ok := which(h)
 			if !ok {
 				return nil

@@ -201,11 +201,8 @@ func (p Policy) Doomed(ctx context.Context, s Store, cut func(kind string) (time
 // the purge to go ahead, because refusing it would keep every other tenant's
 // trail past what they are owed.
 //
-// A file of everybody's from before the archive was a flob store loses what is
-// not held and keeps what is -- unless its bytes are not its digest any more,
-// when it is left as it is and the purge goes on, answering [ErrAltered] for it
-// at the end. It writes a [Receipt] of what went, including when it stopped
-// part of the way.
+// It writes a [Receipt] of what went, including when it stopped part of the
+// way.
 //
 // It goes through the archive's manifest like every other act, which is why it
 // takes the store: the manifest is in the database; see [Archived]. A chunk is
@@ -1292,7 +1289,7 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 
 	touched := 0
 
-	cs, rest, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace, LegacyNamespace}, true)
+	cs, rest, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace}, true)
 	if err != nil {
 		return touched, err
 	}
@@ -1334,60 +1331,58 @@ func (x *pass) purgeArchive(ctx context.Context, tenant pdid.Id, dry bool, first
 		touched++
 	}
 
-	// What it shares, and the files of everybody's from before. A chunk of
-	// [SharedNamespace] the manifest does not account for is opened whatever
-	// tenants it says it has: those are its own labels.
+	// What it shares. A chunk of [SharedNamespace] the manifest does not
+	// account for is opened whatever tenants it says it has: those are its own
+	// labels.
 	named := []byte(`"` + encoded(tenant) + `"`)
 	pre := func(line []byte) bool { return bytes.Contains(line, named) }
-	for _, ns := range []string{SharedNamespace, LegacyNamespace} {
-		for _, r := range rs {
-			c := r.c
-			if c.Namespace != ns || (ns == SharedNamespace && r.trusted && !slices.Contains(c.Tenants, tenant)) {
-				continue
+	for _, r := range rs {
+		c := r.c
+		if c.Namespace != SharedNamespace || (r.trusted && !slices.Contains(c.Tenants, tenant)) {
+			continue
+		}
+
+		v, err := edit(ctx, r.a, c, dry, pre, func(line []byte, v head) ([]byte, mark, error) {
+			if !v.filed(tenant) {
+				return line, kept, nil
+			}
+			if keeps != nil {
+				if at, err := time.Parse(time.RFC3339Nano, v.Created); err == nil && keeps(pdid.Domain(v.Domain), at) {
+					return line, floored, nil
+				}
 			}
 
-			v, err := edit(ctx, r.a, c, dry, pre, func(line []byte, v head) ([]byte, mark, error) {
-				if !v.filed(tenant) {
-					return line, kept, nil
-				}
-				if keeps != nil {
-					if at, err := time.Parse(time.RFC3339Nano, v.Created); err == nil && keeps(pdid.Domain(v.Domain), at) {
-						return line, floored, nil
-					}
-				}
-
-				rest := others(v.tenants(), tenant)
-				if len(rest) == 0 {
-					return nil, dropped, nil
-				}
-				if x.held(ctx, rest, pdid.Domain(v.Domain), true, &out.Held) {
-					return line, heldBack, nil
-				}
-				if !v.contents() {
-					return line, same, nil
-				}
-
-				b, err := blanked(line)
-				return b, changed, err
-			})
-			if left.add(c, err) {
-				continue
+			rest := others(v.tenants(), tenant)
+			if len(rest) == 0 {
+				return nil, dropped, nil
 			}
-			if err != nil {
-				return touched, err
+			if x.held(ctx, rest, pdid.Domain(v.Domain), true, &out.Held) {
+				return line, heldBack, nil
+			}
+			if !v.contents() {
+				return line, same, nil
 			}
 
-			if first {
-				out.Held.keep(v.held, 0)
-				out.keep(cmp.Or(filed(c.Kind), "*"), v.floored)
-				saved.archive += v.floored
-			}
-			if v.changed+v.dropped > 0 {
-				out.Rewritten++
-				out.Edited += v.changed
-				out.Rows += v.dropped
-				touched++
-			}
+			b, err := blanked(line)
+			return b, changed, err
+		})
+		if left.add(c, err) {
+			continue
+		}
+		if err != nil {
+			return touched, err
+		}
+
+		if first {
+			out.Held.keep(v.held, 0)
+			out.keep(cmp.Or(filed(c.Kind), "*"), v.floored)
+			saved.archive += v.floored
+		}
+		if v.changed+v.dropped > 0 {
+			out.Rewritten++
+			out.Edited += v.changed
+			out.Rows += v.dropped
+			touched++
 		}
 	}
 

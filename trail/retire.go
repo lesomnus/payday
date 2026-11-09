@@ -34,8 +34,7 @@ import (
 // A row of a kind under a floor, written recently enough that the floor is
 // still on it: the floor's longer clock, from when the row was written. Its
 // rows in the database, its chunks in the archive whose newest row is under
-// one, its rows in the files from before, and the contents of what it shares
-// -- all as they are. [TenantPurge.Until] is when the last of them can be no
+// one, and the contents of what it shares -- all as they are. [TenantPurge.Until] is when the last of them can be no
 // longer under a floor, by the floors as they are now.
 //
 // From then on the passes treat the tenant as one that keeps nothing of its
@@ -95,7 +94,7 @@ func (p Policy) floored(d pdid.Domain, at, now time.Time) bool {
 }
 
 // newest is when a chunk's newest row was written, as late as it can have been:
-// a file adopted from a directory knows only its month.
+// a chunk whose labels do not say -- none a pass writes -- has only its month.
 func newest(c Chunk) time.Time {
 	if !c.Last.IsZero() {
 		return c.Last

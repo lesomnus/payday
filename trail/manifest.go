@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"maps"
 	"slices"
 	"strconv"
@@ -337,27 +336,6 @@ func (s manifestedStore) Erase(ctx context.Context, d flob.Digest) error {
 	s.r.forget(blobKey{s.ns, d})
 
 	return s.r.m.Mark(ctx, s.ns, string(d), Erasing, Erased, s.r.sign)
-}
-
-// adopted records a blob put into the archive beneath the manifest -- a hard
-// link, which [flob.OsStore.Adopt] makes without the decorator seeing it.
-func adopted(ctx context.Context, s flob.Store, d flob.Digest, l flob.Labels) error {
-	r, ok := s.(manifestedStore)
-	if !ok {
-		return nil
-	}
-
-	key, err := r.r.m.Adding(ctx, r.ns, "", labelsOf(l), r.r.sign)
-	if err != nil {
-		return err
-	}
-	if err := r.r.m.Added(ctx, key, string(d), labelsOf(l), r.r.sign); err != nil {
-		return err
-	}
-
-	r.r.remember(blobKey{r.ns, d}, labelsOf(l))
-
-	return nil
 }
 
 // unwrapStores is the archive beneath a manifest.
@@ -714,9 +692,7 @@ type Finding struct {
 	// Kind is what was found:
 	//
 	//	missing      a blob the manifest says the archive holds, and it does not
-	//	unaccounted  a blob the archive holds that the manifest never added,
-	//	             or a file of the directory format in the archive's
-	//	             directory once the archive has had a checkpoint
+	//	unaccounted  a blob the archive holds that the manifest never added
 	//	relabelled   a blob whose labels are not the ones the manifest recorded,
 	//	             or a checkpoint whose labels do not say which it is
 	//	altered      a blob whose bytes are not its digest any more
@@ -990,14 +966,6 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		out.Findings = append(out.Findings, Finding{Kind: "missing", Namespace: k.ns, Digest: k.d})
 	}
 
-	// And the files of the directory format beside the store, which the
-	// archive's first pass takes in and nothing after it does.
-	strays, err := p.looseFindings(ctx, s)
-	if err != nil {
-		return out, err
-	}
-	out.Findings = append(out.Findings, strays...)
-
 	if full {
 		for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
 			if err := ctx.Err(); err != nil {
@@ -1035,44 +1003,6 @@ type reading struct {
 
 	// full is a verification that reads everything again.
 	full bool
-}
-
-// looseFindings is the files a version before this one would have written into
-// the archive's directory, there after its first checkpoint: each is
-// `unaccounted`, under no namespace, by its digest. Until that checkpoint they
-// are the first pass's to take in, and none.
-func (p Policy) looseFindings(ctx context.Context, m Manifest) ([]Finding, error) {
-	root, ok := rootOf(p.Archive)
-	if !ok {
-		return nil, nil
-	}
-
-	vs, err := looseIn(root)
-	if err != nil || len(vs) == 0 {
-		return nil, err
-	}
-
-	first, err := p.unchecked(ctx, m)
-	if err != nil || first {
-		return nil, err
-	}
-
-	out := []Finding{}
-	for _, v := range vs {
-		d, err := v.digest()
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				continue
-			}
-
-			return out, err
-		}
-
-		out = append(out, Finding{Kind: "unaccounted", Digest: d,
-			Note: "a file of the directory format in the archive's directory, " + v.name + ", after its first checkpoint"})
-	}
-
-	return out, nil
 }
 
 // relabelled reads one blob's labels again, from both sides, and answers
@@ -2576,10 +2506,6 @@ func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, er
 
 		k := blobKey{f.Namespace, f.Digest}
 		switch {
-		case f.Kind == "unaccounted" && f.Namespace == "":
-			// A file of the directory format, taken in as the first pass
-			// would have.
-			err = errors.Join(err, p.adoptLoose(ctx, s, f.Digest))
 		case f.Kind == "unaccounted":
 			key, aerr := s.Adding(ctx, k.ns, "", inv[k], sign)
 			if aerr == nil {
@@ -2634,32 +2560,6 @@ func (p Policy) restored(ctx context.Context, s Store, a Acceptance) error {
 		return fmt.Errorf("%w: the database is not behind the checkpoints the store keeps, and no backup was restored", ErrRestored)
 	case a.Restored != nil && *a.Restored != latest:
 		return fmt.Errorf("%w: the backup is said to hold checkpoint %d, and the database has numbered %d", ErrRestored, *a.Restored, latest)
-	}
-
-	return nil
-}
-
-// adoptLoose takes in the file of the directory format in the archive's
-// directory whose digest this is, through the manifest: what an acceptance does
-// with one, as the archive's first pass did with the files it found.
-func (p Policy) adoptLoose(ctx context.Context, s Store, d flob.Digest) error {
-	root, ok := rootOf(p.Archive)
-	if !ok {
-		return nil
-	}
-
-	vs, err := looseIn(root)
-	if err != nil {
-		return err
-	}
-	for _, v := range vs {
-		if got, err := v.digest(); err != nil || got != d {
-			continue
-		}
-
-		if err := v.adopt(ctx, p.manifested(s)); err != nil {
-			return fmt.Errorf("%s: %w", v.name, err)
-		}
 	}
 
 	return nil
