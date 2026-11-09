@@ -1567,14 +1567,6 @@ func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, 
 	return c.Rows, nil
 }
 
-func btoi(v bool) int {
-	if v {
-		return 1
-	}
-
-	return 0
-}
-
 // archive is the second clock, namespace by namespace: what is past its window
 // is destroyed unless a hold is on it, and the month that can receive no more
 // is folded into one chunk.
