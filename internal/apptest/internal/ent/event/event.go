@@ -34,8 +34,8 @@ const (
 	FieldCauseId = "cause_id"
 	// FieldValue holds the string denoting the value field in the database.
 	FieldValue = "value"
-	// FieldDesc holds the string denoting the desc field in the database.
-	FieldDesc = "desc"
+	// FieldSaid holds the string denoting the said field in the database.
+	FieldSaid = "said"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
@@ -64,7 +64,7 @@ var Columns = []string{
 	FieldTraceId,
 	FieldCauseId,
 	FieldValue,
-	FieldDesc,
+	FieldSaid,
 	FieldTenantId,
 }
 
@@ -133,9 +133,9 @@ func ByCauseId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCauseId, opts...).ToFunc()
 }
 
-// ByDesc orders the results by the desc field.
-func ByDesc(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDesc, opts...).ToFunc()
+// BySaid orders the results by the said field.
+func BySaid(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSaid, opts...).ToFunc()
 }
 
 // ByTenantId orders the results by the tenant_id field.

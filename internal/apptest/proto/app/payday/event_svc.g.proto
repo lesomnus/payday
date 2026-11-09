@@ -31,7 +31,7 @@ message EventAddRequest {
   bytes trace_id = 16;
   bytes cause_id = 18;
   google.protobuf.Any value = 19;
-  string desc = 6 [features.field_presence = IMPLICIT];
+  string said = 17 [features.field_presence = IMPLICIT];
 }
 
 message EventAddManyRequest {
@@ -66,7 +66,7 @@ message EventSelect {
   bool trace_id = 16;
   bool cause_id = 18;
   bool value = 19;
-  bool desc = 6;
+  bool said = 17;
 }
 
 message EventListRequest {

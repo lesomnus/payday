@@ -40,8 +40,8 @@ type Event struct {
 	CauseId *uuid.UUID `json:"cause_id,omitempty"`
 	// Value holds the value of the "value" field.
 	Value *anypb.Any `json:"value,omitempty"`
-	// Desc holds the value of the "desc" field.
-	Desc string `json:"desc,omitempty"`
+	// Said holds the value of the "said" field.
+	Said string `json:"said,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -77,7 +77,7 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case event.FieldTraceId:
 			values[i] = new([]byte)
-		case event.FieldKind, event.FieldReason, event.FieldDesc:
+		case event.FieldKind, event.FieldReason, event.FieldSaid:
 			values[i] = new(sql.NullString)
 		case event.FieldDateOccurred, event.FieldDateUpdated, event.FieldDateCreated:
 			values[i] = new(sql.NullTime)
@@ -171,11 +171,11 @@ func (_m *Event) assignValues(columns []string, values []any) error {
 			} else {
 				_m.Value = value
 			}
-		case event.FieldDesc:
+		case event.FieldSaid:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field desc", values[i])
+				return fmt.Errorf("unexpected type %T for field said", values[i])
 			} else if value.Valid {
-				_m.Desc = value.String
+				_m.Said = value.String
 			}
 		case event.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -260,8 +260,8 @@ func (_m *Event) String() string {
 	builder.WriteString("value=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Value))
 	builder.WriteString(", ")
-	builder.WriteString("desc=")
-	builder.WriteString(_m.Desc)
+	builder.WriteString("said=")
+	builder.WriteString(_m.Said)
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))

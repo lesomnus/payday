@@ -35,7 +35,7 @@ type EventAddRequest struct {
 	xxx_hidden_TraceId      []byte                 `protobuf:"bytes,16,opt,name=trace_id,json=traceId"`
 	xxx_hidden_CauseId      []byte                 `protobuf:"bytes,18,opt,name=cause_id,json=causeId"`
 	xxx_hidden_Value        *anypb.Any             `protobuf:"bytes,19,opt,name=value"`
-	xxx_hidden_Desc         string                 `protobuf:"bytes,6,opt,name=desc"`
+	xxx_hidden_Said         string                 `protobuf:"bytes,17,opt,name=said"`
 	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
 	XXX_presence            [1]uint32
 	unknownFields           protoimpl.UnknownFields
@@ -144,9 +144,9 @@ func (x *EventAddRequest) GetValue() *anypb.Any {
 	return nil
 }
 
-func (x *EventAddRequest) GetDesc() string {
+func (x *EventAddRequest) GetSaid() string {
 	if x != nil {
-		return x.xxx_hidden_Desc
+		return x.xxx_hidden_Said
 	}
 	return ""
 }
@@ -215,8 +215,8 @@ func (x *EventAddRequest) SetValue(v *anypb.Any) {
 	x.xxx_hidden_Value = v
 }
 
-func (x *EventAddRequest) SetDesc(v string) {
-	x.xxx_hidden_Desc = v
+func (x *EventAddRequest) SetSaid(v string) {
+	x.xxx_hidden_Said = v
 }
 
 func (x *EventAddRequest) HasId() bool {
@@ -337,7 +337,7 @@ type EventAddRequest_builder struct {
 	TraceId      []byte
 	CauseId      []byte
 	Value        *anypb.Any
-	Desc         string
+	Said         string
 }
 
 func (b0 EventAddRequest_builder) Build() *EventAddRequest {
@@ -370,7 +370,7 @@ func (b0 EventAddRequest_builder) Build() *EventAddRequest {
 		x.xxx_hidden_CauseId = b.CauseId
 	}
 	x.xxx_hidden_Value = b.Value
-	x.xxx_hidden_Desc = b.Desc
+	x.xxx_hidden_Said = b.Said
 	return m0
 }
 
@@ -725,7 +725,7 @@ type EventSelect struct {
 	xxx_hidden_TraceId      bool                   `protobuf:"varint,16,opt,name=trace_id,json=traceId"`
 	xxx_hidden_CauseId      bool                   `protobuf:"varint,18,opt,name=cause_id,json=causeId"`
 	xxx_hidden_Value        bool                   `protobuf:"varint,19,opt,name=value"`
-	xxx_hidden_Desc         bool                   `protobuf:"varint,6,opt,name=desc"`
+	xxx_hidden_Said         bool                   `protobuf:"varint,17,opt,name=said"`
 	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
 	XXX_presence            [1]uint32
 	unknownFields           protoimpl.UnknownFields
@@ -841,9 +841,9 @@ func (x *EventSelect) GetValue() bool {
 	return false
 }
 
-func (x *EventSelect) GetDesc() bool {
+func (x *EventSelect) GetSaid() bool {
 	if x != nil {
-		return x.xxx_hidden_Desc
+		return x.xxx_hidden_Said
 	}
 	return false
 }
@@ -907,8 +907,8 @@ func (x *EventSelect) SetValue(v bool) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
 }
 
-func (x *EventSelect) SetDesc(v bool) {
-	x.xxx_hidden_Desc = v
+func (x *EventSelect) SetSaid(v bool) {
+	x.xxx_hidden_Said = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 13)
 }
 
@@ -996,7 +996,7 @@ func (x *EventSelect) HasValue() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
-func (x *EventSelect) HasDesc() bool {
+func (x *EventSelect) HasSaid() bool {
 	if x == nil {
 		return false
 	}
@@ -1062,9 +1062,9 @@ func (x *EventSelect) ClearValue() {
 	x.xxx_hidden_Value = false
 }
 
-func (x *EventSelect) ClearDesc() {
+func (x *EventSelect) ClearSaid() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
-	x.xxx_hidden_Desc = false
+	x.xxx_hidden_Said = false
 }
 
 type EventSelect_builder struct {
@@ -1082,7 +1082,7 @@ type EventSelect_builder struct {
 	TraceId      *bool
 	CauseId      *bool
 	Value        *bool
-	Desc         *bool
+	Said         *bool
 }
 
 func (b0 EventSelect_builder) Build() *EventSelect {
@@ -1134,9 +1134,9 @@ func (b0 EventSelect_builder) Build() *EventSelect {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
 		x.xxx_hidden_Value = *b.Value
 	}
-	if b.Desc != nil {
+	if b.Said != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 13)
-		x.xxx_hidden_Desc = *b.Desc
+		x.xxx_hidden_Said = *b.Said
 	}
 	return m0
 }
@@ -1556,7 +1556,7 @@ const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	"\btrace_id\x18\x10 \x01(\fR\atraceId\x12\x19\n" +
 	"\bcause_id\x18\x12 \x01(\fR\acauseId\x12*\n" +
 	"\x05value\x18\x13 \x01(\v2\x14.google.protobuf.AnyR\x05value\x12\x19\n" +
-	"\x04desc\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04desc\"A\n" +
+	"\x04said\x18\x11 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04said\"A\n" +
 	"\x13EventAddManyRequest\x12*\n" +
 	"\x05items\x18\x01 \x03(\v2\x14.app.EventAddRequestR\x05items\"8\n" +
 	"\x14EventAddManyResponse\x12 \n" +
@@ -1583,7 +1583,7 @@ const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	"\btrace_id\x18\x10 \x01(\bR\atraceId\x12\x19\n" +
 	"\bcause_id\x18\x12 \x01(\bR\acauseId\x12\x14\n" +
 	"\x05value\x18\x13 \x01(\bR\x05value\x12\x12\n" +
-	"\x04desc\x18\x06 \x01(\bR\x04desc\"\x97\x01\n" +
+	"\x04said\x18\x11 \x01(\bR\x04said\"\x97\x01\n" +
 	"\x10EventListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.EventFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +

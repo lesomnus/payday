@@ -157,8 +157,9 @@ func CheckOwn(s *Schema) error {
 // number, which `pd gen` wrote there. So the template is compared as though it
 // said the copy's number, and whether that is the number the app declared is
 // [Schema.checkPast]'s to say. And what an overlay may add to them is a field
-// at any number the template leaves empty -- 6 and 17 of an Event, 11 of a Fact
-// -- since their 8..12 are payday's.
+// at any number the template leaves empty -- 17 of an Event, 11 of a Fact --
+// since their 8..12 are payday's, and an Event's 6 is its `desc`, which is in
+// no column.
 //
 // # And the two an app may number
 //

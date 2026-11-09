@@ -226,7 +226,7 @@ var (
 		{Name: "trace_id", Type: field.TypeBytes, Nullable: true},
 		{Name: "cause_id", Type: field.TypeUuid, Nullable: true},
 		{Name: "value", Type: field.TypeJson, Nullable: true},
-		{Name: "desc", Type: field.TypeString},
+		{Name: "said", Type: field.TypeString},
 		{Name: "tenant_id", Type: field.TypeUuid},
 	}
 	// EventTable holds the schema information for the "event" table.

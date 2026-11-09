@@ -61,7 +61,8 @@ kind of operation holds, in its `value`, and a sentence is made from that when
 the event is read -- in the reader's language, in the tenant's zone, naming the
 people in it as they are called then. A sentence written down at the time could
 do none of that: it is frozen in one language and one zone, and it goes on
-naming somebody by the name they had.
+naming somebody by the name they had. What answers with an event says it in the
+event's `desc`, which no row holds (§9).
 
 Mark the message with `(payday.event)`, and say the kinds of event it holds:
 
@@ -624,18 +625,28 @@ past.SayKind(s, "robot.unpark", "en", func(r *past.Reading, ev past.EventRow, m 
 })
 ```
 
-An answer made of events reads them with a reading of its own:
+An answer made of events reads them with a reading of its own, and says each
+in its `desc`:
 
 ```go
 r := s.Read(ctx, pd.PastNames(drv), locale, zone)
-for _, ev := range events {
-	e.SetSummary(r.Say(ev))
+for i, ev := range rows { // past.EventRow, and the *app.Event answered for it
+	events[i].SetDesc(r.Say(ev))
 }
 if err := r.Err(); err != nil {
 	return nil, err
 }
 ```
 
+- **`desc` is where an answer says it.** payday's Event has `desc` at 6, and
+  it is the message's and in no column -- `(orm.field) = {disabled: true}` --
+  so no Add writes one, no Select asks for one, and a generated Get or List
+  answers it empty. An answer made of events, a feed or a thing's timeline,
+  says each one into it, so an event is said wherever it is answered and kept
+  nowhere it could go stale. It declares nothing `personal`, which is said of
+  a column: whose names a sentence says is on the access record of the call
+  that said it, below. An overlay that declares `desc` again as a column is
+  refused: the merge takes the overlay's field whole, and would make one of it.
 - **A sentence for each kind.** `past.Say` says the one kind of a message of
   one. A message of several is said with `past.SayKind(s, kind, locale, f)`, once
   for each of its kinds, each sentence reading what its kind uses -- an unpark
@@ -705,7 +716,8 @@ if err := r.Err(); err != nil {
 
 - **Rows from before the past.** An app that adopts its own table of events as
   it stood has rows that hold no message, and keep the sentence they were
-  written with in a field of its own, which an overlay adds (§1).
+  written with in a field of its own, which an overlay adds (§1) -- not
+  `desc`, which no row holds.
   `s.Legacy(f)` says them: the past neither writes nor reads the app's own
   fields, so `f` reads them of the row `ev.Id` names, with `r.Context()`, and
   says what went wrong with `r.Fail(err)`. Without it, such a row is said as its

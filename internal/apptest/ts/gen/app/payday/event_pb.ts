@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/event.proto.
  */
 export const file_app_payday_event: GenFile = /*@__PURE__*/
-  fileDesc("ChZhcHAvcGF5ZGF5L2V2ZW50LnByb3RvEgNhcHAi1wUKBUV2ZW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESFAoEa2luZBgIIAEoCUIGqsEWAhgAEhoKCGFjdG9yX2lkGAkgASgMQgjqghYEEEA4ARI6Cg1kYXRlX29jY3VycmVkGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4IBABIWCgZyZWFzb24YCyABKAlCBqrBFgIYARIcCgpzdWJqZWN0X2lkGAwgASgMQgjqghYEEEA4ARI5CgxkYXRlX3VwZGF0ZWQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDigEAEjsKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCeqCFgVAAYIBABIfCgh0cmFjZV9pZBgQIAEoDEIN6oIWA4IBAKrBFgIYABIgCghjYXVzZV9pZBgSIAEoDEIO6oIWBBBAOAGqwRYCKAESMQoFdmFsdWUYEyABKAsyFC5nb29nbGUucHJvdG9idWYuQW55QgzqghYCOAGqwRYCGAASFAoEZGVzYxgGIAEoCUIGqsEWAhgAOucByvwVfRIIggECEgCKAQAaLBIEcGFnZRoKCgZ0ZW5hbnQQAhoQCgxkYXRlX2NyZWF0ZWQQDxoGCgJpZBABGiwSB3N1YmplY3QaDgoKc3ViamVjdF9pZBAMGhEKDWRhdGVfb2NjdXJyZWQQChoVEgVjYXVzZRoMCghjYXVzZV9pZBASirsWYggRMlgKEgoOCgxkYXRlX2NyZWF0ZWQQAQoICgQKAmlkEAEaBQoDcmVmGgwKCnN1YmplY3RfaWQaBgoEa2luZBoKCghhY3Rvcl9pZBoKCghjYXVzZV9pZCAyKPQDQgIKAEgJQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_any, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChZhcHAvcGF5ZGF5L2V2ZW50LnByb3RvEgNhcHAi7QUKBUV2ZW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESFAoEZGVzYxgGIAEoCUIG6oIWAggBEhQKBGtpbmQYCCABKAlCBqrBFgIYABIaCghhY3Rvcl9pZBgJIAEoDEII6oIWBBBAOAESOgoNZGF0ZV9vY2N1cnJlZBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCB+qCFgOCAQASFgoGcmVhc29uGAsgASgJQgaqwRYCGAESHAoKc3ViamVjdF9pZBgMIAEoDEII6oIWBBBAOAESOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASHwoIdHJhY2VfaWQYECABKAxCDeqCFgOCAQCqwRYCGAASIAoIY2F1c2VfaWQYEiABKAxCDuqCFgQQQDgBqsEWAigBEjEKBXZhbHVlGBMgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueUIM6oIWAjgBqsEWAhgAEhQKBHNhaWQYESABKAlCBqrBFgIYADrnAcr8FX0SCIIBAhIAigEAGiwSBHBhZ2UaCgoGdGVuYW50EAIaEAoMZGF0ZV9jcmVhdGVkEA8aBgoCaWQQARosEgdzdWJqZWN0Gg4KCnN1YmplY3RfaWQQDBoRCg1kYXRlX29jY3VycmVkEAoaFRIFY2F1c2UaDAoIY2F1c2VfaWQQEoq7FmIIETJYChIKDgoMZGF0ZV9jcmVhdGVkEAEKCAoECgJpZBABGgUKA3JlZhoMCgpzdWJqZWN0X2lkGgYKBGtpbmQaCgoIYWN0b3JfaWQaCgoIY2F1c2VfaWQgMij0A0ICCgBICUIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_any, file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Event is one operation of the app's: what was done, to what, by whom, when it
@@ -27,15 +27,15 @@ export const file_app_payday_event: GenFile = /*@__PURE__*/
  * operation, and `kind` says which. No sentence is kept: one is made when the
  * event is read, in the reader's language, naming the people in it as they are
  * called then -- which a sentence written down at the time could not do once
- * somebody was renamed or forgotten.
+ * somebody was renamed or forgotten. `desc` is where an answer says it.
  *
  * An event is never changed, so there is no Patch, and never erased one at a
  * time: its rows leave when they expire, or with their tenant.
  *
  * **The numbers declared here are payday's.** An overlay in
- * `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 6 and
- * 17 are the ones an app adopting its own events into this table has needed --
- * and indexes, and nothing else.
+ * `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 17
+ * and from 20 on, which is where an app adopting its own events into this table
+ * keeps what they had -- and indexes, and nothing else.
  *
  * @generated from message app.Event
  */
@@ -49,6 +49,25 @@ export type Event = Message<"app.Event"> & {
    * @generated from field: app.Tenant tenant = 2;
    */
   tenant?: Tenant | undefined;
+
+  /**
+   * The sentence the event is said in, made as it is read -- `Reading.Say` of
+   * package `past`, in the reader's language and zone, its people named as
+   * they are called then -- by whatever answers with it.
+   *
+   * No row holds one, which is what `disabled` says: the field is the
+   * message's and not the table's, so it is in no column, no Add and no
+   * Select, and a generated Get or List answers it empty. A sentence kept
+   * would be the one written down at the time, which is what an event does
+   * not keep; and one an app's overlay kept here, empty in every row, was a
+   * column nothing read.
+   *
+   * Not `personal`, which is said of a column. Whose names a sentence says
+   * is on the access record of the call that said it (`Reading.Name`).
+   *
+   * @generated from field: string desc = 6;
+   */
+  desc: string;
 
   /**
    * What kind of operation this was, which says what `value` holds. It is a
@@ -133,9 +152,9 @@ export type Event = Message<"app.Event"> & {
   value?: Any | undefined;
 
   /**
-   * @generated from field: string desc = 6;
+   * @generated from field: string said = 17;
    */
-  desc: string;
+  said: string;
 };
 
 /**

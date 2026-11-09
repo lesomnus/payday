@@ -177,7 +177,7 @@ func (st EventServiceServer) create(ctx context.Context, req *apptest.EventAddRe
 	if req.HasValue() {
 		q.SetValue(req.GetValue())
 	}
-	q.SetDesc(req.GetDesc())
+	q.SetSaid(req.GetSaid())
 	return q, ds, nil
 }
 
@@ -459,8 +459,8 @@ func EventSelectedFields(m *apptest.EventSelect) []string {
 	if m.GetValue() {
 		vs = append(vs, event.FieldValue)
 	}
-	if m.GetDesc() {
-		vs = append(vs, event.FieldDesc)
+	if m.GetSaid() {
+		vs = append(vs, event.FieldSaid)
 	}
 
 	return vs

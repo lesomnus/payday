@@ -31,19 +31,20 @@ const (
 // operation, and `kind` says which. No sentence is kept: one is made when the
 // event is read, in the reader's language, naming the people in it as they are
 // called then -- which a sentence written down at the time could not do once
-// somebody was renamed or forgotten.
+// somebody was renamed or forgotten. `desc` is where an answer says it.
 //
 // An event is never changed, so there is no Patch, and never erased one at a
 // time: its rows leave when they expire, or with their tenant.
 //
 // **The numbers declared here are payday's.** An overlay in
-// `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 6 and
-// 17 are the ones an app adopting its own events into this table has needed --
-// and indexes, and nothing else.
+// `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 17
+// and from 20 on, which is where an app adopting its own events into this table
+// keeps what they had -- and indexes, and nothing else.
 type Event struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Id           []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant       *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
+	xxx_hidden_Desc         string                 `protobuf:"bytes,6,opt,name=desc"`
 	xxx_hidden_Kind         string                 `protobuf:"bytes,8,opt,name=kind"`
 	xxx_hidden_ActorId      []byte                 `protobuf:"bytes,9,opt,name=actor_id,json=actorId"`
 	xxx_hidden_DateOccurred *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=date_occurred,json=dateOccurred"`
@@ -54,7 +55,7 @@ type Event struct {
 	xxx_hidden_TraceId      []byte                 `protobuf:"bytes,16,opt,name=trace_id,json=traceId"`
 	xxx_hidden_CauseId      []byte                 `protobuf:"bytes,18,opt,name=cause_id,json=causeId"`
 	xxx_hidden_Value        *anypb.Any             `protobuf:"bytes,19,opt,name=value"`
-	xxx_hidden_Desc         string                 `protobuf:"bytes,6,opt,name=desc"`
+	xxx_hidden_Said         string                 `protobuf:"bytes,17,opt,name=said"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -96,6 +97,13 @@ func (x *Event) GetTenant() *Tenant {
 		return x.xxx_hidden_Tenant
 	}
 	return nil
+}
+
+func (x *Event) GetDesc() string {
+	if x != nil {
+		return x.xxx_hidden_Desc
+	}
+	return ""
 }
 
 func (x *Event) GetKind() string {
@@ -168,9 +176,9 @@ func (x *Event) GetValue() *anypb.Any {
 	return nil
 }
 
-func (x *Event) GetDesc() string {
+func (x *Event) GetSaid() string {
 	if x != nil {
-		return x.xxx_hidden_Desc
+		return x.xxx_hidden_Said
 	}
 	return ""
 }
@@ -184,6 +192,10 @@ func (x *Event) SetId(v []byte) {
 
 func (x *Event) SetTenant(v *Tenant) {
 	x.xxx_hidden_Tenant = v
+}
+
+func (x *Event) SetDesc(v string) {
+	x.xxx_hidden_Desc = v
 }
 
 func (x *Event) SetKind(v string) {
@@ -238,8 +250,8 @@ func (x *Event) SetValue(v *anypb.Any) {
 	x.xxx_hidden_Value = v
 }
 
-func (x *Event) SetDesc(v string) {
-	x.xxx_hidden_Desc = v
+func (x *Event) SetSaid(v string) {
+	x.xxx_hidden_Said = v
 }
 
 func (x *Event) HasTenant() bool {
@@ -302,6 +314,20 @@ type Event_builder struct {
 
 	Id     []byte
 	Tenant *Tenant
+	// The sentence the event is said in, made as it is read -- `Reading.Say` of
+	// package `past`, in the reader's language and zone, its people named as
+	// they are called then -- by whatever answers with it.
+	//
+	// No row holds one, which is what `disabled` says: the field is the
+	// message's and not the table's, so it is in no column, no Add and no
+	// Select, and a generated Get or List answers it empty. A sentence kept
+	// would be the one written down at the time, which is what an event does
+	// not keep; and one an app's overlay kept here, empty in every row, was a
+	// column nothing read.
+	//
+	// Not `personal`, which is said of a column. Whose names a sentence says
+	// is on the access record of the call that said it (`Reading.Name`).
+	Desc string
 	// What kind of operation this was, which says what `value` holds. It is a
 	// word of the app's and about no one.
 	Kind string
@@ -336,7 +362,7 @@ type Event_builder struct {
 	// people by identifier and holds nothing of theirs, which is why it is not
 	// personal and `reason` is.
 	Value *anypb.Any
-	Desc  string
+	Said  string
 }
 
 func (b0 Event_builder) Build() *Event {
@@ -345,6 +371,7 @@ func (b0 Event_builder) Build() *Event {
 	_, _ = b, x
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
+	x.xxx_hidden_Desc = b.Desc
 	x.xxx_hidden_Kind = b.Kind
 	x.xxx_hidden_ActorId = b.ActorId
 	x.xxx_hidden_DateOccurred = b.DateOccurred
@@ -355,7 +382,7 @@ func (b0 Event_builder) Build() *Event {
 	x.xxx_hidden_TraceId = b.TraceId
 	x.xxx_hidden_CauseId = b.CauseId
 	x.xxx_hidden_Value = b.Value
-	x.xxx_hidden_Desc = b.Desc
+	x.xxx_hidden_Said = b.Said
 	return m0
 }
 
@@ -363,10 +390,11 @@ var File_app_payday_event_proto protoreflect.FileDescriptor
 
 const file_app_payday_event_proto_rawDesc = "" +
 	"\n" +
-	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xcc\x06\n" +
+	"\x16app/payday/event.proto\x12\x03app\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xe8\x06\n" +
 	"\x05Event\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x1a\n" +
+	"\x04desc\x18\x06 \x01(\tB\x06\xea\x82\x16\x02\b\x01R\x04desc\x12\x1a\n" +
 	"\x04kind\x18\b \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04kind\x12#\n" +
 	"\bactor_id\x18\t \x01(\fB\b\xea\x82\x16\x04\x10@8\x01R\aactorId\x12H\n" +
 	"\rdate_occurred\x18\n" +
@@ -379,7 +407,7 @@ const file_app_payday_event_proto_rawDesc = "" +
 	"\btrace_id\x18\x10 \x01(\fB\r\xea\x82\x16\x03\x82\x01\x00\xaa\xc1\x16\x02\x18\x00R\atraceId\x12)\n" +
 	"\bcause_id\x18\x12 \x01(\fB\x0e\xea\x82\x16\x04\x10@8\x01\xaa\xc1\x16\x02(\x01R\acauseId\x128\n" +
 	"\x05value\x18\x13 \x01(\v2\x14.google.protobuf.AnyB\f\xea\x82\x16\x028\x01\xaa\xc1\x16\x02\x18\x00R\x05value\x12\x1a\n" +
-	"\x04desc\x18\x06 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04desc:\xe7\x01\xca\xfc\x15}\x12\b\x82\x01\x02\x12\x00\x8a\x01\x00\x1a,\x12\x04page\x1a\n" +
+	"\x04said\x18\x11 \x01(\tB\x06\xaa\xc1\x16\x02\x18\x00R\x04said:\xe7\x01\xca\xfc\x15}\x12\b\x82\x01\x02\x12\x00\x8a\x01\x00\x1a,\x12\x04page\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x02\x1a\x10\n" +
 	"\fdate_created\x10\x0f\x1a\x06\n" +

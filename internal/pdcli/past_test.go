@@ -189,7 +189,8 @@ func TestTheCopiesAreTheAppsAndGoWithTheDeclaration(t *testing.T) {
 		`option go_package = "github.com/lesomnus/payday/internal/apptest";`,
 		"own: OWN_EVENT",
 		"domain: 17",
-		"string desc = 6",
+		"string desc = 6 [(orm.field) = {disabled: true}];",
+		"string said = 17",
 	} {
 		x.Contains(v, want)
 	}
