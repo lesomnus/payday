@@ -60,8 +60,9 @@ runs:
       run: go test -count=1 -run '^TestTheBufThisPaydayPinsIsTheBufThatRuns$' ./internal/pdcli/
 
     # That it is where `pd` looks, and is the one pinned, whether it was found
-    # or fetched -- before it is saved: a directory `pd` does not look in would
-    # be saved without it, found by every run after, and fetched by each.
+    # or fetched. A directory `pd` does not look in would hold nothing to save:
+    # `actions/cache/save` would warn and go on, and every run after would
+    # fetch the binary again without anything failing.
     - shell: bash
       env:
         DIR: ${{ steps.pin.outputs.dir }}
