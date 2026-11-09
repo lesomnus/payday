@@ -141,9 +141,8 @@ Six verbs, and only where the schema declared them:
 | `patch <REF>` | change one |
 | `erase <REF>` | remove one |
 
-Each is the RPC it calls, in the case a command is typed in: `list` for `List`.
-It was `ls`, and `ls` is kept as its alias, so a script or a habit that says
-`ls` is where it was.
+Each is the RPC it calls, in the case a command is typed in: `list` for `List`,
+with `ls` its alias, the shorthand a shell is used to.
 
 `list` exists only for an entity that declared `list:`, and `watch` only for
 one that declared `watch:`. In payday's own test app, seven of the eleven

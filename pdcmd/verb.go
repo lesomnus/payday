@@ -21,10 +21,8 @@ import (
 // what reads, then what writes.
 //
 // A verb is the RPC it calls, in the case a command is typed in: `list` for
-// `List`. That one was `ls`, and `ls` still runs it -- it is in scripts, in
-// documentation and in the fingers of everybody who used one of these, and an
-// abbreviation of the RPC's name is an alias that reads back to what it
-// stands for.
+// `List`, with `ls` its alias -- the shorthand a shell is used to, and an
+// abbreviation of the RPC's name, which reads back to what it stands for.
 //
 // `Apply` is deliberately absent. It is one of payday's two general writes and
 // is closed unless an app opts in, so a command for it would be one that fails
