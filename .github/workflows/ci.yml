@@ -358,6 +358,13 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+          # Named, because setup-go keys its cache on the go.mod at the root of
+          # the workspace, and the checkout is a directory down. There was none
+          # there, so nothing was restored or saved: every run warned
+          # "Dependencies file is not found" and downloaded every module the
+          # widget builds with. payday's go.sum stands in for the widget's,
+          # which does not exist until a step below has made it.
+          cache-dependency-path: payday/go.sum
       # The widget's `pd` is this checkout's, so its buf is this one's.
       - uses: ./payday/.github/actions/buf
         with:
@@ -516,6 +523,8 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+          # As in `new`, which says why.
+          cache-dependency-path: payday/go.sum
       - uses: ./payday/.github/actions/buf
         with:
           payday: payday
