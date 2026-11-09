@@ -323,7 +323,7 @@ several kinds once for each.
 ```go
 typ, ok := pd.EventKinds[ev.GetKind()]
 if !ok {
-	// A row written before its kind had a message.
+	// A row the app wrote before it declared a past, which holds none.
 }
 
 v := typ.New().Interface()
