@@ -12860,31 +12860,9 @@ func (s notificationStore) Change(ctx context.Context, change watch.Change) (not
 			return notify.Hint{}, false, err
 		}
 		return notify.Hint{Tenant: row.Tenant, Topics: []notify.Topic{row.Topic}}, true, nil
-	case NotificationReceiptRecordDomain:
-		// A receipt this build writes is no server's write, and its hint is
-		// the Signal Mark noted, which Service reads without coming here. A
-		// replica of a build before payday#197 wrote its receipts through the
-		// generated Add, whose recorder notes the row by its key alone.
-		row, err := s.db.NotificationReceiptRecord.Query().Where(entNotificationReceiptRecord.IdEQ(change.Key.Uuid())).Only(ctx)
-		if ent.IsNotFound(err) {
-			return notify.Hint{}, false, nil
-		}
-		if err != nil {
-			return notify.Hint{}, false, err
-		}
-		receipt, err := notificationReceiptRow(row.Proto())
-		if err != nil {
-			return notify.Hint{}, false, err
-		}
-		notification, err := s.Find(ctx, receipt.Notification)
-		if status.Code(err) == codes.NotFound {
-			return notify.Hint{}, false, nil
-		}
-		if err != nil {
-			return notify.Hint{}, false, err
-		}
-		return notify.Hint{Tenant: receipt.Tenant, Reader: receipt.Reader, Topics: []notify.Topic{notification.Topic}}, true, nil
 	default:
+		// A receipt is no server's write, and its hint is the Signal Mark
+		// noted, which Service reads without coming here (payday#197).
 		return notify.Hint{}, false, nil
 	}
 }
