@@ -210,6 +210,37 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		x.Contains(v.Findings[0].Note, "do not say it is a checkpoint")
 	})
 
+	t.Run("one after the first that names none", func(t *testing.T) {
+		x := require.New(t)
+		s, p := chained(t, 2, nil)
+
+		// The second written again naming none, as somebody who held the
+		// process could, and then the first taken away: what names none is
+		// held to every number below it, as what names one is to the numbers
+		// between.
+		one, two := numbered(t, p, 1), numbered(t, p, 2)
+		x.NoError(p.checkpoints().Erase(ctx, two.d))
+		rewrite(t, p, two, func(c *Checkpoint) { c.Prev = "" })
+
+		v, err := p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "while the first is kept, it is one taken at the same moment as it: %v", v.Findings)
+
+		x.NoError(p.checkpoints().Erase(ctx, one.d))
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.Equal([]string{"unkept"}, kinds(v))
+		x.Equal(1, v.Findings[0].Checkpoint)
+		x.Contains(v.Findings[0].Note, "checkpoint 2 names none")
+
+		// Until an operator, who knows what became of it, accepts it.
+		_, err = accept(t, p, s, Acceptance{Why: "the first checkpoint was lost with the store's old disk"})
+		x.NoError(err)
+		v, err = p.Verify(ctx, s, false)
+		x.NoError(err)
+		x.True(v.Ok(), "%v", v.Findings)
+	})
+
 	t.Run("one that names a later one", func(t *testing.T) {
 		x := require.New(t)
 		s, p := chained(t, 3, nil)

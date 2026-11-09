@@ -1010,7 +1010,10 @@ Two things are there for that, and a third that is the storage's:
   keeps says it is, `unkept` until an operator accepts. Two acts taking a
   checkpoint at the same moment can be written the other way round, and then
   both name the one before the first: the store keeps the number between, and
-  that is no finding.
+  that is no finding. One that names none is held to every number below it the
+  same way, as naming the one before the first: the first skips nothing, and
+  one after it that names none -- the store's history taken away, and the next
+  act gone past it -- skips what the store no longer keeps.
 - **The store refuses deletion.** That is the storage's to promise, beneath the
   process. S3 Object Lock in compliance mode keeps every version of every
   object it is given for its retention, whoever's credentials ask — a delete

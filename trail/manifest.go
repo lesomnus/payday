@@ -1009,7 +1009,9 @@ type Checkpoint struct {
 	// is what makes the checkpoints a chain: one taken away, or written again
 	// as something else, is one the checkpoint after it names and the store
 	// does not keep -- whatever its labels say, and whether or not the
-	// database has been made to agree. Empty on the first.
+	// database has been made to agree. Empty on the first, and on one taken
+	// while the store kept none below it -- which is held to the numbers below
+	// it as any other is (see [chain.skipped]).
 	//
 	// It is the newest the store keeps below it when this one is written --
 	// of the checkpoints that are the deployment's word, by what each says
@@ -1836,8 +1838,13 @@ func (ch chain) accepted() []Accepted {
 // the first, and the first is kept, named by none -- no finding while it is
 // there, and the number skipped over once it is taken away.
 //
-// Only between two checkpoints the store keeps: one that names nothing is
-// the first.
+// One that names none is held to the numbers below it the same way, as
+// naming the one before the first: it names none because the store kept none
+// below it when it was taken, so every number below it that no checkpoint
+// says it is was skipped over -- the deployment's first checkpoint a crash
+// stopped, or the store's history taken away and the next act gone past it.
+// The first names none and skips nothing, and so does one taken at the same
+// moment as the first, while the first is kept.
 func (ch chain) skipped() []Finding {
 	accepted := 0
 	says := []int{}
@@ -1851,12 +1858,23 @@ func (ch chain) skipped() []Finding {
 
 	out := []Finding{}
 	for _, v := range ch.decided() {
-		prev, ok := ch.kept[v.c.Prev]
-		if !ok || v.c.K <= accepted || prev.c.K >= v.c.K-1 {
+		if v.c.K <= accepted {
 			continue
 		}
 
-		gaps := unsaid(says, prev.c.K+1, v.c.K-1)
+		from, names := 0, "none"
+		if v.c.Prev != "" {
+			prev, ok := ch.kept[v.c.Prev]
+			if !ok {
+				continue
+			}
+			from, names = prev.c.K, strconv.Itoa(prev.c.K)
+		}
+		if from >= v.c.K-1 {
+			continue
+		}
+
+		gaps := unsaid(says, from+1, v.c.K-1)
 		if len(gaps) == 0 {
 			continue
 		}
@@ -1869,7 +1887,7 @@ func (ch chain) skipped() []Finding {
 			}
 		}
 		out = append(out, Finding{Kind: "unkept", Checkpoint: gaps[0][0], Digest: v.d,
-			Note: fmt.Sprintf("checkpoint %d names %d as the one before it, and the store does not keep %s", v.c.K, prev.c.K, strings.Join(missing, ", "))})
+			Note: fmt.Sprintf("checkpoint %d names %s as the one before it, and the store does not keep %s", v.c.K, names, strings.Join(missing, ", "))})
 	}
 
 	return out
