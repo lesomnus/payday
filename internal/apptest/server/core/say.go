@@ -162,11 +162,11 @@ func Sentences(events app.EventServiceServer) *past.Sentences {
 			r.Fail(err)
 			return ""
 		}
-		if !strings.Contains(v.GetDesc(), "{actor}") {
-			return v.GetDesc()
+		if !strings.Contains(v.GetSaid(), "{actor}") {
+			return v.GetSaid()
 		}
 
-		return strings.ReplaceAll(v.GetDesc(), "{actor}", actor(r, ev, "?"))
+		return strings.ReplaceAll(v.GetSaid(), "{actor}", actor(r, ev, "?"))
 	})
 
 	return s

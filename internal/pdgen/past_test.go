@@ -184,10 +184,10 @@ func TestAPastIsDeclaredOnce(t *testing.T) {
 }
 
 // TestAnOverlayAddsToThePastAndDoesNotChangeIt: what an app adopting its own
-// events into payday's table adds -- the sentence it kept, at the number the
-// header holds for one, and a payload -- is an overlay's to add. A number the
-// template declares, a header field of another shape, and anything in its
-// declaration are not.
+// events into payday's table adds -- the sentence each was written with, and a
+// payload, at numbers the template leaves empty -- is an overlay's to add. A
+// number the template declares, its `desc` made a column again, a header field
+// of another shape, and anything in its declaration are not.
 func TestAnOverlayAddsToThePastAndDoesNotChangeIt(t *testing.T) {
 	with := func(t *testing.T, fields string) string {
 		t.Helper()
@@ -202,23 +202,39 @@ func TestAnOverlayAddsToThePastAndDoesNotChangeIt(t *testing.T) {
 	t.Run("what an adopting app adds", func(t *testing.T) {
 		x := require.New(t)
 
-		s, err := readAs(t, "fleet", with(t, "string desc = 6;\n  string payload = 17;"))
-		x.NoError(err, "rove's fields were refused")
+		s, err := readAs(t, "fleet", with(t, "string said = 17;\n  string payload = 20;"))
+		x.NoError(err, "an adopting app's fields were refused")
 
 		var names []string
 		for f := range s.Own(pdpb.Own_OWN_EVENT).Fields() {
 			names = append(names, f.Name())
 		}
-		x.Contains(names, "desc")
+		x.Contains(names, "said")
 		x.Contains(names, "payload")
+		x.NotContains(names, "desc", "the sentence an event is said in is a column")
+	})
+
+	// What an app adopting its own events kept its sentences in, and an app
+	// that answered sentences declared, before the template had a `desc`: the
+	// merge takes the overlay's field whole, so it is a column again.
+	t.Run("its desc kept", func(t *testing.T) {
+		x := require.New(t)
+
+		const ships = "string desc = 6 [(orm.field) = {disabled: true}];"
+		src := with(t, "")
+		x.Contains(src, ships)
+
+		_, err := readAs(t, "fleet", strings.Replace(src, ships, "string desc = 6 [(payday.field) = {personal: false}];", 1))
+		x.Error(err, "a desc in a column was generated")
+		x.Contains(err.Error(), `fleet.Event: 6 is payday's "desc" (string, in no column) and was redeclared as "desc" (string)`)
 	})
 
 	t.Run("a header field of another shape", func(t *testing.T) {
 		x := require.New(t)
 
-		_, err := readAs(t, "fleet", with(t, "int32 desc = 6;"))
-		x.Error(err, "an int desc was generated")
-		x.Contains(err.Error(), "fleet.Event: desc: is a TYPE_INT32")
+		_, err := readAs(t, "fleet", with(t, "int32 name = 5;"))
+		x.Error(err, "an int name was generated")
+		x.Contains(err.Error(), "fleet.Event: name: is a TYPE_INT32")
 	})
 
 	t.Run("a number the template declares", func(t *testing.T) {

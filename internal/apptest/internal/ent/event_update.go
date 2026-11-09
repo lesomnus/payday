@@ -177,16 +177,16 @@ func (_u *EventUpdate) ClearValue() *EventUpdate {
 	return _u
 }
 
-// SetDesc sets the "desc" field.
-func (_u *EventUpdate) SetDesc(v string) *EventUpdate {
-	_u.mutation.SetDesc(v)
+// SetSaid sets the "said" field.
+func (_u *EventUpdate) SetSaid(v string) *EventUpdate {
+	_u.mutation.SetSaid(v)
 	return _u
 }
 
-// SetNillableDesc sets the "desc" field if the given value is not nil.
-func (_u *EventUpdate) SetNillableDesc(v *string) *EventUpdate {
+// SetNillableSaid sets the "said" field if the given value is not nil.
+func (_u *EventUpdate) SetNillableSaid(v *string) *EventUpdate {
 	if v != nil {
-		_u.SetDesc(*v)
+		_u.SetSaid(*v)
 	}
 	return _u
 }
@@ -331,11 +331,11 @@ func (_u *EventUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ValueCleared() {
 		_spec.ClearField(event.FieldValue, field.TypeJson)
 	}
-	if value, ok := _u.mutation.Desc(); ok {
-		_spec.SetField(event.FieldDesc, field.TypeString, value)
+	if value, ok := _u.mutation.Said(); ok {
+		_spec.SetField(event.FieldSaid, field.TypeString, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(event.FieldDesc); ok {
-		_spec.SetField(event.FieldDesc, field.TypeString, e)
+	if e, ok := _u.mutation.FieldExpr(event.FieldSaid); ok {
+		_spec.SetField(event.FieldSaid, field.TypeString, e)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -505,16 +505,16 @@ func (_u *EventUpdateOne) ClearValue() *EventUpdateOne {
 	return _u
 }
 
-// SetDesc sets the "desc" field.
-func (_u *EventUpdateOne) SetDesc(v string) *EventUpdateOne {
-	_u.mutation.SetDesc(v)
+// SetSaid sets the "said" field.
+func (_u *EventUpdateOne) SetSaid(v string) *EventUpdateOne {
+	_u.mutation.SetSaid(v)
 	return _u
 }
 
-// SetNillableDesc sets the "desc" field if the given value is not nil.
-func (_u *EventUpdateOne) SetNillableDesc(v *string) *EventUpdateOne {
+// SetNillableSaid sets the "said" field if the given value is not nil.
+func (_u *EventUpdateOne) SetNillableSaid(v *string) *EventUpdateOne {
 	if v != nil {
-		_u.SetDesc(*v)
+		_u.SetSaid(*v)
 	}
 	return _u
 }
@@ -689,11 +689,11 @@ func (_u *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error)
 	if _u.mutation.ValueCleared() {
 		_spec.ClearField(event.FieldValue, field.TypeJson)
 	}
-	if value, ok := _u.mutation.Desc(); ok {
-		_spec.SetField(event.FieldDesc, field.TypeString, value)
+	if value, ok := _u.mutation.Said(); ok {
+		_spec.SetField(event.FieldSaid, field.TypeString, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(event.FieldDesc); ok {
-		_spec.SetField(event.FieldDesc, field.TypeString, e)
+	if e, ok := _u.mutation.FieldExpr(event.FieldSaid); ok {
+		_spec.SetField(event.FieldSaid, field.TypeString, e)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Event{config: _u.config}

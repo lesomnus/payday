@@ -14858,7 +14858,7 @@ func ResourceProjector(db *ent.Client, scope bare.Scope, guard batch.Guard) reso
 				{Number: 13, Name: entEvent.FieldDateUpdated, Type: 65, Nullable: false, Key: 0},
 				{Number: 15, Name: entEvent.FieldDateCreated, Type: 65, Nullable: false, Key: 0},
 				{Number: 16, Name: entEvent.FieldTraceId, Type: 12, Nullable: false, Key: 0},
-				{Number: 6, Name: entEvent.FieldDesc, Type: 9, Nullable: false, Key: 0},
+				{Number: 17, Name: entEvent.FieldSaid, Type: 9, Nullable: false, Key: 0},
 			}, v)
 			if err != nil {
 				return nil, err

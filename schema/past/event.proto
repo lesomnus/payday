@@ -23,15 +23,15 @@ option go_package = "github.com/lesomnus/payday/pdpb";
 // operation, and `kind` says which. No sentence is kept: one is made when the
 // event is read, in the reader's language, naming the people in it as they are
 // called then -- which a sentence written down at the time could not do once
-// somebody was renamed or forgotten.
+// somebody was renamed or forgotten. `desc` is where an answer says it.
 //
 // An event is never changed, so there is no Patch, and never erased one at a
 // time: its rows leave when they expire, or with their tenant.
 //
 // **The numbers declared here are payday's.** An overlay in
-// `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 6 and
-// 17 are the ones an app adopting its own events into this table has needed --
-// and indexes, and nothing else.
+// `proto/ext/payday/event.ext.proto` adds fields at the ones left empty -- 17
+// and from 20 on, which is where an app adopting its own events into this table
+// keeps what they had -- and indexes, and nothing else.
 message Event {
   bytes id = 1 [(orm.field) = {
     type: TYPE_UUID
@@ -39,6 +39,21 @@ message Event {
     default: ""
   }];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
+
+  // The sentence the event is said in, made as it is read -- `Reading.Say` of
+  // package `past`, in the reader's language and zone, its people named as
+  // they are called then -- by whatever answers with it.
+  //
+  // No row holds one, which is what `disabled` says: the field is the
+  // message's and not the table's, so it is in no column, no Add and no
+  // Select, and a generated Get or List answers it empty. A sentence kept
+  // would be the one written down at the time, which is what an event does
+  // not keep; and one an app's overlay kept here, empty in every row, was a
+  // column nothing read.
+  //
+  // Not `personal`, which is said of a column. Whose names a sentence says
+  // is on the access record of the call that said it (`Reading.Name`).
+  string desc = 6 [(orm.field) = {disabled: true}];
 
   // What kind of operation this was, which says what `value` holds. It is a
   // word of the app's and about no one.

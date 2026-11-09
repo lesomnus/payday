@@ -157,13 +157,13 @@ func TestThePastIsWrittenAndReadBack(t *testing.T) {
 			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 			Kind:         "robot.oil",
 			DateOccurred: timestamppb.Now(),
-			Desc:         "oiled",
+			Said:         "oiled",
 		}.Build())
 		x.NoError(err)
 
 		got := get(t, v.GetId())
 		x.False(got.HasValue(), "an event written with no value is read with one: %v", got.GetValue())
-		x.Equal("oiled", got.GetDesc(), "the overlay's field")
+		x.Equal("oiled", got.GetSaid(), "the overlay's field")
 	})
 
 	t.Run("facts, one of them superseded by a patch", func(t *testing.T) {

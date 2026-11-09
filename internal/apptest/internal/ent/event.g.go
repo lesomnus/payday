@@ -37,6 +37,6 @@ func (e *Event) Proto() *apptest.Event {
 	if e.Value != nil {
 		x.SetValue(e.Value)
 	}
-	x.SetDesc(e.Desc)
+	x.SetSaid(e.Said)
 	return x
 }

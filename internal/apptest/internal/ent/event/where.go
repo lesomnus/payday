@@ -101,9 +101,9 @@ func CauseId(v uuid.UUID) predicate.Event {
 	return predicate.Event(sql.FieldEQ(FieldCauseId, v))
 }
 
-// Desc applies equality check predicate on the "desc" field. It's identical to DescEQ.
-func Desc(v string) predicate.Event {
-	return predicate.Event(sql.FieldEQ(FieldDesc, v))
+// Said applies equality check predicate on the "said" field. It's identical to SaidEQ.
+func Said(v string) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldSaid, v))
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
@@ -591,69 +591,69 @@ func ValueNotNil() predicate.Event {
 	return predicate.Event(sql.FieldNotNull(FieldValue))
 }
 
-// DescEQ applies the EQ predicate on the "desc" field.
-func DescEQ(v string) predicate.Event {
-	return predicate.Event(sql.FieldEQ(FieldDesc, v))
+// SaidEQ applies the EQ predicate on the "said" field.
+func SaidEQ(v string) predicate.Event {
+	return predicate.Event(sql.FieldEQ(FieldSaid, v))
 }
 
-// DescNEQ applies the NEQ predicate on the "desc" field.
-func DescNEQ(v string) predicate.Event {
-	return predicate.Event(sql.FieldNEQ(FieldDesc, v))
+// SaidNEQ applies the NEQ predicate on the "said" field.
+func SaidNEQ(v string) predicate.Event {
+	return predicate.Event(sql.FieldNEQ(FieldSaid, v))
 }
 
-// DescIn applies the In predicate on the "desc" field.
-func DescIn(vs ...string) predicate.Event {
-	return predicate.Event(sql.FieldIn(FieldDesc, vs...))
+// SaidIn applies the In predicate on the "said" field.
+func SaidIn(vs ...string) predicate.Event {
+	return predicate.Event(sql.FieldIn(FieldSaid, vs...))
 }
 
-// DescNotIn applies the NotIn predicate on the "desc" field.
-func DescNotIn(vs ...string) predicate.Event {
-	return predicate.Event(sql.FieldNotIn(FieldDesc, vs...))
+// SaidNotIn applies the NotIn predicate on the "said" field.
+func SaidNotIn(vs ...string) predicate.Event {
+	return predicate.Event(sql.FieldNotIn(FieldSaid, vs...))
 }
 
-// DescGT applies the GT predicate on the "desc" field.
-func DescGT(v string) predicate.Event {
-	return predicate.Event(sql.FieldGT(FieldDesc, v))
+// SaidGT applies the GT predicate on the "said" field.
+func SaidGT(v string) predicate.Event {
+	return predicate.Event(sql.FieldGT(FieldSaid, v))
 }
 
-// DescGTE applies the GTE predicate on the "desc" field.
-func DescGTE(v string) predicate.Event {
-	return predicate.Event(sql.FieldGTE(FieldDesc, v))
+// SaidGTE applies the GTE predicate on the "said" field.
+func SaidGTE(v string) predicate.Event {
+	return predicate.Event(sql.FieldGTE(FieldSaid, v))
 }
 
-// DescLT applies the LT predicate on the "desc" field.
-func DescLT(v string) predicate.Event {
-	return predicate.Event(sql.FieldLT(FieldDesc, v))
+// SaidLT applies the LT predicate on the "said" field.
+func SaidLT(v string) predicate.Event {
+	return predicate.Event(sql.FieldLT(FieldSaid, v))
 }
 
-// DescLTE applies the LTE predicate on the "desc" field.
-func DescLTE(v string) predicate.Event {
-	return predicate.Event(sql.FieldLTE(FieldDesc, v))
+// SaidLTE applies the LTE predicate on the "said" field.
+func SaidLTE(v string) predicate.Event {
+	return predicate.Event(sql.FieldLTE(FieldSaid, v))
 }
 
-// DescContains applies the Contains predicate on the "desc" field.
-func DescContains(v string) predicate.Event {
-	return predicate.Event(sql.FieldContains(FieldDesc, v))
+// SaidContains applies the Contains predicate on the "said" field.
+func SaidContains(v string) predicate.Event {
+	return predicate.Event(sql.FieldContains(FieldSaid, v))
 }
 
-// DescHasPrefix applies the HasPrefix predicate on the "desc" field.
-func DescHasPrefix(v string) predicate.Event {
-	return predicate.Event(sql.FieldHasPrefix(FieldDesc, v))
+// SaidHasPrefix applies the HasPrefix predicate on the "said" field.
+func SaidHasPrefix(v string) predicate.Event {
+	return predicate.Event(sql.FieldHasPrefix(FieldSaid, v))
 }
 
-// DescHasSuffix applies the HasSuffix predicate on the "desc" field.
-func DescHasSuffix(v string) predicate.Event {
-	return predicate.Event(sql.FieldHasSuffix(FieldDesc, v))
+// SaidHasSuffix applies the HasSuffix predicate on the "said" field.
+func SaidHasSuffix(v string) predicate.Event {
+	return predicate.Event(sql.FieldHasSuffix(FieldSaid, v))
 }
 
-// DescEqualFold applies the EqualFold predicate on the "desc" field.
-func DescEqualFold(v string) predicate.Event {
-	return predicate.Event(sql.FieldEqualFold(FieldDesc, v))
+// SaidEqualFold applies the EqualFold predicate on the "said" field.
+func SaidEqualFold(v string) predicate.Event {
+	return predicate.Event(sql.FieldEqualFold(FieldSaid, v))
 }
 
-// DescContainsFold applies the ContainsFold predicate on the "desc" field.
-func DescContainsFold(v string) predicate.Event {
-	return predicate.Event(sql.FieldContainsFold(FieldDesc, v))
+// SaidContainsFold applies the ContainsFold predicate on the "said" field.
+func SaidContainsFold(v string) predicate.Event {
+	return predicate.Event(sql.FieldContainsFold(FieldSaid, v))
 }
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.

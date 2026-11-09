@@ -265,6 +265,10 @@ type named struct {
 // An event that holds no message is said by [Sentences.Legacy]. One whose
 // message this binary cannot read -- of a type it does not link -- is said as
 // its kind.
+//
+// An answer made of events says each in its `desc`, which payday's Event has
+// for it and keeps in no column: the sentence is the reading's, and no row
+// holds one.
 func (r *Reading) Say(ev EventRow) string {
 	was := r.kind
 	r.kind = ev.Kind

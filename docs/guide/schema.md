@@ -911,19 +911,28 @@ one another entity declares when the schema is read.
 Add to them the way you add to the rest, with an overlay at
 `proto/ext/payday/event.ext.proto` or `fact.ext.proto`: a field at any number
 the template leaves empty, and an index. Every number the template declares is
-payday's -- an Event's 8..12 are its kind, its actor, when, why and what about --
-so what is free is what it leaves empty: 17 and from 20 on an Event, 11, 18 and
-from 22 on a Fact, and on both the header's numbers, which hold the header's
-fields here as everywhere (`desc` at 6), and 3, the set edge. An app moving its
-own events into payday's table keeps what they had:
+payday's -- an Event's 8..12 are its kind, its actor, when, why and what about,
+and its 6 is `desc`, the sentence it is said in, which is answered and kept in
+no column ([what an event holds](#what-an-event-holds)) -- so what is free is
+what it leaves empty: 17 and from 20 on an Event, 11, 18 and from 22 on a Fact,
+and on both the header's numbers the template leaves empty, which hold the
+header's fields here as everywhere, and 3, the set edge. An app moving its own
+events into payday's table keeps what they had, under names of its own:
 
 ```proto
 // proto/ext/payday/event.ext.proto
 message Event {
-  string desc = 6 [(payday.field) = {personal: false}];
-  string payload = 17;
+  // The sentence each was written with, which `Sentences.Legacy` says.
+  string said = 17 [(payday.field) = {personal: false}];
+  string payload = 20;
 }
 ```
+
+Not in `desc`, which no row holds. A table that kept its sentences in a column
+of that name renames it, with `rename.Columns` in its `Migrate` before the
+migration. The migration drops no column, so it would leave that one where it
+is -- and a string column ent made takes no row without a value, so every event
+written after would be refused.
 
 Two things are refused readably rather than left to buf, because buf would name
 neither in words that point here:
@@ -943,7 +952,11 @@ own.
 #### What an event holds
 
 An event keeps no sentence. Its `value` holds a message you declare for what
-its kind of operation holds, marked as one with the kinds it holds:
+its kind of operation holds, marked as one with the kinds it holds -- and the
+sentence it is said in is made when it is read, and answered in its `desc`,
+which is the message's and in no column: `(orm.field) = {disabled: true}`, so
+no Add writes one and no Select asks for one
+([Saying what happened](past.md#9-saying-what-happened)):
 
 ```proto
 message RobotMoved {

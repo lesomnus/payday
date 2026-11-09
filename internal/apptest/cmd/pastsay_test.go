@@ -8,6 +8,7 @@ import (
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/pdid"
 
 	app "github.com/lesomnus/payday/internal/apptest"
+	entevent "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	"github.com/lesomnus/payday/internal/apptest/server/core"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
@@ -131,6 +133,39 @@ func TestAnEventNamesPeopleAsTheyAreCalledNow(t *testing.T) {
 		_, saw := call.Unsaid()
 		x.Empty(saw, "and nobody's data shown")
 	})
+}
+
+// TestAnEventIsSaidInItsDescAndKeepsNone: what an answer says an event in is
+// its `desc`, which payday's Event has for it and keeps out of the table --
+// `(orm.field) = {disabled: true}`. So the table has no column for it, an Add
+// has none to write and a Select none to ask for, and a generated Get answers
+// it empty, every field selected: the sentence is the answer's to make, as it
+// is read.
+func TestAnEventIsSaidInItsDescAndKeepsNone(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	as := b.as(ctx)
+
+	x.NotContains(entevent.Columns, "desc", "the table has a column for the sentence")
+	for _, m := range []proto.Message{&app.EventAddRequest{}, &app.EventSelect{}} {
+		x.Nil(m.ProtoReflect().Descriptor().Fields().ByName("desc"), "%T has the sentence in it", m)
+	}
+	desc := (&app.Event{}).ProtoReflect().Descriptor().Fields().ByNumber(6)
+	x.NotNil(desc, "an event has nowhere to be said in")
+	x.Equal(protoreflect.Name("desc"), desc.Name())
+
+	ev := b.serviced(t, as, machine(t, b, as), b.person(t, ctx, "alice"))
+	got, err := b.Walled.Event().Get(as, app.EventGetRequest_builder{
+		Ref:    app.EventRef_builder{Id: ev.Bytes()}.Build(),
+		Select: app.EventSelect_builder{All: z.Ptr(true)}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Empty(got.GetDesc(), "a generated Get answered a sentence")
+
+	// And an answer that says it: in the reader's words, with whoever is in
+	// it named as they are called now.
+	got.SetDesc(b.said(t, as, core.Sentences(b.Walled.Event()), "en", nil, ev))
+	x.Equal("alice serviced m-01; put in 2 × P-1; swapped left for P-0; left it in service; due Nov 1 00:00", got.GetDesc())
 }
 
 // TestWhomASentenceNamesIsOnTheAccessRecord: a name a sentence says is that
@@ -339,13 +374,13 @@ func TestAnEventFromBeforeThePastIsSaidAsItWasWritten(t *testing.T) {
 	// As it was written: a row of the app's own servers, before the past
 	// wrote any -- and before the Audit layer refused one it did not.
 	sink := b.beforeThePast(t)
-	before := func(desc string) pdid.Id {
+	before := func(said string) pdid.Id {
 		v, err := sink.Event().Add(ctx, app.EventAddRequest_builder{
 			Tenant:       app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
 			Kind:         "robot.oil",
 			ActorId:      alice.Bytes(),
 			DateOccurred: timestamppb.New(time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)),
-			Desc:         desc,
+			Said:         said,
 		}.Build())
 		x.NoError(err)
 
