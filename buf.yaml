@@ -34,11 +34,3 @@ lint:
 breaking:
   use:
     - FILE
-  # Until the first app launches, payday keeps nothing for an earlier payday
-  # (2026-11-09). An event's `desc` is the sentence an answer says it in, and
-  # in no column, so the test app's Add and Select of an event no longer have
-  # the one its overlay declared. Only the test app's module, which the
-  # registry does not hold: remove once main has it.
-  ignore_only:
-    FIELD_NO_DELETE:
-      - internal/apptest/proto/app/payday/event_svc.g.proto
