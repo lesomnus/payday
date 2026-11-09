@@ -3,6 +3,7 @@ package pdcli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,10 +29,65 @@ func NewCmdRoot() *xli.Command {
 			NewCmdSandbox(),
 			NewCmdUpgrade(),
 			NewCmdVersions(),
+			NewCmdBuf(),
 		},
 
 		Handler: xli.RequireSubcommand(),
 	}
+}
+
+// NewCmdBuf is `pd buf`: the buf every generation runs, for what an app does
+// with buf itself -- an API module of its own that it lints, formats and
+// checks for breaks.
+//
+// That work wants the buf a generation runs for the reason that one is pinned
+// ([BufVersion]): two bufs disagree about what a schema compiles to and where
+// the formatter breaks a line, so a check made with another is a check of
+// something no generation made. And finding one is how an app got it wrong: a
+// script took the highest version in `pd`'s cache, which on a machine that has
+// run more than one payday is the newest one's buf, whichever the app is on.
+//
+// So it asks what `pd gen` asks -- [Buf]: the cache, a fetch checked against
+// its digest, [BufEnv] -- and then hands buf the rest of the line as it was
+// written, its flags and its `--help` included (see [line]). The streams and
+// the exit status are buf's too: `buf lint` and `buf breaking` answer 100 for
+// what they found, and a script tells that from a buf that never ran by the
+// number. It needs no app, and runs in the directory it is run in.
+func NewCmdBuf() *xli.Command {
+	return &xli.Command{
+		Name:  "buf",
+		Brief: "run the buf every generation runs, with the rest of the line",
+		Synop: "pd buf [ARGS...]",
+
+		Args: arg.Args{
+			&arg.Remains{
+				Name:     "ARGS",
+				Brief:    "buf's own arguments, passed as they are",
+				Optional: true,
+			},
+		},
+
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			args, _ := arg.Get[[]string](cmd, "ARGS")
+
+			return runBuf(ctx, args, cmd.ReadCloser, cmd.Writer, cmd.ErrWriter)
+		}),
+	}
+}
+
+// line is a command line as the tree is to read it.
+//
+// What follows `buf` is buf's, so it goes after `--`, which is how xli is told
+// that the rest of a line is not its to read. Read as pd's, `pd buf --version`
+// is pd refusing a flag it does not have, `pd buf lint --error-format json` a
+// flag after an argument, and `pd buf --help` pd's help where buf's was asked
+// for.
+func line(args []string) []string {
+	if len(args) == 0 || args[0] != "buf" {
+		return args
+	}
+
+	return append([]string{"buf", "--"}, args[1:]...)
 }
 
 // NewCmdGen is `pd gen`.
@@ -567,8 +623,18 @@ func discover(cmd *xli.Command) (Layout, error) {
 
 // Main is `pd`, for a `main` that is one line.
 func Main() {
-	if err := NewCmdRoot().Run(context.Background(), os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "pd:", err)
-		os.Exit(1)
+	err := NewCmdRoot().Run(context.Background(), line(os.Args[1:]))
+	if err == nil {
+		return
 	}
+
+	// What a program `pd` ran had to say, it said on its own stderr, and its
+	// status is the answer: `pd: exit status 100` would be pd talking over it.
+	var status exitStatus
+	if errors.As(err, &status) {
+		os.Exit(int(status))
+	}
+
+	fmt.Fprintln(os.Stderr, "pd:", err)
+	os.Exit(1)
 }

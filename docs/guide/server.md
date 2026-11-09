@@ -1203,6 +1203,7 @@ deployment.
 | `pd entity add <Name>` | a new entity, with a free domain number picked and the tenancy stated |
 | `pd sandbox init [dir]` | the second entry point and the page's half of it, so the app runs inside the page it serves — see [the whole app in a page](../client.md#2-the-whole-app-in-a-page) |
 | `pd doctor` | what would go wrong: missing tools, missing buf deps, an overlay for nothing, a layer that cannot be bound, a sandbox that will not run, a field that may hold a person and says nothing; and of an app that keeps a past, a lock out of step with its schema, a column named for an event that does not say it names one, an event message's field named for a person, and a page whose transport cannot read an event |
+| `pd buf [args...]` | the buf every generation runs, for what your app does with buf itself — a module of its own to lint, format or check for breaks. The arguments are buf's as written, and so are the streams and the exit status |
 
 The other commands are on **your** binary, because each needs something only
 your app can hand over:
