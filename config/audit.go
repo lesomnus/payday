@@ -87,11 +87,8 @@ type AuditConfig struct {
 	//
 	// It is a flob store on the disk, a namespace per tenant -- see the `trail`
 	// package -- whose every blob the database keeps an account of; see
-	// `checkpoints` below. A directory a version before this one wrote files
-	// into is the same setting: the first pass adopts what is there, and files
-	// it by tenant.
-	// An archive anywhere else flob reaches, S3 among them, is handed in by
-	// the app as `trail.Policy.Archive`.
+	// `checkpoints` below. An archive anywhere else flob reaches, S3 among
+	// them, is handed in by the app as `trail.Policy.Archive`.
 	Archive string `yaml:"archive"`
 
 	// Discard is a deployment saying it means to keep nothing.

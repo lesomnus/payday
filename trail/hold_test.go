@@ -254,54 +254,6 @@ func TestARowSharedWithAHeldTenantIsHeld(t *testing.T) {
 	x.Contains(docsIn(t, p.Archive), shared.id, "a row the held tenant may read was discarded")
 }
 
-// TestAHoldKeepsItsOwnRowsOfAFileOfEverybodys.
-//
-// A file from before held every tenant's rows together. A hold on one of them
-// is no reason to keep the others' past their window, so the file is written
-// again with what is held and nothing else.
-func TestAHoldKeepsItsOwnRowsOfAFileOfEverybodys(t *testing.T) {
-	x := require.New(t)
-	ctx := t.Context()
-
-	free, held := newTenant(), newTenant()
-	a := flob.NewMemStores()
-
-	month := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	mine := fakeRow{id: uuid.NewV7(), tenant: free.Uuid(), actor: free.Uuid(), domain: person, created: month.Add(day)}
-	theirs := fakeRow{id: uuid.NewV7(), tenant: held.Uuid(), actor: held.Uuid(), domain: person, created: month.Add(2 * day)}
-
-	_, _, err := put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month, Name: "audit-2020-01.person.0" + Ext},
-		[][]byte{mine.doc(), theirs.doc()})
-	x.NoError(err)
-
-	p := Policy{
-		Signer:  signer,
-		Archive: a,
-		Keep:    Keep{Retain: 30 * day, Destroy: year},
-		Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}}),
-	}
-	p.Pass(ctx, &fakeStore{})
-
-	in := docsIn(t, a)
-	x.NotContains(in, mine.id, "a row nobody holds outlived its window for sharing a file with one somebody does")
-	x.Contains(in, theirs.id, "the held row went with the file")
-
-	// By the file's rows going to their own tenants first, each then on its
-	// own windows and its own hold.
-	cs, err := chunksIn(ctx, a, LegacyNamespace)
-	x.NoError(err)
-	x.Empty(cs, "the file was not filed by tenant")
-	cs, err = chunksIn(ctx, a, held.String())
-	x.NoError(err)
-	x.Len(cs, 1)
-	x.Equal(1, cs[0].Rows)
-
-	rs := receiptsIn(t, a)
-	x.Len(rs, 1)
-	x.Equal(free.String(), rs[0].Tenant)
-	x.Equal(1, rs[0].Rows)
-}
-
 // TestPurgeByHandLeavesWhatIsHeldAndSaysSo.
 //
 // Refusing would keep every other tenant's archive past what they are owed, so
@@ -440,29 +392,23 @@ func TestATenantLeaves(t *testing.T) {
 	theirs := s.add(fakeRow{tenant: other.Uuid(), counterpart: z(leaving.Uuid()), domain: person, created: ago(day), value: "v"})
 
 	a := flob.NewMemStores()
+	p := Policy{Signer: signer, Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 	month := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	row := func(tenant, actor pdid.Id) fakeRow {
 		return fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: actor.Uuid(), domain: person, created: month.Add(day), value: "v"}
 	}
 
 	own := row(leaving, leaving)
-	_, _, err := put(ctx, a, Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
+	_, _, err := put(ctx, p.manifested(s), Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
 		[][]byte{own.doc()})
 	x.NoError(err)
 
 	set := []pdid.Id{leaving, other}
 	slices.SortFunc(set, byId)
 	sharedMine, sharedTheirs := row(leaving, other), row(other, leaving)
-	_, _, err = put(ctx, a, Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
+	_, _, err = put(ctx, p.manifested(s), Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
 		First: sharedMine.created, Last: sharedTheirs.created}, [][]byte{sharedMine.doc(), sharedTheirs.doc()})
 	x.NoError(err)
-
-	legacyMine, legacyShared, legacyTheirs := row(leaving, leaving), row(leaving, other), row(other, other)
-	_, _, err = put(ctx, a, Chunk{Namespace: LegacyNamespace, Kind: "person", Month: month},
-		[][]byte{legacyMine.doc(), legacyShared.doc(), legacyTheirs.doc()})
-	x.NoError(err)
-
-	p := Policy{Signer: signer, Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 
 	plan, err := p.PlanTenantPurge(ctx, s, leaving)
 	x.NoError(err)
@@ -476,8 +422,8 @@ func TestATenantLeaves(t *testing.T) {
 
 	x.Equal(TenantPurge{
 		Removed: 1, Blanked: 1,
-		Chunks: 1, Rows: 2,
-		Rewritten: 2, Edited: 2,
+		Chunks: 1, Rows: 1,
+		Rewritten: 1, Edited: 1,
 		Held: Held{Rows: 1},
 	}, got)
 
@@ -498,9 +444,6 @@ func TestATenantLeaves(t *testing.T) {
 	x.Contains(in, sharedMine.id)
 	x.Empty(in[sharedMine.id]["value"])
 	x.NotEmpty(in[sharedTheirs.id]["value"], "the other tenant's side of a shared chunk was blanked")
-	x.NotContains(in, legacyMine.id, "its row in a file of everybody's outlived it")
-	x.Empty(in[legacyShared.id]["value"])
-	x.NotEmpty(in[legacyTheirs.id]["value"], "somebody else's row in a file of everybody's was blanked")
 
 	acts := map[string]int{}
 	for _, v := range receiptsIn(t, a) {
@@ -508,7 +451,7 @@ func TestATenantLeaves(t *testing.T) {
 			acts[v.Where] += v.Rows
 		}
 	}
-	x.Equal(map[string]int{"database": 1, "archive": 2}, acts)
+	x.Equal(map[string]int{"database": 1, "archive": 1}, acts)
 }
 
 // TestATenantUnderAHoldIsNotPurged.

@@ -87,8 +87,7 @@ func TestALockKeepsEveryKindWithItsMessage(t *testing.T) {
 
 // TestALockIsReadAsItIsWritten: a lock reads back as the lock that was
 // written, and a key it does not know is refused rather than dropped -- one
-// dropped is gone from the lock written back. A lock of the payday before a
-// message could hold several kinds is told how it is written now.
+// dropped is gone from the lock written back.
 func TestALockIsReadAsItIsWritten(t *testing.T) {
 	x := require.New(t)
 
@@ -99,9 +98,6 @@ func TestALockIsReadAsItIsWritten(t *testing.T) {
 	v, err = pdgen.ReadLock([]byte(" \n"))
 	x.NoError(err)
 	x.Equal(&pdgen.Lock{}, v, "none at all")
-
-	_, err = pdgen.ReadLock([]byte(`{"events": {"app.Corrected": "correct"}, "messages": {}}`))
-	x.ErrorIs(err, pdgen.ErrLockOfEvents)
 
 	_, err = pdgen.ReadLock([]byte(`{"kinds": {}, "later": {}}`))
 	x.ErrorContains(err, `unknown field "later"`)

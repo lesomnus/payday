@@ -24,16 +24,12 @@ func (Fact) Fields() []ent.Field {
 		field.Uuid("subject_id"),
 		field.String("key"),
 		field.String("value"),
-		field.Uint32("field_number").
-			Optional().
-			Default(0),
+		field.Uint32("field_number"),
 		field.Time("date_updated"),
 		field.Time("date_created").
 			Immutable().
 			Optional(),
-		field.Uint32("domain").
-			Optional().
-			Default(0),
+		field.Uint32("domain"),
 		field.Time("date_start").
 			Optional(),
 		field.Uuid("event_id"),

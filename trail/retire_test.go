@@ -423,6 +423,4 @@ func TestAReturnIsSigned(t *testing.T) {
 	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: time.Nanosecond}}
 	_, err := p.Return(t.Context(), &fakeStore{}, newTenant())
 	x.ErrorIs(err, ErrNoKey)
-	_, err = p.Retired(t.Context(), &fakeStore{})
-	x.ErrorIs(err, ErrNoKey)
 }

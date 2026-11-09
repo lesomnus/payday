@@ -8,25 +8,20 @@
 // written on every insert and read by nothing. Renamed first, it is found, and
 // the migration has nothing to do.
 //
-// Tables, indexes and columns are what this renames, because they are what
-// has moved. An entity the schema renamed says what it was called
-// (`(payday.entity).formerly`), and its table was named after that: a
-// migration makes the new one, empty, and the rows stay in the old one.
-// protoc-gen-orm-ent stored an index under a name made of its columns,
-// `robot_tenant_id_date_created_id`, and stores it now under the name the
-// schema declares, `robot_page` (protobuf-orm/protoc-gen-orm-ent#15). And a
-// column of one of payday's own entities was misnamed once: a notification
-// receipt's first read was `data_read`, where every other time payday keeps is
-// a `date_*`, and is `date_read` now (payday#196); and so were the times of the
-// past and of the copy of entitlements, `occurred_at`, `valid_from`,
-// `superseded_at` and `valid_until`, which are `date_*` now too. A migration
-// drops no column either, so it adds the new one, empty, beside the old -- and
-// that one fails worse than an index, since the rows written before read as
-// never having had a value. On SQLite a table whose index names the column is
-// made again instead, without the old one: what it held is gone, and there is
-// nothing left to move. `pd gen` writes what all three mean for an app's
-// schema, as `pd.TableRenames`, `pd.ColumnRenames` and `pd.IndexRenames`, and
-// an app's `Migrate` hands them here before it creates, in this order:
+// Tables, indexes and columns are what this renames. An entity the schema
+// renamed says what it was called (`(payday.entity).formerly`), and its table
+// was named after that: a migration makes the new one, empty, and the rows stay
+// in the old one. A column of one of payday's own entities that payday
+// renames, and an index whose name changes, are moved the same way. A
+// migration drops no column either, so it adds the new one, empty, beside the
+// old -- and that one fails worse than an index, since the rows written before
+// read as never having had a value. On SQLite a table whose index names the
+// column is made again instead, without the old one: what it held is gone,
+// and there is nothing left to move. `pd gen` writes what all three mean for
+// an app's schema, as `pd.TableRenames`, `pd.ColumnRenames` and
+// `pd.IndexRenames` -- the last two empty while payday has renamed no column
+// or index of its own -- and an app's `Migrate` hands them here before it
+// creates, in this order:
 //
 //	if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
 //		return err

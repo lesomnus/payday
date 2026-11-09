@@ -415,9 +415,8 @@ func TestWhatAWitnessAnswersIsHeldToItsSignature(t *testing.T) {
 // TestACheckpointIsWhatItHolds (#115): the checkpoint store is read for what
 // each blob holds, and never by its labels. A checkpoint with its labels taken
 // off is as much one as before -- the newest hidden that way, the count wound
-// back, is a database behind it -- and is still a checkpoint the store had
-// before the first pass. A blob that is neither a checkpoint nor a witness's
-// receipt is a finding, and a receipt relabelled is still one.
+// back, is a database behind it. A blob that is neither a checkpoint nor a
+// witness's receipt is a finding, and a receipt relabelled is still one.
 func TestACheckpointIsWhatItHolds(t *testing.T) {
 	ctx := t.Context()
 
@@ -433,16 +432,6 @@ func TestACheckpointIsWhatItHolds(t *testing.T) {
 		x.NoError(err)
 		x.Contains(kinds(v), "behind", "a checkpoint with its labels taken off was not read: %v", v.Findings)
 		x.ErrorIs(oneMore(t, s, p), errBehind)
-	})
-	t.Run("before the first pass", func(t *testing.T) {
-		x := require.New(t)
-		p := Policy{Archive: flob.NewMemStores(), Signer: signer}
-		_, err := p.checkpoints().Add(ctx, flob.Meta{}, bytes.NewReader(gzipped(t, []byte(`{"checkpoint":{"k":1}}`))))
-		x.NoError(err)
-
-		first, err := p.unchecked(ctx, &fakeStore{})
-		x.NoError(err)
-		x.False(first, "an archive whose checkpoint store keeps a blob was taken as it is")
 	})
 	t.Run("a blob that is neither", func(t *testing.T) {
 		x := require.New(t)

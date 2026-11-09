@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/protobuf-orm/protobuf-orm/graph"
 	"google.golang.org/protobuf/compiler/protogen"
 
 	"github.com/lesomnus/payday/pdpb"
@@ -13,82 +12,37 @@ import (
 
 const pkgRename = protogen.GoImportPath("github.com/lesomnus/payday/rename")
 
-// EmitIndexRenames writes what each index the schema names was stored as
-// before protoc-gen-orm-ent stored it under that name, for `rename.Indexes`
-// to move before a migration (protobuf-orm/protoc-gen-orm-ent#15).
+// EmitIndexRenames writes `pd.IndexRenames`, the indexes an earlier build
+// stored under another name, for `rename.Indexes` to move before a migration.
 //
-// Before, an index was stored under the name ent makes of its columns,
-// `<table>_<column>_<column>`; now under the one it declares, `<table>_<name>`.
-// A migration finds an index by name, so one an earlier build made is not
-// found under the new one: it is made again, from every row, and the old one
-// is left beside it, since a migration drops no index. Renamed first, it is
-// found and nothing is made.
-//
-// Both names are protoc-gen-orm-ent's, written out here a second time: the
-// table is the entity's name in lower case, and an edge's column is its name
-// and `_id`. They are ent's for an index of no name, and one whose name is
-// the one ent would make moves nowhere; neither is listed.
-//
-// The old name is of the columns the index has now. One whose columns changed
-// in the same release was not stored under it either -- an app that reordered
-// an index before this keeps its own list of those (lesomnus/rove#122).
-func EmitIndexRenames(g *protogen.GeneratedFile, s *Schema) {
-	g.P("// IndexRenames are the indexes this schema names, by what an earlier build")
-	g.P("// stored each under: the name made of its columns, where protoc-gen-orm-ent")
-	g.P("// now stores it under the one it declares. Hand them to `rename.Indexes`")
-	g.P("// before a migration, which makes again whatever it does not find by name.")
-	g.P("var IndexRenames = []", pkgRename.Ident("Index"), "{")
-	for _, v := range s.Sorted() {
-		table := strings.ToLower(v.Entity.Name())
-		for idx := range v.Indexes() {
-			if idx.Name() == "" {
-				continue
-			}
-
-			columns := []string{}
-			for p := range idx.Props() {
-				switch p := p.(type) {
-				case graph.Field:
-					columns = append(columns, p.Name())
-				case graph.Edge:
-					columns = append(columns, p.Name()+"_id")
-				}
-			}
-
-			from, to := table+"_"+strings.Join(columns, "_"), table+"_"+idx.Name()
-			if from == to {
-				continue
-			}
-
-			g.P("	{Table: ", strconv.Quote(table), ", From: ", strconv.Quote(from), ", To: ", strconv.Quote(to), "},")
-		}
-	}
-	g.P("}")
+// It holds none. Every index a schema names is stored under the name it
+// declares, `<table>_<name>`, and payday moves no index an earlier payday
+// stored otherwise: until the first app launches, it keeps nothing for an
+// earlier payday (CLAUDE.md). It is written for every app all the same, as
+// [EmitColumnRenames] is, so that an app's `Migrate` hands it over whatever the
+// app declares, and an index payday renames after that launch is moved with no
+// change to any app.
+func EmitIndexRenames(g *protogen.GeneratedFile) {
+	g.P("// IndexRenames are the indexes of this schema that an earlier build stored")
+	g.P("// under another name. Hand them to `rename.Indexes` before a migration, which")
+	g.P("// makes again whatever it does not find by name.")
+	g.P("var IndexRenames = []", pkgRename.Ident("Index"), "{}")
 	g.P("")
 }
 
 // columnRenames are the columns of payday's own entities that an earlier build
 // stored under another name, by the entity's marker: what [ColumnRenames]
-// answers for an app that has the entity. Only ever added to: a deployment may
-// migrate from any build before the one that renamed it.
+// answers for an app that has the entity.
+//
+// None: until the first app launches, payday keeps nothing for an earlier
+// payday (CLAUDE.md), and a column it renames before then is just renamed.
+// From that launch on, a column payday renames goes here, and the list is only
+// ever added to: a deployment may migrate from any build before the one that
+// renamed it.
 var columnRenames = []struct {
 	own      pdpb.Own
 	from, to string
-}{
-	// A receipt's first read was `data_read`, a typo of the `date_*` every
-	// other time payday keeps is named by (payday#196).
-	{pdpb.Own_OWN_NOTIFICATION_RECEIPT, "data_read", "date_read"},
-
-	// The times the past and the copy of entitlements kept under names of
-	// their own, which are `date_*` as every other time payday keeps is: when
-	// an event happened, when a fact began to hold and when it was
-	// superseded, and a grant's window.
-	{pdpb.Own_OWN_EVENT, "occurred_at", "date_occurred"},
-	{pdpb.Own_OWN_FACT, "valid_from", "date_start"},
-	{pdpb.Own_OWN_FACT, "superseded_at", "date_superseded"},
-	{pdpb.Own_OWN_ENTITLEMENT, "valid_from", "date_effective"},
-	{pdpb.Own_OWN_ENTITLEMENT, "valid_until", "date_expires"},
-}
+}{}
 
 // ColumnRename is one column of payday's own entities that an earlier build
 // stored under another name: its table, as protoc-gen-orm-ent names it, and

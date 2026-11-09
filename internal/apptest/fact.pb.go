@@ -314,9 +314,7 @@ type Fact_builder struct {
 	// written one way for one value makes `=` exact in SQL.
 	Value string
 	// Which of the subject's fields, by its number in the subject's descriptor --
-	// `protoreflect.FieldNumber`, which is what it is called in Go as well. Zero
-	// on a row written before the column was, which is what the default is for:
-	// a table that has rows can be given it.
+	// `protoreflect.FieldNumber`, which is what it is called in Go as well.
 	//
 	// Not `field`: ent's generated mutation already has `AddField`, `ClearField`
 	// and the rest, which take any field by its name, and a column of that name
@@ -327,7 +325,7 @@ type Fact_builder struct {
 	// Which entity the subject is, by its domain. A field number means something
 	// only within one entity, so a read across resources has to say which; the
 	// identifier carries it too, at byte nine, and no database indexes into a
-	// byte of a uuid. Zero on a row written before the column was.
+	// byte of a uuid.
 	Domain uint32
 	// When the value became true, which is not when it was written down:
 	// `date_created` is when it was known.
@@ -366,7 +364,7 @@ var File_app_payday_fact_proto protoreflect.FileDescriptor
 
 const file_app_payday_fact_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/payday/fact.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xd2\a\n" +
+	"\x15app/payday/fact.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\x1a\x17app/payday/tenant.proto\"\xc0\a\n" +
 	"\x04Fact\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12%\n" +
@@ -374,11 +372,11 @@ const file_app_payday_fact_proto_rawDesc = "" +
 	"subject_id\x18\b \x01(\fB\x06\xea\x82\x16\x02\x10@R\tsubjectId\x12\x10\n" +
 	"\x03key\x18\t \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\n" +
-	" \x01(\tR\x05value\x12*\n" +
-	"\ffield_number\x18\f \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\vfieldNumber\x12F\n" +
+	" \x01(\tR\x05value\x12!\n" +
+	"\ffield_number\x18\f \x01(\rR\vfieldNumber\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x1f\n" +
-	"\x06domain\x18\x10 \x01(\rB\a\xea\x82\x16\x03\x82\x01\x00R\x06domain\x12B\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12\x16\n" +
+	"\x06domain\x18\x10 \x01(\rR\x06domain\x12B\n" +
 	"\n" +
 	"date_start\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\tdateStart\x12'\n" +
 	"\bevent_id\x18\x13 \x01(\fB\f\xea\x82\x16\x02\x10@\xaa\xc1\x16\x02(\x01R\aeventId\x12Q\n" +

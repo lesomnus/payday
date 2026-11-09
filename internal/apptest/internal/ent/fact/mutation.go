@@ -118,7 +118,6 @@ func (m *Mutation) ResetValue() {
 func (m *Mutation) SetFieldNumber(u uint32) {
 	m.field_number = &u
 	m.addfield_number = nil
-	delete(m.clearedFields, FieldFieldNumber)
 	delete(m.exprs, FieldFieldNumber)
 }
 
@@ -149,25 +148,10 @@ func (m *Mutation) AddedFieldNumber() (r int32, exists bool) {
 	return *v, true
 }
 
-// ClearFieldNumber clears the value of the "field_number" field.
-func (m *Mutation) ClearFieldNumber() {
-	m.field_number = nil
-	m.addfield_number = nil
-	delete(m.exprs, FieldFieldNumber)
-	m.clearedFields[FieldFieldNumber] = struct{}{}
-}
-
-// FieldNumberCleared returns if the "field_number" field was cleared in this mutation.
-func (m *Mutation) FieldNumberCleared() bool {
-	_, ok := m.clearedFields[FieldFieldNumber]
-	return ok
-}
-
 // ResetFieldNumber resets all changes to the "field_number" field.
 func (m *Mutation) ResetFieldNumber() {
 	m.field_number = nil
 	m.addfield_number = nil
-	delete(m.clearedFields, FieldFieldNumber)
 	delete(m.exprs, FieldFieldNumber)
 }
 
@@ -229,7 +213,6 @@ func (m *Mutation) ResetDateCreated() {
 func (m *Mutation) SetDomain(u uint32) {
 	m.domain = &u
 	m.adddomain = nil
-	delete(m.clearedFields, FieldDomain)
 	delete(m.exprs, FieldDomain)
 }
 
@@ -260,25 +243,10 @@ func (m *Mutation) AddedDomain() (r int32, exists bool) {
 	return *v, true
 }
 
-// ClearDomain clears the value of the "domain" field.
-func (m *Mutation) ClearDomain() {
-	m.domain = nil
-	m.adddomain = nil
-	delete(m.exprs, FieldDomain)
-	m.clearedFields[FieldDomain] = struct{}{}
-}
-
-// DomainCleared returns if the "domain" field was cleared in this mutation.
-func (m *Mutation) DomainCleared() bool {
-	_, ok := m.clearedFields[FieldDomain]
-	return ok
-}
-
 // ResetDomain resets all changes to the "domain" field.
 func (m *Mutation) ResetDomain() {
 	m.domain = nil
 	m.adddomain = nil
-	delete(m.clearedFields, FieldDomain)
 	delete(m.exprs, FieldDomain)
 }
 
@@ -858,14 +826,8 @@ func (m *Mutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *Mutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(FieldFieldNumber) {
-		fields = append(fields, FieldFieldNumber)
-	}
 	if m.FieldCleared(FieldDateCreated) {
 		fields = append(fields, FieldDateCreated)
-	}
-	if m.FieldCleared(FieldDomain) {
-		fields = append(fields, FieldDomain)
 	}
 	if m.FieldCleared(FieldDateStart) {
 		fields = append(fields, FieldDateStart)
@@ -890,14 +852,8 @@ func (m *Mutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *Mutation) ClearField(name string) error {
 	switch name {
-	case FieldFieldNumber:
-		m.ClearFieldNumber()
-		return nil
 	case FieldDateCreated:
 		m.ClearDateCreated()
-		return nil
-	case FieldDomain:
-		m.ClearDomain()
 		return nil
 	case FieldDateStart:
 		m.ClearDateStart()

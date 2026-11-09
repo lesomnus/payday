@@ -243,8 +243,8 @@ func TestTablesGoFirst(t *testing.T) {
 	host := rename.Column{Table: "cell", From: "host", To: "hostname"}
 	page := rename.Index{Table: "cell", From: "cell_tenant_id_id", To: "cell_page"}
 
-	// With the index under the name of its columns, as a build before
-	// protoc-gen-orm-ent#15 made it.
+	// With the index under another name, as an earlier build might have made
+	// it: the name of its columns.
 	earlier := func(t *testing.T) (*sql.DB, string) {
 		db, d := open(t)
 		ofAnEarlierBuild(t, db)

@@ -162,10 +162,13 @@ func (s *Sentences) say(kind, locale string, typ protoreflect.MessageType, f fun
 }
 
 // Legacy says each event that holds no message, with `f`: given the reading
-// and the event, the sentence. Such a row was written before the app's events
-// were the past's -- the app adopted its own table as it stood, and the rows
-// already in it keep what they said in the app's own fields, which an overlay
-// adds: the sentence each was written with, and what it named.
+// and the event, the sentence. Such a row is one an app wrote itself before it
+// declared a past: an app that kept a table of events of its own adopts it as
+// the past's as it stands, and the rows already in it keep what they said in
+// the app's own fields, which an overlay adds -- the sentence each was written
+// with, and what it named. It is to the events an app had before its past
+// what `(payday.entity).formerly` is to the name an entity had: what the app
+// wrote before, read as what it is now.
 //
 // The past writes none of those fields and reads none of them, so `f` reads
 // them itself, of the row `ev.Id` names, with [Reading.Context], and says what
@@ -369,7 +372,8 @@ func (r *Reading) Zone() *time.Location { return r.zone }
 func (r *Reading) Kind() string { return r.kind }
 
 // Context is the call the reading is for: what a sentence that reads more of
-// the app's own -- a legacy row's fields -- reads it with.
+// the app's own -- the fields of a row it wrote before it declared a past --
+// reads it with.
 func (r *Reading) Context() context.Context { return r.ctx }
 
 // Fail says something a sentence says could not be read, and [Reading.Err]

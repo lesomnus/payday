@@ -34,7 +34,7 @@ comments, which are where the detail actually lives.
 | [The runtime](runtime.md) | every package, what is generated, and how each rule is enforced |
 | [Tenancy](tenancy.md) | the model behind the wall, and the decisions around it |
 | [The generation contract](schema.md) | what payday owns, overlays, identifiers, slugs |
-| [Migrating](migrating.md) | what an app has to change when payday does, newest first |
+| [Migrating](migrating.md) | what an app has to change when payday does -- nothing before the first app launches -- and how a rename is carried |
 | [The browser](client.md) | the transports, the sandbox, and the client replica |
 | [Notifications](notify.md) | Topic keys, app policies, lazy receipts, and the notification RPCs |
 

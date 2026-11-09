@@ -485,7 +485,8 @@ func TestAPersonalFieldChangedPastTheServersDiffers(t *testing.T) {
 
 // TestASealTakenOffIsAFinding: the newest line says its write sealed the row,
 // bound into its MAC, so a row with no seal beside it is a row somebody took
-// the seal off -- found, and not counted as a row from before seals.
+// the seal off -- found, and not counted as a row written before its kind was
+// sealed.
 func TestASealTakenOffIsAFinding(t *testing.T) {
 	x := require.New(t)
 	d, err := audit.NewDigest(keyA)
@@ -536,12 +537,13 @@ func TestASealOfAnotherWriteIsForged(t *testing.T) {
 	x.Equal([]pdid.Id{id}, out.Forged)
 }
 
-// TestARowFromBeforeSealsIsCountedAndListed: a row whose newest line was
-// written by a write that sealed nothing -- a build from before seals -- is
-// not a finding: its personal fields are vouched for by nothing yet, which is
-// what it is listed as, and the list is in what a check found as one digest,
-// so that the acceptance that seals the rows seals the ones reviewed.
-func TestARowFromBeforeSealsIsCountedAndListed(t *testing.T) {
+// TestARowWrittenBeforeItsKindWasSealedIsCountedAndListed: a row whose newest
+// line was written by a write that sealed nothing -- before its kind declared
+// a field personal -- is not a finding: its personal fields are vouched for by
+// nothing yet, which is what it is listed as, and the list is in what a check
+// found as one digest, so that the acceptance that seals the rows seals the
+// ones reviewed.
+func TestARowWrittenBeforeItsKindWasSealedIsCountedAndListed(t *testing.T) {
 	x := require.New(t)
 	d, err := audit.NewDigest(keyA)
 	x.NoError(err)
@@ -557,7 +559,7 @@ func TestARowFromBeforeSealsIsCountedAndListed(t *testing.T) {
 	x.Equal([]pdid.Id{before}, out.Unsealed)
 	x.Equal(1, out.Matches)
 	x.Equal(2, out.Read)
-	x.True(out.Ok(), "a row from before seals is no finding")
+	x.True(out.Ok(), "a row written before its kind was sealed is no finding")
 	x.NotContains(out.Unsealed, sealed)
 
 	x.NotEqual(out.Digest(), audit.Rows{}.Digest(), "what is to be sealed is what was reviewed")

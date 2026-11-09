@@ -34,8 +34,7 @@ import (
 // A row of a kind under a floor, written recently enough that the floor is
 // still on it: the floor's longer clock, from when the row was written. Its
 // rows in the database, its chunks in the archive whose newest row is under
-// one, its rows in the files from before, and the contents of what it shares
-// -- all as they are. [TenantPurge.Until] is when the last of them can be no
+// one, and the contents of what it shares -- all as they are. [TenantPurge.Until] is when the last of them can be no
 // longer under a floor, by the floors as they are now.
 //
 // From then on the passes treat the tenant as one that keeps nothing of its
@@ -95,7 +94,8 @@ func (p Policy) floored(d pdid.Domain, at, now time.Time) bool {
 }
 
 // newest is when a chunk's newest row was written, as late as it can have been:
-// a file adopted from a directory knows only its month.
+// a blob no pass wrote, which an operator accepted with the labels it came
+// with, may say only its month (see [Chunk.Before]).
 func newest(c Chunk) time.Time {
 	if !c.Last.IsZero() {
 		return c.Last
@@ -275,14 +275,9 @@ type Retirement struct {
 // It is what tells a tenant that left this way apart from one that never did,
 // for an app about to put one back under the identifier it had, and what an
 // operator asked to preserve what one left reads first: whether it is still
-// there. It is a question, answered inside a transaction too; but it reads
-// the manifest as an act does, and an archive whose manifest is empty is taken
-// in first, as its first pass would take it, so it needs [Policy.Signer] as an
-// act does ([ErrNoKey]).
+// there. It is a question, answered inside a transaction too, and it reads
+// the manifest as an act does.
 func (p Policy) Retired(ctx context.Context, s Store) (map[pdid.Id]Retirement, error) {
-	if p.Archive != nil && p.Signer == nil {
-		return nil, ErrNoKey
-	}
 	x, err := p.start(s)
 	if err != nil {
 		return nil, err

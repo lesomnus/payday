@@ -116,12 +116,13 @@ func TestASealGoesWithItsRow(t *testing.T) {
 	x.True(got.Ok(), "%+v", got)
 }
 
-// TestARowFromBeforeSealsIsListedAndARecordSealsIt: a row whose newest line
-// was written by a build that sealed nothing -- made here by writing its
-// line's digest as such a build would have, and taking its seal off -- is
-// listed, and no finding; put on the trail by `Record`, as an app's
-// acceptance does, it is sealed, and listed no more.
-func TestARowFromBeforeSealsIsListedAndARecordSealsIt(t *testing.T) {
+// TestARowWrittenBeforeItsKindWasSealedIsListedAndARecordSealsIt: a row whose
+// newest line was written by a write that sealed nothing, before its kind
+// declared a field personal -- made here by writing its line's digest as such
+// a write would have, and taking its seal off -- is listed, and no finding;
+// put on the trail by `Record`, as an app's acceptance does, it is sealed, and
+// listed no more.
+func TestARowWrittenBeforeItsKindWasSealedIsListedAndARecordSealsIt(t *testing.T) {
 	x := require.New(t)
 	b, ctx, d := digesting(t)
 
@@ -141,7 +142,7 @@ func TestARowFromBeforeSealsIsListedAndARecordSealsIt(t *testing.T) {
 
 	got, err := pd.Digests(ctx, b.Ent, d, trail.Policy{})
 	x.NoError(err)
-	x.True(got.Ok(), "a row from before seals is no finding: %+v", got)
+	x.True(got.Ok(), "a row written before its kind was sealed is no finding: %+v", got)
 	x.Equal([]pdid.Id{pdid.Id(k)}, got.Unsealed)
 
 	n, err := pd.Record(ctx, b.Ent, audit.Contents{Digest: d}, "/test/Accept", got.Unsealed)

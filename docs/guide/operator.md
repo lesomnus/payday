@@ -332,8 +332,11 @@ a secret, to start with, which `openssl genpkey -algorithm ed25519` or
 `trail.GenerateKey` makes; a key the process cannot give away — a TPM, an HSM,
 Vault, a cloud KMS — is named there by its URI once the app imports what speaks
 to it (see [keys in a device](../runtime.md#keys-in-a-device)), and any other
-`crypto.Signer` is handed in as `trail.Policy.Signer`. A deployment that archived
-without a key sets one and accepts once (`Policy.Accept`, below).
+`crypto.Signer` is handed in as `trail.Policy.Signer`. A key that is changed
+keeps the one before it in `audit.checkpoints.trust` until the next has signed
+a checkpoint and the rows the one before signed are accepted again; left out
+sooner, what it signed is a history no trusted key signed, which an operator
+accepts once (`Policy.Accept`, below).
 
 The live rows can be checked as well. With `audit.digest.key`, each row of the
 trail keeps a keyed digest of the row its write left. The key is a file of
@@ -345,8 +348,8 @@ it, on a schedule too, and that fails on every list it answers with and prints
 the kinds it skipped, and the findings as one digest, `audit.Rows.Digest`. And
 one that accepts what an operator has looked at -- rows a migration rewrote,
 rows written before the trail could say anything about them, rows of a kind
-that declares a field personal written before rows were sealed
-(`audit.Rows.Unsealed`, which are listed and no finding) -- by recording them,
+written before it declared a field personal (`audit.Rows.Unsealed`, which are
+listed and no finding) -- by recording them,
 `pd.Record(ctx, db, contents, action, ids)`, which seals each as it is, or
 `pd.RecordErased` for ones that are gone: given the digest the operator looked
 at, and refused when a check now answers another, so that a row found after
@@ -362,9 +365,9 @@ The key signs every row of the manifest as well, so that a row changed after
 the latest checkpoint is found too, and each checkpoint names the one before
 it. On a WORM mount, say so — `audit.checkpoints.write_once: true` — and the
 process never erases or relabels a checkpoint either; on S3 with Object Lock,
-hand the store in as `trail.WriteOnce(store)`. Rows written before the
-deployment had a key are findings until an operator accepts them once, which
-signs them as they stand.
+hand the store in as `trail.WriteOnce(store)`. Rows signed by a key the
+deployment no longer trusts are findings until an operator accepts them once,
+which signs them as they stand.
 
 Name witnesses for the checkpoints too, `audit.checkpoints.witnesses`: what
 hears each checkpoint outside the database and the archive, so that a chain cut

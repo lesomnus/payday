@@ -705,8 +705,7 @@ carries a value the page it came with already answered with, to the same caller.
 
 A cursor is of the order it was read in and the way: carried on in another, or
 the other way round, it is refused, since it names a place in a sequence it is
-not in. The cursor of `order` read forwards is the same shape it always was, so
-one a client is holding carries on across the upgrade.
+not in.
 
 ---
 

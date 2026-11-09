@@ -307,12 +307,12 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		l := genApp(t)
 
 		b, _ := lockOf(t, l)
-		editMachine(t, l, "  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n", "")
+		editMachine(t, l, "  google.protobuf.Timestamp date_due = 6;\n", "")
 
 		v := findingOf(t, l, "past.lock")
 		x.True(v.Fatal, "pd gen stops on it")
 		x.Contains(v.What, "pd gen would refuse this schema: proto/app/payday/past.lock holds what this schema no longer declares as it was")
-		x.Contains(v.What, "\n  app.MachineServiced (6): was \"due\", and is gone\n")
+		x.Contains(v.What, "\n  app.MachineServiced (6): was \"dateDue\", and is gone\n")
 		x.Contains(v.What, "docs/guide/past.md")
 		still(t, l, []byte(b))
 	})
@@ -340,25 +340,9 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		x.Equal("go tool pd gen app\n\nwhich adds\n\n"+
 			"  kind \"app.MachineStarted\", whose rows hold app.MachineStarted\n"+
 			"  kind \"retract\", whose rows hold app.Corrected\n"+
-			"  app.MachineServiced (6): \"due\"\n"+
+			"  app.MachineServiced (6): \"dateDue\"\n"+
 			"  app.MachineServiced.Part: a message an event message holds\n"+
 			"  app.Mode: 3, MODE_SERVICE", f.Fix)
-		still(t, l, b)
-	})
-
-	t.Run("of the payday before a message held several kinds", func(t *testing.T) {
-		x := require.New(t)
-		l := genApp(t)
-
-		// Each event message by its one kind, as that payday wrote it.
-		b := []byte(`{"events": {"app.MachineServiced": "machine.service"}, "messages": {}}` + "\n")
-		x.NoError(os.WriteFile(filepath.Join(l.Root, l.DirPd(), pdcli.LockFile), b, 0o644))
-
-		f := findingOf(t, l, "past.lock")
-		x.True(f.Fatal, "pd gen stops on it")
-		x.Contains(f.What, `pd gen would refuse this schema: proto/app/payday/past.lock records each event message's kind under "events"`)
-		x.Contains(f.What, `write each "app.Message": "kind" of "events" as "kind": "app.Message" under "kinds"`)
-		x.NotContains(f.What, "hand edit of it has to stay that", "it is JSON, and the JSON is not what is wrong")
 		still(t, l, b)
 	})
 

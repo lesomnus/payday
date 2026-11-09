@@ -76,13 +76,6 @@ func ValidColumn(column string) bool {
 	return false
 }
 
-var (
-	// DefaultFieldNumber holds the default value on creation for the "field_number" field.
-	DefaultFieldNumber uint32
-	// DefaultDomain holds the default value on creation for the "domain" field.
-	DefaultDomain uint32
-)
-
 // OrderOption defines the ordering options for the Fact queries.
 type OrderOption func(*sql.Selector)
 

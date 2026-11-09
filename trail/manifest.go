@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"maps"
 	"slices"
 	"strconv"
@@ -339,27 +338,6 @@ func (s manifestedStore) Erase(ctx context.Context, d flob.Digest) error {
 	return s.r.m.Mark(ctx, s.ns, string(d), Erasing, Erased, s.r.sign)
 }
 
-// adopted records a blob put into the archive beneath the manifest -- a hard
-// link, which [flob.OsStore.Adopt] makes without the decorator seeing it.
-func adopted(ctx context.Context, s flob.Store, d flob.Digest, l flob.Labels) error {
-	r, ok := s.(manifestedStore)
-	if !ok {
-		return nil
-	}
-
-	key, err := r.r.m.Adding(ctx, r.ns, "", labelsOf(l), r.r.sign)
-	if err != nil {
-		return err
-	}
-	if err := r.r.m.Added(ctx, key, string(d), labelsOf(l), r.r.sign); err != nil {
-		return err
-	}
-
-	r.r.remember(blobKey{r.ns, d}, labelsOf(l))
-
-	return nil
-}
-
 // unwrapStores is the archive beneath a manifest.
 func unwrapStores(a flob.Stores) flob.Stores {
 	if r, ok := a.(*manifested); ok {
@@ -440,8 +418,7 @@ func inventory(ctx context.Context, a flob.Stores) (map[blobKey]map[string]strin
 // trust loads what the manifest accounts for, for an act that is not a pass --
 // a pass has it from verifying; see [pass.verify]: every blob it has a row for,
 // present or being erased, and the adds in flight, by the intent their blobs
-// are labelled with -- each by a row whose signature is no finding. A manifest
-// with no rows is filled first, as the first pass would; see [Policy.fill].
+// are labelled with -- each by a row whose signature is no finding.
 func (x *pass) trust(ctx context.Context) error {
 	if x.m == nil {
 		return nil
@@ -450,20 +427,6 @@ func (x *pass) trust(ctx context.Context) error {
 	rows, err := x.s.Rows(ctx)
 	if err != nil {
 		return fmt.Errorf("the manifest: %w", err)
-	}
-	if len(rows) == 0 {
-		inv, err := inventory(ctx, x.m.a)
-		if err != nil {
-			return err
-		}
-		if len(inv) > 0 {
-			if err := x.p.fill(ctx, x.s, inv); err != nil {
-				return fmt.Errorf("the manifest: %w", err)
-			}
-			if rows, err = x.s.Rows(ctx); err != nil {
-				return fmt.Errorf("the manifest: %w", err)
-			}
-		}
 	}
 
 	// The adds in flight are trusted by the intent their blobs are labelled
@@ -589,8 +552,7 @@ func (x *pass) chunks(ctx context.Context, nss []string, fresh bool) ([]Chunk, [
 	return trusted, rest, nil
 }
 
-// settle finishes what a crash left in flight, and fills the manifest the
-// first time from what the archive holds.
+// settle finishes what a crash left in flight.
 //
 // An add whose blob is there, labelled with its intent, is present, and one
 // whose blob is not is dropped once it is a day old -- what is younger may be
@@ -612,10 +574,6 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 	inv, err := inventory(ctx, p.Archive)
 	if err != nil {
 		return err
-	}
-
-	if len(rows) == 0 && len(inv) > 0 {
-		return p.fill(ctx, m, inv)
 	}
 
 	intents := map[string]blobKey{}
@@ -650,73 +608,13 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 	return err
 }
 
-// fill is the first time: every blob the archive holds goes into the manifest
-// as it is. Refused once the archive has had a checkpoint, since an empty
-// manifest after one is a database restored from before it, or emptied --
-// which an operator looks at, and [Policy.Accept] is for.
-func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string]string) error {
-	first, err := p.unchecked(ctx, m)
-	if err != nil {
-		return err
-	}
-	if !first {
-		log.From(ctx).WarnContext(ctx, "trail: the manifest is empty and the archive has had checkpoints, so it is not filled from what the archive holds",
-			"see", "`trail verify`")
-
-		return nil
-	}
-
-	sign := p.signing()
-	for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
-		key, err := m.Adding(ctx, k.ns, "", inv[k], sign)
-		if err != nil {
-			return err
-		}
-		if err := m.Added(ctx, key, string(k.d), inv[k], sign); err != nil {
-			return err
-		}
-	}
-
-	log.From(ctx).InfoContext(ctx, "trail: the manifest, filled from what the archive holds", "blobs", len(inv))
-
-	return nil
-}
-
-// unchecked answers whether no checkpoint of the archive has ever been taken:
-// none numbered by the database, and none kept by the store.
-//
-// Until the first, the archive is taken as it is -- the manifest filled from
-// what it holds, the files a version before wrote into its directory adopted
-// -- because there is nothing yet to say what it held before. From the first
-// on, a blob or a file nobody wrote through the manifest is a finding, and only
-// an operator's acceptance takes it in.
-//
-// Any blob the checkpoint store keeps counts, whatever its labels say and
-// the deployment's word or not (see [Policy.readChain]): what this decides is
-// whether the archive is taken as it is, and a blob nobody vouches for can
-// only make that less likely. A checkpoint relabelled is still one (#115).
-func (p Policy) unchecked(ctx context.Context, m Manifest) (bool, error) {
-	if k, _, err := m.Latest(ctx); err != nil || k > 0 {
-		return false, err
-	}
-
-	ls, err := listCheckpoints(ctx, p.checkpoints())
-	if err != nil {
-		return false, err
-	}
-
-	return len(ls) == 0, nil
-}
-
 // Finding is something about the archive that its manifest does not account
 // for.
 type Finding struct {
 	// Kind is what was found:
 	//
 	//	missing      a blob the manifest says the archive holds, and it does not
-	//	unaccounted  a blob the archive holds that the manifest never added,
-	//	             or a file of the directory format in the archive's
-	//	             directory once the archive has had a checkpoint
+	//	unaccounted  a blob the archive holds that the manifest never added
 	//	relabelled   a blob whose labels are not the ones the manifest recorded,
 	//	             or a checkpoint whose labels do not say which it is
 	//	altered      a blob whose bytes are not its digest any more
@@ -888,10 +786,12 @@ func (v Verified) Ok() bool { return len(v.Findings) == 0 }
 // The ones made by [Policy.Signer] or by a key in [Policy.Trust]; one by any
 // other key is forged. A row with no signature is a finding, and so is a
 // checkpoint with none that no checkpoint the deployment signed names (see
-// [Policy.readChain]): an archive kept without a key until now has both, which
-// an operator accepts once (see [Policy.checkpoint]). A row whose signature is
-// a finding is reported for itself, and is not what the archive is compared
-// with -- what it says is nobody's word -- so its blob is no other finding.
+// [Policy.readChain]). A deployment whose key changed while the one before
+// it was left out of [Policy.Trust] has rows and checkpoints of a key nobody
+// trusts, which an operator accepts once, or trusts that key (see
+// [Policy.checkpoint]). A row whose signature is a finding is reported for
+// itself, and is not what the archive is compared with -- what it says is
+// nobody's word -- so its blob is no other finding.
 func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error) {
 	out := Verified{trusted: map[blobKey]map[string]string{}, flying: map[blobKey]bool{}}
 	if p.Archive == nil {
@@ -990,14 +890,6 @@ func (p Policy) Verify(ctx context.Context, s Store, full bool) (Verified, error
 		out.Findings = append(out.Findings, Finding{Kind: "missing", Namespace: k.ns, Digest: k.d})
 	}
 
-	// And the files of the directory format beside the store, which the
-	// archive's first pass takes in and nothing after it does.
-	strays, err := p.looseFindings(ctx, s)
-	if err != nil {
-		return out, err
-	}
-	out.Findings = append(out.Findings, strays...)
-
 	if full {
 		for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
 			if err := ctx.Err(); err != nil {
@@ -1035,44 +927,6 @@ type reading struct {
 
 	// full is a verification that reads everything again.
 	full bool
-}
-
-// looseFindings is the files a version before this one would have written into
-// the archive's directory, there after its first checkpoint: each is
-// `unaccounted`, under no namespace, by its digest. Until that checkpoint they
-// are the first pass's to take in, and none.
-func (p Policy) looseFindings(ctx context.Context, m Manifest) ([]Finding, error) {
-	root, ok := rootOf(p.Archive)
-	if !ok {
-		return nil, nil
-	}
-
-	vs, err := looseIn(root)
-	if err != nil || len(vs) == 0 {
-		return nil, err
-	}
-
-	first, err := p.unchecked(ctx, m)
-	if err != nil || first {
-		return nil, err
-	}
-
-	out := []Finding{}
-	for _, v := range vs {
-		d, err := v.digest()
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				continue
-			}
-
-			return out, err
-		}
-
-		out = append(out, Finding{Kind: "unaccounted", Digest: d,
-			Note: "a file of the directory format in the archive's directory, " + v.name + ", after its first checkpoint"})
-	}
-
-	return out, nil
 }
 
 // relabelled reads one blob's labels again, from both sides, and answers
@@ -1157,8 +1011,9 @@ type Checkpoint struct {
 	// is what makes the checkpoints a chain: one taken away, or written again
 	// as something else, is one the checkpoint after it names and the store
 	// does not keep -- whatever its labels say, and whether or not the
-	// database has been made to agree. Empty on the first, and on one written
-	// before checkpoints were chained.
+	// database has been made to agree. Empty on the first, and on one taken
+	// while the store kept none below it -- which is held to the numbers below
+	// it as any other is (see [chain.skipped]).
 	//
 	// It is the newest the store keeps below it when this one is written --
 	// of the checkpoints that are the deployment's word, by what each says
@@ -1243,11 +1098,10 @@ func (p Policy) checkpoints() flob.Store {
 var errBehind = errors.New("the checkpoint store has checkpoints the database never numbered: a database restored from before them; see `trail verify`")
 
 // errUnkeyed is a checkpoint store that keeps the checkpoint the database
-// numbered last, and none that is the deployment's word: an archive kept
-// without a key until now, whose history an operator takes in once by
-// accepting it, or one signed by a key the policy no longer trusts; see
-// [Policy.checkpoint].
-var errUnkeyed = errors.New("no trusted key signed the checkpoints the store keeps -- an archive kept without a key until now, or signed by a key no longer trusted -- and none is taken after them until an operator accepts them or trusts that key; see `trail verify`")
+// numbered last, and none that is the deployment's word: signed by a key the
+// policy no longer trusts, whose history an operator takes in once by
+// accepting it, or by trusting that key again; see [Policy.checkpoint].
+var errUnkeyed = errors.New("no trusted key signed the checkpoints the store keeps -- a key no longer trusted signed them -- and none is taken after them until an operator accepts them or trusts that key; see `trail verify`")
 
 // errRewritten is a manifest whose rows no longer add up to the latest
 // checkpoint the store keeps.
@@ -1282,18 +1136,20 @@ var errRewritten = errors.New("the manifest no longer adds up to the latest chec
 // stop every act, and be what the next acceptance is numbered after and
 // names as the one before it.
 //
-// # An archive that was kept without a key
+// # A history no key the policy trusts signed
 //
-// Its checkpoints are signed by nobody, so none of them is the deployment's
-// word, and a checkpoint taken after them would name none of them: the history
-// before the key would be cut off from the chain for good. So while the store
-// keeps the checkpoint the database numbered last and none that is the
-// deployment's word, no act takes one ([errUnkeyed]) until an operator
-// accepts. The acceptance names that checkpoint as the one before it -- and
-// with it, down the chain, every one before that -- which is the operator
-// saying the history before the key is the deployment's (see
-// [chain.goesOn]). It is the one place a checkpoint nobody vouches for is
-// taken in, and only by the database's own number, never by one ahead of it.
+// A deployment whose key was changed while the one before it was left out of
+// [Policy.Trust] has checkpoints none of which is its word, and a checkpoint
+// taken after them would name none of them: the history before the key would
+// be cut off from the chain for good. So while the store keeps the checkpoint
+// the database numbered last and none that is the deployment's word, no act
+// takes one ([errUnkeyed]) until an operator trusts the key before -- which
+// is the change that was meant -- or accepts. The acceptance names that
+// checkpoint as the one before it -- and with it, down the chain, every one
+// before that -- which is the operator saying the history before the key is
+// the deployment's (see [chain.goesOn]). It is the one place a checkpoint
+// nobody vouches for is taken in, and only by the database's own number,
+// never by one ahead of it.
 //
 // Before the database has numbered any, there is no history to take in: what
 // the store keeps then is nobody's, is found, and stops nothing.
@@ -1311,7 +1167,7 @@ func (p Policy) checkpoint(ctx context.Context, m Manifest, accepted *Accepted) 
 		return Checkpoint{}, err
 	}
 
-	// What an archive kept without a key goes on from, when it does.
+	// What a history no trusted key signed goes on from, when it does.
 	from := flob.Digest("")
 	unkeyed := len(ch.vouched) == 0 && latest > 0 && len(ch.unkeyed(latest)) > 0
 
@@ -1686,7 +1542,7 @@ func (ch chain) whole(ctx context.Context, v stored) (stored, error) {
 // the one named is exactly what was there when the one naming it was signed --
 // whatever signed it, if anything did. That is how the checkpoints a key
 // signed before it was rotated out stay what they were once the key is no
-// longer trusted, and the ones an archive kept without a key had, once an
+// longer trusted, and the ones of a history no trusted key signed, once an
 // operator has accepted them (see [Policy.checkpoint]).
 //
 // Only those decide what the next checkpoint is numbered, names and is
@@ -1696,9 +1552,9 @@ func (ch chain) whole(ctx context.Context, v stored) (stored, error) {
 // checkpoint store can put one there, numbered as they like, and it would
 // otherwise stop every act, be what the next acceptance is numbered after,
 // and say which gaps are accepted. But for a store where none is the
-// deployment's word, which is an archive kept without a key until now: one
-// under the database's latest number is the history an operator takes in, and
-// no checkpoint is taken until they have (see [Policy.checkpoint]).
+// deployment's word -- its key changed, and the one before it not trusted --
+// one under the database's latest number is the history an operator takes in,
+// and no checkpoint is taken until they have (see [Policy.checkpoint]).
 //
 // # What it finds of the chain
 //
@@ -1872,7 +1728,7 @@ func (ch chain) unkeyed(k int) []stored {
 	return slices.DeleteFunc(ch.ordered(), func(v stored) bool { return v.c.K != k || ch.vouched[v.d] })
 }
 
-// goesOn is the checkpoint an acceptance of an archive kept without a key
+// goesOn is the checkpoint an acceptance of a history no trusted key signed
 // names as the one before it (see [Policy.checkpoint]): of the ones numbered
 // k, the database's latest, that nobody vouches for, the one the database's
 // rows at k add up to -- the database's own word for which one it took -- or,
@@ -1985,8 +1841,13 @@ func (ch chain) accepted() []Accepted {
 // the first, and the first is kept, named by none -- no finding while it is
 // there, and the number skipped over once it is taken away.
 //
-// Only between two checkpoints the store keeps: one that names nothing is
-// the first, or one from before the checkpoints were chained.
+// One that names none is held to the numbers below it the same way, as
+// naming the one before the first: it names none because the store kept none
+// below it when it was taken, so every number below it that no checkpoint
+// says it is was skipped over -- the deployment's first checkpoint a crash
+// stopped, or the store's history taken away and the next act gone past it.
+// The first names none and skips nothing, and so does one taken at the same
+// moment as the first, while the first is kept.
 func (ch chain) skipped() []Finding {
 	accepted := 0
 	says := []int{}
@@ -2000,12 +1861,23 @@ func (ch chain) skipped() []Finding {
 
 	out := []Finding{}
 	for _, v := range ch.decided() {
-		prev, ok := ch.kept[v.c.Prev]
-		if !ok || v.c.K <= accepted || prev.c.K >= v.c.K-1 {
+		if v.c.K <= accepted {
 			continue
 		}
 
-		gaps := unsaid(says, prev.c.K+1, v.c.K-1)
+		from, names := 0, "none"
+		if v.c.Prev != "" {
+			prev, ok := ch.kept[v.c.Prev]
+			if !ok {
+				continue
+			}
+			from, names = prev.c.K, strconv.Itoa(prev.c.K)
+		}
+		if from >= v.c.K-1 {
+			continue
+		}
+
+		gaps := unsaid(says, from+1, v.c.K-1)
 		if len(gaps) == 0 {
 			continue
 		}
@@ -2018,7 +1890,7 @@ func (ch chain) skipped() []Finding {
 			}
 		}
 		out = append(out, Finding{Kind: "unkept", Checkpoint: gaps[0][0], Digest: v.d,
-			Note: fmt.Sprintf("checkpoint %d names %d as the one before it, and the store does not keep %s", v.c.K, prev.c.K, strings.Join(missing, ", "))})
+			Note: fmt.Sprintf("checkpoint %d names %s as the one before it, and the store does not keep %s", v.c.K, names, strings.Join(missing, ", "))})
 	}
 
 	return out
@@ -2257,8 +2129,8 @@ func (p Policy) checkpointFindings(ctx context.Context, s Store, now reading, ou
 	// Every checkpoint is held to a signature. One the chain vouches for is
 	// no finding whatever signed it: a later one the deployment's key signed
 	// names it, so it is what the archive held -- a key rotated out, which
-	// need not be trusted for this, and the checkpoints an archive kept
-	// without a key had, once accepted. One the chain does not reach is
+	// need not be trusted for this, and the checkpoints of a history no
+	// trusted key signed, once accepted. One the chain does not reach is
 	// forged or unsigned, and decides nothing.
 	trusted := p.trusted()
 	for _, v := range ch.ordered() {
@@ -2430,19 +2302,6 @@ type Accepted struct {
 // blob in it.
 const acceptedKeys = 100
 
-// UnmarshalJSON reads an acceptance as a checkpoint keeps it, and, from one
-// taken before acceptances were kept (#115), the why it kept instead.
-func (a *Accepted) UnmarshalJSON(b []byte) error {
-	var why string
-	if err := json.Unmarshal(b, &why); err == nil {
-		*a = Accepted{Acceptance: Acceptance{Why: why}}
-		return nil
-	}
-
-	type plain Accepted
-	return json.Unmarshal(b, (*plain)(a))
-}
-
 // acceptedOf is what an acceptance of these findings keeps of them.
 func acceptedOf(a Acceptance, fs []Finding) Accepted {
 	out := Accepted{Acceptance: a, Kinds: map[string]int{}}
@@ -2476,8 +2335,8 @@ var ErrRestored = errors.New("a database restored from a backup is accepted as t
 
 // Accept makes the manifest say what the archive holds, for an operator who
 // has looked at what [Policy.Verify] found and decided the archive is right:
-// a pass a crash stopped, a blob restored from a backup, an archive kept
-// without a key until now.
+// a pass a crash stopped, a blob restored from a backup, a history signed by
+// a key no longer trusted.
 //
 // # Of what was looked at
 //
@@ -2526,9 +2385,10 @@ var ErrRestored = errors.New("a database restored from a backup is accepted as t
 // those as of every finding, by their digest. The acceptance is numbered after
 // the newest checkpoint the store keeps, and names it as the one before.
 //
-// And it is the one an archive kept without a key goes on from: it names the
-// checkpoint the database numbered last, which no key signed, and so takes in
-// the history before the key (see [Policy.checkpoint]).
+// And it is the one a history no trusted key signed goes on from: it names
+// the checkpoint the database numbered last, which no key the policy trusts
+// signed, and so takes in the history before the key (see
+// [Policy.checkpoint]).
 func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, error) {
 	if p.Signer == nil {
 		return Verified{}, fmt.Errorf("accepting is signing what is accepted: %w", ErrNoKey)
@@ -2589,10 +2449,6 @@ func (p Policy) Accept(ctx context.Context, s Store, a Acceptance) (Verified, er
 
 		k := blobKey{f.Namespace, f.Digest}
 		switch {
-		case f.Kind == "unaccounted" && f.Namespace == "":
-			// A file of the directory format, taken in as the first pass
-			// would have.
-			err = errors.Join(err, p.adoptLoose(ctx, s, f.Digest))
 		case f.Kind == "unaccounted":
 			key, aerr := s.Adding(ctx, k.ns, "", inv[k], sign)
 			if aerr == nil {
@@ -2647,32 +2503,6 @@ func (p Policy) restored(ctx context.Context, s Store, a Acceptance) error {
 		return fmt.Errorf("%w: the database is not behind the checkpoints the store keeps, and no backup was restored", ErrRestored)
 	case a.Restored != nil && *a.Restored != latest:
 		return fmt.Errorf("%w: the backup is said to hold checkpoint %d, and the database has numbered %d", ErrRestored, *a.Restored, latest)
-	}
-
-	return nil
-}
-
-// adoptLoose takes in the file of the directory format in the archive's
-// directory whose digest this is, through the manifest: what an acceptance does
-// with one, as the archive's first pass did with the files it found.
-func (p Policy) adoptLoose(ctx context.Context, s Store, d flob.Digest) error {
-	root, ok := rootOf(p.Archive)
-	if !ok {
-		return nil
-	}
-
-	vs, err := looseIn(root)
-	if err != nil {
-		return err
-	}
-	for _, v := range vs {
-		if got, err := v.digest(); err != nil || got != d {
-			continue
-		}
-
-		if err := v.adopt(ctx, p.manifested(s)); err != nil {
-			return fmt.Errorf("%s: %w", v.name, err)
-		}
 	}
 
 	return nil

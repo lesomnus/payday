@@ -101,11 +101,6 @@ import (
 	"github.com/lesomnus/payday/pdid"
 )
 
-// Ext is what an archive file was called, after the month it held, when the
-// archive was a directory of files; see [Adopt]. A chunk read back out of the
-// archive and written to a disk is the same format.
-const Ext = ".jsonl.gz"
-
 // Row is one line of the trail on its way out of the database.
 //
 // The document is protojson of the app's `Audit` message -- the archive's
@@ -200,8 +195,8 @@ func (k Kinds) All() bool { return len(k.Only) == 0 && len(k.Except) == 0 }
 // carries: *destroy this pass's kinds, as far back as this*. It is what an
 // operator at a shell means by `--kind` beside `--older-than`.
 //
-// A chunk that says nothing about its kind -- which is what the first version
-// of the format wrote -- belongs to whichever pass is about everything **else**,
+// A chunk whose kind nothing answers to -- a word no kind of this app has, nor
+// had (`formerly`) -- belongs to whichever pass is about everything **else**,
 // since that is where a row of an unknown kind would have gone.
 func (k Kinds) CutFor(before time.Time) func(kind string) (time.Time, bool) {
 	return func(kind string) (time.Time, bool) {
@@ -668,8 +663,7 @@ func domainOf(v string) (pdid.Domain, bool) {
 // both names -- the old one answering through `pdid.Formerly`. Read by its
 // label, a check of the rows would read a renamed kind's rows in the chunks
 // written since and not in those before, and a report would count one kind
-// twice. A label nothing answers to stays as it is, and so does none, which
-// is what a format before kinds wrote.
+// twice. A label nothing answers to stays as it is.
 func filed(kind string) string {
 	if d, ok := kindOf(kind); ok {
 		return nameOf(d)
@@ -702,9 +696,8 @@ func DomainOf(v string) (pdid.Domain, error) {
 // each row, as the protojson document it was stored as. A row whose contents
 // are sealed is [ErrSealed]: open it with [Keys.Open].
 //
-// For a file somebody took out of an archive -- a chunk saved for a request, or
-// the directory of a version before the archive was a flob store. What is in
-// the archive itself is [Read].
+// For a file somebody took out of an archive: a chunk saved for a request. What
+// is in the archive itself is [Read].
 //
 // Duplicates are dropped by identifier, **across** the files rather than within
 // one, for the reason [Read] gives.

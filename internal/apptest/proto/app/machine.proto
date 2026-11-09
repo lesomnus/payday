@@ -141,7 +141,7 @@ message MachineServiced {
   // What was taken out, by the slot it was in.
   map<string, Part> swapped = 5;
 
-  google.protobuf.Timestamp date_due = 6 [json_name = "due"];
+  google.protobuf.Timestamp date_due = 6;
 
   // One part: what it is, and how many.
   message Part {
@@ -171,5 +171,5 @@ message Corrected {
   option (payday.event) = {kinds: ["correct", "retract"]};
 
   bytes event = 1;
-  google.protobuf.Timestamp date_occurred = 2 [json_name = "at"];
+  google.protobuf.Timestamp date_occurred = 2;
 }

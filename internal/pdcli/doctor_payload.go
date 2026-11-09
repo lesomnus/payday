@@ -129,11 +129,10 @@ func aboutNoOne(f protoreflect.FieldDescriptor) bool {
 //
 // `NotificationService.Add` takes a payload only of a message the schema marks
 // (payday#193), so in such an app every notification that carries one is
-// refused -- when it is published, by `InvalidArgument`, and not before. That
-// is the shape an app upgraded across #193 is in until it marks what it
-// publishes, and nothing else says so. Advice and not a refusal: a
-// notification with no payload is a notification, and an app that publishes
-// only those marks nothing.
+// refused -- when it is published, by `InvalidArgument`, and not before -- and
+// nothing else says so until it marks what it publishes. Advice and not a
+// refusal: a notification with no payload is a notification, and an app that
+// publishes only those marks nothing.
 func unmarkedPayloads(n *pdgen.Notify) Finding {
 	return Finding{
 		What: fmt.Sprintf("%s declares notifications and no message one may carry, so NotificationService.Add "+
@@ -147,6 +146,6 @@ func unmarkedPayloads(n *pdgen.Notify) Finding {
       bytes job = 1;   // what it is about, by identifier
     }
 
-A notification with no payload needs nothing. docs/migrating.md, "A notification's payload is a message the schema declares", has the rest.`,
+A notification with no payload needs nothing. docs/notify.md, "A notification carries identifiers, not a person's data", has the rest.`,
 	}
 }

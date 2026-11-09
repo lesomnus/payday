@@ -390,17 +390,10 @@ func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{
     case {{.Record}}Domain:
         row,err:=s.Find(ctx,change.Key);if {{status "Code"}}(err)=={{codes "NotFound"}}{return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
         return {{n "Hint"}}{Tenant:row.Tenant,Topics:[]{{n "Topic"}}{row.Topic}},true,nil
-    case {{.Receipt}}Domain:
-        // A receipt this build writes is no server's write, and its hint is
-        // the Signal Mark noted, which Service reads without coming here. A
-        // replica of a build before payday#197 wrote its receipts through the
-        // generated Add, whose recorder notes the row by its key alone.
-        row,err:=s.db.{{.Receipt}}.Query().Where({{cp "IdEQ"}}(change.Key.Uuid())).Only(ctx)
-        if {{e "IsNotFound"}}(err){return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
-        receipt,err:=notificationReceiptRow(row.Proto());if err!=nil{return {{n "Hint"}}{},false,err}
-        notification,err:=s.Find(ctx,receipt.Notification);if {{status "Code"}}(err)=={{codes "NotFound"}}{return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
-        return {{n "Hint"}}{Tenant:receipt.Tenant,Reader:receipt.Reader,Topics:[]{{n "Topic"}}{notification.Topic}},true,nil
-    default:return {{n "Hint"}}{},false,nil
+    default:
+        // A receipt is no server's write, and its hint is the Signal Mark
+        // noted, which Service reads without coming here (payday#197).
+        return {{n "Hint"}}{},false,nil
     }
 }
 {{if .Keep}}

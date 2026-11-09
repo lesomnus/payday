@@ -107,7 +107,7 @@ chain := grpcx.Serving(ctx, ...).
 	With(access.Config{Subjects: pd.Subjects, Refs: pd.SubjectRefs, Address: access.Peer, Writer: w}.Interceptor()).
 	With(gate.Interceptor(s.Policy))
 
-pd new's cmd/serve.go has it whole; docs/migrating.md says what each part is.`,
+pd new's cmd/serve.go has it whole; docs/runtime.md, "The access record", says what each part is.`,
 	}}
 }
 

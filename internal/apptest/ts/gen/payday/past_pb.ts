@@ -90,9 +90,6 @@ export type EventMessage = Message<"payday.EventMessage"> & {
    * value is by its kind, so the lock refuses a kind dropped or moved to
    * another message, and a message may only take more.
    *
-   * At 1, where `string kind` was until payday#171: a declaration compiled
-   * against that is read as its one kind.
-   *
    * @generated from field: repeated string kinds = 1;
    */
   kinds: string[];

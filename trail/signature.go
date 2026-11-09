@@ -15,8 +15,8 @@ import (
 
 // Signature is what the deployment's key said of one row of the manifest: a
 // signature over what the row says, and the public half of the key that made
-// it, PKIX. Both are empty on a row nothing signed, which is a finding: one an
-// archive kept without a key wrote, before #115, or one somebody wrote since.
+// it, PKIX. Both are empty on a row nothing signed, which is a finding: one
+// somebody wrote past the deployment, or whose signature was taken off.
 //
 // # Why a row is signed
 //
@@ -108,17 +108,15 @@ func (p Policy) trusted() []crypto.PublicKey {
 //
 // # A row with no signature
 //
-// It looks the same whether it was written before rows were signed, by a
-// deployment that archived without a key, or had its signature taken off
-// since -- and only somebody who knows which can say. So every such row is a
-// finding until an operator who has looked accepts it with [Policy.Accept],
-// which signs it as it stands.
+// It looks the same whether its signature was taken off or never made -- and
+// only somebody who knows which can say. So every such row is a finding until
+// an operator who has looked accepts it with [Policy.Accept], which signs it
+// as it stands.
 //
-// The other way was considered: the first pass with a key signing every row it
-// finds without one, as the first pass fills an empty manifest. It is safe only
-// if nobody can make a manifest look as if it had never been signed, and taking
-// the signatures off every row is exactly that, for whoever can write the
-// database. Holding that off would take a mark that rows had been signed, kept
+// The other way was considered: a pass with a key signing every row it finds
+// without one. It is safe only if nobody can make a manifest look as if it had
+// never been signed, and taking the signatures off every row is exactly that,
+// for whoever can write the database. Holding that off would take a mark that rows had been signed, kept
 // where the database's credentials do not reach and read before every act.
 //
 // A process that names keys to trust and has none to sign with -- a verifier,

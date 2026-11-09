@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/stint.proto.
  */
 export const file_app_stint: GenFile = /*@__PURE__*/
-  fileDesc("Cg9hcHAvc3RpbnQucHJvdG8SA2FwcCLWAgoFU3RpbnQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIYCghyb2JvdF9pZBgIIAEoDEIG6oIWAhBAEjcKCmRhdGVfc3RhcnQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDggEAEjQKCGRhdGVfZW5kGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIG6oIWAjgBEh4KCGV2ZW50X2lkGAsgASgMQgzqghYCEECqwRYCKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOinK/BUbEgIQARoVEgVldmVudBoMCghldmVudF9pZBALirsWBggUQgIKACKIAQoLUGFzdEV4cGlyZWQSNwoLZGF0ZV9iZWZvcmUYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgZiZWZvcmUSDQoFZmFjdHMYAiABKA0SDgoGZXZlbnRzGAMgASgNEg4KBnN0aW50cxgEIAEoDToRkrsWDQoLcGFzdC5leHBpcmVCMlorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdJIDAggCYghlZGl0aW9uc3DoBw", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
+  fileDesc("Cg9hcHAvc3RpbnQucHJvdG8SA2FwcCLWAgoFU3RpbnQSFwoCaWQYASABKAxCC+qCFgcQQCgBggEAEiMKBnRlbmFudBgCIAEoCzILLmFwcC5UZW5hbnRCBvKCFgJAARIYCghyb2JvdF9pZBgIIAEoDEIG6oIWAhBAEjcKCmRhdGVfc3RhcnQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgfqghYDggEAEjQKCGRhdGVfZW5kGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIG6oIWAjgBEh4KCGV2ZW50X2lkGAsgASgMQgzqghYCEECqwRYCKAESOwoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJ6oIWBUABggEAOinK/BUbEgIQARoVEgVldmVudBoMCghldmVudF9pZBALirsWBggUQgIKACKAAQoLUGFzdEV4cGlyZWQSLwoLZGF0ZV9iZWZvcmUYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBWZhY3RzGAIgASgNEg4KBmV2ZW50cxgDIAEoDRIOCgZzdGludHMYBCABKA06EZK7Fg0KC3Bhc3QuZXhwaXJlQjJaK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3SSAwIIAmIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * Stint is a time row of this app's own (payday#151): a robot in a cell from
@@ -91,7 +91,7 @@ export const StintSchema: GenMessage<Stint> = /*@__PURE__*/
  */
 export type PastExpired = Message<"app.PastExpired"> & {
   /**
-   * @generated from field: google.protobuf.Timestamp date_before = 1 [json_name = "before"];
+   * @generated from field: google.protobuf.Timestamp date_before = 1;
    */
   dateBefore?: Timestamp | undefined;
 

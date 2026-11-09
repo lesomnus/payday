@@ -101,8 +101,8 @@ type ExportChunk struct {
 	Rows int `json:"rows"`
 
 	// Whole is a chunk of the tenant's own, whose bytes are in the bundle as
-	// the archive keeps them, under `archive/`; one it shares with others, or
-	// a file from before, is not.
+	// the archive keeps them, under `archive/`; one it shares with others is
+	// not.
 	Whole bool `json:"whole,omitempty"`
 
 	// Covered is a chunk the checkpoint lists: the deployment said the
@@ -168,7 +168,7 @@ var ErrExportAltered = errors.New("the bundle is not what its manifest says")
 //     the manifest names lists;
 //   - `rows/<namespace>/<digest>.jsonl`: the tenant's rows of each chunk it
 //     was read from, as they read -- opened, if the archive seals them, and
-//     of a chunk it shares with others or a file from before, its own alone.
+//     of a chunk it shares with others, its own alone.
 //     What another tenant's rows said is never in it.
 //
 // So it reads without the deployment's keys: whoever it was encrypted to
@@ -389,7 +389,7 @@ func (x *pass) exportArchive(ctx context.Context, tenant pdid.Id, b *bundle, m *
 	}
 
 	// What the manifest accounts for, as a read of the tenant takes it.
-	cs, _, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace, LegacyNamespace}, true)
+	cs, _, err := x.chunks(ctx, []string{tenant.String(), SharedNamespace}, true)
 	if err != nil {
 		return err
 	}
@@ -398,8 +398,7 @@ func (x *pass) exportArchive(ctx context.Context, tenant pdid.Id, b *bundle, m *
 	open := newOpener(p.Keys)
 	seen := map[string]bool{}
 	for _, c := range cs {
-		keep, ok := tenantsOf(c, tenant)
-		if !ok {
+		if !tenantReads(c, tenant) {
 			continue
 		}
 
@@ -412,7 +411,7 @@ func (x *pass) exportArchive(ctx context.Context, tenant pdid.Id, b *bundle, m *
 
 		buf := &bytes.Buffer{}
 		n := 0
-		err := readChunk(ctx, x.raw(), c, seen, keep, true, func(h head, doc []byte) error {
+		err := readChunk(ctx, x.raw(), c, seen, true, func(h head, doc []byte) error {
 			doc, err := open.open(ctx, doc, h)
 			if err != nil {
 				return err

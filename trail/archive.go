@@ -13,13 +13,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"uuid"
@@ -52,11 +48,6 @@ const (
 	// ReceiptNamespace holds the record of what was destroyed; see [Receipt].
 	ReceiptNamespace = "_receipts"
 
-	// LegacyNamespace holds the files a version wrote before the archive was
-	// a flob store; see [Adopt]. They hold every tenant's rows together, so
-	// the deployment's policy decides them, as it did.
-	LegacyNamespace = "_legacy"
-
 	// RetiredNamespace holds the record of each tenant that left keeping what
 	// the deployment's floors are on, until they have passed; see
 	// [Policy.RetireTenant].
@@ -74,7 +65,6 @@ const (
 	labelFirst     = "First"
 	labelLast      = "Last"
 	labelTenants   = "Tenants"
-	labelName      = "Name"
 	labelRewritten = "Rewritten"
 	labelAt        = "At"
 	labelActs      = "Acts"
@@ -118,8 +108,6 @@ type Chunk struct {
 	Digest flob.Digest
 
 	// Kind is the kind of thing its rows are about, as [nameOf] writes one.
-	// Empty for a file the first version of the format wrote, which said
-	// nothing about its kind.
 	Kind string
 
 	// Month is the month its rows were written in.
@@ -128,21 +116,16 @@ type Chunk struct {
 	// Run is the pass that wrote it.
 	Run string
 
-	// Rows is how many rows it holds; zero for a file adopted from a
-	// directory, which never said.
+	// Rows is how many rows it holds.
 	Rows int
 
-	// First and Last are when its oldest and newest rows were written; zero
-	// for an adopted file, whose month is all there is.
+	// First and Last are when its oldest and newest rows were written.
 	First time.Time
 	Last  time.Time
 
 	// Tenants is the set of tenants every row of a [SharedNamespace] chunk
 	// names, in identifier order.
 	Tenants []pdid.Id
-
-	// Name is what an adopted file was called.
-	Name string
 
 	// Size is how many bytes the blob is.
 	Size int64
@@ -151,10 +134,11 @@ type Chunk struct {
 // Before answers whether every row in it was written before `at`, which is
 // what being destroyable at a cutoff means.
 //
-// From [Chunk.Last] when it is known. A file adopted from a directory knows
-// only its month, and is destroyable when the month **after** it has also
-// passed -- January goes when the cutoff has reached February, and not on the
-// 31st -- which is the rule the directory had.
+// From [Chunk.Last] when it is known. A pass labels every chunk it writes
+// with it; a blob no pass wrote, which an operator took into the manifest with
+// the labels it came with ([Policy.Accept]), may say only its month, and is
+// destroyable when the month **after** it has also passed: January goes when
+// the cutoff has reached February, and not on the 31st.
 func (c Chunk) Before(at time.Time) bool {
 	if !c.Last.IsZero() {
 		return c.Last.Before(at)
@@ -170,12 +154,7 @@ func (c Chunk) String() string {
 		kind = "-"
 	}
 
-	v := fmt.Sprintf("%s %s %s %s", c.Namespace, kind, c.Month.Format("2006-01"), c.Digest)
-	if c.Name != "" {
-		v += " (" + c.Name + ")"
-	}
-
-	return v
+	return fmt.Sprintf("%s %s %s %s", c.Namespace, kind, c.Month.Format("2006-01"), c.Digest)
 }
 
 func (c Chunk) labels() flob.Labels {
@@ -200,9 +179,6 @@ func (c Chunk) labels() flob.Labels {
 	if len(c.Tenants) > 0 {
 		l.Set(labelTenants, joined(c.Tenants))
 	}
-	if c.Name != "" {
-		l.Set(labelName, c.Name)
-	}
 
 	return l
 }
@@ -226,7 +202,6 @@ func chunkOf(ns string, d flob.Digest, l flob.Labels) (Chunk, bool) {
 		Kind:      l.Get(labelKind),
 		Month:     month,
 		Run:       l.Get(labelRun),
-		Name:      l.Get(labelName),
 	}
 	if v := l.Get(labelRows); v != "" {
 		c.Rows, _ = strconv.Atoi(v)
@@ -714,9 +689,8 @@ func Read(ctx context.Context, a flob.Stores, fn func(doc []byte) error) error {
 // ReadTenant is the rows of the archive one tenant may read: the ones that name
 // it, in any of the three columns, which is the wall's rule on the trail.
 //
-// Its own namespace, the chunks of [SharedNamespace] whose tenants include it,
-// and the rows of [LegacyNamespace] that name it -- which is the one place it
-// has to open a row to know, since a file from before held everybody's.
+// Its own namespace, and the chunks of [SharedNamespace] whose tenants include
+// it.
 //
 // Like [Read], it is what the archive holds, and nothing is checked;
 // [Policy.ReadTenant] is the one an export is made with. A row whose contents
@@ -727,7 +701,7 @@ func ReadTenant(ctx context.Context, a flob.Stores, tenant pdid.Id, fn func(doc 
 	}
 
 	vs := []Chunk{}
-	for _, ns := range []string{tenant.String(), SharedNamespace, LegacyNamespace} {
+	for _, ns := range []string{tenant.String(), SharedNamespace} {
 		cs, err := chunksIn(ctx, a, ns)
 		if err != nil {
 			return fmt.Errorf("%s: %w", ns, err)
@@ -782,7 +756,7 @@ func (p Policy) read(ctx context.Context, s Store, tenant pdid.Id, fn func(doc [
 		return err
 	}
 
-	nss := []string{tenant.String(), SharedNamespace, LegacyNamespace}
+	nss := []string{tenant.String(), SharedNamespace}
 	if tenant.IsZero() {
 		if nss, err = chunkNamespaces(ctx, x.raw()); err != nil {
 			return err
@@ -807,20 +781,18 @@ func (p Policy) read(ctx context.Context, s Store, tenant pdid.Id, fn func(doc [
 }
 
 // readChunks is the rows of these chunks, oldest month first, each once. A
-// tenant's reads only the rows of [LegacyNamespace] that name it, and only the
-// chunks of [SharedNamespace] whose tenants include it. A sealed row is opened
-// by `open`, and nil opens none.
+// tenant's reads only the chunks of [SharedNamespace] whose tenants include it.
+// A sealed row is opened by `open`, and nil opens none.
 func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, verify bool, open *opener, fn func([]byte) error) error {
 	cs = slices.Clone(cs)
 	slices.SortFunc(cs, chunkOrder)
 
 	seen := map[string]bool{}
 	for _, c := range cs {
-		keep, ok := tenantsOf(c, tenant)
-		if !ok {
+		if !tenantReads(c, tenant) {
 			continue
 		}
-		err := readChunk(ctx, a, c, seen, keep, verify, func(h head, doc []byte) error {
+		err := readChunk(ctx, a, c, seen, verify, func(h head, doc []byte) error {
 			doc, err := open.open(ctx, doc, h)
 			if err != nil {
 				return err
@@ -843,31 +815,22 @@ func readChunks(ctx context.Context, a flob.Stores, cs []Chunk, tenant pdid.Id, 
 // `altered`.
 var ErrAltered = errors.New("its bytes are not its digest any more; see `trail verify`")
 
-// tenantsOf is what of a chunk is a tenant's: none of a chunk of
-// [SharedNamespace] whose tenants do not include it, of [LegacyNamespace] only
-// the rows that name it, and of any other all of it. The zero tenant is every
-// tenant's.
-func tenantsOf(c Chunk, tenant pdid.Id) (keep func(head) bool, ok bool) {
-	if tenant.IsZero() {
-		return nil, true
+// tenantReads is whether a chunk is a tenant's to read: not one of
+// [SharedNamespace] whose tenants do not include it, and any other. The zero
+// tenant is every tenant's.
+func tenantReads(c Chunk, tenant pdid.Id) bool {
+	if tenant.IsZero() || c.Namespace != SharedNamespace {
+		return true
 	}
 
-	switch c.Namespace {
-	case SharedNamespace:
-		return nil, slices.Contains(c.Tenants, tenant)
-	case LegacyNamespace:
-		return func(h head) bool { return h.names(tenant) }, true
-	}
-
-	return nil, true
+	return slices.Contains(c.Tenants, tenant)
 }
 
-// readChunk is one chunk's rows, less the ones `seen` has, and less the ones
-// `keep` declines when there is one. `verify` reads it whole first, and refuses
-// it when its bytes are not its digest. Each row is handed over as it is
-// stored, sealed or not, beside what its head says; a nil `seen` hands over a
-// row however often it was seen.
-func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, keep func(head) bool, verify bool, fn func(head, []byte) error) error {
+// readChunk is one chunk's rows, less the ones `seen` has. `verify` reads it
+// whole first, and refuses it when its bytes are not its digest. Each row is
+// handed over as it is stored, sealed or not, beside what its head says; a nil
+// `seen` hands over a row however often it was seen.
+func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool, verify bool, fn func(head, []byte) error) error {
 	r, _, err := a.Use(c.Namespace).Open(ctx, c.Digest)
 	if err != nil {
 		if errors.Is(err, flob.ErrNotExist) {
@@ -907,9 +870,6 @@ func readChunk(ctx context.Context, a flob.Stores, c Chunk, seen map[string]bool
 			return err
 		}
 		if seen[h.Id] {
-			return nil
-		}
-		if keep != nil && !keep(h) {
 			return nil
 		}
 		if seen != nil {
@@ -1004,9 +964,9 @@ type tally struct {
 //
 // A pass only adds chunks and destroys whole ones, precisely so that an
 // archive is never edited. This is the exception, and it is one on purpose:
-// the acts that need it -- forgetting a subject, a tenant leaving, a hold that
-// keeps part of a file of everybody's -- are the ones where the alternative is
-// somebody's contents surviving in a place the deployment controls.
+// the acts that need it -- forgetting a subject, a tenant leaving -- are the
+// ones where the alternative is somebody's contents surviving in a place the
+// deployment controls.
 //
 // The chunk is read twice, once to find out whether anything would change and
 // once to write, so that a chunk nothing touches is never written again: every
@@ -1274,201 +1234,6 @@ func merge(ctx context.Context, a flob.Stores, run string, cs []Chunk) (Chunk, e
 	return out, nil
 }
 
-// Adopt takes the files a version before this one wrote into a directory, and
-// files them under [LegacyNamespace].
-//
-// By hard link when the archive is the same directory on the same disk --
-// `flob.OsStore.Adopt`, which copies nothing -- and by copying otherwise. Each
-// file is removed from the directory once the archive holds it, so adopting
-// again finds nothing and the directory is the store's alone.
-//
-// Their rows hold every tenant's together, so they are decided by the
-// deployment's policy, as they were: by kind, and by the month in their name.
-//
-// [Policy.Pass] does this on the first pass, before the archive's first
-// checkpoint, so a deployment upgrading has nothing to run. Not after it: a
-// file of this format in the directory then is one nobody wrote through the
-// manifest, which [Policy.Verify] finds and only [Policy.Accept] takes in.
-func Adopt(ctx context.Context, a flob.Stores, dir string) (int, error) {
-	vs, err := looseIn(dir)
-	if err != nil {
-		return 0, err
-	}
-
-	n := 0
-	for _, v := range vs {
-		if err := v.adopt(ctx, a); err != nil {
-			return n, fmt.Errorf("%s: %w", v.name, err)
-		}
-
-		n++
-	}
-
-	return n, nil
-}
-
-// loose is one file of the directory format in an archive's directory: what a
-// version before this one wrote, before the archive was a flob store.
-type loose struct {
-	name  string
-	path  string
-	chunk Chunk
-	at    time.Time
-}
-
-// looseIn is the files of the directory format in a directory, in name order.
-// Anything else in it is left alone: a pass over a directory is not the place
-// to guess.
-func looseIn(dir string) ([]loose, error) {
-	vs, err := os.ReadDir(dir)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	out := []loose{}
-	for _, v := range vs {
-		if !v.Type().IsRegular() {
-			continue
-		}
-
-		month, kind, run, ok := partsOf(v.Name())
-		if !ok {
-			continue
-		}
-
-		info, err := v.Info()
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				continue
-			}
-
-			return out, err
-		}
-
-		out = append(out, loose{
-			name:  v.Name(),
-			path:  filepath.Join(dir, v.Name()),
-			chunk: Chunk{Namespace: LegacyNamespace, Kind: kind, Month: month, Run: run, Name: v.Name()},
-			at:    info.ModTime(),
-		})
-	}
-
-	return out, nil
-}
-
-// rootOf is the directory of an archive on a disk, the one a version before
-// this one wrote its files into, and false for an archive anywhere else.
-func rootOf(a flob.Stores) (string, bool) {
-	switch v := unwrapStores(a).(type) {
-	case flob.OsStores:
-		return v.Root(), true
-	case *flob.OsStores:
-		return v.Root(), true
-	}
-
-	return "", false
-}
-
-// adopt takes the file in, and removes it from the directory once the archive
-// holds it.
-func (v loose) adopt(ctx context.Context, a flob.Stores) error {
-	if err := adopt(ctx, a, v.chunk, v.path, v.at); err != nil {
-		return err
-	}
-
-	return os.Remove(v.path)
-}
-
-func (v loose) digest() (flob.Digest, error) {
-	f, err := os.Open(v.path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	return flob.DigestFromReader(f)
-}
-
-func adopt(ctx context.Context, a flob.Stores, c Chunk, path string, at time.Time) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	d, err := flob.DigestFromReader(f)
-	f.Close()
-	if err != nil {
-		return err
-	}
-
-	s := a.Use(LegacyNamespace)
-	m := flob.Meta{Digest: d, Labels: c.labels()}
-
-	// The disk beneath the manifest, which a hard link is made on and the
-	// manifest does not see being made.
-	inner := s
-	if r, ok := s.(manifestedStore); ok {
-		inner = r.Store
-	}
-	if o, ok := inner.(flob.OsStore); ok {
-		_, err := o.Adopt(ctx, m, path, flob.AdoptOptions{Added: at, Verify: true})
-		if err == nil || errors.Is(err, flob.ErrAlreadyExists) {
-			return adopted(ctx, s, d, m.Labels)
-		}
-		if !errors.Is(err, syscall.EXDEV) && !errors.Is(err, fs.ErrPermission) {
-			return err
-		}
-
-		// Another filesystem, or a file it may not link. Copied instead.
-	}
-
-	f, err = os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := s.Add(ctx, m, f); err != nil && !errors.Is(err, flob.ErrAlreadyExists) {
-		return err
-	}
-
-	return nil
-}
-
-// partsOf reads back what a file of the directory format was named for: the
-// month, the kind, and the run.
-//
-// A name it cannot read a month out of is a file this did not write, and one
-// with no kind in it is a file the first version of the format wrote --
-// answered as the empty kind, which [Kinds.CutFor] gives to whichever pass is
-// about everything else.
-func partsOf(name string) (time.Time, string, string, bool) {
-	v := strings.TrimSuffix(name, Ext)
-	if v == name {
-		return time.Time{}, "", "", false
-	}
-
-	v, ok := strings.CutPrefix(v, "audit-")
-	if !ok {
-		return time.Time{}, "", "", false
-	}
-
-	vs := strings.Split(v, ".")
-
-	at, err := time.ParseInLocation("2006-01", vs[0], time.UTC)
-	if err != nil {
-		return time.Time{}, "", "", false
-	}
-	if len(vs) < 3 {
-		return at, "", "", true
-	}
-
-	return at, vs[1], vs[2], true
-}
-
 // Receipt is the record that something stopped existing: when, what, whose,
 // and how much -- and never what it said.
 //
@@ -1720,109 +1485,3 @@ func Receipts(ctx context.Context, a flob.Stores, fn func(Receipt) error) error 
 
 // encoded is an identifier as protojson writes one.
 func encoded(v pdid.Id) string { return base64.StdEncoding.EncodeToString(v.Bytes()) }
-
-// refile moves the rows of the files a version before this one wrote --
-// [LegacyNamespace], every tenant's rows together -- into the chunks of the
-// tenants they belong to, so that the manifest and every rule after it see one
-// layout: a tenant's windows, a tenant's hold, a tenant leaving.
-//
-// A file at a time, and its rows are not judged: they go where a pass would
-// have filed them, in the months they were written, and the file is erased
-// once every chunk made of it is written. A crash between the two leaves the
-// rows in both places, which [Read] drops and a fold folds. A file the manifest
-// does not account for is left where it is, and so is one whose bytes are not
-// its digest any more, whose rows are filed nowhere (see [checked]).
-func (x *pass) refile(ctx context.Context) {
-	a := x.p.Archive
-	cs, rest, err := x.chunks(ctx, []string{LegacyNamespace}, false)
-	if err != nil {
-		log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "err", err)
-
-		return
-	}
-
-	for _, c := range rest {
-		if x.once("refile " + string(c.Digest)) {
-			log.From(ctx).WarnContext(ctx, "trail: a file of a version before that the manifest does not account for, left where it is", "chunk", c.String())
-		}
-	}
-
-	files, rows := 0, 0
-	for _, c := range cs {
-		n, err := refile(ctx, a, x.run, x.seal, c)
-		rows += n
-		if err != nil {
-			log.From(ctx).WarnContext(ctx, "trail: the files of a version before", "chunk", c.String(), "err", err)
-
-			continue
-		}
-
-		files++
-	}
-	if files > 0 {
-		log.From(ctx).InfoContext(ctx, "trail: the files of a version before, filed by tenant", "files", files, "rows", rows)
-	}
-}
-
-func refile(ctx context.Context, a flob.Stores, run string, seal *sealer, c Chunk) (int, error) {
-	s := a.Use(c.Namespace)
-	r, _, err := s.Open(ctx, c.Digest)
-	if err != nil {
-		if errors.Is(err, flob.ErrNotExist) {
-			return 0, nil
-		}
-
-		return 0, err
-	}
-	defer r.Close()
-
-	// Whole, before a row of it is filed anywhere: its rows go into chunks
-	// written as they fill, so a file that is not its digest any more is to
-	// be found before the first of them is.
-	if err := checking(c, r).done(); err != nil {
-		return 0, err
-	}
-	if _, err := r.Seek(0, io.SeekStart); err != nil {
-		return 0, fmt.Errorf("%s: %w", c, err)
-	}
-
-	src := checking(c, r)
-	w := newWriter(a, run, seal)
-	n := 0
-	err = lines(src, func(doc []byte) error {
-		h, err := headOf(doc)
-		if err != nil {
-			return err
-		}
-		at, err := time.Parse(time.RFC3339Nano, h.Created)
-		if err != nil {
-			return fmt.Errorf("a row written at %q: %w", h.Created, err)
-		}
-
-		w.add(Row{Doc: doc, Key: h.Id, Domain: pdid.Domain(h.Domain), Created: at, Tenants: h.tenants()})
-		n++
-		if w.full() {
-			if _, err := w.flush(ctx); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err == nil {
-		err = src.done()
-	}
-	if errors.Is(err, ErrAltered) {
-		// And again as it was filed, since it can change between the two:
-		// what was filed of it is taken back, and the file stays where it is.
-		return n, errors.Join(err, w.unwind(ctx))
-	}
-	if err != nil {
-		return n, err
-	}
-	if _, err := w.flush(ctx); err != nil {
-		return n, err
-	}
-
-	return n, s.Erase(ctx, c.Digest)
-}

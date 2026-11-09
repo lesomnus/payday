@@ -1,17 +1,13 @@
 package trail
 
 import (
-	"bytes"
 	"cmp"
-	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"sync"
 	"testing"
@@ -976,6 +972,8 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 
 	tenant := newTenant()
 	a := flob.NewMemStores()
+	s := &fakeStore{}
+	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
 
 	// A month long enough gone that nothing more of it is in the database,
 	// written by three passes; one row twice, as a crash between a write and a
@@ -1001,12 +999,11 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 			docs = append(docs, r.doc())
 		}
 
-		_, _, err := put(ctx, a, c, docs)
+		_, _, err := put(ctx, p.manifested(s), c, docs)
 		x.NoError(err)
 	}
 
-	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
-	p.Pass(ctx, &fakeStore{})
+	p.Pass(ctx, s)
 
 	cs, err := chunksIn(ctx, a, ns)
 	x.NoError(err)
@@ -1023,160 +1020,17 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 		now := time.Now().UTC()
 		for i := range 2 {
 			r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: now.Add(-time.Duration(i) * time.Minute)}
-			_, _, err := put(ctx, a, Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
+			_, _, err := put(ctx, p.manifested(s), Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
 				Rows: 1, First: r.created, Last: r.created}, [][]byte{r.doc()})
 			x.NoError(err)
 		}
 
-		p.Pass(ctx, &fakeStore{})
+		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, a, ns)
 		x.NoError(err)
 		x.Len(cs, 2, "a month still receiving rows was folded")
 	})
-}
-
-// TestTheFilesOfAVersionBeforeAreAdopted.
-//
-// An upgrade has nothing to run: the first pass takes the directory's files in,
-// by hard link, and the directory is the store's from then on.
-func TestTheFilesOfAVersionBeforeAreAdopted(t *testing.T) {
-	x := require.New(t)
-	ctx := t.Context()
-
-	dir := t.TempDir()
-	tenant := newTenant()
-
-	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
-		domain: person, created: time.Date(2020, 1, 15, 0, 0, 0, 0, time.UTC), value: "contents"}
-
-	buf := &bytes.Buffer{}
-	z := gzip.NewWriter(buf)
-	_, err := z.Write(append(r.doc(), '\n'))
-	x.NoError(err)
-	x.NoError(z.Close())
-
-	name := "audit-2020-01.person.0123456789abcdef" + Ext
-	x.NoError(os.WriteFile(filepath.Join(dir, name), buf.Bytes(), 0o640))
-	x.NoError(os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("not ours"), 0o640))
-
-	p := Policy{Signer: signer, Archive: flob.NewOsStores(dir)}
-	s := &fakeStore{}
-	p.Pass(ctx, s)
-
-	_, err = os.Stat(filepath.Join(dir, name))
-	x.ErrorIs(err, os.ErrNotExist, "the file was left in the directory")
-	_, err = os.Stat(filepath.Join(dir, "notes.txt"))
-	x.NoError(err, "a file this did not write was taken")
-
-	// And filed by tenant, in the same pass: the file is a chunk of the
-	// tenant's, on the tenant's windows.
-	cs, err := chunksIn(ctx, p.Archive, LegacyNamespace)
-	x.NoError(err)
-	x.Empty(cs, "the adopted file was not filed by tenant")
-	cs, err = chunksIn(ctx, p.Archive, tenant.String())
-	x.NoError(err)
-	x.Len(cs, 1)
-	x.Equal("person", cs[0].Kind)
-	x.Equal(1, cs[0].Rows)
-	x.True(cs[0].Last.Equal(r.created), "the chunk does not say when its row was written")
-
-	seen := 0
-	x.NoError(ReadTenant(ctx, p.Archive, tenant, func(doc []byte) error {
-		seen++
-		return nil
-	}))
-	x.Equal(1, seen, "the tenant's row in an adopted file was not read back")
-
-	// The adoption, by a link the manifest does not see made, and the filing
-	// are both in it.
-	v, err := p.Verify(ctx, s, true)
-	x.NoError(err)
-	x.True(v.Ok(), "%v", v.Findings)
-
-	t.Run("a file not yet filed is destroyed by the month in its name", func(t *testing.T) {
-		x := require.New(t)
-
-		c := Chunk{Namespace: LegacyNamespace, Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), Name: name}
-		x.False(c.Before(time.Date(2020, 1, 31, 0, 0, 0, 0, time.UTC)), "January went before the month was over")
-		x.True(c.Before(time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC)))
-	})
-}
-
-// TestOnlyTheFirstPassTakesInTheFilesOfAVersionBefore.
-//
-// The first pass over an archive takes it as it is: the manifest filled from
-// what the store holds, and the files a version before wrote into the
-// directory adopted -- signed in as the deployment's. After its checkpoint, a
-// file of that format in the directory is one somebody else put there. It is
-// not adopted, not filed under anybody, not read, and it is a finding until an
-// operator who has looked accepts it.
-func TestOnlyTheFirstPassTakesInTheFilesOfAVersionBefore(t *testing.T) {
-	x := require.New(t)
-	ctx := t.Context()
-
-	dir := t.TempDir()
-	tenant := newTenant()
-	file := func(r fakeRow, run string) (string, []byte) {
-		name := "audit-" + Month(r.created) + ".person." + run + Ext
-		b := gz(t, r.doc())
-		x.NoError(os.WriteFile(filepath.Join(dir, name), b, 0o640))
-
-		return name, b
-	}
-
-	// An archive from before the manifest: a chunk in the store, and a file
-	// of the directory format beside it.
-	a := flob.NewOsStores(dir)
-	before := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
-		domain: person, created: time.Date(2020, 1, 15, 0, 0, 0, 0, time.UTC), value: "in the store"}
-	_, _, err := put(ctx, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-		Rows: 1, First: before.created, Last: before.created}, [][]byte{before.doc()})
-	x.NoError(err)
-	old := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
-		domain: person, created: time.Date(2020, 2, 15, 0, 0, 0, 0, time.UTC), value: "in a file"}
-	file(old, "0123456789abcdef")
-
-	p := Policy{Archive: a, Signer: newKey(t)}
-	s := &fakeStore{}
-	p.Pass(ctx, s)
-
-	v, err := p.Verify(ctx, s, true)
-	x.NoError(err)
-	x.True(v.Ok(), "the first pass did not take the archive as it is: %v", v.Findings)
-	x.Equal([]string{"in a file", "in the store"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }))
-
-	// After it, a file of the same format.
-	later := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), object: uuid.NewV7(),
-		domain: person, created: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC), value: "put there later"}
-	name, b := file(later, "fedcba9876543210")
-	p.Pass(ctx, s)
-
-	_, err = os.Stat(filepath.Join(dir, name))
-	x.NoError(err, "a pass after the first took a file in")
-	x.Equal([]string{"in a file", "in the store"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }),
-		"a file put in the directory after the first pass was read as the trail")
-
-	for _, full := range []bool{false, true} {
-		v, err = p.Verify(ctx, s, full)
-		x.NoError(err)
-		x.Len(v.Findings, 1)
-		x.Equal("unaccounted", v.Findings[0].Kind)
-		x.Equal(flob.DigestFromBytes(b), v.Findings[0].Digest)
-		x.Contains(v.Findings[0].Note, name)
-	}
-
-	// An operator who has looked takes it in, as the first pass would have.
-	_, err = accept(t, p, s, Acceptance{Why: "the March file was restored from the old directory's backup"})
-	x.NoError(err)
-	_, err = os.Stat(filepath.Join(dir, name))
-	x.ErrorIs(err, os.ErrNotExist, "an acceptance left the file in the directory")
-
-	p.Pass(ctx, s)
-	v, err = p.Verify(ctx, s, true)
-	x.NoError(err)
-	x.True(v.Ok(), "%v", v.Findings)
-	x.Equal([]string{"in a file", "in the store", "put there later"}, values(t, func(fn func([]byte) error) error { return p.ReadTenant(ctx, s, tenant, fn) }))
 }
 
 // TestForgettingRewritesOnlyWhatItMust.

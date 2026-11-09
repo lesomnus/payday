@@ -48,14 +48,6 @@ func (_c *FactCreate) SetFieldNumber(v uint32) *FactCreate {
 	return _c
 }
 
-// SetNillableFieldNumber sets the "field_number" field if the given value is not nil.
-func (_c *FactCreate) SetNillableFieldNumber(v *uint32) *FactCreate {
-	if v != nil {
-		_c.SetFieldNumber(*v)
-	}
-	return _c
-}
-
 // SetDateUpdated sets the "date_updated" field.
 func (_c *FactCreate) SetDateUpdated(v time.Time) *FactCreate {
 	_c.mutation.SetDateUpdated(v)
@@ -79,14 +71,6 @@ func (_c *FactCreate) SetNillableDateCreated(v *time.Time) *FactCreate {
 // SetDomain sets the "domain" field.
 func (_c *FactCreate) SetDomain(v uint32) *FactCreate {
 	_c.mutation.SetDomain(v)
-	return _c
-}
-
-// SetNillableDomain sets the "domain" field if the given value is not nil.
-func (_c *FactCreate) SetNillableDomain(v *uint32) *FactCreate {
-	if v != nil {
-		_c.SetDomain(*v)
-	}
 	return _c
 }
 
@@ -162,7 +146,6 @@ func (_c *FactCreate) Mutation() *FactMutation {
 
 // Save creates the Fact in the database.
 func (_c *FactCreate) Save(ctx context.Context) (*Fact, error) {
-	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -188,22 +171,6 @@ func (_c *FactCreate) ExecX(ctx context.Context) {
 	}
 }
 
-// defaults sets the default values of the builder before save.
-func (_c *FactCreate) defaults() {
-	if _, ok := _c.mutation.FieldNumber(); !ok {
-		if _, ok := _c.mutation.FieldExpr(fact.FieldFieldNumber); !ok {
-			v := fact.DefaultFieldNumber
-			_c.mutation.SetFieldNumber(v)
-		}
-	}
-	if _, ok := _c.mutation.Domain(); !ok {
-		if _, ok := _c.mutation.FieldExpr(fact.FieldDomain); !ok {
-			v := fact.DefaultDomain
-			_c.mutation.SetDomain(v)
-		}
-	}
-}
-
 // check runs all checks and user-defined validators on the builder.
 func (_c *FactCreate) check() error {
 	if fs := _c.mutation.ExprFields(); len(fs) > 0 {
@@ -218,8 +185,14 @@ func (_c *FactCreate) check() error {
 	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Fact.value"`)}
 	}
+	if _, ok := _c.mutation.FieldNumber(); !ok {
+		return &ValidationError{Name: "field_number", err: errors.New(`ent: missing required field "Fact.field_number"`)}
+	}
 	if _, ok := _c.mutation.DateUpdated(); !ok {
 		return &ValidationError{Name: "date_updated", err: errors.New(`ent: missing required field "Fact.date_updated"`)}
+	}
+	if _, ok := _c.mutation.Domain(); !ok {
+		return &ValidationError{Name: "domain", err: errors.New(`ent: missing required field "Fact.domain"`)}
 	}
 	if _, ok := _c.mutation.EventId(); !ok {
 		return &ValidationError{Name: "event_id", err: errors.New(`ent: missing required field "Fact.event_id"`)}
@@ -389,7 +362,6 @@ func (_c *FactCreateBulk) Save(ctx context.Context) ([]*Fact, error) {
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*FactMutation)
 				if !ok {

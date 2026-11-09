@@ -23,14 +23,11 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 )
 
-// What a store of an entity the schema renamed is carried into when the same
-// migration moves columns too. Robot says it was called Droid (`formerly`), so
-// a store an earlier build made holds the robots in `droid`, with everything
-// ent named after a table named after that; and a store of a build before the
-// past's and the copy's times were `date_*` holds those under the names they
-// had. One `cli.Migrate` moves both -- the table first, by `rename.Tables`, and
-// then the columns, by `rename.Columns`, which looks for each on its table by
-// the name the table has now.
+// What a store of an entity the schema renamed is carried into. Robot says it
+// was called Droid (`formerly`), so a store an earlier build made holds the
+// robots in `droid`, with everything ent named after a table named after that;
+// and `cli.Migrate` moves the table, by `rename.Tables`, before anything looks
+// for it by the name it has now.
 
 // droid is the robots' table as an earlier build made it, as
 // `pd.TableRenames` holds it.
@@ -75,9 +72,9 @@ func pointed(t *testing.T, b *built, ctx context.Context) *app.Robot {
 // asEarlier is `tables` as an earlier build declared them: the table `v` under
 // the name it had then, and with it every name ent makes after a table -- its
 // indexes, `<table>_<name>`, and the foreign keys of it and of the tables that
-// point at it, `<table>_<referenced>_<edge>` -- and each column of `cs` under
-// the name it had. Copied whole, so that nothing of this build's is changed.
-func asEarlier(tables []*entschema.Table, v rename.Table, cs []rename.Column) []*entschema.Table {
+// point at it, `<table>_<referenced>_<edge>`. Copied whole, so that nothing of
+// this build's is changed.
+func asEarlier(tables []*entschema.Table, v rename.Table) []*entschema.Table {
 	name := func(table string) string {
 		if table == v.To {
 			return v.From
@@ -104,11 +101,6 @@ func asEarlier(tables []*entschema.Table, v rename.Table, cs []rename.Column) []
 				Precision: c.Precision, Key: c.Key, Unique: c.Unique, Increment: c.Increment,
 				Nullable: c.Nullable, Default: c.Default, Enums: c.Enums, Collation: c.Collation,
 				Comment: c.Comment,
-			}
-			for _, r := range cs {
-				if r.Table == tb.Name && r.To == c.Name {
-					d.Name = r.From
-				}
 			}
 			columns[c] = d
 			u.Columns = append(u.Columns, d)
@@ -300,18 +292,15 @@ func namedAfter(t *testing.T, db *sql.DB, d string, name string) []string {
 	return out
 }
 
-// TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole: a migration
-// finds a table, and a column, by its name, so on a store an earlier build made
-// it finds neither -- it makes the robots' table again, empty, and adds each
-// time beside the old one, empty, or on SQLite makes the past's tables again
-// without them -- and nothing fails. `cli.Migrate` hands `pd.TableRenames` to
-// `rename.Tables` and then `pd.ColumnRenames` to `rename.Columns`, and after it
-// every row reads as it was written: the robots', those that point at a
-// robot, and the past's and the copy's.
-func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
+// TestAStoreOfARenamedEntityIsMovedWhole: a migration finds a table by its
+// name, so on a store an earlier build made it does not find the robots' --
+// it makes the table again, empty, and the rows stay in the old one -- and
+// nothing fails. `cli.Migrate` hands `pd.TableRenames` to `rename.Tables`
+// first, and after it every row reads as it was written: the robots', and
+// those that point at a robot.
+func TestAStoreOfARenamedEntityIsMovedWhole(t *testing.T) {
 	x := require.New(t)
 	x.Equal([]rename.Table{droid}, pd.TableRenames)
-	x.Subset(pd.ColumnRenames, datesRenamed)
 
 	// And what else an earlier build wrote down under the name reads as the
 	// robots' domain: a chunk of the archive labelled with the word, a patch
@@ -328,12 +317,10 @@ func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
 
 	// The rows, as this build writes them, to a store of its own.
 	a, ctx := build(t)
-	src := newGrants()
 	lead := pointed(t, a, ctx)
-	dating(t, a, ctx, src, "before")
 	want := contentsOf(t, a.Db, entmigrate.Tables)
 	made := indexesOf(t, a.Db, a.Dialect)
-	for _, v := range []string{"robot", "holder", "joint", "machine", "pairing", "reading", "event", "fact", "entitlement"} {
+	for _, v := range []string{"robot", "holder", "joint", "pairing", "reading"} {
 		x.NotEmpty(want[v], "no row of %s to carry", v)
 	}
 
@@ -342,14 +329,11 @@ func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
 	s, err := cmd.Build(ctx, cmd.Config{Db: dbOf(t), Watch: config.WatchConfig{Broker: config.BrokerMemory}})
 	x.NoError(err)
 	t.Cleanup(func() { s.Close() })
-	earlier := asEarlier(entmigrate.Tables, droid, datesRenamed)
+	earlier := asEarlier(entmigrate.Tables, droid)
 	x.NoError(entmigrate.Create(ctx, entmigrate.NewSchema(s.Drv), earlier))
 	copyInto(t, a.Db, s.Db, s.Dialect, entmigrate.Tables, earlier)
 	x.True(holds(t, s.Db, s.Dialect, droid.From))
 	x.False(holds(t, s.Db, s.Dialect, droid.To))
-	for _, v := range datesRenamed {
-		x.Contains(columnsOf(t, s.Db, s.Dialect, v.Table), v.From)
-	}
 	x.NotEmpty(namedAfter(t, s.Db, s.Dialect, droid.From))
 	was := indexesOf(t, s.Db, s.Dialect)
 	relation := func(table string) int64 {
@@ -366,9 +350,6 @@ func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
 	x.NoError(cli.Migrate(ctx, s))
 	x.NoError(entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables))
 	x.False(holds(t, s.Db, s.Dialect, droid.From))
-	for _, v := range datesRenamed {
-		x.NotContains(columnsOf(t, s.Db, s.Dialect, v.Table), v.From)
-	}
 	x.Equal(want, contentsOf(t, s.Db, entmigrate.Tables), "a value is not the one written before the migration")
 	x.Empty(namedAfter(t, s.Db, s.Dialect, droid.From), "named after the table it was")
 
@@ -388,13 +369,12 @@ func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
 		}
 	}
 
-	// And the app reads it, and writes the past and the copy, as it did.
+	// And the app reads it as it did.
 	b := &built{Server: s, Tenant: a.Tenant, Holder: a.Holder}
 	v, err := b.Walled.Robot().Get(b.as(ctx), app.RobotGetRequest_builder{Ref: app.RobotRef_builder{Id: lead.GetId()}.Build()}.Build())
 	x.NoError(err)
 	x.Equal(lead.GetAlias(), v.GetAlias())
 	x.Equal(lead.GetCell().GetId(), v.GetCell().GetId())
-	dating(t, b, ctx, src, "after")
 
 	t.Run("and migrating again changes nothing", func(t *testing.T) {
 		x := require.New(t)
@@ -405,4 +385,44 @@ func TestAStoreOfARenamedEntityAndOfThePastsOldTimesIsMovedWhole(t *testing.T) {
 		x.Equal(now, contentsOf(t, s.Db, entmigrate.Tables))
 		x.Equal(got, indexesOf(t, s.Db, s.Dialect))
 	})
+}
+
+// indexesOf is every index the database holds that is not the engine's own,
+// by name: its table, and on PostgreSQL the relation it is.
+func indexesOf(t *testing.T, db *sql.DB, d string) map[string]string {
+	t.Helper()
+
+	q := `SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_autoindex_%'`
+	if d == dialect.Postgres {
+		q = `SELECT c.relname, t.relname || '/' || c.oid::text FROM pg_index i
+			JOIN pg_class c ON c.oid = i.indexrelid
+			JOIN pg_class t ON t.oid = i.indrelid
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = current_schema()`
+	}
+
+	rows, err := db.QueryContext(t.Context(), q)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	out := map[string]string{}
+	for rows.Next() {
+		var name, at string
+		require.NoError(t, rows.Scan(&name, &at))
+		out[name] = at
+	}
+	require.NoError(t, rows.Err())
+
+	return out
+}
+
+// tables is [indexesOf] with only the table each is on, which is what two
+// databases holding the same indexes agree on.
+func tables(vs map[string]string) map[string]string {
+	out := make(map[string]string, len(vs))
+	for k, v := range vs {
+		out[k], _, _ = strings.Cut(v, "/")
+	}
+
+	return out
 }

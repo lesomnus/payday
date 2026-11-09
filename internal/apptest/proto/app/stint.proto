@@ -74,7 +74,7 @@ message Stint {
 message PastExpired {
   option (payday.event) = {kinds: "past.expire"};
 
-  google.protobuf.Timestamp date_before = 1 [json_name = "before"];
+  google.protobuf.Timestamp date_before = 1;
   uint32 facts = 2;
   uint32 events = 3;
   uint32 stints = 4;

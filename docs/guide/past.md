@@ -297,10 +297,7 @@ what this schema no longer declares as it was. ...
 ```
 
 A key the lock does not know is refused rather than dropped: the lock is
-written back, and one dropped on the way in is a record gone without a word. A
-lock of a payday before a message could hold several kinds (payday#171)
-records each message's kind under `events`, and is told to be written as
-`kinds`, each kind with its message -- the same record the other way round.
+written back, and one dropped on the way in is a record gone without a word.
 
 Commit it. `pd gen --check` regenerates it like everything else it writes, so
 a lock behind its schema fails CI the way a stale generated file does, and `pd
@@ -326,7 +323,7 @@ several kinds once for each.
 ```go
 typ, ok := pd.EventKinds[ev.GetKind()]
 if !ok {
-	// A row written before its kind had a message.
+	// A row the app wrote before it declared a past, which holds none.
 }
 
 v := typ.New().Interface()
@@ -363,8 +360,8 @@ const transport = createConnectTransport({
 })
 ```
 
-A page made before this has transports without it; add the line there, and
-`pd doctor` names each file that still needs it ([§13](#13-what-pd-doctor-asks)).
+`pd doctor` names each file of the page whose transport is handed none
+([§13](#13-what-pd-doctor-asks)).
 See [the page](client.md#the-registry-a-connect-transport-is-handed).
 
 ## 6. Recording an operation

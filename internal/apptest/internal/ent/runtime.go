@@ -7,7 +7,6 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/access"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/event"
-	"github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/schema"
@@ -38,16 +37,6 @@ func init() {
 	// eventDescValue is the schema descriptor for value field.
 	eventDescValue := eventFields[10].Descriptor()
 	event.ValueScanner.Value = eventDescValue.ValueScanner.(field.TypeValueScanner[*anypb.Any])
-	factFields := schema.Fact{}.Fields()
-	_ = factFields
-	// factDescFieldNumber is the schema descriptor for field_number field.
-	factDescFieldNumber := factFields[4].Descriptor()
-	// fact.DefaultFieldNumber holds the default value on creation for the field_number field.
-	fact.DefaultFieldNumber = factDescFieldNumber.Default.(uint32)
-	// factDescDomain is the schema descriptor for domain field.
-	factDescDomain := factFields[7].Descriptor()
-	// fact.DefaultDomain holds the default value on creation for the domain field.
-	fact.DefaultDomain = factDescDomain.Default.(uint32)
 	holderFields := schema.Holder{}.Fields()
 	_ = holderFields
 	// holderDescProfile is the schema descriptor for profile field.

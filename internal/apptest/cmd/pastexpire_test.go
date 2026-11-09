@@ -666,7 +666,7 @@ func TestTheReceiptSaysHowManyAndNoMore(t *testing.T) {
 	// The whole of it, as its row keeps it.
 	js, err := protojson.Marshal(v.Value)
 	x.NoError(err)
-	x.JSONEq(fmt.Sprintf(`{"@type": "type.googleapis.com/app.PastExpired", "before": %q, "facts": %d, "events": %d, "stints": %d}`,
+	x.JSONEq(fmt.Sprintf(`{"@type": "type.googleapis.com/app.PastExpired", "dateBefore": %q, "facts": %d, "events": %d, "stints": %d}`,
 		cutoff.Format(time.RFC3339), done.Facts, done.Events, stints), string(js))
 
 	// Said when it is read, as every event is.

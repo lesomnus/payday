@@ -341,8 +341,3 @@ has the setup.
   than a tenant's is declared `global`, and its generated methods are the
   policy's to close; there is no tenancy that narrows a membership's reads to
   its account's rows.
-
-## Moving an app that built this itself
-
-[Migrating](../migrating.md#accounts-for-an-app-whose-holders-are-memberships-of-one)
-has the steps.
