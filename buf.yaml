@@ -34,16 +34,3 @@ lint:
 breaking:
   use:
     - FILE
-  # Until the first app launches, payday keeps nothing for an earlier payday
-  # (2026-11-09). The test app's event messages no longer keep the JSON name
-  # their rows were written with before their times were `date_*`, and the
-  # past's lock was written again from the schema; and a fact's field number
-  # and domain have no default, which was for rows from before the columns, so
-  # an Add of one says them without presence. Only the test app's module,
-  # which the registry does not hold: remove once main has it.
-  ignore_only:
-    FIELD_SAME_JSON_NAME:
-      - internal/apptest/proto/app/machine.proto
-      - internal/apptest/proto/app/stint.proto
-    FIELD_SAME_CARDINALITY:
-      - internal/apptest/proto/app/payday/fact_svc.g.proto
