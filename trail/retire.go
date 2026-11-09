@@ -94,7 +94,8 @@ func (p Policy) floored(d pdid.Domain, at, now time.Time) bool {
 }
 
 // newest is when a chunk's newest row was written, as late as it can have been:
-// a chunk whose labels do not say -- none a pass writes -- has only its month.
+// a blob no pass wrote, which an operator accepted with the labels it came
+// with, may say only its month (see [Chunk.Before]).
 func newest(c Chunk) time.Time {
 	if !c.Last.IsZero() {
 		return c.Last

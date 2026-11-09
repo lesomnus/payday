@@ -1543,9 +1543,10 @@ func (x *pass) spend(ctx context.Context, c Chunk, held bool, before time.Time, 
 		return 0, nil
 	}
 
-	// A chunk whose labels never said how many rows it holds -- none a pass
-	// writes -- is counted, since a receipt that says nothing is worth less
-	// than one that counts.
+	// A pass labels every chunk it writes with how many rows it holds; a blob
+	// no pass wrote, which an operator accepted with the labels it came with,
+	// may not say, and is counted, since a receipt that says nothing is worth
+	// less than one that counts.
 	if c.Rows == 0 {
 		v, err := edit(ctx, a, c, true, nil, func([]byte, head) ([]byte, mark, error) { return nil, dropped, nil })
 		if err != nil {

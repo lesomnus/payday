@@ -134,10 +134,11 @@ type Chunk struct {
 // Before answers whether every row in it was written before `at`, which is
 // what being destroyable at a cutoff means.
 //
-// From [Chunk.Last] when it is known. A chunk whose labels do not say it --
-// none a pass writes -- has only its month, and is destroyable when the month
-// **after** it has also passed: January goes when the cutoff has reached
-// February, and not on the 31st.
+// From [Chunk.Last] when it is known. A pass labels every chunk it writes
+// with it; a blob no pass wrote, which an operator took into the manifest with
+// the labels it came with ([Policy.Accept]), may say only its month, and is
+// destroyable when the month **after** it has also passed: January goes when
+// the cutoff has reached February, and not on the 31st.
 func (c Chunk) Before(at time.Time) bool {
 	if !c.Last.IsZero() {
 		return c.Last.Before(at)
