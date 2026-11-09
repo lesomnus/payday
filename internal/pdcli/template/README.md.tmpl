@@ -75,6 +75,14 @@ fails on a tree nothing has generated yet, and there is exactly one moment it
 can run: inside `pd gen`, between those two things. Once `buf.lock` has entries
 in it they are yours, and nothing here moves them.
 
+The buf `pd` runs is the one payday pins, and never one on the `PATH`: it is
+fetched from GitHub's releases into your cache (`~/.cache/payday/buf/<version>`
+on Linux) the first time, checked against its digest, and found there after. A
+CI runner starts with an empty cache, so keep that directory between runs,
+keyed on the version of payday this app requires -- or every job fetches it
+again, from a server that answers 504 now and then. `PD_BUF` names a buf to run
+instead, for a machine with no route to GitHub.
+
 ## Upgrading payday
 
 ```sh

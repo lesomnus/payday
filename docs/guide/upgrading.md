@@ -205,6 +205,13 @@ The preset also does these things:
   apps are disabled by `renovate/go-common`. `pd upgrade --payday` raises them
   to what payday requires when that is newer, and then generates. The dashboard
   group still applies to npm generators and to payday's own Go updates.
+- **It leaves buf to payday.** `pd` runs the buf payday pins, checked against a
+  digest of each file of its release, and never one on the `PATH`. An update
+  that moved buf in a workflow -- Renovate reads the `version` of
+  `bufbuild/buf-setup-action` -- would check the schema with a buf no
+  generation runs. payday moves buf by hand, digests and all, and an app gets
+  the new one with `pd upgrade --payday`; a workflow of its own that sets a buf
+  up names that version.
 - **It keeps vite and @vitejs/plugin-react in one pull request**, for the reason
   in §2.
 - **It groups patches, digests, and minors from 1.0 on, into one `non-major`

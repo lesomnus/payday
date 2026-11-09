@@ -46,6 +46,11 @@
       "prBodyNotes": ["**This moves a generator.** What it writes carries its version, so `pd gen --check` fails on this branch as it is: check it out, generate (`go tool pd gen --ts .` in an app), and push what that wrote."]
     },
     {
+      "description": "buf is payday's. `pd` runs the release payday pins (pdcli.BufVersion), checked against a digest of each of its assets, and a workflow that sets a buf up is held to that release -- in payday by a test, which fails a buf-action or buf-setup-action whose version is not BufVersion. So no update moves buf alone: in payday the digests move with it, and in an app it would be a buf no generation runs. Renovate reads buf-setup-action's version and the tag of a bufbuild/buf image, and may come to read buf-action's; payday moves buf by hand, and an app follows it with `pd upgrade --payday`.",
+      "matchPackageNames": ["bufbuild/buf"],
+      "enabled": false
+    },
+    {
       "description": "payday, and the protobuf-orm generators and runtimes it pins, move with `go tool pd upgrade --payday`: an upgrade has to generate again, so the default app preset leaves it manual unless the app configures a self-hosted post-upgrade task. Code another payday generated is refused when it runs.",
       "matchManagers": ["gomod"],
       "matchPackageNames": ["github.com/lesomnus/payday", "github.com/lesomnus/payday/**", "github.com/protobuf-orm/**"],

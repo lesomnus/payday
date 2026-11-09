@@ -73,6 +73,13 @@ buf breaking proto --against buf.build/payday/payday:dev
 A break that is meant goes in `buf.yaml`'s `breaking.ignore_only`, for that one
 change, and comes out once main and the registry's `dev` both have it.
 
+The buf every generation runs is pinned: `pdcli.BufVersion`, and beside it in
+`bufSums` the digest of each file of that release, from its `sha256.txt`.
+Moving it is those two and the `version:` CI gives buf-action, which
+`TestTheBufCIRunsIsTheBufThisPaydayPins` holds to it. Renovate leaves buf
+alone (`renovate/base.json`). CI keeps the binary between runs, under its
+version (`.github/actions/buf`), so a new one is fetched once.
+
 ## Do not edit
 
 - `internal/apptest/**/*.g.go`, `*.pb.go`, `server/bare/`, `server/pd/`,
