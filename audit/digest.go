@@ -42,8 +42,7 @@ import (
 // finding. And it covers the fields the build that wrote it knew -- they are
 // recorded beside it (`Audit.digest_fields`) and bound into it -- so a column a
 // later migration adds is outside every digest made before it, and a column a
-// migration rewrote is a difference, which is the point. A digest a build
-// before this made covered no secret, and is checked over what it covered.
+// migration rewrote is a difference, which is the point.
 //
 // # And what a seal covers
 //
@@ -53,17 +52,17 @@ import (
 // with what it vouches for rather than with the trail's line, which is copied
 // to the archive and kept for years after the row has gone. Whether a write
 // sealed the row is said by its digest ([Sealing]), so that a seal gone from
-// a row is a finding and not a row from before seals.
+// a row is a finding and not a row written before its kind was sealed.
 //
 // # Bound to the line that keeps it (payday#115)
 //
 // A digest says what a row was; the row of the trail that keeps it -- its
 // line, [Line] -- says which line it is, when it was written and what was
-// done. Version 1 bound nothing of the line, so a digest could be copied from
-// an older line onto the newest, and a check compared the row with whatever
-// the copy said: a row put back to what it once was, and the trail made to
-// agree, by anybody who can write the database. So a digest is two MACs now.
-// One is of the row, as before. The other is of the line, over the first: its
+// done. A digest of the row alone, bound to nothing of the line, could be
+// copied from an older line onto the newest, and a check would compare the
+// row with whatever the copy said: a row put back to what it once was, and the
+// trail made to agree, by anybody who can write the database. So a digest is
+// two MACs. One is of the row. The other is of the line, over the first: its
 // key, its moment, its action, the thing it is about. A digest copied onto
 // another line is then not that line's, which is a finding of its own.
 //
@@ -97,15 +96,14 @@ type Digest struct {
 	since    time.Time
 }
 
-// DigestVersion is the first byte of every digest [Digest.Of] makes.
+// DigestVersion is the first byte of every digest [Digest.Of] makes, and of
+// every digest a check reads: one of any other is [ErrDigest].
 //
 // 3 is a digest bound to its line that says whether the write it records
 // sealed the row (payday#115): a byte of flags after the version, bound into
 // the line's MAC with it, so that neither can be changed by anybody without
-// the key. 2 is the same two MACs with no flags, and 1 the row's MAC alone;
-// both are still checked and no longer made. A line that keeps one of them is
-// the line it was written as, or the database's word for it, which is all
-// they ever had -- and it says its write sealed nothing.
+// the key. The versions before it are not read: until the first app
+// launches, payday keeps nothing for an earlier payday (CLAUDE.md).
 const DigestVersion byte = 3
 
 const (
@@ -113,29 +111,20 @@ const (
 	// is.
 	part = 8 + sha256.Size
 
-	// onlyRow is a version-1 digest: the version and the row's part.
-	onlyRow = 1 + part
-
-	// onlyLine is a version-2 digest of a write that left no row: the
-	// version and the line's part.
-	onlyLine = 1 + part
-
-	// lineAndRow is a version-2 digest of the row a write left: the line's
-	// part, then the row's.
-	lineAndRow = 1 + 2*part
-
-	// head is what a version-3 digest begins with: the version and its
-	// flags.
+	// head is what a digest begins with: the version and its flags.
 	head = 2
 
-	// onlyLine3 and lineAndRow3 are [onlyLine] and [lineAndRow] of version
-	// 3, after its flags.
-	onlyLine3   = head + part
-	lineAndRow3 = head + 2*part
+	// onlyLine is a digest of a write that left no row: the head and the
+	// line's part.
+	onlyLine = head + part
+
+	// lineAndRow is a digest of the row a write left: the head, the line's
+	// part, then the row's.
+	lineAndRow = head + 2*part
 )
 
-// sealed is the flag of a version-3 digest that says the write it records
-// sealed the row it left ([Digest.OfSealed]).
+// sealed is the flag of a digest that says the write it records sealed the
+// row it left ([Digest.OfSealed]).
 const sealed byte = 1 << 0
 
 // minDigestKey is the least a key may be: the HMAC's own block of entropy.
@@ -310,42 +299,35 @@ func (d *Digest) Gone(object pdid.Id, line Line) []byte {
 // `line` instead, which is what a pass writes for a row whose newest line it
 // is about to destroy. What it says of the row is what the older line said:
 // the row's MAC is copied as it was recorded, never made again, and so is
-// whether the write sealed the row; only the line's MAC is new. One of version
-// 1 or 2 is carried as version 3, saying it sealed nothing, which it did not.
+// whether the write sealed the row; only the line's MAC is new.
 func (d *Digest) Carry(sum []byte, object pdid.Id, line Line) ([]byte, error) {
 	switch {
-	case len(sum) == onlyRow && sum[0] == 1:
-		return d.bind(object, line, 0, sum[1:]), nil
-	case len(sum) == onlyLine && sum[0] == 2:
-		return d.bind(object, line, 0, nil), nil
-	case len(sum) == lineAndRow && sum[0] == 2:
-		return d.bind(object, line, 0, sum[onlyLine:]), nil
-	case len(sum) == onlyLine3 && sum[0] == DigestVersion:
+	case len(sum) == onlyLine && sum[0] == DigestVersion:
 		return d.bind(object, line, sum[1], nil), nil
-	case len(sum) == lineAndRow3 && sum[0] == DigestVersion:
-		return d.bind(object, line, sum[1], sum[onlyLine3:]), nil
+	case len(sum) == lineAndRow && sum[0] == DigestVersion:
+		return d.bind(object, line, sum[1], sum[onlyLine:]), nil
 	}
 
 	return nil, ErrDigest
 }
 
-// bind is a version-3 digest: its flags, the line's part, made now, and `r`,
-// the row's, or nothing for a write that left no row.
+// bind is a digest: its flags, the line's part, made now, and `r`, the row's,
+// or nothing for a write that left no row.
 func (d *Digest) bind(object pdid.Id, line Line, flags byte, r []byte) []byte {
-	out := make([]byte, 0, lineAndRow3)
+	out := make([]byte, 0, lineAndRow)
 	out = append(out, DigestVersion, flags)
 	out = append(out, d.print[:]...)
-	out = append(out, lineMAC3(d.key, object, line, flags, r)...)
+	out = append(out, lineMAC(d.key, object, line, flags, r)...)
 
 	return append(out, r...)
 }
 
 // Sealing is whether `sum`, a line's digest, says the write it records sealed
-// the row: one of version 3 whose flags say so ([Digest.OfSealed]). It reads
-// the flags and checks nothing, so a check asks it once [Digest.Check] has
-// found the line's MAC, which the flags are bound into, good.
+// the row: one whose flags say so ([Digest.OfSealed]). It reads the flags and
+// checks nothing, so a check asks it once [Digest.Check] has found the line's
+// MAC, which the flags are bound into, good.
 func Sealing(sum []byte) bool {
-	return (len(sum) == onlyLine3 || len(sum) == lineAndRow3) && sum[0] == DigestVersion && sum[1]&sealed != 0
+	return (len(sum) == onlyLine || len(sum) == lineAndRow) && sum[0] == DigestVersion && sum[1]&sealed != 0
 }
 
 // Verdict is what [Digest.Check] found.
@@ -399,9 +381,9 @@ func (v Verdict) String() string {
 	return fmt.Sprintf("Verdict(%d)", int(v))
 }
 
-// ErrDigest is a digest that is not one any version of payday makes: of a
-// version nothing made, or of the wrong length.
-var ErrDigest = errors.New("not a digest any version of payday makes")
+// ErrDigest is a digest that is not one payday makes: of another version, or
+// of the wrong length.
+var ErrDigest = errors.New("not a digest payday makes")
 
 // Check says whether `sum`, the digest the line `line` keeps, is the digest of
 // `row` -- the row of the thing `object` names, as it is now -- over the
@@ -449,43 +431,24 @@ func (d *Digest) CheckGone(sum []byte, object pdid.Id, line Line) (Verdict, erro
 	return Matches, nil
 }
 
-// open checks the line's part of `sum` and answers with the row's -- the
-// whole of a version-1 digest, which is bound to no line, and nothing for one
-// of a write that left no row -- and the digest's flags, which only version 3
-// has.
+// open checks the line's part of `sum` and answers with the row's -- nothing
+// for a write that left no row -- and the digest's flags.
 func (d *Digest) open(sum []byte, object pdid.Id, line Line) ([]byte, byte, Verdict, error) {
-	switch {
-	case len(sum) == onlyRow && sum[0] == 1:
-		return sum[1:], 0, Matches, nil
-
-	case (len(sum) == onlyLine || len(sum) == lineAndRow) && sum[0] == 2:
-		key, v := d.keyOf(Fingerprint(sum[1:9]))
-		if v != Matches {
-			return nil, 0, v, nil
-		}
-
-		r := sum[onlyLine:]
-		if !hmac.Equal(lineMAC(key, object, line, r), sum[9:onlyLine]) {
-			return nil, 0, Forged, nil
-		}
-
-		return r, 0, Matches, nil
-
-	case (len(sum) == onlyLine3 || len(sum) == lineAndRow3) && sum[0] == DigestVersion:
-		key, v := d.keyOf(Fingerprint(sum[head : head+8]))
-		if v != Matches {
-			return nil, 0, v, nil
-		}
-
-		r := sum[onlyLine3:]
-		if !hmac.Equal(lineMAC3(key, object, line, sum[1], r), sum[head+8:onlyLine3]) {
-			return nil, 0, Forged, nil
-		}
-
-		return r, sum[1], Matches, nil
+	if (len(sum) != onlyLine && len(sum) != lineAndRow) || sum[0] != DigestVersion {
+		return nil, 0, Forged, ErrDigest
 	}
 
-	return nil, 0, Forged, ErrDigest
+	key, v := d.keyOf(Fingerprint(sum[head : head+8]))
+	if v != Matches {
+		return nil, 0, v, nil
+	}
+
+	r := sum[onlyLine:]
+	if !hmac.Equal(lineMAC(key, object, line, sum[1], r), sum[head+8:onlyLine]) {
+		return nil, 0, Forged, nil
+	}
+
+	return r, sum[1], Matches, nil
 }
 
 // keyOf is the key a fingerprint names, and why there is none: let go, or
@@ -507,8 +470,7 @@ func (d *Digest) keyOf(p Fingerprint) ([]byte, Verdict) {
 // rowMAC is the row's MAC: of what it is about and what it covers, and then of
 // the row restricted to that, marshalled deterministically. The list it covers
 // is bound into it, so that taking a field out of the list does not take a
-// change to that field out of the comparison. It is version 1's whole digest,
-// unchanged, which is what lets a version-1 digest be carried.
+// change to that field out of the comparison.
 func rowMAC(key []byte, object pdid.Id, row proto.Message, covered []uint32) ([]byte, error) {
 	return macOfRow(key, "payday.trail.digest\x00", object, row, covered)
 }
@@ -540,17 +502,12 @@ func macOfRow(key []byte, label string, object pdid.Id, row proto.Message, cover
 	return h.Sum(nil), nil
 }
 
-// lineMAC is a version-2 line's MAC: of which line it is, when it was written,
-// what it says was done and what it is about, and then of the row's part --
-// `r`, or nothing for a write that left no row. Everything before `r` is of a
-// fixed length or says its own, so no two lines are one input.
-func lineMAC(key []byte, object pdid.Id, line Line, r []byte) []byte {
-	return macOfLine(key, "payday.trail.line\x00", nil, object, line, r)
-}
-
-// lineMAC3 is a version-3 line's: [lineMAC] under a label of its own, with
-// the digest's flags bound in after it.
-func lineMAC3(key []byte, object pdid.Id, line Line, flags byte, r []byte) []byte {
+// lineMAC is a line's MAC: of the digest's flags, of which line it is, when it
+// was written, what it says was done and what it is about, and then of the
+// row's part -- `r`, or nothing for a write that left no row. Everything
+// before `r` is of a fixed length or says its own, so no two lines are one
+// input.
+func lineMAC(key []byte, object pdid.Id, line Line, flags byte, r []byte) []byte {
 	return macOfLine(key, "payday.trail.line.3\x00", []byte{flags}, object, line, r)
 }
 

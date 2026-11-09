@@ -197,9 +197,9 @@ type Rows struct {
 	Archived int
 
 	// Unsealed is the rows of a sealed kind whose digest matches and whose
-	// newest line was written by a write that sealed nothing: by a build from
-	// before seals, or before the kind declared the field personal. What
-	// their personal fields are, nothing vouches for yet. They are counted
+	// newest line was written by a write that sealed nothing: before the kind
+	// declared a field personal. What their personal fields are, nothing
+	// vouches for yet. They are counted
 	// rather than found, as [Rows.BeforeDigests] are -- and listed, and in
 	// [Rows.Digest], so that the acceptance that seals them (an app's `trail
 	// rows --accept`, with `Record`) seals the rows somebody reviewed.
@@ -402,9 +402,9 @@ func check(d *Digest, k Kind, p Page, recorded map[pdid.Id]Recorded, out *Rows) 
 // matches: its personal fields, against its seal (payday#115).
 //
 // The newest line says whether its write sealed the row, bound into its MAC.
-// One that sealed nothing is a row from before seals, counted until it is
-// sealed; one that did and has no seal is a row somebody took the seal off,
-// which is a change to it the trail did not record.
+// One that sealed nothing is a row written before its kind was sealed, counted
+// until it is sealed; one that did and has no seal is a row somebody took the
+// seal off, which is a change to it the trail did not record.
 func checkSealed(d *Digest, v Live, r Recorded, seals map[pdid.Id]Sealed, out *Rows) error {
 	if !Sealing(r.Digest) {
 		out.Unsealed = append(out.Unsealed, v.Object)
@@ -505,8 +505,7 @@ func gone(ctx context.Context, d *Digest, k Kind, seen map[pdid.Id]bool, said ma
 func judgeGone(d *Digest, id pdid.Id, r Recorded, out *Rows) error {
 	if len(r.Digest) == 0 {
 		// Nothing says the write took it, and nothing can be said of a line
-		// from before digests: an erase made by a version of payday that kept
-		// no digest of one is among these, and is looked at once.
+		// from before digests began.
 		if !d.before(r) {
 			out.Missing = append(out.Missing, id)
 		}
@@ -577,20 +576,14 @@ func (o *Rows) unheldPrints(d *Digest, ps []Fingerprint) {
 	}
 }
 
-// prints is the fingerprints a digest names: the line's and the row's, or the
-// row's alone for one of version 1.
+// prints is the fingerprints a digest names: the line's, and the row's when
+// its write left one.
 func prints(sum []byte) []Fingerprint {
 	switch {
-	case len(sum) == onlyRow && sum[0] == 1:
-		return []Fingerprint{Fingerprint(sum[1:9])}
-	case len(sum) == onlyLine && sum[0] == 2:
-		return []Fingerprint{Fingerprint(sum[1:9])}
-	case len(sum) == lineAndRow && sum[0] == 2:
-		return []Fingerprint{Fingerprint(sum[1:9]), Fingerprint(sum[onlyLine : onlyLine+8])}
-	case len(sum) == onlyLine3 && sum[0] == DigestVersion:
+	case len(sum) == onlyLine && sum[0] == DigestVersion:
 		return []Fingerprint{Fingerprint(sum[head : head+8])}
-	case len(sum) == lineAndRow3 && sum[0] == DigestVersion:
-		return []Fingerprint{Fingerprint(sum[head : head+8]), Fingerprint(sum[onlyLine3 : onlyLine3+8])}
+	case len(sum) == lineAndRow && sum[0] == DigestVersion:
+		return []Fingerprint{Fingerprint(sum[head : head+8]), Fingerprint(sum[onlyLine : onlyLine+8])}
 	}
 
 	return nil

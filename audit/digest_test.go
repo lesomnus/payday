@@ -182,7 +182,7 @@ func TestAWriteThatLeftNoRowSaysSo(t *testing.T) {
 // TestACarriedDigestSaysWhatItsLineSaid: what an older line said of a row is
 // put on a new line with the row's MAC as it was, so the row it vouched for
 // still matches, and a row changed since still differs -- the MAC is never
-// made again of the row as it is. A version-1 digest is carried as version 3.
+// made again of the row as it is.
 func TestACarriedDigestSaysWhatItsLineSaid(t *testing.T) {
 	x := require.New(t)
 	before, err := audit.NewDigest(keyA)
@@ -216,36 +216,11 @@ func TestACarriedDigestSaysWhatItsLineSaid(t *testing.T) {
 	x.ErrorIs(err, audit.ErrDigest)
 }
 
-// TestADigestOfVersionOneIsStillChecked: bound to no line, it is checked as it
-// always was, and carried onto one.
-func TestADigestOfVersionOneIsStillChecked(t *testing.T) {
-	x := require.New(t)
-	d, err := audit.NewDigest(keyA)
-	x.NoError(err)
-
-	// Version 1 is a later version's row part behind a version byte of its
-	// own.
-	v3, err := d.Of(object, row(1, 2), []uint32{1, 2}, line(1, 0))
-	x.NoError(err)
-	v1 := append([]byte{1}, v3[2+8+32:]...)
-
-	v, err := d.Check(v1, object, row(1, 2), []uint32{1, 2}, line(9, 0))
-	x.NoError(err)
-	x.Equal(audit.Matches, v, "no line is bound into it")
-	v, err = d.Check(v1, object, row(1, 3), []uint32{1, 2}, line(9, 0))
-	x.NoError(err)
-	x.Equal(audit.Differs, v)
-
-	carried, err := d.Carry(v1, object, line(2, 0))
-	x.NoError(err)
-	x.Equal(audit.DigestVersion, carried[0])
-	v, err = d.Check(carried, object, row(1, 2), []uint32{1, 2}, line(2, 0))
-	x.NoError(err)
-	x.Equal(audit.Matches, v)
-}
-
-// TestADigestNoVersionMadeIsForged: of a version nothing made or the wrong
-// length, it is no digest of this line's.
+// TestADigestNoVersionMadeIsForged: of another version or the wrong length, it
+// is no digest of this line's -- the versions before this one among them,
+// which nothing reads: the row's MAC alone behind a version byte of its own,
+// which is bound to no line and would be good on any, and the two MACs with
+// no flags.
 func TestADigestNoVersionMadeIsForged(t *testing.T) {
 	x := require.New(t)
 	d, err := audit.NewDigest(keyA)
@@ -253,7 +228,9 @@ func TestADigestNoVersionMadeIsForged(t *testing.T) {
 
 	sum, err := d.Of(object, row(1, 2), []uint32{1, 2}, line(1, 0))
 	x.NoError(err)
-	for _, v := range [][]byte{sum[:40], append([]byte{4}, sum[1:]...), {1}} {
+	one := append([]byte{1}, sum[2+8+32:]...)
+	two := append([]byte{2}, sum[2:]...)
+	for _, v := range [][]byte{sum[:40], append([]byte{4}, sum[1:]...), {1}, one, two} {
 		got, err := d.Check(v, object, row(1, 2), []uint32{1, 2}, line(1, 0))
 		x.ErrorIs(err, audit.ErrDigest)
 		x.Equal(audit.Forged, got)
@@ -305,8 +282,8 @@ func TestADigestOfAMapIsTheSameWhateverOrderItWasBuiltIn(t *testing.T) {
 // TestADigestSaysWhetherItsWriteSealedTheRow: a digest of version 3 says
 // whether the write it records sealed the row, and the saying is bound into
 // the line's MAC -- so a line made to say its write sealed nothing, which is
-// what a row from before seals looks like, is not that line's any more
-// (payday#115).
+// what a row written before its kind was sealed looks like, is not that line's
+// any more (payday#115).
 func TestADigestSaysWhetherItsWriteSealedTheRow(t *testing.T) {
 	x := require.New(t)
 	d, err := audit.NewDigest(keyA)
