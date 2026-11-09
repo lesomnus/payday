@@ -234,7 +234,7 @@ func (b0 Stint_builder) Build() *Stint {
 // stints the app took before them -- and never what any of them said.
 type PastExpired struct {
 	state                 protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_DateBefore *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=date_before,json=before"`
+	xxx_hidden_DateBefore *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=date_before,json=dateBefore"`
 	xxx_hidden_Facts      uint32                 `protobuf:"varint,2,opt,name=facts"`
 	xxx_hidden_Events     uint32                 `protobuf:"varint,3,opt,name=events"`
 	xxx_hidden_Stints     uint32                 `protobuf:"varint,4,opt,name=stints"`
@@ -358,9 +358,10 @@ const file_app_stint_proto_rawDesc = "" +
 	"\bevent_id\x18\v \x01(\fB\f\xea\x82\x16\x02\x10@\xaa\xc1\x16\x02(\x01R\aeventId\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:)\xca\xfc\x15\x1b\x12\x02\x10\x01\x1a\x15\x12\x05event\x1a\f\n" +
 	"\bevent_id\x10\v\x8a\xbb\x16\x06\b\x14B\x02\n" +
-	"\x00\"\x9f\x01\n" +
-	"\vPastExpired\x127\n" +
-	"\vdate_before\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x06before\x12\x14\n" +
+	"\x00\"\xa3\x01\n" +
+	"\vPastExpired\x12;\n" +
+	"\vdate_before\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"dateBefore\x12\x14\n" +
 	"\x05facts\x18\x02 \x01(\rR\x05facts\x12\x16\n" +
 	"\x06events\x18\x03 \x01(\rR\x06events\x12\x16\n" +
 	"\x06stints\x18\x04 \x01(\rR\x06stints:\x11\x92\xbb\x16\r\n" +

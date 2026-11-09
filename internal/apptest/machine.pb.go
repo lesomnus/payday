@@ -522,7 +522,7 @@ type MachineServiced struct {
 	xxx_hidden_Mode    Mode                             `protobuf:"varint,3,opt,name=mode,enum=app.Mode"`
 	xxx_hidden_Parts   *[]*MachineServiced_Part         `protobuf:"bytes,4,rep,name=parts"`
 	xxx_hidden_Swapped map[string]*MachineServiced_Part `protobuf:"bytes,5,rep,name=swapped" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	xxx_hidden_DateDue *timestamppb.Timestamp           `protobuf:"bytes,6,opt,name=date_due,json=due"`
+	xxx_hidden_DateDue *timestamppb.Timestamp           `protobuf:"bytes,6,opt,name=date_due,json=dateDue"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -737,7 +737,7 @@ func (b0 MachineStarted_builder) Build() *MachineStarted {
 type Corrected struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Event        []byte                 `protobuf:"bytes,1,opt,name=event"`
-	xxx_hidden_DateOccurred *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=date_occurred,json=at"`
+	xxx_hidden_DateOccurred *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=date_occurred,json=dateOccurred"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -999,14 +999,14 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x04axes\x18\x01 \x01(\rR\x04axes\x12\x14\n" +
 	"\x05reach\x18\x02 \x01(\x01R\x05reach:'\xca\xfc\x15\x1d\x12\x02\x10\x01\x1a\x17\x12\tby_tenant\x1a\n" +
 	"\n" +
-	"\x06tenant\x10\x02\x8a\xbb\x16\x02\b\x13\"\x9f\x03\n" +
+	"\x06tenant\x10\x02\x8a\xbb\x16\x02\b\x13\"\xa3\x03\n" +
 	"\x0fMachineServiced\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\fR\amachine\x12\x0e\n" +
 	"\x02by\x18\x02 \x01(\fR\x02by\x12\x1d\n" +
 	"\x04mode\x18\x03 \x01(\x0e2\t.app.ModeR\x04mode\x12/\n" +
 	"\x05parts\x18\x04 \x03(\v2\x19.app.MachineServiced.PartR\x05parts\x12;\n" +
-	"\aswapped\x18\x05 \x03(\v2!.app.MachineServiced.SwappedEntryR\aswapped\x121\n" +
-	"\bdate_due\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x03due\x1aU\n" +
+	"\aswapped\x18\x05 \x03(\v2!.app.MachineServiced.SwappedEntryR\aswapped\x125\n" +
+	"\bdate_due\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\adateDue\x1aU\n" +
 	"\fSwappedEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
 	"\x05value\x18\x02 \x01(\v2\x19.app.MachineServiced.PartR\x05value:\x028\x01\x1a4\n" +
@@ -1015,10 +1015,10 @@ const file_app_machine_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\rR\x05count:\x15\x92\xbb\x16\x11\n" +
 	"\x0fmachine.service\"0\n" +
 	"\x0eMachineStarted\x12\x18\n" +
-	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"p\n" +
+	"\amachine\x18\x01 \x01(\fR\amachine:\x04\x92\xbb\x16\x00\"z\n" +
 	"\tCorrected\x12\x14\n" +
-	"\x05event\x18\x01 \x01(\fR\x05event\x125\n" +
-	"\rdate_occurred\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at:\x16\x92\xbb\x16\x12\n" +
+	"\x05event\x18\x01 \x01(\fR\x05event\x12?\n" +
+	"\rdate_occurred\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\fdateOccurred:\x16\x92\xbb\x16\x12\n" +
 	"\acorrect\n" +
 	"\aretract*K\n" +
 	"\x04Mode\x12\x14\n" +

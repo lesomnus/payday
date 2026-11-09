@@ -91,7 +91,7 @@ func TestTheLockIsAddedTo(t *testing.T) {
 	x.Equal(before, after, "a rename that keeps the JSON name changed the lock")
 
 	editMachine(t, l,
-		"  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n", "  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n  string site = 7;\n",
+		"  google.protobuf.Timestamp date_due = 6;\n", "  google.protobuf.Timestamp date_due = 6;\n  string site = 7;\n",
 		"message MachineStarted {", "message MachineStopped {\n  option (payday.event) = {};\n  bytes machine = 1;\n}\n\nmessage MachineStarted {",
 		`{kinds: "machine.service"}`, `{kinds: ["machine.service", "machine.repair"]}`,
 	)
@@ -142,8 +142,8 @@ func TestTheLockRefusesWhatARowCouldNotBeReadBackWithout(t *testing.T) {
 			`kind "retract": its rows hold app.Corrected, and app.MachineStarted declares it now`,
 		},
 		"a field removed": {
-			[]string{"  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n", ""},
-			`app.MachineServiced (6): was "due", and is gone`,
+			[]string{"  google.protobuf.Timestamp date_due = 6;\n", ""},
+			`app.MachineServiced (6): was "dateDue", and is gone`,
 		},
 		"a field renamed, and its JSON name with it": {
 			[]string{"  bytes by = 2;\n", "  bytes serviced_by = 2;\n"},

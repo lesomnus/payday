@@ -307,12 +307,12 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		l := genApp(t)
 
 		b, _ := lockOf(t, l)
-		editMachine(t, l, "  google.protobuf.Timestamp date_due = 6 [json_name = \"due\"];\n", "")
+		editMachine(t, l, "  google.protobuf.Timestamp date_due = 6;\n", "")
 
 		v := findingOf(t, l, "past.lock")
 		x.True(v.Fatal, "pd gen stops on it")
 		x.Contains(v.What, "pd gen would refuse this schema: proto/app/payday/past.lock holds what this schema no longer declares as it was")
-		x.Contains(v.What, "\n  app.MachineServiced (6): was \"due\", and is gone\n")
+		x.Contains(v.What, "\n  app.MachineServiced (6): was \"dateDue\", and is gone\n")
 		x.Contains(v.What, "docs/guide/past.md")
 		still(t, l, []byte(b))
 	})
@@ -340,7 +340,7 @@ func TestDoctorHoldsTheSchemaToItsLockWithoutWritingIt(t *testing.T) {
 		x.Equal("go tool pd gen app\n\nwhich adds\n\n"+
 			"  kind \"app.MachineStarted\", whose rows hold app.MachineStarted\n"+
 			"  kind \"retract\", whose rows hold app.Corrected\n"+
-			"  app.MachineServiced (6): \"due\"\n"+
+			"  app.MachineServiced (6): \"dateDue\"\n"+
 			"  app.MachineServiced.Part: a message an event message holds\n"+
 			"  app.Mode: 3, MODE_SERVICE", f.Fix)
 		still(t, l, b)

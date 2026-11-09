@@ -29,7 +29,7 @@ const serviced = {
 		mode: 'MODE_SERVICE',
 		parts: [{ serial: 'P-1', count: 2 }],
 		swapped: { left: { serial: 'P-0', count: 1 } },
-		due: '2026-11-01T00:00:00Z',
+		dateDue: '2026-11-01T00:00:00Z',
 	},
 } satisfies JsonObject
 
