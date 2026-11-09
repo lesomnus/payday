@@ -543,16 +543,6 @@ func TestAnArchiveIsKeptWithAKey(t *testing.T) {
 	v, err = verifier.Verify(ctx, s, false)
 	x.NoError(err)
 	x.Equal([]string{"unsigned"}, kinds(v))
-
-	// Nor does it write the manifest when a question would fill it: what it
-	// would write, it has nothing to sign.
-	fresh := Policy{Archive: flob.NewMemStores(), Trust: []crypto.PublicKey{key.Public()}}
-	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(40 * day)}
-	plant(t, fresh.Archive, Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Rows: 1, First: r.created, Last: r.created}, r.doc())
-	empty := &fakeStore{}
-	_, _, err = fresh.Doomed(ctx, empty, Before(time.Now()))
-	x.ErrorIs(err, ErrNoKey)
-	x.Empty(empty.rowsOf(), "a verifier wrote rows nobody signed")
 }
 
 // TestWithNoManifestNoChunkIsTrusted: what an act decides by is the labels the

@@ -392,24 +392,23 @@ func TestATenantLeaves(t *testing.T) {
 	theirs := s.add(fakeRow{tenant: other.Uuid(), counterpart: z(leaving.Uuid()), domain: person, created: ago(day), value: "v"})
 
 	a := flob.NewMemStores()
+	p := Policy{Signer: signer, Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 	month := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	row := func(tenant, actor pdid.Id) fakeRow {
 		return fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: actor.Uuid(), domain: person, created: month.Add(day), value: "v"}
 	}
 
 	own := row(leaving, leaving)
-	_, _, err := put(ctx, a, Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
+	_, _, err := put(ctx, p.manifested(s), Chunk{Namespace: leaving.String(), Kind: "person", Month: month, Rows: 1, First: own.created, Last: own.created},
 		[][]byte{own.doc()})
 	x.NoError(err)
 
 	set := []pdid.Id{leaving, other}
 	slices.SortFunc(set, byId)
 	sharedMine, sharedTheirs := row(leaving, other), row(other, leaving)
-	_, _, err = put(ctx, a, Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
+	_, _, err = put(ctx, p.manifested(s), Chunk{Namespace: SharedNamespace, Kind: "person", Month: month, Rows: 2, Tenants: set,
 		First: sharedMine.created, Last: sharedTheirs.created}, [][]byte{sharedMine.doc(), sharedTheirs.doc()})
 	x.NoError(err)
-
-	p := Policy{Signer: signer, Archive: a, Tenants: answers(map[pdid.Id]Tenant{held: {Hold: onHold()}})}
 
 	plan, err := p.PlanTenantPurge(ctx, s, leaving)
 	x.NoError(err)

@@ -418,8 +418,7 @@ func inventory(ctx context.Context, a flob.Stores) (map[blobKey]map[string]strin
 // trust loads what the manifest accounts for, for an act that is not a pass --
 // a pass has it from verifying; see [pass.verify]: every blob it has a row for,
 // present or being erased, and the adds in flight, by the intent their blobs
-// are labelled with -- each by a row whose signature is no finding. A manifest
-// with no rows is filled first, as the first pass would; see [Policy.fill].
+// are labelled with -- each by a row whose signature is no finding.
 func (x *pass) trust(ctx context.Context) error {
 	if x.m == nil {
 		return nil
@@ -428,20 +427,6 @@ func (x *pass) trust(ctx context.Context) error {
 	rows, err := x.s.Rows(ctx)
 	if err != nil {
 		return fmt.Errorf("the manifest: %w", err)
-	}
-	if len(rows) == 0 {
-		inv, err := inventory(ctx, x.m.a)
-		if err != nil {
-			return err
-		}
-		if len(inv) > 0 {
-			if err := x.p.fill(ctx, x.s, inv); err != nil {
-				return fmt.Errorf("the manifest: %w", err)
-			}
-			if rows, err = x.s.Rows(ctx); err != nil {
-				return fmt.Errorf("the manifest: %w", err)
-			}
-		}
 	}
 
 	// The adds in flight are trusted by the intent their blobs are labelled
@@ -567,8 +552,7 @@ func (x *pass) chunks(ctx context.Context, nss []string, fresh bool) ([]Chunk, [
 	return trusted, rest, nil
 }
 
-// settle finishes what a crash left in flight, and fills the manifest the
-// first time from what the archive holds.
+// settle finishes what a crash left in flight.
 //
 // An add whose blob is there, labelled with its intent, is present, and one
 // whose blob is not is dropped once it is a day old -- what is younger may be
@@ -590,10 +574,6 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 	inv, err := inventory(ctx, p.Archive)
 	if err != nil {
 		return err
-	}
-
-	if len(rows) == 0 && len(inv) > 0 {
-		return p.fill(ctx, m, inv)
 	}
 
 	intents := map[string]blobKey{}
@@ -626,64 +606,6 @@ func (p Policy) settle(ctx context.Context, m Manifest) error {
 	}
 
 	return err
-}
-
-// fill is the first time: every blob the archive holds goes into the manifest
-// as it is. Refused once the archive has had a checkpoint, since an empty
-// manifest after one is a database restored from before it, or emptied --
-// which an operator looks at, and [Policy.Accept] is for.
-func (p Policy) fill(ctx context.Context, m Manifest, inv map[blobKey]map[string]string) error {
-	first, err := p.unchecked(ctx, m)
-	if err != nil {
-		return err
-	}
-	if !first {
-		log.From(ctx).WarnContext(ctx, "trail: the manifest is empty and the archive has had checkpoints, so it is not filled from what the archive holds",
-			"see", "`trail verify`")
-
-		return nil
-	}
-
-	sign := p.signing()
-	for _, k := range slices.SortedFunc(maps.Keys(inv), blobOrder) {
-		key, err := m.Adding(ctx, k.ns, "", inv[k], sign)
-		if err != nil {
-			return err
-		}
-		if err := m.Added(ctx, key, string(k.d), inv[k], sign); err != nil {
-			return err
-		}
-	}
-
-	log.From(ctx).InfoContext(ctx, "trail: the manifest, filled from what the archive holds", "blobs", len(inv))
-
-	return nil
-}
-
-// unchecked answers whether no checkpoint of the archive has ever been taken:
-// none numbered by the database, and none kept by the store.
-//
-// Until the first, the archive is taken as it is -- the manifest filled from
-// what it holds, the files a version before wrote into its directory adopted
-// -- because there is nothing yet to say what it held before. From the first
-// on, a blob or a file nobody wrote through the manifest is a finding, and only
-// an operator's acceptance takes it in.
-//
-// Any blob the checkpoint store keeps counts, whatever its labels say and
-// the deployment's word or not (see [Policy.readChain]): what this decides is
-// whether the archive is taken as it is, and a blob nobody vouches for can
-// only make that less likely. A checkpoint relabelled is still one (#115).
-func (p Policy) unchecked(ctx context.Context, m Manifest) (bool, error) {
-	if k, _, err := m.Latest(ctx); err != nil || k > 0 {
-		return false, err
-	}
-
-	ls, err := listCheckpoints(ctx, p.checkpoints())
-	if err != nil {
-		return false, err
-	}
-
-	return len(ls) == 0, nil
 }
 
 // Finding is something about the archive that its manifest does not account
@@ -1087,8 +1009,7 @@ type Checkpoint struct {
 	// is what makes the checkpoints a chain: one taken away, or written again
 	// as something else, is one the checkpoint after it names and the store
 	// does not keep -- whatever its labels say, and whether or not the
-	// database has been made to agree. Empty on the first, and on one written
-	// before checkpoints were chained.
+	// database has been made to agree. Empty on the first.
 	//
 	// It is the newest the store keeps below it when this one is written --
 	// of the checkpoints that are the deployment's word, by what each says
@@ -1916,7 +1837,7 @@ func (ch chain) accepted() []Accepted {
 // there, and the number skipped over once it is taken away.
 //
 // Only between two checkpoints the store keeps: one that names nothing is
-// the first, or one from before the checkpoints were chained.
+// the first.
 func (ch chain) skipped() []Finding {
 	accepted := 0
 	says := []int{}

@@ -224,23 +224,6 @@ func TestEachCheckpointNamesTheOneBefore(t *testing.T) {
 		x.Contains(kinds(v), "unkept", "the one after it names what it was")
 	})
 
-	t.Run("checkpoints from before they were chained", func(t *testing.T) {
-		x := require.New(t)
-		s, p := chained(t, 2, nil)
-
-		// The second as a version before this one wrote it, naming nothing.
-		two := numbered(t, p, 2)
-		x.NoError(p.checkpoints().Erase(ctx, two.d))
-		d := rewrite(t, p, two, func(c *Checkpoint) { c.Prev = "" })
-
-		p.Pass(ctx, s)
-		x.Equal(d, numbered(t, p, 3).c.Prev)
-
-		v, err := p.Verify(ctx, s, false)
-		x.NoError(err)
-		x.True(v.Ok(), "%v", v.Findings)
-	})
-
 	t.Run("one a crash stopped", func(t *testing.T) {
 		x := require.New(t)
 		s, p := chained(t, 2, nil)

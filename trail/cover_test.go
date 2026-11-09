@@ -257,9 +257,8 @@ func TestARowPutBackToAddingTakesNothingIn(t *testing.T) {
 
 // TestAQuestionTakesNoCheckpoint.
 //
-// What only says what an act would do writes no checkpoint, even when asking
-// it is the first time the manifest is filled from what the archive holds: the
-// act that follows is what covers that.
+// What only says what an act would do writes no checkpoint: the act that
+// follows is what takes one.
 func TestAQuestionTakesNoCheckpoint(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()
@@ -276,20 +275,15 @@ func TestAQuestionTakesNoCheckpoint(t *testing.T) {
 		},
 	}
 	for name, ask := range asks {
-		a := flob.NewMemStores()
-		r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day)}
-		plant(t, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Run: "before", Rows: 1, First: r.created, Last: r.created}, r.doc())
-
 		s := &fakeStore{}
-		p := Policy{Signer: signer, Archive: a}
-		x.NoError(ask(p, s), name)
+		p := Policy{Signer: signer, Archive: flob.NewMemStores()}
+		r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day)}
+		plant(t, p.manifested(s), Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Run: "before", Rows: 1, First: r.created, Last: r.created}, r.doc())
 
-		rows, err := s.Rows(ctx)
-		x.NoError(err)
-		x.NotEmpty(rows, "%s: the manifest was not filled", name)
+		x.NoError(ask(p, s), name)
 		x.Zero(latestOf(t, s), "%s took a checkpoint", name)
 
-		_, err = p.PurgeTenant(ctx, s, tenant)
+		_, err := p.PurgeTenant(ctx, s, tenant)
 		x.NoError(err)
 		x.Equal(1, latestOf(t, s), name)
 	}

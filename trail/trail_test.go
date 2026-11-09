@@ -972,6 +972,8 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 
 	tenant := newTenant()
 	a := flob.NewMemStores()
+	s := &fakeStore{}
+	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
 
 	// A month long enough gone that nothing more of it is in the database,
 	// written by three passes; one row twice, as a crash between a write and a
@@ -997,12 +999,11 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 			docs = append(docs, r.doc())
 		}
 
-		_, _, err := put(ctx, a, c, docs)
+		_, _, err := put(ctx, p.manifested(s), c, docs)
 		x.NoError(err)
 	}
 
-	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day, Destroy: 10 * year}}
-	p.Pass(ctx, &fakeStore{})
+	p.Pass(ctx, s)
 
 	cs, err := chunksIn(ctx, a, ns)
 	x.NoError(err)
@@ -1019,12 +1020,12 @@ func TestAClosedMonthIsFoldedIntoOneChunk(t *testing.T) {
 		now := time.Now().UTC()
 		for i := range 2 {
 			r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: now.Add(-time.Duration(i) * time.Minute)}
-			_, _, err := put(ctx, a, Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
+			_, _, err := put(ctx, p.manifested(s), Chunk{Namespace: ns, Kind: "person", Month: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
 				Rows: 1, First: r.created, Last: r.created}, [][]byte{r.doc()})
 			x.NoError(err)
 		}
 
-		p.Pass(ctx, &fakeStore{})
+		p.Pass(ctx, s)
 
 		cs, err := chunksIn(ctx, a, ns)
 		x.NoError(err)

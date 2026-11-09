@@ -194,30 +194,6 @@ func TestEveryChangeIsInTheManifest(t *testing.T) {
 	x.Equal(5, v.Checkpoint)
 }
 
-// TestAnArchiveFromBeforeTheManifestIsTakenAsItIs.
-func TestAnArchiveFromBeforeTheManifestIsTakenAsItIs(t *testing.T) {
-	x := require.New(t)
-	ctx := t.Context()
-
-	tenant := newTenant()
-	a := flob.NewMemStores()
-	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day)}
-	old, _, err := put(ctx, a, Chunk{Namespace: tenant.String(), Kind: "person", Month: time.Now().AddDate(-1, -2, 0), Run: "before",
-		Rows: 1, First: r.created, Last: r.created}, [][]byte{r.doc()})
-	x.NoError(err)
-
-	s := &fakeStore{}
-	s.add(fakeRow{tenant: tenant.Uuid(), domain: person, created: ago(40 * day)})
-	p := Policy{Signer: signer, Archive: a, Keep: Keep{Retain: 30 * day}}
-	p.Pass(ctx, s)
-
-	x.Equal(Present, s.state(tenant.String(), old), "what was there before was not taken in")
-
-	v, err := p.Verify(ctx, s, true)
-	x.NoError(err)
-	x.True(v.Ok(), "%v", v.Findings)
-}
-
 // TestWhatChangesBehindTheManifestsBackIsFound.
 //
 // A chunk taken away, one put there, one relabelled, one whose bytes changed:
