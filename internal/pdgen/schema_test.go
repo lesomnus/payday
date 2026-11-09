@@ -597,6 +597,12 @@ message Site {
 		what: "renaming one of payday's",
 		body: `  string handle = 4;`,
 		says: `redeclared as "handle"`,
+	}, {
+		// The name and the type kept, and the column taken away: the wall
+		// and `auth` read an alias that is no longer in the table.
+		what: "taking one of payday's out of the table",
+		body: `  string alias = 4 [(orm.field) = {disabled: true}];`,
+		says: `4 is payday's "alias" (string) and was redeclared as "alias" (string, in no column)`,
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			// The overlay has already been merged by the time a generator sees

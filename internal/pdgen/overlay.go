@@ -134,9 +134,11 @@ func CheckOwn(s *Schema) error {
 // catch, and until now it was a sentence in a document.
 //
 // What is compared is what payday shipped against what is about to be
-// generated, by number: the name it was given, the kind it holds, and for a
-// message field what it points at. An app is free to do anything at a number
-// payday never used.
+// generated, by number: the name it was given, the kind it holds, for a
+// message field what it points at, and whether it is a column at all -- a
+// field payday says `(orm.field) = {disabled: true}` of is the message's and
+// not the table's, and redeclared without it is a column payday left out. An
+// app is free to do anything at a number payday never used.
 //
 // # And the options, which are the declaration
 //
@@ -342,6 +344,8 @@ func fieldsOf(d protoreflect.MessageDescriptor) map[int32]schema.Field {
 		if f.Kind() == protoreflect.MessageKind || f.Kind() == protoreflect.GroupKind {
 			v.Message = schema.Relative(string(f.Message().FullName()), pkg)
 		}
+		o, _ := proto.GetExtension(f.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
+		v.Disabled = o.GetDisabled()
 		vs[int32(f.Number())] = v
 	}
 
@@ -349,9 +353,13 @@ func fieldsOf(d protoreflect.MessageDescriptor) map[int32]schema.Field {
 }
 
 func describe(f schema.Field) string {
+	v := f.Kind.String()
 	if f.Message != "" {
-		return f.Message
+		v = f.Message
+	}
+	if f.Disabled {
+		v += ", in no column"
 	}
 
-	return f.Kind.String()
+	return v
 }
