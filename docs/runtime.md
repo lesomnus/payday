@@ -714,8 +714,8 @@ and names, and which numbers an acceptance quieted. Any other is `unsigned` or
 `forged`, and that is all it is: one numbered ahead of the database stops no
 act, and an acceptance is not numbered after it. It is more in one store
 only: one where none counts and one is kept under the database's latest number
-— an archive kept without a key until now, below — which takes no checkpoint
-until an operator has accepted its history.
+— a history signed by a key no longer trusted, below — which takes no
+checkpoint until an operator trusts that key again or accepts its history.
 
 **No checkpoint is taken over rows that no longer add up to the latest one.**
 `Verify` recomputes the latest two, and with a checkpoint at the end of every
@@ -780,9 +780,9 @@ deployment. `pd new`'s `init` writes a key of the deployment's own beside an
 archive that names none, and `pdtest.Key` is a test's own.
 
 An operator who has looked at what verification found and decided the archive
-is right — a crash, a blob restored from a backup, an archive kept without a
-key until now — calls `Policy.Accept`, and the manifest says what the archive
-holds from then on. Accepting a row is signing it, so a policy accepts only
+is right — a crash, a blob restored from a backup, a history signed by a key
+no longer trusted — calls `Policy.Accept`, and the manifest says what the
+archive holds from then on. Accepting a row is signing it, so a policy accepts only
 with its signer.
 
 **An acceptance is of what was looked at.** It names the findings by the digest
@@ -1053,21 +1053,22 @@ nor a relabel of one gets through. An appliance was not tried: one that refuses
 moving a directory out of the staging area, or commits a file when it is
 created rather than when it is closed, is one this layout does not fit.
 
-**An archive kept without a key until now.** A payday before #115 kept one that
-way, and its rows and checkpoints have no signature. Given a key, each is
-`unsigned`, and none is what an act decides by: a chunk past its window is kept.
-Nor does an act take a checkpoint after them, since one would name none of them
-and the history before the key would be off the chain for good: every act says
-so, after doing what it does, until an operator who has looked accepts, once.
-The acceptance signs the rows as they stand and names the checkpoint the
-database numbered last as the one before it -- of two, the one the database's
-rows add up to -- which takes in, down the chain, every checkpoint before the
-key; it is the one place a checkpoint nobody signed is taken in, and only the
-database's own, never one ahead of it. Before the database has numbered one,
-there is no history to take in, and what the store keeps stops nothing. The
-first pass with a key does not do any of this itself: a row with no signature
-looks the same as one whose signature somebody took off, and a pass that signed
-every row it found without one would sign whatever was put there that way.
+**A history no trusted key signed.** A deployment whose key was changed while
+the one before it was left out of `trust` has rows and checkpoints signed by a
+key nobody trusts. Each is `forged`, and none is what an act decides by: a
+chunk past its window is kept. Nor does an act take a checkpoint after them,
+since one would name none of them and the history before the key would be off
+the chain for good: every act says so, after doing what it does, until the key
+before is in `trust` again -- which is what a rotation means -- or an operator
+who has looked accepts, once. The acceptance signs the rows as they stand and
+names the checkpoint the database numbered last as the one before it -- of two,
+the one the database's rows add up to -- which takes in, down the chain, every
+checkpoint before the key; it is the one place a checkpoint nobody vouches for
+is taken in, and only the database's own, never one ahead of it. Before the
+database has numbered one, there is no history to take in, and what the store
+keeps stops nothing. No pass does any of this by itself: a row signed by a key
+nobody trusts looks the same whoever signed it, and a pass that signed every
+such row again would sign whatever was put there that way.
 
 **What is still out of reach.** Two kinds of thing.
 

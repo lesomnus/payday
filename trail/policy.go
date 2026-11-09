@@ -1044,8 +1044,7 @@ type answer struct {
 // deployment is given one of its own, as `pd new`'s `init` writes one.
 var ErrNoKey = errors.New("the archive's account is signed, and there is no key to sign it with: " +
 	"make one -- `openssl genpkey -algorithm ed25519 -out checkpoints.pem`, or trail.GenerateKey -- " +
-	"keep it apart from the database's and the archive's credentials, and name it as audit.checkpoints.key; " +
-	"an archive kept without one until now is accepted once after (`trail accept`)")
+	"keep it apart from the database's and the archive's credentials, and name it as audit.checkpoints.key")
 
 // ErrInTx is an act that changes the archive, asked of a store inside a
 // transaction that has not committed ([Store.InTx]).

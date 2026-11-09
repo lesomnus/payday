@@ -15,8 +15,8 @@ import (
 
 // Signature is what the deployment's key said of one row of the manifest: a
 // signature over what the row says, and the public half of the key that made
-// it, PKIX. Both are empty on a row nothing signed, which is a finding: one an
-// archive kept without a key wrote, before #115, or one somebody wrote since.
+// it, PKIX. Both are empty on a row nothing signed, which is a finding: one
+// somebody wrote past the deployment, or whose signature was taken off.
 //
 // # Why a row is signed
 //

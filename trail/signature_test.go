@@ -326,10 +326,11 @@ func TestARowChangedWithoutTheKeyIsFound(t *testing.T) {
 	})
 }
 
-// keyless is an archive as a payday that kept it without a key left it: a
-// tenant's chunk, the manifest's row for it with no signature, and a
-// checkpoint over it that nobody signed.
-func keyless(t *testing.T) (*fakeStore, Policy, Chunk, flob.Digest) {
+// untrusted is an archive whose key was changed while the one before it was
+// left out of what the policy trusts: a tenant's chunk, the manifest's row for
+// it, and a checkpoint over it, each signed by the key before -- which it
+// answers too, for a policy that trusts it again. The policy has no key yet.
+func untrusted(t *testing.T) (*fakeStore, Policy, Chunk, flob.Digest, crypto.Signer) {
 	x := require.New(t)
 	ctx := t.Context()
 
@@ -337,35 +338,40 @@ func keyless(t *testing.T) (*fakeStore, Policy, Chunk, flob.Digest) {
 	r := fakeRow{id: uuid.NewV7(), tenant: tenant.Uuid(), actor: tenant.Uuid(), domain: person, created: ago(400 * day), value: "a"}
 	c := Chunk{Namespace: tenant.String(), Kind: "person", Month: monthOf(r.created), Rows: 1, First: r.created, Last: r.created}
 
-	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}}
+	before := newKey(t)
+	p := Policy{Archive: flob.NewMemStores(), Keep: Keep{Retain: 30 * day}, Signer: before}
 	c.Digest = plant(t, p.Archive, c, r.doc())
 
 	s := &fakeStore{}
-	key, err := s.Adding(ctx, c.Namespace, "", labelsOf(c.labels()), nobody)
+	key, err := s.Adding(ctx, c.Namespace, "", labelsOf(c.labels()), p.signing())
 	x.NoError(err)
-	x.NoError(s.Added(ctx, key, string(c.Digest), labelsOf(c.labels()), nobody))
+	x.NoError(s.Added(ctx, key, string(c.Digest), labelsOf(c.labels()), p.signing()))
 
 	k, rows, err := s.Checkpoint(ctx, 0)
 	x.NoError(err)
+	first := planted(t, p, checkpointOf(k, time.Now(), rows), before)
 
-	return s, p, c, planted(t, p, checkpointOf(k, time.Now(), rows), nil)
+	p.Signer = nil
+	return s, p, c, first, before
 }
 
-// TestAnArchiveKeptWithoutAKeyIsAcceptedOnce.
+// TestAHistoryNoTrustedKeySignedIsAcceptedOnce.
 //
-// A deployment that archived without a key, and then has one (#115): its rows
-// say nothing the key signed and neither do its checkpoints, so each is a
-// finding and nothing an act decides by -- a chunk past its window is kept --
-// and no act takes a checkpoint after them, which would leave them off the
-// chain for good. An operator accepts once: the rows signed as they stand, and
-// the checkpoint the database numbered last named by the acceptance, which
-// takes in the history before the key. Accepting is signing, so a policy with
-// keys to trust and none to sign with accepts nothing.
-func TestAnArchiveKeptWithoutAKeyIsAcceptedOnce(t *testing.T) {
+// A deployment whose key was changed while the one before it was left out of
+// what it trusts: its rows say nothing a trusted key signed and neither do its
+// checkpoints, so each is a finding and nothing an act decides by -- a chunk
+// past its window is kept -- and no act takes a checkpoint after them, which
+// would leave them off the chain for good. Trusting the key before is the
+// change that was meant, and settles it. Failing that, an operator accepts
+// once: the rows signed as they stand, and the checkpoint the database
+// numbered last named by the acceptance, which takes in the history before the
+// key. Accepting is signing, so a policy with keys to trust and none to sign
+// with accepts nothing.
+func TestAHistoryNoTrustedKeySignedIsAcceptedOnce(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()
 
-	s, p, c, first := keyless(t)
+	s, p, c, first, before := untrusted(t)
 
 	key := newKey(t)
 	p.Signer = key
@@ -373,22 +379,28 @@ func TestAnArchiveKeptWithoutAKeyIsAcceptedOnce(t *testing.T) {
 
 	v, err := p.Verify(ctx, s, false)
 	x.NoError(err)
-	x.Equal([]string{"unsigned"}, kinds(v))
+	x.Equal([]string{"forged"}, kinds(v))
 	x.Len(v.Findings, 2, "the row and the checkpoint: %v", v.Findings)
 
+	trusting := p
+	trusting.Trust = []crypto.PublicKey{before.Public()}
+	v, err = trusting.Verify(ctx, s, false)
+	x.NoError(err)
+	x.True(v.Ok(), "the key before, trusted again, did not settle it: %v", v.Findings)
+
 	p.Pass(ctx, s)
-	x.True(there(t, p.Archive, c), "a pass destroyed a chunk by a row nobody signed")
-	x.Equal(1, latestOf(t, s), "a checkpoint was taken after a history nobody signed")
+	x.True(there(t, p.Archive, c), "a pass destroyed a chunk by a row no trusted key signed")
+	x.Equal(1, latestOf(t, s), "a checkpoint was taken after a history no trusted key signed")
 
 	s.add(fakeRow{tenant: newTenant().Uuid(), domain: person, created: ago(40 * day), value: "after the key"})
 	_, err = Archive(ctx, s, p, Kinds{}, time.Now())
 	x.ErrorIs(err, errUnkeyed)
 	x.Equal(1, latestOf(t, s))
 
-	_, err = accept(t, Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}, s, Acceptance{Why: "an archive kept without a key"})
+	_, err = accept(t, Policy{Archive: p.Archive, Trust: []crypto.PublicKey{key.Public()}}, s, Acceptance{Why: "a history the key before signed"})
 	x.ErrorIs(err, ErrNoKey, "accepted without the key")
 
-	_, err = accept(t, p, s, Acceptance{Why: "an archive kept without a key until now"})
+	_, err = accept(t, p, s, Acceptance{Why: "a history the key before signed"})
 	x.NoError(err)
 	x.Equal(2, latestOf(t, s))
 	x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance did not take in the history before the key")
@@ -402,11 +414,11 @@ func TestAnArchiveKeptWithoutAKeyIsAcceptedOnce(t *testing.T) {
 	x.Equal(3, latestOf(t, s))
 }
 
-// TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered: of the checkpoints
-// nobody signed that say they are the one the database numbered last, an
-// acceptance of an archive kept without a key names the one the database's
-// rows add up to -- not whichever is first by digest, which anybody who can
-// write the checkpoint store can make theirs -- and the others stay findings.
+// TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered: of the checkpoints no
+// trusted key signed that say they are the one the database numbered last,
+// an acceptance names the one the database's rows add up to -- not whichever
+// is first by digest, which anybody who can write the checkpoint store can
+// make theirs -- and the others stay findings.
 // Before the database has numbered one, what the store keeps is nobody's
 // history, and stops no act.
 func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
@@ -414,11 +426,11 @@ func TestAnAcceptanceGoesOnFromWhatTheDatabaseNumbered(t *testing.T) {
 		x := require.New(t)
 		ctx := t.Context()
 
-		s, p, _, first := keyless(t)
+		s, p, _, first, _ := untrusted(t)
 		p.Signer = newKey(t)
 		planted(t, p, over(1), nil)
 
-		_, err := accept(t, p, s, Acceptance{Why: "an archive kept without a key until now"})
+		_, err := accept(t, p, s, Acceptance{Why: "a history the key before signed"})
 		x.NoError(err)
 		x.Equal(first, numbered(t, p, 2).c.Prev, "the acceptance went on from one the database never took")
 
