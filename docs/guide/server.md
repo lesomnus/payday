@@ -1123,21 +1123,20 @@ the atlas integration, rather than payday's. Planning and applying use the
 atlas packages ent already depends on; the separately licensed Atlas CLI is not
 involved.
 
-An index the schema names is found under that name, `<table>_<name>`; a
-database an earlier build made holds each under ent's name for its columns.
-`rename.Indexes`, with `pd.IndexRenames`, moves them before `Create` looks, and
-`pd new`'s `Migrate` calls it (see [migrating](../migrating.md)). A column of
-payday's own entities that an earlier build named otherwise -- a notification
-receipt's `data_read`, now `date_read`, and an event's `occurred_at`, now
-`date_occurred` -- is found the same way, and is the worse of the two to miss:
-`Create` adds it empty beside the old one, so every row written before reads as
-never having had a value, and on SQLite a table whose index names the column is
-made again without the old one, and what it held is gone. `rename.Columns`,
-with `pd.ColumnRenames`, moves it first, and `pd new`'s `Migrate` calls that
-too. A plan of migration files would drop the old column and add the new one,
-which loses the same values: write the rename into the planned directory by
-hand (`Migrations.Write`) before you plan, so that the plan finds the column
-where the schema says it is.
+An index the schema names is found under that name, `<table>_<name>`, and a
+column by its own: `Create` drops neither, so one renamed is made again beside
+the old one. A column of payday's own entities that payday renames is the worse
+of the two to miss: `Create` adds it empty beside the old one, so every row
+written before reads as never having had a value, and on SQLite a table whose
+index names the column is made again without the old one, and what it held is
+gone. `rename.Columns`, with `pd.ColumnRenames`, and `rename.Indexes`, with
+`pd.IndexRenames`, move what was renamed before `Create` looks, and `pd new`'s
+`Migrate` calls both (see [migrating](../migrating.md)); payday has renamed
+neither a column nor an index of its own, and both lists are empty. A plan of
+migration files would drop an old column and add the new one, which loses the
+same values: write the rename into the planned directory by hand
+(`Migrations.Write`) before you plan, so that the plan finds the column where
+the schema says it is.
 
 A table is found by its name too, and an entity the schema renamed
 (`formerly`, [the schema guide](schema.md#formerly--when-you-rename-an-entity))

@@ -142,8 +142,8 @@ payday that brought `pd upgrade` was `--payday 56a32f4`.
 
 An app made with `pd new` has a
 `renovate.json` that extends payday's preset, `github>lesomnus/payday//renovate/app`
-(`renovate/app.json` in this repository). An app made before that can extend the
-same preset.
+(`renovate/app.json` in this repository), and any other app can extend the same
+preset.
 
 Go modules payday already requires, direct or indirect, are updated in payday
 and follow into apps through `pd upgrade --payday`. The preset disables their

@@ -69,7 +69,7 @@ table is for finding the right one.
 | [`grpcx`](../grpcx) | what every call goes through: deadlines, recovery, logging, rate limits, and what is closed |
 | [`web`](../web) | the same gRPC server answering Connect and gRPC-Web, for browsers |
 | [`config`](../config) | the blocks every app is configured with, and a loader that fills in any struct. Opening what they name waits a moment, at start, for a database that cannot be reached yet |
-| [`rename`](../rename) | the indexes an earlier build stored under another name, moved to this build's before a migration looks for them |
+| [`rename`](../rename) | the tables, columns and indexes an earlier build made under another name -- an entity's the schema renamed -- moved to this build's before a migration looks for them |
 | [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
 | [`meter`](../meter) | what each tenant holds, measured on a schedule and on request, and handed to the app's sink: the readings of `pd.Meters` and of the app's own meters, and the convention for flows |
@@ -408,7 +408,8 @@ rows, err := pd.Digests(ctx, db, contents.Digest, policy)
 // rows.NotOnTrail: rows nothing on the trail is about -- added past them.
 // rows.Missing: things the trail says are rows, that are not -- removed.
 // rows.Skipped: the kinds kept off the trail, with why.
-// rows.Unsealed: rows from before seals, listed and no finding (below).
+// rows.Unsealed: rows written before their kind was sealed, listed and no
+// finding (below).
 // rows.Forgotten: rows that match, whose person was forgotten.
 ```
 
@@ -456,9 +457,9 @@ records, bound to that line, and the line's digest says, in flags bound into its
 MAC, that the write sealed the row. So a personal field changed past the
 servers is `rows.Differs`; so is a row whose seal was taken off; a seal put back
 from an earlier write is `rows.Forged`. A row whose newest line's write sealed
-nothing -- written before this, or before its kind declared the field personal
--- is `rows.Unsealed`: listed, in `rows.Digest`, and no finding, since nothing
-can be said of what it was. An acceptance seals those (`pd.Record` seals what it
+nothing -- written before its kind declared the field personal -- is
+`rows.Unsealed`: listed, in `rows.Digest`, and no finding, since nothing can be
+said of what it was. An acceptance seals those (`pd.Record` seals what it
 records) once an operator has looked.
 
 **Forgetting blanks the seal.** `Policy.Forget` puts, in place of the seal of
@@ -582,22 +583,6 @@ written, which is everything a pass decides from:
   that a daily pass is not a blob a day per tenant for as long as the archive is
   kept.
 
-A directory a version before this one wrote files into is the same setting. The
-first pass **adopts** what is there into `_legacy`, by hard link, and then
-**files its rows by tenant**: each row goes to the chunk a pass would have
-written it into, and the file is erased once they all have. From then on there
-is one layout, and every row is on its own tenant's windows and holds. A file
-the pass could not file stays in `_legacy` and is decided by the deployment's
-policy, as it was.
-
-Only the first pass does that: the one before the archive has had a
-checkpoint, which takes the archive as it is. A file adopted is signed into the
-[manifest](#the-manifest) as the deployment's, so after the first checkpoint a
-file of that format in the directory is one somebody else put there. No pass
-takes it in, files it under anybody or reads it; `Policy.Verify` finds it,
-`unaccounted`, and an operator who has looked takes it in with `Policy.Accept`,
-as the first pass would have.
-
 Every destruction writes a **receipt** — a discard on the way out of the
 database, a chunk destroyed at the end of its window, a purge by hand, a subject
 forgotten — saying when, what kind, whose, how many rows and the cutoff, and
@@ -637,8 +622,7 @@ pass settles it from what the store holds: an add whose blob is there is
 present, and an erase whose blob is still there is **undone**, for the pass to
 decide again. So a row in the database alone never makes a pass destroy
 anything. Each waits until it is a day old (`date_updated`), since what is
-younger may be another pass still at it. The first pass fills the manifest from
-what the archive holds.
+younger may be another pass still at it.
 
 Two passes that move the same rows write the same chunk, and a chunk is one
 blob: the second write finds the first's there and drops its own row, so that
@@ -653,7 +637,7 @@ way through is no finding, and no clock is asked. What it finds:
 | | |
 | --- | --- |
 | `missing` | a blob the manifest says is there, and is not |
-| `unaccounted` | a blob that is there, and the manifest never added; or a file of the directory format in the archive's directory after its first checkpoint |
+| `unaccounted` | a blob that is there, and the manifest never added |
 | `relabelled` | a blob whose labels are not the ones the manifest recorded, or a checkpoint whose labels do not say which it is |
 | `altered` | a blob whose bytes are no longer its digest (`full` only) |
 | `forged` | a row or a checkpoint whose signature is bad or by a key nobody trusts — but not a checkpoint a later one the deployment signed names, whatever signed it (a key rotated out); a blob of the checkpoint store that is neither a checkpoint nor a witness's receipt; or a statement a witness answers whose signature is not good |
@@ -1026,8 +1010,7 @@ Two things are there for that, and a third that is the storage's:
   keeps says it is, `unkept` until an operator accepts. Two acts taking a
   checkpoint at the same moment can be written the other way round, and then
   both name the one before the first: the store keeps the number between, and
-  that is no finding. Checkpoints from before they were chained name nothing,
-  and the chain starts after them.
+  that is no finding.
 - **The store refuses deletion.** That is the storage's to promise, beneath the
   process. S3 Object Lock in compliance mode keeps every version of every
   object it is given for its retention, whoever's credentials ask — a delete
@@ -1295,9 +1278,8 @@ archive's directory, which would back it up with the archive. Whoever can write
 the key store can put a key there that rows will be sealed to, as whoever can
 write the archive can put rows there: it is trusted as the archive is, and the
 manifest does not cover it. Nothing changes for an archive with no keys, and a
-chunk written before them stays as it was; the rows a pass files from `_legacy`
-are sealed on the way. The database's half of the trail — the `retain` window —
-is not sealed.
+chunk written before them stays as it was. The database's half of the trail —
+the `retain` window — is not sealed.
 
 #### Legal holds
 
@@ -1317,8 +1299,7 @@ shares with another tenant is one it may read:
 - `Policy.Collect` and `Policy.Purge`, the acts an operator takes by hand,
   leave what is held and answer with it. They go ahead for everybody else,
   because refusing would keep every other tenant's trail past what they are
-  owed. A file of everybody's from before the archive was a flob store is
-  written again with what is held and nothing else;
+  owed;
 - `Policy.Forget`, a subject's erasure, leaves the held rows as they are and
   answers with them and whose holds they are. A legal claim overrides an
   erasure request — GDPR Art. 17(3)(e), and the exception in 개인정보보호법 §21
@@ -1337,8 +1318,8 @@ says what it would take. It is a function and not a schedule: **when** is the
 app's — at once, on a request or a legal demand, or after the grace an
 offboarding gives.
 
-- What was the tenant's **alone** goes: its rows in the database, its
-  namespace in the archive, its rows in the files from before.
+- What was the tenant's **alone** goes: its rows in the database, and its
+  namespace in the archive.
 - What it **shares** stays, as an event with its contents gone, because it is
   the other tenant's evidence as much as its own. One it shares with a tenant
   under a hold stays exactly as it is.
@@ -1360,9 +1341,8 @@ the two is the operator's, by the contract or the law, and not payday's.
   and of every row whose floor has already passed.
 - What **stays**, as it is: a row of a kind under a floor that is still on it
   — the floor's longer clock, from when the row was written — in the
-  database, in the archive (a chunk whose newest row is under one), in the
-  files from before, and the contents of what it shares. So does the tenant's
-  key.
+  database, in the archive (a chunk whose newest row is under one), and the
+  contents of what it shares. So does the tenant's key.
 - **The passes** take the tenant to keep nothing of its own, which the floors
   raise: each kind's rows go once its floor has passed, whatever the
   deployment's window for it. Its contract is not asked; its hold is, and
@@ -1747,8 +1727,7 @@ because a reader cannot tell them apart.
   a mechanism that stopped at the database would destroy the copy an operator
   can see and leave the copy in the archive beside it — and leaves the rows a
   legal hold is on, answering with them. The rest is what no declaration
-  reaches: free text, rows written before #92, and a field nobody declared on a
-  kind kept at `value`.
+  reaches: free text, and a field nobody declared on a kind kept at `value`.
 
   Everything else stays — who acted, what they did, which object, when. That is
   the record a trail exists to be and what a legal-obligation exemption is an

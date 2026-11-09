@@ -86,9 +86,9 @@ project := pd.ResourceProjector(db, scope, guard)
 resources, err := pd.Resources(stack, driver, guard, w, project)
 if err != nil { return err }
 pdpb.RegisterResourceServiceServer(grpcServer, resources)
-legacy, err := pd.Batch(stack, driver, guard)
+batch, err := pd.Batch(stack, driver, guard)
 if err != nil { return err }
-pdpb.RegisterBatchServiceServer(grpcServer, legacy)
+pdpb.RegisterBatchServiceServer(grpcServer, batch)
 ```
 
 Pass the same `bare.Scope` used by ordinary reads, including any grouped or custom
@@ -114,8 +114,8 @@ from CEL. CEL sees exactly the public event delivered to the subscriber.
 
 ## Choose which changes to publish
 
-Install one combined recorder in place of the old WatchRecorder/OutboxRecorder
-pair, leaving audit recording independent:
+Install one combined recorder in place of a WatchRecorder/OutboxRecorder pair,
+leaving audit recording independent:
 
 ```go
 selectEvent := func(ctx context.Context, event *pdpb.WatchEvent) (bool, error) {
@@ -134,8 +134,8 @@ using the optional field.
 
 The ORM's optional `bare.SnapshotRecorder` interface declares `Snapshots(method)`
 requirements independently for each generated write method (`Change.By`). Plain
-Recorders, including audit-only and legacy key-notification recorders, keep their
-existing SQL path. `bare.Recorders` unions requests and captures each image once.
+Recorders, including audit-only and key-only notification recorders, keep their
+own SQL path. `bare.Recorders` unions requests and captures each image once.
 An unrelated recorder requesting preimages does not expose them in Watch unless
 the resource recorder explicitly enables them too.
 
@@ -165,10 +165,6 @@ regardless of its resource-specific `watch` option. Selection happens once insid
 the write transaction and controls both paths. A selector error rolls back the
 write. There is no client-controlled suppression flag. The combined recorder
 constructs and redacts the event once; the outbox stores that exact envelope.
-Migrate the database before deploying the new recorder (`Outbox.event` is nullable
-for existing rows). Old outbox rows still feed legacy resource watches. Upgrade
-all publishers, listeners and drainers before relying on the common event stream:
-an old publisher has no images, and an old drainer cannot forward the new envelope.
 
 Install `w.Interceptor()` for ordinary unary RPCs; generated handlers and Batch
 commit before returning success. Custom transactions, including retries whose
@@ -210,8 +206,8 @@ skipping an event. Publications and queued payload bytes are bounded at 32 MiB.
 The outbox drainer uses `watch.ConfirmedBroker` when implemented. The provided
 PostgreSQL broker acknowledges notification-transaction commit, allowing failed
 sends to be retried without deleting rows. This is broker acceptance, not subscriber
-receipt. Legacy custom brokers retain their Publish behavior and must implement
-that interface to acknowledge asynchronous sends.
+receipt. A custom broker that does not implement that interface keeps its
+Publish behavior, and implements it to acknowledge asynchronous sends.
 
 Go contracts live in `pdpb`. TypeScript contracts, including both Batch endpoints,
 are exported from `@lesomnus/payday/pdpb`.

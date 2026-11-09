@@ -20,7 +20,8 @@ import (
 // that speaks JSON and is handed no registry fails a List of events -- the
 // whole page of it, on the first row that holds a value -- and until the first
 // such row is written, nothing says the line is missing (payday#151). `pd new`
-// writes it into both transports it makes; a page made before that has neither.
+// writes it into both transports it makes; a transport the app makes itself
+// may have none.
 //
 // # What it reads
 //

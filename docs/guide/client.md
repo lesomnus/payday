@@ -90,9 +90,7 @@ that a reload draws the page it had rather than a spinner for it. Once this
 caller's mirror is open, every other caller's is deleted, and not waited on
 ([§5](#5-persistence)).
 
-`open` is `pd new`'s `src/store.ts`, and `pd new` writes `src/` once: a page
-made before the `deleteOtherDisks` line was in it has an `open` without it, and
-the line is the app's to add.
+`open` is `pd new`'s `src/store.ts`.
 
 `src/main.tsx` is what calls it. Both of the things above have to be settled
 before React starts — which transport, and whose store — because rendering over
@@ -372,10 +370,10 @@ later version does not, since it is still on the disk. A row that did not
 reach the mirror is `flushed()`'s to say, and not `close()`'s.
 
 A page lets go of its mirror when another page deletes it or moves it to
-a later version, so neither waits on a tab somebody left open. A tab from before
-that holds on: the sweep leaves its mirror for next time, and `openDisk` fails
-saying another page holds it, rather than waiting for as long as that tab is
-open.
+a later version, so neither waits on a tab somebody left open. Of a tab that
+holds on all the same, the sweep leaves the mirror for next time, and
+`openDisk` fails saying another page holds it, rather than waiting for as long
+as that tab is open.
 
 The schema stamp is a digest of field numbers, names and kinds, so nobody has to
 remember to bump a version: change the schema and the mirror is discarded.
@@ -490,9 +488,8 @@ and until the first such row is written, nothing says the line is missing.
 `pd gen --ts` writes `gen/events.ts` for every app, empty for one with no past,
 so that the line is there from the day a page is made.
 
-A page made before this has transports without it, and the line is the app's
-to add; in an app that keeps a past, `pd doctor` names each file of `ts/src`
-whose transport speaks JSON and is handed none. The same registry is what
+In an app that keeps a past, `pd doctor` names each file of `ts/src` whose
+transport speaks JSON and is handed none. The same registry is what
 `anyUnpack(ev.value, events)` reads a value with; see
 [Keeping a past](past.md#5-reading-an-event-back). And it is the panel's
 `registry`, which writes one out; see [§8](#8-the-panel).

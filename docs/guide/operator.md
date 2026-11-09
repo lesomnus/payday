@@ -345,8 +345,8 @@ it, on a schedule too, and that fails on every list it answers with and prints
 the kinds it skipped, and the findings as one digest, `audit.Rows.Digest`. And
 one that accepts what an operator has looked at -- rows a migration rewrote,
 rows written before the trail could say anything about them, rows of a kind
-that declares a field personal written before rows were sealed
-(`audit.Rows.Unsealed`, which are listed and no finding) -- by recording them,
+written before it declared a field personal (`audit.Rows.Unsealed`, which are
+listed and no finding) -- by recording them,
 `pd.Record(ctx, db, contents, action, ids)`, which seals each as it is, or
 `pd.RecordErased` for ones that are gone: given the digest the operator looked
 at, and refused when a check now answers another, so that a row found after

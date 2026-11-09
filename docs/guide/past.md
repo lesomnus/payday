@@ -360,8 +360,8 @@ const transport = createConnectTransport({
 })
 ```
 
-A page made before this has transports without it; add the line there, and
-`pd doctor` names each file that still needs it ([§13](#13-what-pd-doctor-asks)).
+`pd doctor` names each file of the page whose transport is handed none
+([§13](#13-what-pd-doctor-asks)).
 See [the page](client.md#the-registry-a-connect-transport-is-handed).
 
 ## 6. Recording an operation

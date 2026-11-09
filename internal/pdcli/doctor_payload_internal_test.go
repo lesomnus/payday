@@ -125,8 +125,8 @@ func TestAPayloadsFreeTextIsAsked(t *testing.T) {
 
 // TestNotificationsWithNoPayloadMessageAreSaid: an app that declares
 // notifications and marks no message one may carry has every payload it
-// publishes refused when it runs, which is the shape of an app upgraded
-// across payday#193 that has not marked what it publishes.
+// publishes refused when it runs: an app that has not marked what it
+// publishes.
 func TestNotificationsWithNoPayloadMessageAreSaid(t *testing.T) {
 	x := require.New(t)
 	notified := &pdgen.Notify{Notification: 40, Receipt: 41, At: "proto/app/app.proto", KeepDays: 30}
@@ -137,7 +137,7 @@ func TestNotificationsWithNoPayloadMessageAreSaid(t *testing.T) {
 	x.Contains(vs[0].What, "NotificationService.Add refuses every notification this app publishes with a payload")
 	x.False(vs[0].Fatal, "a notification with no payload is a notification, and the schema is fine without one")
 	x.Contains(vs[0].Fix, "option (payday.notification) = {};")
-	x.Contains(vs[0].Fix, "docs/migrating.md")
+	x.Contains(vs[0].Fix, "docs/notify.md")
 
 	// An app that marks one, and one with no notifications, are not asked.
 	x.Empty(doctorPayloads(&pdgen.Schema{}))
