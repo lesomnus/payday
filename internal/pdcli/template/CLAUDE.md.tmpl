@@ -37,6 +37,21 @@ moves only what is below payday's floors, to the floor in the major it is in
 (a later major only when the floor is one); keeping current beyond that is
 Renovate's.
 
+## Until {{.Name}} launches, nothing is kept for an earlier build
+
+Until this app has users, a change that breaks what an earlier build of it
+made -- its store, a format it wrote, its configuration, a lock, generated
+code -- carries no path for it: no list of what was renamed, no reader of an
+old format, no JSON name kept for rows written before. The pull request says
+once which commit a deployment with data migrates on first, and upgrades from.
+
+The features that carry a rename are no such path, and keep their rules:
+`(payday.entity).formerly`, the `rename` calls in `Migrate`, the past's lock --
+`pd gen` only adds to it -- and what `pd doctor` asks.
+
+From the launch on, what an earlier build made is kept working. When
+{{.Name}} launches, say so here, and when.
+
 ## Logging an error
 
 ```go
