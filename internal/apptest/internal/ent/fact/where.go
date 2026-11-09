@@ -326,16 +326,6 @@ func FieldNumberLTE(v uint32) predicate.Fact {
 	return predicate.Fact(sql.FieldLTE(FieldFieldNumber, v))
 }
 
-// FieldNumberIsNil applies the IsNil predicate on the "field_number" field.
-func FieldNumberIsNil() predicate.Fact {
-	return predicate.Fact(sql.FieldIsNull(FieldFieldNumber))
-}
-
-// FieldNumberNotNil applies the NotNil predicate on the "field_number" field.
-func FieldNumberNotNil() predicate.Fact {
-	return predicate.Fact(sql.FieldNotNull(FieldFieldNumber))
-}
-
 // DateUpdatedEQ applies the EQ predicate on the "date_updated" field.
 func DateUpdatedEQ(v time.Time) predicate.Fact {
 	return predicate.Fact(sql.FieldEQ(FieldDateUpdated, v))
@@ -464,16 +454,6 @@ func DomainLT(v uint32) predicate.Fact {
 // DomainLTE applies the LTE predicate on the "domain" field.
 func DomainLTE(v uint32) predicate.Fact {
 	return predicate.Fact(sql.FieldLTE(FieldDomain, v))
-}
-
-// DomainIsNil applies the IsNil predicate on the "domain" field.
-func DomainIsNil() predicate.Fact {
-	return predicate.Fact(sql.FieldIsNull(FieldDomain))
-}
-
-// DomainNotNil applies the NotNil predicate on the "domain" field.
-func DomainNotNil() predicate.Fact {
-	return predicate.Fact(sql.FieldNotNull(FieldDomain))
 }
 
 // DateStartEQ applies the EQ predicate on the "date_start" field.

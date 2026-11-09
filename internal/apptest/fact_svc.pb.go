@@ -180,7 +180,6 @@ func (x *FactAddRequest) SetValue(v string) {
 
 func (x *FactAddRequest) SetFieldNumber(v uint32) {
 	x.xxx_hidden_FieldNumber = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
 }
 
 func (x *FactAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
@@ -189,7 +188,6 @@ func (x *FactAddRequest) SetDateCreated(v *timestamppb.Timestamp) {
 
 func (x *FactAddRequest) SetDomain(v uint32) {
 	x.xxx_hidden_Domain = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
 }
 
 func (x *FactAddRequest) SetDateStart(v *timestamppb.Timestamp) {
@@ -229,25 +227,11 @@ func (x *FactAddRequest) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
-func (x *FactAddRequest) HasFieldNumber() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
-}
-
 func (x *FactAddRequest) HasDateCreated() bool {
 	if x == nil {
 		return false
 	}
 	return x.xxx_hidden_DateCreated != nil
-}
-
-func (x *FactAddRequest) HasDomain() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
 }
 
 func (x *FactAddRequest) HasDateStart() bool {
@@ -280,18 +264,8 @@ func (x *FactAddRequest) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
-func (x *FactAddRequest) ClearFieldNumber() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
-	x.xxx_hidden_FieldNumber = 0
-}
-
 func (x *FactAddRequest) ClearDateCreated() {
 	x.xxx_hidden_DateCreated = nil
-}
-
-func (x *FactAddRequest) ClearDomain() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
-	x.xxx_hidden_Domain = 0
 }
 
 func (x *FactAddRequest) ClearDateStart() {
@@ -315,9 +289,9 @@ type FactAddRequest_builder struct {
 	SubjectId      []byte
 	Key            string
 	Value          string
-	FieldNumber    *uint32
+	FieldNumber    uint32
 	DateCreated    *timestamppb.Timestamp
-	Domain         *uint32
+	Domain         uint32
 	DateStart      *timestamppb.Timestamp
 	EventId        []byte
 	DateSuperseded *timestamppb.Timestamp
@@ -336,15 +310,9 @@ func (b0 FactAddRequest_builder) Build() *FactAddRequest {
 	x.xxx_hidden_SubjectId = b.SubjectId
 	x.xxx_hidden_Key = b.Key
 	x.xxx_hidden_Value = b.Value
-	if b.FieldNumber != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
-		x.xxx_hidden_FieldNumber = *b.FieldNumber
-	}
+	x.xxx_hidden_FieldNumber = b.FieldNumber
 	x.xxx_hidden_DateCreated = b.DateCreated
-	if b.Domain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
-		x.xxx_hidden_Domain = *b.Domain
-	}
+	x.xxx_hidden_Domain = b.Domain
 	x.xxx_hidden_DateStart = b.DateStart
 	x.xxx_hidden_EventId = b.EventId
 	x.xxx_hidden_DateSuperseded = b.DateSuperseded
@@ -2026,7 +1994,7 @@ var File_app_payday_fact_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1bapp/payday/fact_svc.g.proto\x12\x03app\x1a\x15app/payday/fact.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xe5\x03\n" +
+	"\x1bapp/payday/fact_svc.g.proto\x12\x03app\x1a\x15app/payday/fact.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xf3\x03\n" +
 	"\x0eFactAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12$\n" +
@@ -2034,10 +2002,10 @@ const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"subject_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\tsubjectId\x12\x17\n" +
 	"\x03key\x18\t \x01(\tB\x05\xaa\x01\x02\b\x02R\x03key\x12\x1b\n" +
 	"\x05value\x18\n" +
-	" \x01(\tB\x05\xaa\x01\x02\b\x02R\x05value\x12!\n" +
-	"\ffield_number\x18\f \x01(\rR\vfieldNumber\x12=\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12\x16\n" +
-	"\x06domain\x18\x10 \x01(\rR\x06domain\x129\n" +
+	" \x01(\tB\x05\xaa\x01\x02\b\x02R\x05value\x12(\n" +
+	"\ffield_number\x18\f \x01(\rB\x05\xaa\x01\x02\b\x02R\vfieldNumber\x12=\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12\x1d\n" +
+	"\x06domain\x18\x10 \x01(\rB\x05\xaa\x01\x02\b\x02R\x06domain\x129\n" +
 	"\n" +
 	"date_start\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\tdateStart\x12 \n" +
 	"\bevent_id\x18\x13 \x01(\fB\x05\xaa\x01\x02\b\x02R\aeventId\x12C\n" +

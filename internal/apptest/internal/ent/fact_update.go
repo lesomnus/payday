@@ -93,12 +93,6 @@ func (_u *FactUpdate) AddFieldNumber(v int32) *FactUpdate {
 	return _u
 }
 
-// ClearFieldNumber clears the value of the "field_number" field.
-func (_u *FactUpdate) ClearFieldNumber() *FactUpdate {
-	_u.mutation.ClearFieldNumber()
-	return _u
-}
-
 // SetDateUpdated sets the "date_updated" field.
 func (_u *FactUpdate) SetDateUpdated(v time.Time) *FactUpdate {
 	_u.mutation.SetDateUpdated(v)
@@ -131,12 +125,6 @@ func (_u *FactUpdate) SetNillableDomain(v *uint32) *FactUpdate {
 // AddDomain adds value to the "domain" field.
 func (_u *FactUpdate) AddDomain(v int32) *FactUpdate {
 	_u.mutation.AddDomain(v)
-	return _u
-}
-
-// ClearDomain clears the value of the "domain" field.
-func (_u *FactUpdate) ClearDomain() *FactUpdate {
-	_u.mutation.ClearDomain()
 	return _u
 }
 
@@ -299,9 +287,6 @@ func (_u *FactUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedFieldNumber(); ok {
 		_spec.AddField(fact.FieldFieldNumber, field.TypeUint32, value)
 	}
-	if _u.mutation.FieldNumberCleared() {
-		_spec.ClearField(fact.FieldFieldNumber, field.TypeUint32)
-	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(fact.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -319,9 +304,6 @@ func (_u *FactUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(fact.FieldDomain, field.TypeUint32, value)
-	}
-	if _u.mutation.DomainCleared() {
-		_spec.ClearField(fact.FieldDomain, field.TypeUint32)
 	}
 	if value, ok := _u.mutation.DateStart(); ok {
 		_spec.SetField(fact.FieldDateStart, field.TypeTime, value)
@@ -441,12 +423,6 @@ func (_u *FactUpdateOne) AddFieldNumber(v int32) *FactUpdateOne {
 	return _u
 }
 
-// ClearFieldNumber clears the value of the "field_number" field.
-func (_u *FactUpdateOne) ClearFieldNumber() *FactUpdateOne {
-	_u.mutation.ClearFieldNumber()
-	return _u
-}
-
 // SetDateUpdated sets the "date_updated" field.
 func (_u *FactUpdateOne) SetDateUpdated(v time.Time) *FactUpdateOne {
 	_u.mutation.SetDateUpdated(v)
@@ -479,12 +455,6 @@ func (_u *FactUpdateOne) SetNillableDomain(v *uint32) *FactUpdateOne {
 // AddDomain adds value to the "domain" field.
 func (_u *FactUpdateOne) AddDomain(v int32) *FactUpdateOne {
 	_u.mutation.AddDomain(v)
-	return _u
-}
-
-// ClearDomain clears the value of the "domain" field.
-func (_u *FactUpdateOne) ClearDomain() *FactUpdateOne {
-	_u.mutation.ClearDomain()
 	return _u
 }
 
@@ -677,9 +647,6 @@ func (_u *FactUpdateOne) sqlSave(ctx context.Context) (_node *Fact, err error) {
 	if value, ok := _u.mutation.AddedFieldNumber(); ok {
 		_spec.AddField(fact.FieldFieldNumber, field.TypeUint32, value)
 	}
-	if _u.mutation.FieldNumberCleared() {
-		_spec.ClearField(fact.FieldFieldNumber, field.TypeUint32)
-	}
 	if value, ok := _u.mutation.DateUpdated(); ok {
 		_spec.SetField(fact.FieldDateUpdated, field.TypeTime, value)
 	}
@@ -697,9 +664,6 @@ func (_u *FactUpdateOne) sqlSave(ctx context.Context) (_node *Fact, err error) {
 	}
 	if value, ok := _u.mutation.AddedDomain(); ok {
 		_spec.AddField(fact.FieldDomain, field.TypeUint32, value)
-	}
-	if _u.mutation.DomainCleared() {
-		_spec.ClearField(fact.FieldDomain, field.TypeUint32)
 	}
 	if value, ok := _u.mutation.DateStart(); ok {
 		_spec.SetField(fact.FieldDateStart, field.TypeTime, value)

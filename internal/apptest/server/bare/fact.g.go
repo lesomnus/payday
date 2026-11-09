@@ -146,22 +146,14 @@ func (st FactServiceServer) create(ctx context.Context, req *apptest.FactAddRequ
 	}
 	q.SetKey(req.GetKey())
 	q.SetValue(req.GetValue())
-	if req.HasFieldNumber() {
-		q.SetFieldNumber(req.GetFieldNumber())
-	} else {
-		q.SetFieldNumber(0)
-	}
+	q.SetFieldNumber(req.GetFieldNumber())
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
 		q.SetDateCreated(req.GetDateCreated().AsTime())
 	} else {
 		q.SetDateCreated(st.now())
 	}
-	if req.HasDomain() {
-		q.SetDomain(req.GetDomain())
-	} else {
-		q.SetDomain(0)
-	}
+	q.SetDomain(req.GetDomain())
 	if req.HasDateStart() {
 		q.SetDateStart(req.GetDateStart().AsTime())
 	} else {

@@ -56,14 +56,12 @@ message Fact {
   string value = 10;
 
   // Which of the subject's fields, by its number in the subject's descriptor --
-  // `protoreflect.FieldNumber`, which is what it is called in Go as well. Zero
-  // on a row written before the column was, which is what the default is for:
-  // a table that has rows can be given it.
+  // `protoreflect.FieldNumber`, which is what it is called in Go as well.
   //
   // Not `field`: ent's generated mutation already has `AddField`, `ClearField`
   // and the rest, which take any field by its name, and a column of that name
   // collides with them and does not compile.
-  uint32 field_number = 12 [(orm.field) = {default: ""}];
+  uint32 field_number = 12;
 
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
@@ -74,8 +72,8 @@ message Fact {
   // Which entity the subject is, by its domain. A field number means something
   // only within one entity, so a read across resources has to say which; the
   // identifier carries it too, at byte nine, and no database indexes into a
-  // byte of a uuid. Zero on a row written before the column was.
-  uint32 domain = 16 [(orm.field) = {default: ""}];
+  // byte of a uuid.
+  uint32 domain = 16;
 
   // When the value became true, which is not when it was written down:
   // `date_created` is when it was known.

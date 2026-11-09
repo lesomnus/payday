@@ -29,9 +29,9 @@ message FactAddRequest {
   bytes subject_id = 8 [features.field_presence = IMPLICIT];
   string key = 9 [features.field_presence = IMPLICIT];
   string value = 10 [features.field_presence = IMPLICIT];
-  uint32 field_number = 12;
+  uint32 field_number = 12 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
-  uint32 domain = 16;
+  uint32 domain = 16 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_start = 17;
   bytes event_id = 19 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_superseded = 20;

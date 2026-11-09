@@ -88,8 +88,8 @@ func (b *built) handWritten(t *testing.T, ctx context.Context) ([]byHand, pdid.I
 			Tenant:      tenant,
 			SubjectId:   m.GetId(),
 			Value:       v,
-			FieldNumber: z.Ptr(uint32(model.Number())),
-			Domain:      z.Ptr(uint32(mid.Domain())),
+			FieldNumber: uint32(model.Number()),
+			Domain:      uint32(mid.Domain()),
 			DateStart:   timestamppb.Now(),
 			EventId:     ev.Bytes(),
 		}.Build()
