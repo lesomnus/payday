@@ -1,7 +1,6 @@
 package trail
 
 import (
-	"encoding/json"
 	"slices"
 	"strconv"
 	"testing"
@@ -77,8 +76,7 @@ func TestAnAcceptanceIsOfWhatWasLookedAt(t *testing.T) {
 // digest of what was looked at, how many findings of each kind, and which --
 // the first of them, and how many more. In a receipt of its own, as every act
 // of the trail's. And a verification lists the latest acceptances, the newest
-// first. A checkpoint from before acceptances were kept says only why, and is
-// read as that.
+// first.
 func TestWhatWasAcceptedIsKept(t *testing.T) {
 	x := require.New(t)
 	ctx := t.Context()
@@ -127,9 +125,6 @@ func TestWhatWasAcceptedIsKept(t *testing.T) {
 	x.Equal("looked at, "+strconv.Itoa(recentAccepted-1), w.Accepted[0].Why)
 	x.Greater(w.Accepted[0].Checkpoint, w.Accepted[1].Checkpoint)
 
-	var old Checkpoint
-	x.NoError(json.Unmarshal([]byte(`{"k":3,"at":"2026-10-01T00:00:00Z","count":0,"digest":"`+string(digestOf(nil))+`","blobs":[],"accepted":"from before"}`), &old))
-	x.Equal("from before", old.Accepted.Why)
 }
 
 // TestWhatSigningARowBringsToLightIsNotTakenInUnseen (#115).

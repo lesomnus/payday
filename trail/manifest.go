@@ -2430,19 +2430,6 @@ type Accepted struct {
 // blob in it.
 const acceptedKeys = 100
 
-// UnmarshalJSON reads an acceptance as a checkpoint keeps it, and, from one
-// taken before acceptances were kept (#115), the why it kept instead.
-func (a *Accepted) UnmarshalJSON(b []byte) error {
-	var why string
-	if err := json.Unmarshal(b, &why); err == nil {
-		*a = Accepted{Acceptance: Acceptance{Why: why}}
-		return nil
-	}
-
-	type plain Accepted
-	return json.Unmarshal(b, (*plain)(a))
-}
-
 // acceptedOf is what an acceptance of these findings keeps of them.
 func acceptedOf(a Acceptance, fs []Finding) Accepted {
 	out := Accepted{Acceptance: a, Kinds: map[string]int{}}
