@@ -38,6 +38,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # Every module the jobs that share this cache build with, before any of
+      # them builds: the first of them to finish saves the cache, and what it
+      # saves is the whole of it, whichever that is (`.github/actions/modules`).
+      - uses: ./.github/actions/modules
       # The buf `pd` pins, kept between runs rather than fetched from GitHub's
       # releases by every job (`.github/actions/buf` says why). Every job that
       # runs `pd` has it: this one, `postgres`, `new` and `floor`.
@@ -195,6 +199,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: ./.github/actions/modules
       # For the tests that generate, which run `pd`'s buf.
       - uses: ./.github/actions/buf
 
@@ -269,6 +274,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: ./.github/actions/modules
 
       - name: the emulators that are not containers
         run: |
@@ -308,6 +314,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: ./.github/actions/modules
 
       # MinIO publishes no images of its own any more. Chainguard builds it
       # from source, and the tag it gives away is `latest`.
@@ -358,6 +365,20 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+          # Named, because setup-go keys its cache on the go.mod at the root of
+          # the workspace, and the checkout is a directory down. There was none
+          # there, so nothing was restored or saved: every run warned
+          # "Dependencies file is not found" and downloaded every module the
+          # widget builds with. payday's go.sum stands in for the widget's,
+          # which does not exist until a step below has made it.
+          cache-dependency-path: payday/go.sum
+      # payday's modules, as every job that shares a cache downloads them
+      # (`.github/actions/modules`); `floor` shares this one. What the widget
+      # asks for at its newest -- its tools where a newer one is out, and
+      # grpc-dgram -- it may still fetch, whatever is kept.
+      - uses: ./payday/.github/actions/modules
+        with:
+          payday: payday
       # The widget's `pd` is this checkout's, so its buf is this one's.
       - uses: ./payday/.github/actions/buf
         with:
@@ -516,6 +537,11 @@ jobs:
         with:
           go-version-file: payday/go.mod
           cache: true
+          # As in `new`, which says why.
+          cache-dependency-path: payday/go.sum
+      - uses: ./payday/.github/actions/modules
+        with:
+          payday: payday
       - uses: ./payday/.github/actions/buf
         with:
           payday: payday
@@ -601,6 +627,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: ./.github/actions/modules
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24

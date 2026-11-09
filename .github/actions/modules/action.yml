@@ -1,0 +1,50 @@
+# Every module payday builds with, in the module cache, before a job builds
+# anything.
+#
+# setup-go keeps the module cache under a key it makes of one file's digest,
+# saves it from the first job with that key to finish, and restores that one
+# into every job with the key on every run after. A job downloads what it
+# builds and no more, so what was kept was what the first to finish needed.
+# The five jobs that check payday out at the root share a key, and the
+# shortest of them builds the trail and nothing else; the others fetched the
+# rest from the proxy on every run. On 2026-11-09 one of those fetches timed
+# out and failed `postgres` (run 42648562247, main at 60f269a):
+# protoc-gen-go-grpc, which `pd gen` runs as a tool of the app it generates,
+# was not in what it had restored.
+#
+# So every job that shares a key downloads all of it first, and whichever of
+# them saves the cache saves the whole of it. Restored whole, this fetches
+# nothing: each module it asks for is in the cache already.
+name: payday's modules
+description: Every module payday's three Go modules build and test with, their tools included, in the module cache.
+
+inputs:
+  payday:
+    description: Where payday is checked out, from the workspace.
+    default: .
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.payday }}
+      run: |
+        for m in . internal/apptest trail/trailawskms; do
+          (
+            cd "${m}"
+            # What the module builds and tests with on its own, its tools
+            # among them, at its own versions: `GOWORK=off`, as
+            # `scripts/test.sh` tidies each module.
+            GOWORK=off go mod download
+            # And every module its go.sum holds the contents of, which is
+            # what `go mod tidy` reads besides -- the tests of a dependency
+            # from before module graph pruning, which the trail's KMS signer
+            # has.
+            awk '$2 !~ /\/go\.mod$/ { print $1 "@" $2 }' go.sum | sort -u | GOWORK=off xargs -r go mod download
+          )
+        done
+        # And the workspace's graph, which selects versions no module selects
+        # alone: testify there needs a go.mod none of the three reads. `go
+        # list` reads those and writes nothing, where `go mod download` here
+        # would write go.work.sum over.
+        go list -m all > /dev/null
