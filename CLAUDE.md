@@ -80,6 +80,28 @@ Moving it is those two and the `version:` CI gives buf-action, which
 alone (`renovate/base.json`). CI keeps the binary between runs, under its
 version (`.github/actions/buf`), so a new one is fetched once.
 
+## Until the first app launches, nothing is kept for an earlier payday
+
+The owner decided it on 2026-11-09: until the first app built on payday
+launches -- loft -- payday keeps nothing for an earlier payday. A change that
+breaks what an earlier payday made, or what an app made while on one -- a
+store, a format, a lock, configuration, generated code -- carries no path for
+it: no rename list for payday's own entities, no reader of an old format, no
+JSON name kept for rows written before. Its pull request says once which payday
+a deployment with data migrates on first, before it upgrades.
+
+A wire break that is meant is still declared as above, in `buf.yaml`'s
+`breaking.ignore_only` until main and the registry's `dev` both have it. That
+says the break is meant. It is not a path for anything.
+
+The features that carry a rename keep their rules: `formerly` and the `rename`
+package, the past's lock -- `pd gen` admits only additions to it -- and what
+`pd doctor` asks. An app uses them before the launch and after it.
+
+From that launch on, the rules that keep an earlier version working apply
+again, and each says so where it is written: the past's lock below, and
+`columnRenames` in `internal/pdgen/rename.go`.
+
 ## Do not edit
 
 - `internal/apptest/**/*.g.go`, `*.pb.go`, `server/bare/`, `server/pd/`,
@@ -88,8 +110,11 @@ version (`.github/actions/buf`), so a new one is fetched once.
   `schema/payday/`, and `schema/past/` for `event.proto` and `fact.proto`, and
   `pd gen` copies and rewrites the package line
 - `internal/apptest/proto/app/payday/past.lock` — the past's lock (payday#151):
-  `pd gen` only adds to it and refuses a schema that lost what it holds. Edit it
-  by hand only to take back a type no deployment ever wrote a row of
+  `pd gen` only adds to it and refuses a schema that lost what it holds. From
+  the first app's launch on, edit it by hand only to take back a type no
+  deployment ever wrote a row of. Until then, a change that leaves it holding
+  what only an earlier payday wrote deletes it, and `pd gen` writes it again
+  from the schema
 
 ## Where things live
 
