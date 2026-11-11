@@ -21,10 +21,10 @@ func accounted(app, field, svc string) string {
 message Holder {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  string alias = 4;
-  string name = 5;
-  string desc = 6;
-  map<string, string> labels = 7;
+  string alias = 4 [(payday.field) = {personal: true}];
+  string name = 5 [(payday.field) = {personal: true}];
+  string desc = 6 [(payday.field) = {personal: true}];
+  map<string, string> labels = 7 [(payday.field) = {personal: true}];
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
