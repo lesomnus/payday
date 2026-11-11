@@ -71,13 +71,26 @@ type Field struct {
 	// change what it points at.
 	Message string
 
-	// Disabled is a field the table does not have -- `(orm.field) =
-	// {disabled: true}`, the message's and no column's. It is compared as
-	// well because a number can keep its name and its type and stop being a
-	// column, or start: the merge takes an overlay's field whole, options and
-	// all, so one redeclared without the option is a column payday left out,
-	// and one redeclared with it takes away a column payday reads.
-	Disabled bool
+	// Cardinality is whether it is a list: `repeated string alias = 4` is the
+	// name and the kind of `string alias = 4`, and no longer one value.
+	Cardinality protoreflect.Cardinality
+
+	// JSONName is what the field is called on the wire as JSON, which a
+	// `[json_name = ...]` beside a redeclaration changes for every reader of
+	// it.
+	JSONName string
+
+	// Options is everything else said beside the field -- `(orm.field)`,
+	// `(orm.edge)`, `(payday.field)`, `features.` -- as [OptionsOf] writes it,
+	// which two fields that say the same thing write alike.
+	//
+	// It is compared as well because the merge takes an overlay's field whole,
+	// options and all, and says nothing: a number that keeps its name and its
+	// type and says other things beside them is another field. Without
+	// `(orm.field) = {disabled: true}` it is a column payday left out, and
+	// with it a column payday reads is gone; without `(payday.field) =
+	// {personal: true}` what a holder is called goes onto the trail as a value.
+	Options string
 }
 
 // Options is what payday declared about one of its entities besides its
@@ -208,7 +221,8 @@ func read() (map[pdpb.Own]map[int32]Field, map[pdpb.Own]Options, map[pdpb.Own]st
 				if f.Kind() == protoreflect.MessageKind || f.Kind() == protoreflect.GroupKind {
 					v.Message = Relative(string(f.Message().FullName()), string(fd.Package()))
 				}
-				if v.Disabled, err = disabled(f); err != nil {
+				v.Cardinality, v.JSONName = f.Cardinality(), f.JSONName()
+				if v.Options, err = OptionsOf(f); err != nil {
 					return nil, nil, nil, fmt.Errorf("read %s: %w", f.FullName(), err)
 				}
 				fs[int32(f.Number())] = v
@@ -267,21 +281,31 @@ func ownOf(fd protoreflect.FileDescriptor) (map[string]decl, error) {
 	return vs, nil
 }
 
-// disabled reports whether `f` says `(orm.field) = {disabled: true}`, read
-// back through the wire form for the reason [ownOf] reads a file that way.
-func disabled(f protoreflect.FieldDescriptor) (bool, error) {
+// OptionsOf is what `f` says beside its name and its type, in a form two fields
+// that say the same thing are written alike in: its options read back through
+// the wire form, for the reason [ownOf] reads a file that way, and written
+// again deterministically. Empty for a field that says nothing.
+//
+// The same whether `f` was compiled here, with options a compiler made
+// dynamic, or handed to a plugin, with the linked ones -- which is what lets
+// what payday ships be compared with what an app is about to generate.
+func OptionsOf(f protoreflect.FieldDescriptor) (string, error) {
 	b, err := proto.Marshal(f.Options())
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
 	o := &descriptorpb.FieldOptions{}
 	if err := proto.Unmarshal(b, o); err != nil {
-		return false, err
+		return "", err
 	}
 
-	v, _ := proto.GetExtension(o, ormpb.E_Field).(*ormpb.FieldOptions)
-	return v.GetDisabled(), nil
+	b, err = proto.MarshalOptions{Deterministic: true}.Marshal(o)
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 // Relative is a message's name with `pkg` taken off the front, and the whole

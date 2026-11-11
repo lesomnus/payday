@@ -226,7 +226,7 @@ func TestAnOverlayAddsToThePastAndDoesNotChangeIt(t *testing.T) {
 
 		_, err := readAs(t, "fleet", strings.Replace(src, ships, "string desc = 6 [(payday.field) = {personal: false}];", 1))
 		x.Error(err, "a desc in a column was generated")
-		x.Contains(err.Error(), `fleet.Event: 6 is payday's "desc" (string, in no column) and was redeclared as "desc" (string)`)
+		x.Contains(err.Error(), `fleet.Event: 6 is payday's "desc" (string) and was redeclared with other options at (orm.field), (payday.field):`)
 	})
 
 	t.Run("a header field of another shape", func(t *testing.T) {

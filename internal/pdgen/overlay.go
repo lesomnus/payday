@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/protobuf-orm/protobuf-orm/ormpb"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/schema"
@@ -134,11 +136,15 @@ func CheckOwn(s *Schema) error {
 // catch, and until now it was a sentence in a document.
 //
 // What is compared is what payday shipped against what is about to be
-// generated, by number: the name it was given, the kind it holds, for a
-// message field what it points at, and whether it is a column at all -- a
-// field payday says `(orm.field) = {disabled: true}` of is the message's and
-// not the table's, and redeclared without it is a column payday left out. An
-// app is free to do anything at a number payday never used.
+// generated, by number: the name it was given, the kind it holds and whether
+// it is a list, for a message field what it points at, and everything said
+// beside it -- its JSON name and every option. The merge takes an overlay's
+// field whole, so an option payday's says is gone when the overlay's does not
+// say it: without `(orm.field) = {disabled: true}` a field payday keeps out of
+// the table is a column, and without `(payday.field) = {personal: true}` what
+// a holder is called goes onto the trail as a value. A field redeclared as
+// payday declares it, option for option, changes nothing and passes. An app
+// is free to do anything at a number payday never used.
 //
 // # And the options, which are the declaration
 //
@@ -212,9 +218,7 @@ func CheckOverlay(s *Schema) error {
 					"%s: %d is payday's %q and is gone; the wall and `auth` read these",
 					v.FullName(), n, w.Name))
 			case g != w:
-				errs = append(errs, fmt.Sprintf(
-					"%s: %d is payday's %q (%s) and was redeclared as %q (%s)",
-					v.FullName(), n, w.Name, describe(w), g.Name, describe(g)))
+				errs = append(errs, redeclared(v.FullName(), n, w, g))
 			}
 		}
 
@@ -341,12 +345,14 @@ func fieldsOf(d protoreflect.MessageDescriptor) map[int32]schema.Field {
 	vs := map[int32]schema.Field{}
 	for i := range d.Fields().Len() {
 		f := d.Fields().Get(i)
-		v := schema.Field{Name: string(f.Name()), Kind: f.Kind()}
+		v := schema.Field{Name: string(f.Name()), Kind: f.Kind(), Cardinality: f.Cardinality(), JSONName: f.JSONName()}
 		if f.Kind() == protoreflect.MessageKind || f.Kind() == protoreflect.GroupKind {
 			v.Message = schema.Relative(string(f.Message().FullName()), pkg)
 		}
-		o, _ := proto.GetExtension(f.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
-		v.Disabled = o.GetDisabled()
+		// The descriptors a plugin is handed hold options it links, and a
+		// round trip of those cannot fail; one that did would be a field that
+		// says something nobody can read, which is what it is compared as.
+		v.Options, _ = schema.OptionsOf(f)
 		vs[int32(f.Number())] = v
 	}
 
@@ -358,9 +364,115 @@ func describe(f schema.Field) string {
 	if f.Message != "" {
 		v = f.Message
 	}
-	if f.Disabled {
-		v += ", in no column"
+	if f.Cardinality == protoreflect.Repeated {
+		v = "repeated " + v
 	}
 
 	return v
+}
+
+// redeclared says how one of payday's fields was declared again: as another
+// field, where its name or what it holds moved, and otherwise by the options
+// that say something else, each named -- `(payday.field).personal`,
+// `(orm.field).disabled`, `json_name` -- with what payday's say and what these
+// do.
+func redeclared(entity protoreflect.FullName, n int32, w, g schema.Field) string {
+	if g.Name != w.Name || g.Kind != w.Kind || g.Message != w.Message || g.Cardinality != w.Cardinality {
+		return fmt.Sprintf("%s: %d is payday's %q (%s) and was redeclared as %q (%s)",
+			entity, n, w.Name, describe(w), g.Name, describe(g))
+	}
+
+	paths := []string{}
+	json := g.JSONName != w.JSONName
+	if json {
+		paths = append(paths, "json_name")
+	}
+	paths = append(paths, optionsDiffer(w.Options, g.Options)...)
+
+	return fmt.Sprintf("%s: %d is payday's %q (%s) and was redeclared with other options at %s: payday's says %s, and this %s",
+		entity, n, w.Name, describe(w), strings.Join(paths, ", "), optionsText(w, json), optionsText(g, json))
+}
+
+// readOptions is what [schema.OptionsOf] wrote, as the options it was written
+// from; none for what reads as nothing.
+func readOptions(v string) protoreflect.Message {
+	o := &descriptorpb.FieldOptions{}
+	if err := proto.Unmarshal([]byte(v), o); err != nil {
+		o.Reset()
+	}
+
+	return o.ProtoReflect()
+}
+
+// optionsDiffer is the path of each option the two say differently, either
+// way round: the merge takes the overlay's field whole, so one payday's says
+// and the overlay's leaves out is as gone as one the overlay changed.
+func optionsDiffer(want, got string) []string {
+	return pathsDiffer(readOptions(want), readOptions(got), "")
+}
+
+func pathsDiffer(a, b protoreflect.Message, at string) []string {
+	set := map[protoreflect.FullName]protoreflect.FieldDescriptor{}
+	collect := func(fd protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+		set[fd.FullName()] = fd
+		return true
+	}
+	a.Range(collect)
+	b.Range(collect)
+
+	fds := make([]protoreflect.FieldDescriptor, 0, len(set))
+	for _, fd := range set {
+		fds = append(fds, fd)
+	}
+	sort.Slice(fds, func(i, j int) bool { return optionName(fds[i]) < optionName(fds[j]) })
+
+	out := []string{}
+	for _, fd := range fds {
+		p := at + optionName(fd)
+		switch ha, hb := a.Has(fd), b.Has(fd); {
+		case ha != hb:
+			out = append(out, p)
+		case fd.Message() != nil && !fd.IsList() && !fd.IsMap():
+			out = append(out, pathsDiffer(a.Get(fd).Message(), b.Get(fd).Message(), p+".")...)
+		case !a.Get(fd).Equal(b.Get(fd)):
+			out = append(out, p)
+		}
+	}
+	if string(a.GetUnknown()) != string(b.GetUnknown()) {
+		out = append(out, at+"(an option this payday does not link)")
+	}
+
+	return out
+}
+
+// optionName is an option as it is written: `(payday.field)` for an
+// extension, and its own name for one of protobuf's.
+func optionName(fd protoreflect.FieldDescriptor) string {
+	if fd.IsExtension() {
+		return "(" + string(fd.FullName()) + ")"
+	}
+
+	return string(fd.Name())
+}
+
+// optionsText is a field's options as a person reads them beside it:
+// `[(orm.field) = {disabled: true}]`, and `[]` for none -- with its JSON name
+// where that is what differs, since every field has one.
+func optionsText(f schema.Field, json bool) string {
+	vs := []string{}
+	if json {
+		vs = append(vs, fmt.Sprintf("json_name = %q", f.JSONName))
+	}
+	readOptions(f.Options).Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Message() != nil && !fd.IsList() && !fd.IsMap() {
+			text := strings.Join(strings.Fields(prototext.MarshalOptions{}.Format(v.Message().Interface())), " ")
+			vs = append(vs, optionName(fd)+" = {"+text+"}")
+			return true
+		}
+		vs = append(vs, fmt.Sprintf("%s = %v", optionName(fd), v))
+		return true
+	})
+	sort.Strings(vs)
+
+	return "[" + strings.Join(vs, ", ") + "]"
 }
