@@ -101,20 +101,26 @@ and on a machine that has run two paydays that is not always this one's.
 go tool pd upgrade --payday <commit>
 ```
 
-That is `go get github.com/lesomnus/payday@<commit>` and `go mod tidy`, and then
-the payday it fetched: **its** `pd upgrade` and **its** `pd gen` (`--ts`,
-which is the Go half as well, for an app with a page). Its upgrade holds the page to its floors -- the oldest
+That is `go get github.com/lesomnus/payday@<commit>`, and then the payday it
+fetched: **its** `pd gen` of the Go half, `go mod tidy`, **its** `pd upgrade`,
+and **its** `pd gen --ts` for an app with a page. The generation comes first
+because tidy reads what the generated code imports, and the old payday's code
+imports what the old payday had. An import of a payday package the new one
+does not have, in code no generator writes, refuses the upgrade before tidy
+and is named; tidy moving payday anyway puts go.mod and go.sum back.
+
+Its upgrade holds the page to its floors -- the oldest
 `@bufbuild/protobuf`, `typescript`, `vite` and so on it builds with, which
 `go tool pd versions` lists -- and moves only what is below one, to that floor
 in the major it is in, or to the version `pd new` writes today when the floor
 is a later major. Nothing is committed: `git diff` says what moved, and
-`--dry-run` says what would run -- though the last two steps are the fetched
-payday's, and a dry run fetches nothing. A page whose generator is not
+`--dry-run` says what would run -- though the steps after `go get` are the
+fetched payday's, and a dry run fetches nothing. A page whose generator is not
 installed is refused before anything moves.
 
 A commit, and not `latest`: payday tags no versions of its Go module, so
-`latest` is whatever its `main` is the moment `go get` asks. Name the one you
-read.
+`latest` is no version anybody chose -- and while the retraction of an
+accidental v0.1.0 is unpublished, it is that. Name the one you read.
 
 `renovate.json` extends payday's app preset. Go modules already required by
 payday follow its upgrades, including security fixes, while app-only modules

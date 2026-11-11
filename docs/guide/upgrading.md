@@ -101,18 +101,40 @@ exactly. They are two sections and one resolution.
 `--payday VERSION` runs, in order:
 
 1. `go get github.com/lesomnus/payday@VERSION`;
-2. `go mod tidy`;
-3. `go tool pd upgrade`;
-4. `go tool pd gen --ts` when the app has a page (`ts/package.json`), which
-   writes the Go half as well; `go tool pd gen` when it has none.
+2. `go tool pd gen`, the Go half;
+3. `go mod tidy`;
+4. `go tool pd upgrade`;
+5. `go tool pd gen --ts` when the app has a page (`ts/package.json`), which
+   writes the Go half again with the page's.
 
-Steps 3 and 4 run the payday that step 1 fetched, not the one you started
-with. Its floors are the ones the page has to meet, and code that payday's
-generator writes is the only code its runtime accepts (`version.Same`).
+Steps 2, 4 and 5 run the payday that step 1 fetched, not the one you started
+with. Code that payday's generator writes is the only code its runtime accepts
+(`version.Same`), and its floors are the ones the page has to meet.
 
-- **A dry run fetches nothing.** `--dry-run` with `--payday` lists the four
-  steps and says that the last two are the fetched payday's. What they would
-  move and write is that payday's to say, and it is not shown.
+The generation comes before `go mod tidy` because tidy reads every import, and
+until the new payday writes it again the generated code imports what the old
+one had. tidy does not leave an import of a package the new payday no longer
+has missing: it finds the newest payday that has it and moves the app there.
+That is how an app moved to the payday without `batch` landed on v0.1.0.
+
+What no generator writes is asked about instead:
+
+- **An import of a payday package the new payday does not have** refuses the
+  upgrade before step 3, naming each and who imports it (`ErrPaydayLacks`). It
+  may be the app's own code, or a dependency's: a roster generated with an
+  older payday, in an app that links one. Change the app's code, move the
+  dependency to its version generated with the new payday, and upgrade again.
+- **tidy moving payday anyway** puts `go.mod` and `go.sum` back as step 1 left
+  them, and refuses (`ErrPaydayMoved`). The usual cause is a file behind a
+  build constraint: tidy reads it whatever the platform, and the question
+  before step 3 does not.
+- **A payday its module retracts** is refused as soon as step 1 lands on it,
+  with `go.mod` and `go.sum` as they were (`ErrPaydayRetracted`). That works
+  once the go command knows of the retraction (below).
+
+- **A dry run fetches nothing.** `--dry-run` with `--payday` lists the steps
+  and says that the rest after step 1 is the fetched payday's. What that would
+  write and move is that payday's to say, and it is not shown.
 - **The page comes from the page.** Whether `--ts` is passed depends on whether
   the app has a page, not on whether its generator is installed. A page whose
   generator is missing is refused before step 1, with the install to run,
@@ -123,11 +145,16 @@ generator writes is the only code its runtime accepts (`version.Same`).
 requires and no further.
 
 Name a commit. payday tags no versions of its Go module (its only tags,
-`ts/v*`, are the npm package's), so `latest` is whatever `main` is the moment
-`go get` asks: a commit nobody upgrading has read, and not the one the next
-person to run the same command gets. A commit is the payday you looked at, and
-it is what the pull request can say it moved to. roster's upgrade to the
-payday that brought `pd upgrade` was `--payday 56a32f4`.
+`ts/v*`, are the npm package's), so `latest` is no version anybody chose. It is
+not even `main` yet. The module proxy still serves v0.1.0, a tag pushed by
+accident on 2026-10-29 and deleted since. payday's `go.mod` retracts it, but a
+retraction reaches the go command only through a published version that says
+it, and v0.1.1, the one meant to, has not been published. Until it is, `latest`
+is v0.1.0. After that, it is whatever `main` is the moment `go get` asks: a
+commit nobody upgrading has read, and not the one the next person to run the
+same command gets. A commit is the payday you looked at, and it is what the
+pull request can say it moved to. roster's upgrade to the payday that brought
+`pd upgrade` was `--payday 56a32f4`.
 
 ## 5. What it does not do
 
