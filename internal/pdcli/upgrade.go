@@ -100,11 +100,12 @@ func (u Upgrade) Run(ctx context.Context) error {
 // Until the new payday writes it again, the generated code is the old one's,
 // and it imports what the old one had. `go mod tidy` reads every import, and
 // one of a package the new payday does not have -- `payday/batch`, the day it
-// went -- it does not leave missing: it asks for the newest payday that has
-// it, which is v0.1.0, a tag pushed by accident months behind main. tidy moved
-// the app onto that, said nothing of why, and the generation after it was
-// v0.1.0's. So the Go half is written first, by the payday `go get` fetched,
-// and tidy reads what it wrote.
+// went -- it does not leave missing: it asks for payday's `latest`, and moves
+// the app there if that has it. That was v0.1.0, a tag pushed by accident
+// months behind main, until v0.1.1 published its retraction. tidy moved the
+// app onto it, said nothing of why, and the generation after it was v0.1.0's.
+// So the Go half is written first, by the payday `go get` fetched, and tidy
+// reads what it wrote.
 //
 // # And what no generator writes, asked about
 //
@@ -225,9 +226,8 @@ var ErrPaydayRetracted = errors.New("that payday is retracted")
 // retracted refuses the payday go.mod names if payday's module retracts it.
 //
 // A retraction is said in the go.mod of a later version, and the go command
-// knows of it once that version is published: payday's go.mod retracts v0.1.0,
-// and until v0.1.1, which publishes that, is fetched, v0.1.0 is to the go
-// command a release like any other -- and `latest`.
+// knows of it once that version is published: v0.1.1's go.mod retracts v0.1.0
+// and v0.1.1.
 func (u Upgrade) retracted(ctx context.Context, dir string) error {
 	out, err := u.output(ctx, dir, "go", "list", "-m", "-retracted",
 		"-f", `{{.Version}}{{range .Retracted}}{{println}}{{.}}{{end}}`, version.Module)

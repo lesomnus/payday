@@ -119,8 +119,8 @@ fetched payday's, and a dry run fetches nothing. A page whose generator is not
 installed is refused before anything moves.
 
 A commit, and not `latest`: payday tags no versions of its Go module, so
-`latest` is no version anybody chose -- and while the retraction of an
-accidental v0.1.0 is unpublished, it is that. Name the one you read.
+`latest` is no version anybody chose -- it is whatever `main` is the moment
+`go get` asks. Name the one you read.
 
 `renovate.json` extends payday's app preset. Go modules already required by
 payday follow its upgrades, including security fixes, while app-only modules
