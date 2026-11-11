@@ -1,5 +1,7 @@
-// Package valid refuses a migration that would take an index PostgreSQL has
-// not finished for one it made.
+// Package valid refuses a database a migration would take for this build's
+// shape and is not: one with an index PostgreSQL has not finished, which the
+// migration takes for one it made ([Indexes]), and one with a column nothing
+// this build writes that takes no row without a value ([Columns]).
 //
 // PostgreSQL writes an index it is building `CONCURRENTLY` into the catalog
 // first and builds it after, marked invalid until it is done, so that writes
@@ -79,6 +81,20 @@
 // SQLite builds an index inside the transaction that asked for it, and a build
 // that fails leaves nothing. There is nothing to find, so [Indexes] answers nil
 // there, as it does on any database that is not PostgreSQL.
+//
+// # A column nothing writes
+//
+// The migration drops no column either, and a column an earlier build declared
+// and this one does not stays where it was. Most such columns cost nothing; one
+// that is NOT NULL with no default refuses every row written to its table, and
+// `entschema.Check` passes it, since it asks after nothing the schema does not
+// declare. So `Migrate` asks [Columns] beside [Indexes], and refuses what it is
+// answered -- and so does a server that checks the database instead of
+// migrating it, since what it would be serving is a table that takes no write:
+//
+//	if err := valid.Columns(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+//		return err
+//	}
 package valid
 
 import (

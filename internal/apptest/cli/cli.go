@@ -132,6 +132,13 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 				}
 			} else if err := entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 				return err
+			} else if err := valid.Columns(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+				// A column nothing writes that takes no row without a value
+				// is refused, where an invalid index below is served over: it
+				// is not a cost to every write but the end of every write to
+				// its table, and a server that starts on it fails in whichever
+				// handler writes there first.
+				return err
 			} else if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 				// An index PostgreSQL left invalid is said, and served over.
 				// It costs every write and the reads that wanted it, which is
@@ -194,7 +201,9 @@ func NewCmdServe(c *cmd.Config) *xli.Command {
 // And for the same reason an index this build declares that PostgreSQL left
 // invalid -- a build of it `CONCURRENTLY` that did not finish -- is refused
 // before anything is made: found by its name, it would be taken for made, and
-// read by nothing from then on. See `valid`.
+// read by nothing from then on. So is a column an earlier build declared and
+// this one does not, where it takes no row without a value: left where it is,
+// it refuses every row written to its table after. See `valid`.
 func Migrate(ctx context.Context, s *cmd.Server) error {
 	if err := rename.Tables(ctx, s.Db, s.Dialect, pd.TableRenames); err != nil {
 		return err
@@ -206,6 +215,9 @@ func Migrate(ctx context.Context, s *cmd.Server) error {
 		return err
 	}
 	if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+		return err
+	}
+	if err := valid.Columns(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 		return err
 	}
 

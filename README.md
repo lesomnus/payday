@@ -140,7 +140,7 @@ app.
 | [`batch`](batch) | several writes as one transaction |
 | [`web`](web) | the port a browser reaches |
 | [`version`](version) | refusing a server whose payday moved |
-| [`rename`](rename) · [`valid`](valid) | what a migration asks of a database before it finds a table, a column or an index by name: what was renamed moved first, and an index left invalid refused |
+| [`rename`](rename) · [`valid`](valid) | what a migration asks of a database before it finds a table, a column or an index by name: what was renamed moved first, an index left invalid refused, and a column nothing writes that takes no row without a value refused |
 | [`config`](config) · [`grpcx`](grpcx) · [`pderr`](pderr) | what an app was configured with, how it is served, how it refuses |
 | [`ts`](ts) | [`@lesomnus/payday`](https://www.npmjs.com/package/@lesomnus/payday) — the client half |
 | [`cmd/pd`](cmd/pd) | `new`, `gen`, `entity`, `sandbox`, `doctor` |

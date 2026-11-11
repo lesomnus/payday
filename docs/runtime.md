@@ -70,7 +70,7 @@ table is for finding the right one.
 | [`web`](../web) | the same gRPC server answering Connect and gRPC-Web, for browsers |
 | [`config`](../config) | the blocks every app is configured with, and a loader that fills in any struct. Opening what they name waits a moment, at start, for a database that cannot be reached yet |
 | [`rename`](../rename) | the tables, columns and indexes an earlier build made under another name -- an entity's the schema renamed -- moved to this build's before a migration looks for them |
-| [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made |
+| [`valid`](../valid) | an index the schema declares that PostgreSQL left invalid -- a build `CONCURRENTLY` that did not finish -- refused before a migration takes it for made; and a column an earlier build declared that is NOT NULL with no default, refused before every write to its table is |
 | [`spin`](../spin) | background work a layer has, found rather than declared |
 | [`meter`](../meter) | what each tenant holds, measured on a schedule and on request, and handed to the app's sink: the readings of `pd.Meters` and of the app's own meters, and the convention for flows |
 | [`entitle`](../entitle) | what each tenant is entitled to: a copy of a source's grants, read in the transaction of the write it decides -- a limit locked there -- and the follower that keeps it, through the `pd.Entitlements` and `pd.EntitlementCopy` an app that declares one is generated |
