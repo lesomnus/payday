@@ -5,7 +5,7 @@ go 1.27.0
 // The Go payday is built and tested with -- CI's setup-go reads this line --
 // and the one `pd new` writes into an app, which a test holds to it
 // (internal/pdcli/template/go.mod.tmpl). Renovate moves the two together.
-toolchain go1.27.3
+toolchain go1.27.4
 
 // v0.1.0 is a tag that was pushed on 2026-10-29 and deleted since. The module
 // proxy keeps every version it was ever asked for, so `go get @latest` kept
