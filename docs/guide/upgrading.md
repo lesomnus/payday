@@ -114,8 +114,9 @@ with. Code that payday's generator writes is the only code its runtime accepts
 The generation comes before `go mod tidy` because tidy reads every import, and
 until the new payday writes it again the generated code imports what the old
 one had. tidy does not leave an import of a package the new payday no longer
-has missing: it finds the newest payday that has it and moves the app there.
-That is how an app moved to the payday without `batch` landed on v0.1.0.
+has missing: it asks for payday's `latest`, and moves the app there if that
+has it. That is how an app moved to the payday without `batch` landed on
+v0.1.0, which was `latest` until v0.1.1 published its retraction (below).
 
 What no generator writes is asked about instead:
 
@@ -129,8 +130,8 @@ What no generator writes is asked about instead:
   build constraint: tidy reads it whatever the platform, and the question
   before step 3 does not.
 - **A payday its module retracts** is refused as soon as step 1 lands on it,
-  with `go.mod` and `go.sum` as they were (`ErrPaydayRetracted`). That works
-  once the go command knows of the retraction (below).
+  with `go.mod` and `go.sum` as they were (`ErrPaydayRetracted`): v0.1.0 or
+  v0.1.1 (below).
 
 - **A dry run fetches nothing.** `--dry-run` with `--payday` lists the steps
   and says that the rest after step 1 is the fetched payday's. What that would
@@ -144,17 +145,19 @@ What no generator writes is asked about instead:
 `go get` without `-u`, so payday's own dependencies move to what payday
 requires and no further.
 
-Name a commit. payday tags no versions of its Go module (its only tags,
-`ts/v*`, are the npm package's), so `latest` is no version anybody chose. It is
-not even `main` yet. The module proxy still serves v0.1.0, a tag pushed by
-accident on 2026-10-29 and deleted since. payday's `go.mod` retracts it, but a
-retraction reaches the go command only through a published version that says
-it, and v0.1.1, the one meant to, has not been published. Until it is, `latest`
-is v0.1.0. After that, it is whatever `main` is the moment `go get` asks: a
+Name a commit. payday tags no versions of its Go module, so `latest` is no
+version anybody chose: it is whatever `main` is the moment `go get` asks -- a
 commit nobody upgrading has read, and not the one the next person to run the
 same command gets. A commit is the payday you looked at, and it is what the
 pull request can say it moved to. roster's upgrade to the payday that brought
 `pd upgrade` was `--payday 56a32f4`.
+
+Its two tags besides `ts/v*`, the npm package's, are retracted: v0.1.0, pushed
+by accident on 2026-10-29 and deleted since, which the module proxy keeps, and
+v0.1.1, which publishes that retraction in its `go.mod` and retracts itself.
+Until v0.1.1 was published, `latest` was v0.1.0. The go command takes no
+retracted tag for a commit's version or for the base of a pseudo-version, so a
+commit is still `v0.0.0-<time>-<hash>`.
 
 ## 5. What it does not do
 
