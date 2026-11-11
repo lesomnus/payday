@@ -83,6 +83,8 @@ const (
 	pkgSort    = protogen.GoImportPath("sort")
 	pkgSeen    = protogen.GoImportPath("github.com/lesomnus/payday/seen")
 	pkgRegexp  = protogen.GoImportPath("regexp")
+	pkgPdpb    = protogen.GoImportPath("github.com/lesomnus/payday/pdpb")
+	pkgAnypb   = protogen.GoImportPath("google.golang.org/protobuf/types/known/anypb")
 )
 
 // EmitPayday writes which payday this file came out of, and the check that

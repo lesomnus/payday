@@ -425,8 +425,8 @@ export class Queries {
 	 * that waits is kept on disk and the secret would wait there in the clear.
 	 * That is refused here, before anything is kept; send it with
 	 * [Queries.call]. It is read off the entity whose service the method is on,
-	 * so a secret in a batch, or in an RPC of the app's own -- a password, a
-	 * token -- is not seen, and keeping those out of a queue is the app's.
+	 * so a secret in an RPC of the app's own -- a password, a token -- is not
+	 * seen, and keeping those out of a queue is the app's.
 	 *
 	 * And a patch document to such an entity, whatever it names: an `Apply`
 	 * says what it writes in terms only the server reads, so nothing here can

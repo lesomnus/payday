@@ -38,19 +38,17 @@ type Limiter interface {
 // nothing, so the caller is told to ask for less rather than when to ask again.
 const Never = time.Duration(math.MaxInt64)
 
-// Cost is how many calls a request counts as: what a limit charges for it, and
-// what a batch adds up of its operations.
+// Cost is how many calls a request counts as: what a limit charges for it.
 //
 // Nearly every call is one. An AddMany of a thousand rows is a thousand Adds'
 // worth of work sent as one call, and counted as one it is a thousand calls'
-// worth for the price of one -- the thing a batch counts its operations one by
-// one to stop. Which RPCs those are is the schema's to say, so an app's Cost is
-// generated (`pd.Cost`); nil counts every call as one.
+// worth for the price of one. Which RPCs those are is the schema's to say, so
+// an app's Cost is generated (`pd.Cost`); nil counts every call as one.
 type Cost func(method string, req any) int
 
-// CostOf is what `c` says a call to `method` asking `req` costs, and one when
+// costOf is what `c` says a call to `method` asking `req` costs, and one when
 // there is no `c` or it says less: a call is at least a call.
-func CostOf(c Cost, method string, req any) int {
+func costOf(c Cost, method string, req any) int {
 	if c == nil {
 		return 1
 	}
@@ -92,7 +90,7 @@ func Limit(l Limiter, by func(ctx context.Context, method string) string, cost C
 // LimitUnary is [Limit]'s unary half: a call charged what `cost` says it is.
 func LimitUnary(l Limiter, by func(ctx context.Context, method string) string, cost Cost) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if err := Allow(ctx, l, by, info.FullMethod, CostOf(cost, info.FullMethod, req)); err != nil {
+		if err := allow(ctx, l, by, info.FullMethod, costOf(cost, info.FullMethod, req)); err != nil {
 			return nil, err
 		}
 
@@ -103,7 +101,7 @@ func LimitUnary(l Limiter, by func(ctx context.Context, method string) string, c
 // LimitStream is [Limit]'s stream half: a stream is one call.
 func LimitStream(l Limiter, by func(ctx context.Context, method string) string) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := Allow(ss.Context(), l, by, info.FullMethod, 1); err != nil {
+		if err := allow(ss.Context(), l, by, info.FullMethod, 1); err != nil {
 			return err
 		}
 
@@ -111,24 +109,17 @@ func LimitStream(l Limiter, by func(ctx context.Context, method string) string) 
 	}
 }
 
-// Allow is the check the two interceptors are made of, as a function: a call to
+// allow is the check the two interceptors are made of, as a function: a call to
 // `method` that costs `n` calls ([Cost]), charged against whoever `by` says is
 // calling.
-//
-// It is exported because a batch of calls inside one call has to count each of
-// them: a batch is one method to gRPC, so an interceptor charges a caller once
-// for a thousand operations. What a batch does with this is call it per
-// operation, with what each costs, which is what makes the limit mean the same
-// thing on both roads.
-func Allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string, n int) error {
+func allow(ctx context.Context, l Limiter, by func(ctx context.Context, method string) string, method string, n int) error {
 	// No limit at all, which is what a deployment that configured none has.
 	//
 	// The guard is here and not only in [Limit] because the bare interceptors
 	// are the shape everything else takes them in -- a chain assembled for a
-	// server that is not gRPC's, a batch applying them per operation -- and
-	// those reach this without going past that constructor. It used to be in
-	// the constructor alone, and calling LimitUnary(nil, ...) directly was a
-	// panic on the first request.
+	// server that is not gRPC's -- and those reach this without going past that
+	// constructor. It used to be in the constructor alone, and calling
+	// LimitUnary(nil, ...) directly was a panic on the first request.
 	if l == nil || by == nil {
 		return nil
 	}

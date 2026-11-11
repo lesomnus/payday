@@ -13,8 +13,8 @@ import (
 
 	"github.com/lesomnus/payday/account"
 	"github.com/lesomnus/payday/auth"
-	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -118,7 +118,7 @@ func newWorld() *world {
 
 // calling is a call of `method` naming `tenant` in the header, or none.
 func calling(method string, tenant ...string) context.Context {
-	ctx := batch.AsOp(context.Background(), method)
+	ctx := grpcx.AsMethod(context.Background(), method)
 	for _, v := range tenant {
 		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(header, v))
 	}
@@ -254,7 +254,7 @@ func TestACallThatNamesNoTenantIsTheAccountsOnlyMembership(t *testing.T) {
 	})
 
 	t.Run("refused when the call names two", func(t *testing.T) {
-		ctx := metadata.NewIncomingContext(batch.AsOp(context.Background(), otherMethod), metadata.Pairs(header, "acme", header, "hooli"))
+		ctx := metadata.NewIncomingContext(grpcx.AsMethod(context.Background(), otherMethod), metadata.Pairs(header, "acme", header, "hooli"))
 		_, err := w.r.Resolve(ctx, signedIn(w.both))
 		require.Equal(t, codes.InvalidArgument, status.Code(err))
 	})

@@ -22,10 +22,8 @@ type interceptRpc struct {
 
 // interceptRpcs is every Rpc of every entity service, taken from the contracts
 // rather than from a list, so an RPC an overlay adds is wrapped without
-// anybody coming back here.
-//
-// This is [batchOps] over again with the streaming ones kept: a batch has no
-// shape for a stream, and a layer does.
+// anybody coming back here -- the streaming ones too, since a layer has a shape
+// for a stream.
 func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 	by := map[string]*Entity{}
 	for _, v := range s.Sorted() {

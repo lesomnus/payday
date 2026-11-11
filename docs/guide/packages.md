@@ -164,7 +164,7 @@ distinct paths.
 | | |
 | --- | --- |
 | **Identifiers** | already compatible. A tenant is domain 1 in every payday app and a `pdid` is unique without coordination, so a row minted by one is nameable by the other |
-| **`payday.` on the wire** | two names survive, in every payday app: `payday.BatchService` and `payday.TokenService`. Both are deliberate — they are transports and not domain concepts, there is nothing per app in either, and a generic client finds them by those names |
+| **`payday.` on the wire** | two names survive, in every payday app: `payday.ResourceService` and `payday.TokenService`. Both are deliberate — they are transports and not domain concepts, there is nothing per app in either, and a generic client finds them by those names |
 | **Everything else** | separate. Two schemas, two databases, two walls, two sets of servers |
 
 `directory.Holder` and `fleet.Holder` are two messages with two histories, and

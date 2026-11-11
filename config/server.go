@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
-	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
+	"github.com/lesomnus/payday/resource"
 )
 
 // DefaultAddr is where a server that was not told where to listen listens.
@@ -58,17 +58,6 @@ type ServerConfig struct {
 	// a deployment that trimmed its file down to what it meant does not serve
 	// it by having forgotten to say no.
 	AllowReflection bool `yaml:"allow_reflection"`
-
-	// MaxBatchOps is how many operations one batch may carry; zero is
-	// [batch.MaxOps]. A batch is a transaction, and one held open long enough
-	// is a lock held against every other writer.
-	MaxBatchOps int `yaml:"max_batch_ops"`
-
-	// MaxBatchRows is how many rows one batch may ask to write, as what its
-	// operations cost adds up -- an AddMany of a thousand is a thousand; zero
-	// is [batch.MaxRows]. The same transaction, bounded by what it writes
-	// rather than by how many operations say so.
-	MaxBatchRows int `yaml:"max_batch_rows"`
 
 	// AllowGeneralWrites serves `Patch` and `Apply`, the two Rpcs every
 	// generated service has that can write anything the schema holds. It is
@@ -340,23 +329,20 @@ func (c ServerConfig) GrpcOptions() ([]grpc.ServerOption, error) {
 	return opts, nil
 }
 
-// Guard is what a batch enforces per operation, read off the same fields the
+// Guard is what a row a Watch sends is held to, read off the same fields the
 // interceptors are built from.
 //
-// It exists so that there is **one** place. A batch checks by hand what the
+// It exists so that there is **one** place. A stream makes a read on its
+// subscriber's behalf that no interceptor sees, so it checks by hand what the
 // transport checks by interceptor, and the two are only ever in step if they
 // come from the same source -- written out twice they will disagree, and the
-// direction they disagree in is the one where the batch allows more.
+// direction they disagree in is the one where the stream allows more.
 //
 // The policy is a parameter because it is not configuration: it is a thing an
 // app builds, and the interceptor takes it the same way.
-func (c ServerConfig) Guard(p gate.Policy) batch.Guard {
-	return batch.Guard{
-		Closed:  c.Closed(),
-		Limiter: c.Limiter(),
-		By:      gate.ByTenant(),
-		Policy:  p,
-		Max:     c.MaxBatchOps,
-		Rows:    c.MaxBatchRows,
+func (c ServerConfig) Guard(p gate.Policy) resource.Guard {
+	return resource.Guard{
+		Closed: c.Closed(),
+		Policy: p,
 	}
 }

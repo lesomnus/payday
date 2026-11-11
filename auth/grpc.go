@@ -38,8 +38,7 @@ func PublicDefault(method string) bool {
 //
 // It is the two shapes and the option pair, as [grpcx.Recover] and
 // [grpcx.Closed] are: a server takes options, and a [grpcx.Chain] -- what the
-// wasm server and a batch of calls inside one call are built from -- takes the
-// interceptors themselves.
+// wasm server is built from -- takes the interceptors themselves.
 func Interceptor(h Handler, r Resolver, public Public) []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(InterceptorUnary(h, r, public)),

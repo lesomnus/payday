@@ -1077,6 +1077,16 @@ Implementing it is [a layer](server.md#3-writing-a-layer), which is also what
 puts it on the trail: an RPC nothing listed is audited for the same reason an
 `Add` is.
 
+An act of several writes that hold or fall together is one RPC too. payday
+serves no batch -- no call that carries other calls -- because one is
+authorized as itself: the policy, a narrowed credential, what the deployment
+closed and the limit all look at the method gRPC dispatched, and each would
+have to be asked again of every call inside it. An RPC that names the act is
+asked as that act, and its layer writes the rows in one transaction, as
+[completing a generated verb](server.md#completing-a-generated-verb) does:
+`dialect.BeginTx`, the stack rebound onto it with `enttx.Rebind`, and every
+write through that.
+
 In an app whose holders are memberships of accounts, an RPC of your own is also
 where an account's own call is declared -- one it makes outside every tenant,
 before it is anybody's member:

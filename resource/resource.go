@@ -8,10 +8,10 @@
 // importing it. Everything an app generates imports this package, and so does
 // the app's sandbox; that package says why that keeps CEL out of this one.
 //
-// A [Server] whose binary links no language serves Batch, and a Watch with no
-// filter. A Watch with one is refused, `Unimplemented`, rather than served as
-// though it had none: a filter says what the subscriber is not to be sent, and
-// a stream that ignored it would send exactly that.
+// A [Server] whose binary links no language serves a Watch with no filter. A
+// Watch with one is refused, `Unimplemented`, rather than served as though it
+// had none: a filter says what the subscriber is not to be sent, and a stream
+// that ignored it would send exactly that.
 package resource
 
 import (
@@ -28,6 +28,10 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/lesomnus/payday/access"
+	"github.com/lesomnus/payday/frame"
+	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/watch"
 )
@@ -113,9 +117,53 @@ func registered() Language {
 	return language.l
 }
 
+// Guard is what a subscriber is held to before a row is projected for it, by
+// the method that reads a row of its kind (`<Entity>Service/Get`), as a call
+// to that method would be held to it on the way in: what the credential
+// allows, what the deployment closed, that it is no download, and what the
+// policy says -- whose answer is the scope the row is read in.
+//
+// A row a subscriber is sent is a read the stream makes on its behalf, and
+// gRPC dispatched the stream and not the read, so none of the interceptors
+// that hold a read to these has seen it. It is built from the configuration
+// they are built from, `config.ServerConfig.Guard`: written out a second
+// time, the two would come to disagree, and the stream would be the one that
+// allows more.
+type Guard struct {
+	// Closed reports a method no caller may ask for -- what the deployment
+	// closed, `config.ServerConfig.Closed`. Nil closes nothing.
+	Closed func(method string) bool
+
+	// Policy is what says whether this subscriber may read the row and what
+	// scope it is read in. Nil is what the interceptor does with none: the
+	// caller's own tenant and nothing else.
+	Policy gate.Policy
+}
+
+// Allow holds the read of `method` to every rule, in the order the
+// interceptors apply them, and answers with the context it is made in.
+func (g Guard) Allow(ctx context.Context, method string) (context.Context, error) {
+	// The credential first: a token attenuated to some methods says so
+	// without anything being looked up.
+	if f, ok := frame.From(ctx); ok && !f.Grant.Allows(method) {
+		return nil, status.Errorf(codes.PermissionDenied, "%s: this credential is not for that", method)
+	}
+	if g.Closed != nil && g.Closed(method) {
+		return nil, grpcx.ErrClosed(method)
+	}
+
+	// A download says what it is for, and is recorded before its answer
+	// leaves (payday#111); a stream sending its rows can do neither.
+	if access.IsDownload(ctx, method) {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"%s hands personal data out, and is called by itself rather than watched", method)
+	}
+
+	return gate.Decide(ctx, g.Policy, method)
+}
+
 type Server struct {
 	pdpb.UnimplementedResourceServiceServer
-	batch   pdpb.BatchServiceServer
 	watch   *watch.Watch
 	project Project
 
@@ -124,9 +172,9 @@ type Server struct {
 	filters Filters
 }
 
-func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, messages ...proto.Message) (*Server, error) {
-	if batch == nil || project == nil {
-		return nil, errors.New("resource: batch and historical read projector are required")
+func New(w *watch.Watch, project Project, messages ...proto.Message) (*Server, error) {
+	if project == nil {
+		return nil, errors.New("resource: a historical read projector is required")
 	}
 	descriptors := []protoreflect.MessageDescriptor{(&pdpb.WatchEvent{}).ProtoReflect().Descriptor()}
 	for _, m := range messages {
@@ -135,7 +183,7 @@ func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, message
 		}
 		descriptors = append(descriptors, m.ProtoReflect().Descriptor())
 	}
-	s := &Server{batch: batch, watch: w, project: project}
+	s := &Server{watch: w, project: project}
 	if l := registered(); l != nil {
 		filters, err := l(descriptors)
 		if err != nil {
@@ -144,10 +192,6 @@ func New(batch pdpb.BatchServiceServer, w *watch.Watch, project Project, message
 		s.filters = filters
 	}
 	return s, nil
-}
-
-func (s *Server) Batch(ctx context.Context, req *pdpb.BatchRequest) (*pdpb.BatchResponse, error) {
-	return s.batch.Do(ctx, req)
 }
 
 // compile is the filter a subscription sent, as what its events are matched

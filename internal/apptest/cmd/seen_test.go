@@ -14,7 +14,6 @@ import (
 
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/pdid"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -182,29 +181,6 @@ func TestTheSinkComparesWhatItRemembers(t *testing.T) {
 	_, err = s.Pairing().Add(in, pair(mine, theirs))
 	x.ErrCode(codes.InvalidArgument, err)
 	x.Contains(err.Error(), "another tenant")
-}
-
-// A batch is one transaction, and the sink asks about a row once for all of
-// it. The gate asks once per operation: a batch narrows each one into a frame
-// of its own, and an answer for one frame is not proof about the next.
-func TestABatchAsksAboutARowOnce(t *testing.T) {
-	x := require.New(t)
-	b, ctx := build(t)
-	robot := b.robot(t, ctx, b.Tenant, "arm")
-
-	a := &asked{}
-	s, err := pd.Batch(b.Walled, a.on(b.Drv), closedGuard)
-	x.NoError(err)
-
-	ops := []*pdpb.Op{}
-	for i := range 5 {
-		ops = append(ops, op(t, app.ReadingService_Add_FullMethodName, reading(robot, float64(i))))
-	}
-	_, err = s.Do(b.as(ctx), pdpb.BatchRequest_builder{Ops: ops}.Build())
-	x.NoError(err)
-
-	x.Equal(1, a.tenancy, "the sink's read of the robot's tenant")
-	x.Equal(5, a.walled, "the gate's read through the wall, once for each operation's frame")
 }
 
 // A write to a row is what can make an answer about it wrong, and the Sink

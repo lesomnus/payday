@@ -167,17 +167,15 @@ func emitSubjects(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPa
 	g.P("}")
 	g.P("")
 	g.P("// envelopes are the fields payday packs a message into an `Any` in: a")
-	g.P("// batch's operations and answers, and a watch's events. What one holds is")
-	g.P("// read unpacked, and nothing inside it is unpacked again. An `Any` anywhere")
-	g.P("// else is the app's own data, which no declaration describes: it is passed")
-	g.P("// over, and a tenant it names is never taken for whose a row is.")
+	g.P("// watch's events. What one holds is read unpacked, and nothing inside it is")
+	g.P("// unpacked again. An `Any` anywhere else is the app's own data, which no")
+	g.P("// declaration describes: it is passed over, and a tenant it names is never")
+	g.P("// taken for whose a row is.")
 	g.P("var envelopes = map[", pkgReflect.Ident("FullName"), "]bool{")
 	for _, v := range []struct {
 		msg   string
 		field string
 	}{
-		{"Op", "request"},
-		{"BatchResponse", "results"},
 		{"WatchEvent", "value"},
 		{"WatchEvent", "previous"},
 	} {

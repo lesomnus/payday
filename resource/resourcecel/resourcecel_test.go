@@ -39,7 +39,7 @@ func identity(_ context.Context, v proto.Message) (proto.Message, error) { retur
 func testServer(t testing.TB, project resource.Project) (*resource.Server, *watch.Watch, *pdpb.WatchEvent) {
 	t.Helper()
 	w := watch.New(watch.Memory())
-	s, err := resource.New(&pdpb.UnimplementedBatchServiceServer{}, w, project)
+	s, err := resource.New(w, project)
 	require.NoError(t, err)
 	return s, w, created(t, "public")
 }

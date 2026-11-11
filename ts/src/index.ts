@@ -8,10 +8,10 @@
  * same rules a second time and finding out they drifted when a row goes missing.
  *
  * It is shipped for one reason above the others: an identifier can be made
- * here. A client that mints its own writes a batch of rows that already refer
- * to one another, so the batch API needs no language for "the thing I am about
- * to create" -- no placeholder, no two-pass fixup, no server-assigned handles
- * to swap back in.
+ * here. A client that mints its own writes rows that already refer to one
+ * another, so a call that takes several of them needs no language for "the
+ * thing I am about to create" -- no placeholder, no two-pass fixup, no
+ * server-assigned handles to swap back in.
  *
  * The two are separate modules and nothing here flattens them together, because
  * both have a `parse`, a `validate` and a `withDomain` and they mean different

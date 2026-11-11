@@ -285,9 +285,8 @@ or *holder* bound to a vendor's namespace. Using payday's shape should not mean
 being unable to leave.
 
 **`payday.` survives on the wire in exactly two places, and both are
-transports.** `/payday.BatchService/Do` takes several writes as one transaction
-and takes no position on what is in them; `/payday.TokenService/Introspect` says
-who an opaque token stands for. Neither describes your domain, and neither
+transports.** `/payday.ResourceService/Watch` streams what changed, of whatever
+entity; `/payday.TokenService/Introspect` says who an opaque token stands for. Neither describes your domain, and neither
 mentions an entity, so there is nothing per app in either of them to rename.
 They keep their names on purpose, the way `grpc.health.v1.Health` does: a
 **shared contract** is what a client written once finds in any payday app, and
@@ -494,11 +493,10 @@ that domain would be reading the caller's word rather than the schema's.
 its own with `bare.WithMinter` may refuse one, or replace it, and payday does
 not take a position. The same goes for the client: `pdid` mints in TypeScript
 from the same generated domains, but keeping what a page mints in step with
-what the server's minter accepts is the app's job. A batch that refers to rows
-it is creating ([the batch guide](guide/batch.md#4-referring-to-a-row-you-are-creating-in-the-same-batch)),
-and a write that waits for a connection
-([the client guide](guide/client.md#without-a-connection)), both rely on the
-server keeping the identifier.
+what the server's minter accepts is the app's job. An RPC of the app's own that
+writes rows referring to one another in one call, and a write that waits for a
+connection ([the client guide](guide/client.md#without-a-connection)), both rely
+on the server keeping the identifier.
 
 Reading is checked where a written reference is **parsed**, by `slug.Slug.Expect`
 and `pdcmd.Ref.Expect`. It is not the server's job, because the server is not

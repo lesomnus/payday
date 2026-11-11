@@ -26,7 +26,6 @@ import (
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/notify"
 	"github.com/lesomnus/payday/pdid"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
 	"github.com/lesomnus/payday/trail"
 	"github.com/lesomnus/z"
@@ -358,8 +357,6 @@ func TestNotifyPolicyCannotBeBypassedByOtherRoutes(t *testing.T) {
 	x.Equal(codes.PermissionDenied, status.Code(err))
 	_, err = f.b.Walled.NotificationRecord().Get(f.b.as(t.Context()), app.NotificationRecordGetRequest_builder{Ref: app.NotificationRecordRef_builder{Id: v.GetId()}.Build()}.Build())
 	x.Equal(codes.PermissionDenied, status.Code(err))
-	_, err = f.b.batched(t, closedGuard).Do(f.b.as(t.Context()), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{op(t, app.NotificationRecordService_Add_FullMethodName, request)}}.Build())
-	x.Equal(codes.PermissionDenied, status.Code(err), "Batch must enter the same sealed record path")
 
 	_, err = notificationMarked(f.client.Mark(f.b.travels(t.Context()), app.NotificationMarkRequest_builder{Refs: []*app.NotificationRef{app.NotificationRef_builder{Id: v.GetId()}.Build()}, TenantId: f.b.Tenant.Bytes()}.Build()))
 	x.NoError(err)

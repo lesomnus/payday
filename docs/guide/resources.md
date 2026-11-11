@@ -1,9 +1,12 @@
 # Operations across resources
 
-`payday.ResourceService` groups `Batch` and `Watch`. `Batch` accepts the existing
-`BatchRequest` and returns `BatchResponse`; it runs the same dispatcher and checks
-as the deprecated `BatchService.Do`, which remains registered for existing clients.
-`TokenService` remains separate because it concerns credentials.
+`payday.ResourceService` serves `Watch`: the committed changes to every resource
+type on one stream, filtered by an expression. `TokenService` remains separate
+because it concerns credentials.
+
+There is no batch. Several writes that hold or fall together are an act of the
+application's own, and so an RPC it declares and serves in one transaction:
+see [an RPC of your own](schema.md#an-rpc-of-your-own).
 
 ## Subscribe with CEL
 
@@ -25,10 +28,12 @@ for {
 }
 ```
 
-An empty filter accepts every authorized event. `event.method` names the operation
-that caused the mutation, including an operation inside Batch. `event.call_method`
-names the outer RPC, such as `/payday.ResourceService/Batch`. Direct writes use the
-generated write method unless their transaction names another origin.
+An empty filter accepts every authorized event. `event.method` names the RPC the
+caller asked for: `/app.RobotService/Add`, or an RPC of the application's own that
+wrote the row among others. A write nobody called over the wire names the
+generated write that made it. `event.call_method` names the outermost operation:
+what a custom transaction was named (`w.Transaction`, below), and otherwise the
+same as `method`.
 
 `value` is the mutation's postimage, absent on deletion. Updates omit `previous`
 by default. Applications can enable update preimages with
@@ -43,8 +48,9 @@ images contain keys, without expanded related resources.
 `id` identifies the event, not the resource. `date_created` is assigned while
 recording the change in its write transaction. It is neither the commit time nor
 the delivery time, and does not establish a total order across transactions.
-Repeated mutations remain separate. A Batch commits before publication, but its
-events are independently authorized and filtered; atomic receipt is not promised.
+Repeated mutations remain separate. A call that writes several rows commits before
+publication, but its events are independently authorized and filtered; atomic
+receipt is not promised.
 
 This is a live stream with no initial snapshot, replay cursor or exactly-once
 contract. Reconcile state with List after reconnecting. Outbox retries retain the
@@ -61,8 +67,8 @@ or projection cost, and does not change the resource-specific Watch implementati
 
 ## Wire the server
 
-The generated application template registers both service endpoints, and its
-process links the language a filter is written in:
+The generated application template registers the service, and its process links
+the language a filter is written in:
 
 ```go
 // cli/filter.go
@@ -72,7 +78,7 @@ import _ "github.com/lesomnus/payday/resource/resourcecel"
 Import it where a database driver is imported: in what only the process imports,
 never in `cmd` or anything else an app's sandbox imports, since whatever the
 sandbox imports is linked into the page -- CEL was 10 MB of payday's own. Without
-the import, `ResourceService` still serves `Batch` and a `Watch` with no filter,
+the import, `ResourceService` still serves a `Watch` with no filter,
 and refuses a filter with `Unimplemented` rather than ignoring it. To hold a
 sandbox to it, list what the page links: `GOOS=js GOARCH=wasm go list -tags
 grpcnotrace -deps ./wasm` names no `cel.dev/` package
@@ -81,20 +87,21 @@ grpcnotrace -deps ./wasm` names no `cel.dev/` package
 For an application with custom wiring:
 
 ```go
-guard := c.Server.Guard(policy)
-project := pd.ResourceProjector(db, scope, guard)
-resources, err := pd.Resources(stack, driver, guard, w, project)
+project := pd.ResourceProjector(db, scope, c.Server.Guard(policy))
+resources, err := pd.Resources(w, project)
 if err != nil { return err }
 pdpb.RegisterResourceServiceServer(grpcServer, resources)
-batch, err := pd.Batch(stack, driver, guard)
-if err != nil { return err }
-pdpb.RegisterBatchServiceServer(grpcServer, batch)
 ```
 
 Pass the same `bare.Scope` used by ordinary reads, including any grouped or custom
-scope. `ResourceProjector` applies Get restrictions in the subscription credential and
-the current application method policy,
-then evaluates that scope against a derived SQL row containing the recorded image.
+scope, and the same `gate.Policy` the interceptor is given. A row the stream sends
+is a read made on the subscriber's behalf, and gRPC dispatched the stream rather
+than that read, so none of the interceptors has seen it. The guard
+(`resource.Guard`, built from the same `ServerConfig` as the interceptors) holds it
+to what they would: for the resource's `Get`, the subscription credential's grant,
+the methods the deployment closed, that it is no download, and the current
+application method policy. `ResourceProjector` then
+evaluates that scope against a derived SQL row containing the recorded image.
 It does not depend on the current root row existing. Related-resource predicates
 use current related rows; removing a required parent denies access. Every included image must be readable. Default updates are authorized against
 the postimage only. With update preimages enabled, both sides must be readable,
@@ -155,8 +162,9 @@ turns on.
 
 Requested images also cost protobuf conversion/copying and relationship-key
 queries. Preimage row locks last until transaction completion, including an outer
-Batch transaction; SQLite instead relies on its write serialization/conflict
-behavior. The root-row lock is not an atomic snapshot of all related tables.
+transaction an RPC of the application's own began; SQLite instead relies on its
+write serialization/conflict behavior. The root-row lock is not an atomic snapshot
+of all related tables.
 The selector below runs after capture, so rejecting publication does not avoid
 capture costs. No subscribers being connected does not disable capture either.
 
@@ -166,8 +174,8 @@ the write transaction and controls both paths. A selector error rolls back the
 write. There is no client-controlled suppression flag. The combined recorder
 constructs and redacts the event once; the outbox stores that exact envelope.
 
-Install `w.Interceptor()` for ordinary unary RPCs; generated handlers and Batch
-commit before returning success. Custom transactions, including retries whose
+Install `w.Interceptor()` for ordinary unary RPCs; generated handlers commit
+before returning success. Custom transactions, including retries whose
 errors are caught by a handler, must isolate their notifications:
 
 ```go
@@ -209,5 +217,5 @@ sends to be retried without deleting rows. This is broker acceptance, not subscr
 receipt. A custom broker that does not implement that interface keeps its
 Publish behavior, and implements it to acknowledge asynchronous sends.
 
-Go contracts live in `pdpb`. TypeScript contracts, including both Batch endpoints,
-are exported from `@lesomnus/payday/pdpb`.
+Go contracts live in `pdpb`. TypeScript contracts are exported from
+`@lesomnus/payday/pdpb`.

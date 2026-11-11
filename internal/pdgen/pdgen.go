@@ -766,7 +766,7 @@ func (s *Schema) check() error {
 				return fmt.Errorf(
 					"%s asks for AddMany, and it is payday's: its rules are written for an Add "+
 						"of one row, and none of payday's entities has one but its Event and Fact "+
-						"-- an app adds them one at a time, or in a batch", v.FullName())
+						"-- an app adds them one at a time", v.FullName())
 			}
 		}
 		if u, ok := byDomain[v.Domain]; ok {

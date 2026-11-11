@@ -95,10 +95,10 @@ that means here", and neither is a line in a YAML file that a mistake can widen.
 
 One field and **two** places it is installed, which is why it is a field rather
 than an argument at a call site: `Grpc` hands it to `gate.Interceptor`, which
-covers the calls gRPC dispatches, and to `c.Server.Guard`, which covers the
-operations inside a batch. What that guard enforces per operation, and why it is
-refused rather than defaulted, is in
-[the batch guide](guide/batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
+covers the calls gRPC dispatches, and to `c.Server.Guard`, which covers the rows
+a Watch sends -- each read for its subscriber as the Get of its kind would be,
+which gRPC never dispatched. What that guard enforces is in
+[the resources guide](guide/resources.md).
 
 And the structural claim becomes a test: one test asserting that *the public
 stack does not return another tenant's row even to an HQ credential* is evidence

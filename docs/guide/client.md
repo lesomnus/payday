@@ -25,7 +25,7 @@ whose `src/` holds four TypeScript files, and only the last of them is yours:
 | | |
 | --- | --- |
 | `gen/` | messages, service descriptors, `domains.ts`, one `entities.ts` declaration per entity, and `events.ts`, the registry of what the app's events hold |
-| `src/client.ts` | `createClient` per service — for a script, a one-off call, or [several writes as one transaction](batch.md) |
+| `src/client.ts` | `createClient` per service — for a script, or a one-off call |
 | `src/store.ts` | the store and the queries a page reads through — §2 |
 | `src/main.tsx` | the transport, the credential, and the `Provider` around the page — §2 |
 | `src/session.tsx` | the same, signed in by a session cookie instead of holding a credential — §2 |
@@ -310,8 +310,8 @@ Six things are worth knowing before relying on it:
   waiting would keep the secret on disk in the clear -- and so is an `AddMany`
   one of whose items does, and any `Apply` to an entity that declares one: a
   patch says what it writes in terms only the server reads. Send it with
-  `call`. A secret in a batch or in an RPC of your own, such as a password, is
-  not visible here, so keep those out of `send` yourself.
+  `call`. A secret in an RPC of your own, such as a password, is not visible
+  here, so keep those out of `send` yourself.
 - **One tab sends.** Two tabs on one store both hold its queue. The one sending
   takes a Web Lock and re-reads the queue from the mirror first, so a write is
   sent once.

@@ -75,9 +75,8 @@ table is for finding the right one.
 | [`meter`](../meter) | what each tenant holds, measured on a schedule and on request, and handed to the app's sink: the readings of `pd.Meters` and of the app's own meters, and the convention for flows |
 | [`entitle`](../entitle) | what each tenant is entitled to: a copy of a source's grants, read in the transaction of the write it decides -- a limit locked there -- and the follower that keeps it, through the `pd.Entitlements` and `pd.EntitlementCopy` an app that declares one is generated |
 | [`watch`](../watch) | publishes what a call changed, once its transaction committed |
-| [`resource`](../resource) | the shared Batch and Watch service, and the event both of a change's delivery paths carry |
+| [`resource`](../resource) | the shared Watch service, the guard each row it sends is held to, and the event both of a change's delivery paths carry |
 | [`resource/resourcecel`](../resource/resourcecel) | CEL, the language a Watch filter is written in. A process imports it; a sandbox does not, and is 10 MB lighter for it |
-| [`batch`](../batch) | several writes as one transaction, with the four transport rules re-applied per operation |
 | [`pderr`](../pderr) | the shape of a refusal: which field, and why |
 | [`version`](../version) | what build is running, read from what the toolchain already stamps |
 | [`pdcmd`](../pdcmd) | the commands every app has, ready to mount on your binary |
@@ -89,7 +88,7 @@ table is for finding the right one.
 | | |
 | --- | --- |
 | [`schema`](../schema) | payday's own entities, embedded, so an app's copies can be checked against them |
-| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)`, `(payday.method)` — and for the services payday serves on an app's behalf or asks of another: `BatchService`, the `TokenService` that `auth.Remote` asks, and the `GrantService` an `entitle.Follower` follows |
+| [`pdpb`](../pdpb) | the generated Go for what a schema declares — `(payday.entity)`, `(payday.field)`, `(payday.app)`, `(payday.event)`, `(payday.method)` — and for the services payday serves on an app's behalf or asks of another: `ResourceService`, the `TokenService` that `auth.Remote` asks, and the `GrantService` an `entitle.Follower` follows |
 
 ## 3. What is generated
 
@@ -105,7 +104,6 @@ in CI is what keeps that true.
 | the `Gate` and `Audit` layers, and `Secret` where a field declared one | they overlay `app.Server`, which is generated |
 | the per-entity wall predicates | `tenanted: {via: …}` becomes `predicate.Robot` |
 | `List` and `Watch` — request, response, RPC, implementation | the ent query builder is your type |
-| the batch dispatcher | it has to know every RPC the app has |
 | whose data a message carries (`Subjects`, `SubjectRefs`), and the access record's recorder and writer | they read the app's messages by what its schema declared `personal`, and write its `Access` |
 | `pd.EventKinds`, in an app that declares a past: the message each kind of event holds, by kind -- a message of several kinds once for each | each is a message type of yours, read back from a row's `kind` |
 | `pd.Past`, in an app that declares a past: its Event and Fact as the `past` package writes and reads them, and the one writer of them the `Audit` layer lets through | a write goes through your servers on the operation's transaction, a read through your ent client, and the tenant of a subject is found as the trail finds a row's |
@@ -201,7 +199,7 @@ Everything payday enforces is placed as far left as it goes.
 | a download says what it is for | the access interceptor refuses one without `payday-reason-bin`, and one whose row cannot be written |
 | a request with no frame | refused. There is no scope that means "everything, because nobody asked" |
 | an event and what it is about commit together | `past.Begin` refuses a store on no transaction, and `pd.Past` puts the stack on the operation's driver rather than trusting it to be there |
-| the past is written by the `past` package alone | the generator writes it: the `Audit` layer refuses every write of Event and Fact that `pd.Past`'s store did not mark -- over the wire, in a batch, through the ungated instance, from the app's own code above it -- with `PermissionDenied`, and the mark is a context key only the generated package can make (see [the server guide](guide/server.md#except-the-pasts-which-payday-seals)) |
+| the past is written by the `past` package alone | the generator writes it: the `Audit` layer refuses every write of Event and Fact that `pd.Past`'s store did not mark -- over the wire, through the ungated instance, from the app's own code above it -- with `PermissionDenied`, and the mark is a context key only the generated package can make (see [the server guide](guide/server.md#except-the-pasts-which-payday-seals)) |
 | a name a sentence of the past says is on the access record | the runtime writes it: `past.Reading.Name` says whose data the name is (`access.Saw`) every time a sentence says it, and `pd.PastNames` reads the name through the wall |
 | an event a row that stays names outlives its window | the generator writes every column that says it names an event into the store the expiry asks, and refuses a column that says so and cannot be asked; the expiry takes no event a row that stays names, and what it takes it puts on the trail in the same transaction |
 | a column that names an event says so | `pd doctor` asks about a `TYPE_UUID` column named for an event -- `event_id`, `…_event_id` -- that does not; the expiry asks only the ones that do, and nothing fails while it takes the event the row names |
@@ -1635,11 +1633,11 @@ call that wrote one person's data and showed another's is a row of each.
 app.** A message holds somebody's data when it holds a field declared
 `personal` (#92), and its key is whose; the generated `pd.Subjects` reads any
 answer that way -- a `Get`, a list of a hundred, an edge two hops into a select,
-a batch's packed answers -- so an RPC an app adds is recorded without anybody
-saying what it shows. An `Any` is read only where payday packs one -- a batch's
-operations and answers, a watch's events -- and once: one an app's rows hold is
-its own data, which no declaration describes, and a message packed in one
-packed in another is work that grows with the square of its size. What no declaration can see, the app says:
+the rows a watch sends -- so an RPC an app adds is recorded without anybody
+saying what it shows. An `Any` is read only where payday packs one -- a watch's
+events -- and once: one an app's rows hold is its own data, which no
+declaration describes, and a message packed in one packed in another is work
+that grows with the square of its size. What no declaration can see, the app says:
 `access.Saw(ctx, ...)` for a name put into a sentence or a column of a file --
 and the past's sentences say their own, each name as `past.Reading.Name` puts it
 in one. A
@@ -1660,8 +1658,8 @@ call that carried nobody's data leaves nothing.
   is written before its answer leaves; one that cannot be recorded is refused.
   The reason is a sentence of any text, `access.MaxReason` bytes at most: a
   `-bin` key is base64 on the wire, which is what lets a browser send words a
-  plain header cannot carry. A download is called by itself, and a batch
-  refuses one as an operation;
+  plain header cannot carry. A download is called by itself, and a watch
+  sends no row of one;
 - a **read** is queued and written a second later with the others of its
   second (`access.Writer`, a loop each process runs for itself). A page is a
   dozen reads, and a statement in front of each would be the cost. The queue is
@@ -1709,8 +1707,7 @@ else, and keeping it is what the law that asks for it requires (개인정보보�
 **What payday does not decide**: which methods are downloads, which addresses
 to believe behind a proxy (`access.Config.Address`; `access.Peer` is the
 connection's), who may read the record (the generated `AccessService` is `Get`
-and `List` behind the wall, and the policy says who; it is no operation of a
-batch), and the monthly review.
+and `List` behind the wall, and the policy says who), and the monthly review.
 
 ## 7. What payday does not do
 

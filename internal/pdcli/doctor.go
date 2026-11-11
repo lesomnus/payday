@@ -403,8 +403,7 @@ func doctorWasmExec(ctx context.Context, l Layout) []Finding {
 // `enttx.Rebind` asks for the [enttx.Binder] at run time -- `any(s).(Binder[S])`
 // -- so a layer that does not answer `WithDriver` is not a compile error
 // anywhere. It is `ErrNotBindable` the first time somebody opens a transaction,
-// which is a batch or a multi-write RPC, which is not the day the layer was
-// written.
+// which is a multi-write RPC, which is not the day the layer was written.
 //
 // Embedding `Overlay` does not give it: `Overlay` embeds the generated `Server`
 // interface, and `WithDriver` is not one of its methods -- deliberately, since a

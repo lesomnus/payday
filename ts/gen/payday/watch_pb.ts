@@ -58,7 +58,7 @@ export type WatchEvent = Message<"payday.WatchEvent"> & {
   value?: Any | undefined;
 
   /**
-   * Originating operation, including the inner operation of a Batch.
+   * Originating operation: the RPC the write was served under.
    *
    * @generated from field: string method = 3;
    */
@@ -70,7 +70,8 @@ export type WatchEvent = Message<"payday.WatchEvent"> & {
   kind: ChangeKind;
 
   /**
-   * Outermost RPC; for example /payday.ResourceService/Batch.
+   * Outermost operation: what a custom transaction was named, and otherwise
+   * the same as method.
    *
    * @generated from field: string call_method = 7;
    */

@@ -34,3 +34,12 @@ lint:
 breaking:
   use:
     - FILE
+  # Until the first app launches, payday keeps nothing for an earlier payday
+  # (2026-11-09). There is no batch: several writes that hold or fall together
+  # are an RPC of the app's own, and `ResourceService` is its `Watch`. Remove
+  # once main and buf.build/payday/payday:dev have it.
+  ignore_only:
+    FILE_NO_DELETE:
+      - proto/payday/batch.proto
+    RPC_NO_DELETE:
+      - proto/payday/resource.proto

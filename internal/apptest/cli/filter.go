@@ -2,7 +2,7 @@ package cli
 
 // The language a Watch filter is written in: CEL, which `ResourceService.Watch`
 // evaluates for a subscription that sends one. Without this line the process
-// serves Batch, and a Watch with no filter, and refuses one that has a filter.
+// serves a Watch with no filter, and refuses one that has a filter.
 //
 // It is here and not in `cmd` for the reason the driver beside it is. `cmd` is
 // imported by the sandbox for `Build`, so whatever is named there is linked

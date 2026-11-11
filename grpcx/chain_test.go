@@ -99,8 +99,7 @@ func TestChain(t *testing.T) {
 // particular server constructor takes.
 //
 // A server compiled into a page speaks a datagram protocol rather than HTTP/2
-// and takes the same `grpc.UnaryServerInterceptor`; a batch of calls inside one
-// call has to apply them per operation. Neither can be handed
+// and takes the same `grpc.UnaryServerInterceptor`, and cannot be handed
 // `[]grpc.ServerOption`.
 func TestServingIsTheChain(t *testing.T) {
 	x := require.New(t)

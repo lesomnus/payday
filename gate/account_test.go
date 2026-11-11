@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdid"
 )
 
@@ -105,9 +105,9 @@ func TestTheGateAsksAboutTheMethodTheCallerAskedFor(t *testing.T) {
 	}{
 		{"a call nobody vouched for is not its to refuse", context.Background(), otherMethod, codes.OK},
 		{"a membership's call is not its to refuse", held(), otherMethod, codes.OK},
-		{"an account's call to another method", batch.AsOp(asAccount(a), otherMethod), otherMethod, codes.PermissionDenied},
-		{"an account's call to its own method", batch.AsOp(asAccount(a), ownMethod), ownMethod, codes.OK},
-		{"what its own method reads, through the servers behind", batch.AsOp(asAccount(a), ownMethod), otherMethod, codes.OK},
+		{"an account's call to another method", grpcx.AsMethod(asAccount(a), otherMethod), otherMethod, codes.PermissionDenied},
+		{"an account's call to its own method", grpcx.AsMethod(asAccount(a), ownMethod), ownMethod, codes.OK},
+		{"what its own method reads, through the servers behind", grpcx.AsMethod(asAccount(a), ownMethod), otherMethod, codes.OK},
 		{"with nothing dispatched, what is being served", asAccount(a), otherMethod, codes.PermissionDenied},
 		{"with nothing dispatched, its own method", asAccount(a), ownMethod, codes.OK},
 	} {
@@ -120,9 +120,9 @@ func TestTheGateAsksAboutTheMethodTheCallerAskedFor(t *testing.T) {
 	t.Run("a frame made for a method the schema does not mark is refused it", func(t *testing.T) {
 		x := require.New(t)
 
-		ctx := batch.AsOp(frame.Into(context.Background(), frame.OfAccount(a, frame.Whole(), func(string) bool { return true })), otherMethod)
+		ctx := grpcx.AsMethod(frame.Into(context.Background(), frame.OfAccount(a, frame.Whole(), func(string) bool { return true })), otherMethod)
 		x.Equal(codes.PermissionDenied, status.Code(gate.AsAccount(ctx, otherMethod, accountMethods)))
-		x.Equal(codes.PermissionDenied, status.Code(gate.AsAccount(batch.AsOp(asAccount(a), ownMethod), ownMethod, nil)),
+		x.Equal(codes.PermissionDenied, status.Code(gate.AsAccount(grpcx.AsMethod(asAccount(a), ownMethod), ownMethod, nil)),
 			"no methods are an account's own")
 	})
 }

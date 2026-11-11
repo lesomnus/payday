@@ -170,7 +170,7 @@ func TestACallThatChangedTooMuchArrivesInPieces(t *testing.T) {
 	c, stop := a.Subscribe()
 	defer stop()
 
-	const method = "/app.RobotService/Batch"
+	const method = "/app.RobotService/AddMany"
 
 	want := map[pdid.Id]bool{}
 	cs := make([]watch.Change, 0, 400)
@@ -191,7 +191,7 @@ func TestACallThatChangedTooMuchArrivesInPieces(t *testing.T) {
 		}
 	}
 
-	x.Equal(want, got, "a batch lost rows on the way through")
+	x.Equal(want, got, "a call lost rows on the way through")
 }
 
 // TestASubscriberThatFallsBehindIsCutOff, which is the same answer the memory

@@ -1670,8 +1670,8 @@ func emitSubject(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 // The rejected seam was to read the row before the erase stamps it and hand
 // the copy down to the recorder. That read has nowhere honest to live: the pd
 // layers run before the erase's transaction exists, so the copy can be stale
-// by the time the stamp lands -- and an erase made below them, by a batch or
-// by an app calling the sink, would still file the broken row. Reading back
+// by the time the stamp lands -- and an erase made below them, by an app
+// calling the sink, would still file the broken row. Reading back
 // inside the transaction costs the stamp being in `value`, and that is not a
 // cost: the value's contract is the row as the event left it, and a soft
 // erase leaves the row stamped.

@@ -115,8 +115,8 @@ writes. The generated Sink seals the notification record even when an
 outer Audit layer is omitted, and the receipt record has no RPC at all: `Mark`
 writes it, past the servers. Use the normal generated stack and recording
 hooks for the rest; bypassing it through another exposed store would remove
-that boundary. Neither Batch nor `ResourceService.Watch` is a second public
-path to notification contents. A client-supplied Topic or CEL filter is not
+that boundary. `ResourceService.Watch` is no second public path to
+notification contents. A client-supplied Topic or CEL filter is not
 authorization.
 
 `notify.Policy` governs `NotificationService`; it does not filter audit or outbox
@@ -551,7 +551,7 @@ including when no notification row has changed.
 - Resource and named Topics remain separate and isolated by tenant.
 - The Job example works for a Robot and for authorized Holder readers without
   making all readers Holders or creating subscription rows.
-- Topic policy cannot be bypassed through ID lookup, Read, raw CRUD, Batch,
+- Topic policy cannot be bypassed through ID lookup, Read, raw CRUD,
   relationship loading, or the resource stream.
 - Publication retries and concurrent Mark preserve identity and first times;
   rollback publishes nothing and commits preserve the required records.

@@ -78,9 +78,9 @@ type Layout struct {
 	//
 	// So there is no setting to turn on. Whatever the app calls its package is
 	// where these land, and `payday.` survives on the wire only on the services
-	// that are transports rather than domain concepts -- `payday.BatchService`
-	// and `payday.TokenService`, which have nothing per-app in them and which a
-	// generic client finds by those names.
+	// that are transports rather than domain concepts --
+	// `payday.ResourceService` and `payday.TokenService`, which have nothing
+	// per-app in them and which a generic client finds by those names.
 	//
 	// **One** package, and an app that declares two is refused, for the same
 	// reason as `go_package`: the copies have to say something, and there is no

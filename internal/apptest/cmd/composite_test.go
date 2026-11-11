@@ -10,8 +10,6 @@ import (
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lesomnus/payday/pdpb"
-
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
@@ -56,11 +54,12 @@ func (b jointsBuilder) Build(next app.Server) (app.Server, error) {
 // that only guards does not have to think about.
 //
 // Rebuilt with the original, this layer would open a transaction of its own on
-// another connection while running inside somebody else's -- a batch's -- and
-// the writes would be split between two of them. With the new one, the
-// transaction it begins is that one: `dialect.BeginTx` on a driver that is
-// already a transaction answers with a `Tx` that cannot end it, so the inner
-// `Commit` is a no-op and the work joins the transaction that wrapped it.
+// another connection while running inside somebody else's -- an RPC of the
+// app's own that writes several rows -- and the writes would be split between
+// two of them. With the new one, the transaction it begins is that one:
+// `dialect.BeginTx` on a driver that is already a transaction answers with a
+// `Tx` that cannot end it, so the inner `Commit` is a no-op and the work joins
+// the transaction that wrapped it.
 func (s joints) WithDriver(drv dialect.Driver) (app.Server, error) {
 	next, err := enttx.Rebind(s.Next(), drv)
 	if err != nil {
@@ -203,56 +202,51 @@ func TestAVerbRefusedHalfwayWritesNothing(t *testing.T) {
 	x.Equal(joints, gotJoints)
 }
 
-// TestCompletingAVerbInsideABatchIsOneTransaction is the half a layer that
-// carries its driver wrongly passes anyway.
+// TestCompletingAVerbInsideATransactionIsOneTransaction is the half a layer
+// that carries its driver wrongly passes anyway.
 //
-// A batch puts the whole stack on its own transaction, so this layer's `Add`
-// runs already inside one. What it then begins is that transaction rather than
-// a second: the driver it was rebound with is a transaction wearing a driver's
-// clothes, and what such a driver hands out is a `Tx` that cannot end it.
+// An RPC of the app's own that writes several rows as one puts the whole stack
+// on its own transaction (`enttx.Rebind`), so this layer's `Add` runs already
+// inside one. What it then begins is that transaction rather than a second:
+// the driver it was rebound with is a transaction wearing a driver's clothes,
+// and what such a driver hands out is a `Tx` that cannot end it.
 //
-// So a batch refused at its second operation takes the **first operation's
+// So a transaction refused at its second write takes the **first write's
 // joint** with it. A layer that had kept the original driver would have
 // committed that joint on another connection, and it would still be there.
-func TestCompletingAVerbInsideABatchIsOneTransaction(t *testing.T) {
+func TestCompletingAVerbInsideATransactionIsOneTransaction(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
 
 	robots, joints := b.rows(ctx, x)
 
-	s, err := pd.Batch(b.composed(t), b.Drv, closedGuard)
-	x.NoError(err)
-
 	tenant := app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build()
+	adds := func(aliases ...string) error {
+		drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+		x.NoError(err)
 
-	res, err := s.Do(b.as(ctx), pdpb.BatchRequest_builder{
-		Ops: []*pdpb.Op{
-			op(t, app.RobotService_Add_FullMethodName,
-				app.RobotAddRequest_builder{Tenant: tenant, Alias: "arm-02"}.Build()),
-			op(t, app.RobotService_Add_FullMethodName,
-				app.RobotAddRequest_builder{Tenant: tenant, Alias: "boom-02"}.Build()),
-		},
-	}.Build())
-	x.Error(err)
-	x.Nil(res)
+		s, err := enttx.Rebind(b.composed(t), drv)
+		x.NoError(err)
+		for _, v := range aliases {
+			if _, err := s.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{Tenant: tenant, Alias: v}.Build()); err != nil {
+				x.NoError(tx.Rollback())
+				return err
+			}
+		}
+
+		return tx.Commit()
+	}
+
+	x.Error(adds("arm-02", "boom-02"))
 
 	gotRobots, gotJoints := b.rows(ctx, x)
 	x.Equal(robots, gotRobots)
 	x.Equal(joints, gotJoints,
-		"the joint of the operation before the refusal was committed on its own")
+		"the joint of the write before the refusal was committed on its own")
 
-	// And the same batch without the refusal writes both halves of both
-	// operations, which is what says the assertions above are a rollback.
-	res, err = s.Do(b.as(ctx), pdpb.BatchRequest_builder{
-		Ops: []*pdpb.Op{
-			op(t, app.RobotService_Add_FullMethodName,
-				app.RobotAddRequest_builder{Tenant: tenant, Alias: "arm-03"}.Build()),
-			op(t, app.RobotService_Add_FullMethodName,
-				app.RobotAddRequest_builder{Tenant: tenant, Alias: "arm-04"}.Build()),
-		},
-	}.Build())
-	x.NoError(err)
-	x.Len(res.GetResults(), 2)
+	// And the same writes without the refusal leave both halves of both,
+	// which is what says the assertions above are a rollback.
+	x.NoError(adds("arm-03", "arm-04"))
 
 	gotRobots, gotJoints = b.rows(ctx, x)
 	x.Equal(robots+2, gotRobots)

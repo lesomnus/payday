@@ -4,8 +4,6 @@
 
 import type { GenFile, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { BatchRequestSchema, BatchResponseSchema } from "./batch_pb.js";
-import { file_payday_batch } from "./batch_pb.js";
 import type { WatchEventSchema, WatchRequestSchema } from "./watch_pb.js";
 import { file_payday_watch } from "./watch_pb.js";
 
@@ -13,7 +11,7 @@ import { file_payday_watch } from "./watch_pb.js";
  * Describes the file payday/resource.proto.
  */
 export const file_payday_resource: GenFile = /*@__PURE__*/
-  fileDesc("ChVwYXlkYXkvcmVzb3VyY2UucHJvdG8SBnBheWRheTJ8Cg9SZXNvdXJjZVNlcnZpY2USNAoFQmF0Y2gSFC5wYXlkYXkuQmF0Y2hSZXF1ZXN0GhUucGF5ZGF5LkJhdGNoUmVzcG9uc2USMwoFV2F0Y2gSFC5wYXlkYXkuV2F0Y2hSZXF1ZXN0GhIucGF5ZGF5LldhdGNoRXZlbnQwAUIhWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBiYghlZGl0aW9uc3DoBw", [file_payday_batch, file_payday_watch]);
+  fileDesc("ChVwYXlkYXkvcmVzb3VyY2UucHJvdG8SBnBheWRheTJGCg9SZXNvdXJjZVNlcnZpY2USMwoFV2F0Y2gSFC5wYXlkYXkuV2F0Y2hSZXF1ZXN0GhIucGF5ZGF5LldhdGNoRXZlbnQwAUIhWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBiYghlZGl0aW9uc3DoBw", [file_payday_watch]);
 
 /**
  * ResourceService provides operations across the application's resource types.
@@ -21,16 +19,6 @@ export const file_payday_resource: GenFile = /*@__PURE__*/
  * @generated from service payday.ResourceService
  */
 export const ResourceService: GenService<{
-  /**
-   * Runs operations in order in one transaction, checking access for each one.
-   *
-   * @generated from rpc payday.ResourceService.Batch
-   */
-  batch: {
-    methodKind: "unary";
-    input: typeof BatchRequestSchema;
-    output: typeof BatchResponseSchema;
-  },
   /**
    * Subscribes to committed changes. Response headers signal that the live
    * subscription is ready. There is no initial snapshot or replay on reconnect.

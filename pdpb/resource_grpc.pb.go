@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ResourceService_Batch_FullMethodName = "/payday.ResourceService/Batch"
 	ResourceService_Watch_FullMethodName = "/payday.ResourceService/Watch"
 )
 
@@ -29,8 +28,6 @@ const (
 //
 // ResourceService provides operations across the application's resource types.
 type ResourceServiceClient interface {
-	// Runs operations in order in one transaction, checking access for each one.
-	Batch(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error)
 	// Subscribes to committed changes. Response headers signal that the live
 	// subscription is ready. There is no initial snapshot or replay on reconnect.
 	Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error)
@@ -42,16 +39,6 @@ type resourceServiceClient struct {
 
 func NewResourceServiceClient(cc grpc.ClientConnInterface) ResourceServiceClient {
 	return &resourceServiceClient{cc}
-}
-
-func (c *resourceServiceClient) Batch(ctx context.Context, in *BatchRequest, opts ...grpc.CallOption) (*BatchResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BatchResponse)
-	err := c.cc.Invoke(ctx, ResourceService_Batch_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *resourceServiceClient) Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error) {
@@ -79,8 +66,6 @@ type ResourceService_WatchClient = grpc.ServerStreamingClient[WatchEvent]
 //
 // ResourceService provides operations across the application's resource types.
 type ResourceServiceServer interface {
-	// Runs operations in order in one transaction, checking access for each one.
-	Batch(context.Context, *BatchRequest) (*BatchResponse, error)
 	// Subscribes to committed changes. Response headers signal that the live
 	// subscription is ready. There is no initial snapshot or replay on reconnect.
 	Watch(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error
@@ -94,9 +79,6 @@ type ResourceServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedResourceServiceServer struct{}
 
-func (UnimplementedResourceServiceServer) Batch(context.Context, *BatchRequest) (*BatchResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Batch not implemented")
-}
 func (UnimplementedResourceServiceServer) Watch(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error {
 	return status.Error(codes.Unimplemented, "method Watch not implemented")
 }
@@ -121,24 +103,6 @@ func RegisterResourceServiceServer(s grpc.ServiceRegistrar, srv ResourceServiceS
 	s.RegisterService(&ResourceService_ServiceDesc, srv)
 }
 
-func _ResourceService_Batch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BatchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ResourceServiceServer).Batch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceService_Batch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceServiceServer).Batch(ctx, req.(*BatchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ResourceService_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(WatchRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -156,12 +120,7 @@ type ResourceService_WatchServer = grpc.ServerStreamingServer[WatchEvent]
 var ResourceService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "payday.ResourceService",
 	HandlerType: (*ResourceServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Batch",
-			Handler:    _ResourceService_Batch_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Watch",

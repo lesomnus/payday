@@ -490,10 +490,10 @@ func TestARowKeepsWhatAReadAskedForAndNoMore(t *testing.T) {
 }
 
 // TestAnAnyIsReadOnlyWherePaydayPackedOne is what the access record reads a
-// message for: a batch's operations and answers, unpacked once, and no `Any`
-// of the app's own. A message packed in one packed in another is work that
-// grows with the square of its size, for whoever sent it, and a tenant named
-// inside an app's `Any` is whatever its writer wrote.
+// message for: a watch's events, the row each holds unpacked once, and no
+// `Any` of the app's own. A message packed in one packed in another is work
+// that grows with the square of its size, for whoever sent it, and a tenant
+// named inside an app's `Any` is whatever its writer wrote.
 func TestAnAnyIsReadOnlyWherePaydayPackedOne(t *testing.T) {
 	x := require.New(t)
 	b, ctx := build(t)
@@ -503,51 +503,18 @@ func TestAnAnyIsReadOnlyWherePaydayPackedOne(t *testing.T) {
 	shown, err := b.Ungated.Holder().Get(ctx, get)
 	x.NoError(err)
 
-	batched := func(v *anypb.Any) *pdpb.BatchRequest {
-		return pdpb.BatchRequest_builder{
-			Ops: []*pdpb.Op{pdpb.Op_builder{Method: app.HolderService_Get_FullMethodName, Request: v}.Build()},
-		}.Build()
+	sent := func(v *anypb.Any) *pdpb.WatchEvent {
+		return pdpb.WatchEvent_builder{Value: v}.Build()
 	}
-	packed := must(anypb.New(get))
-	x.Equal([]access.Subject{{Id: alice}}, pd.SubjectRefs(batched(packed)), "an operation's request is read unpacked")
-	x.Empty(pd.SubjectRefs(batched(must(anypb.New(packed)))), "an Any packed in it is unpacked")
-	x.Empty(pd.SubjectRefs(batched(must(anypb.New(batched(packed))))), "a batch packed in it is unpacked")
-
-	answered := func(v *anypb.Any) *pdpb.BatchResponse {
-		return pdpb.BatchResponse_builder{Results: []*anypb.Any{v}}.Build()
+	was := func(v *anypb.Any) *pdpb.WatchEvent {
+		return pdpb.WatchEvent_builder{Previous: v}.Build()
 	}
 	held := must(anypb.New(shown))
-	x.Equal([]access.Subject{{Id: alice, Tenant: b.Tenant}}, pd.Subjects(answered(held)), "a batch's answer is read unpacked")
-	x.Empty(pd.Subjects(answered(must(anypb.New(held)))), "an Any packed in it is unpacked")
-	x.Empty(pd.Subjects(answered(must(anypb.New(answered(held))))), "an answer packed in it is unpacked")
+	x.Equal([]access.Subject{{Id: alice, Tenant: b.Tenant}}, pd.Subjects(sent(held)), "an event's row is read unpacked")
+	x.Equal([]access.Subject{{Id: alice, Tenant: b.Tenant}}, pd.Subjects(was(held)), "and the row it was before")
+	x.Empty(pd.Subjects(sent(must(anypb.New(held)))), "an Any packed in it is unpacked")
+	x.Empty(pd.Subjects(sent(must(anypb.New(sent(held))))), "an event packed in it is unpacked")
 	x.Empty(pd.Subjects(held), "an Any of the app's own is read")
-}
-
-// TestADownloadIsNotAnOperationOfABatch: a download says what it is for, and
-// its row is written before its answer leaves -- neither of which an
-// operation of a batch can do -- so a batch refuses one rather than let it out
-// as the batch's read.
-func TestADownloadIsNotAnOperationOfABatch(t *testing.T) {
-	x := require.New(t)
-	b, ctx := build(t)
-	b.person(t, ctx, "alice")
-
-	b.Downloads = []string{app.HolderService_List_FullMethodName}
-	conn := pdtest.Serve(t, b.grpc(t))
-	why := metadata.AppendToOutgoingContext(b.travels(ctx), access.ReasonKey, "October's payroll")
-	req := pdpb.BatchRequest_builder{
-		Ops: []*pdpb.Op{op(t, app.HolderService_List_FullMethodName, app.HolderListRequest_builder{}.Build())},
-	}.Build()
-
-	_, err := pdpb.NewBatchServiceClient(conn).Do(why, req)
-	x.Equal(codes.InvalidArgument, status.Code(err))
-	x.Contains(err.Error(), "by itself")
-
-	_, err = pdpb.NewResourceServiceClient(conn).Batch(why, req)
-	x.Equal(codes.InvalidArgument, status.Code(err))
-	x.Contains(err.Error(), "by itself")
-
-	x.Empty(b.accessed(t, ctx), "a refused batch carried somebody")
 }
 
 // TestADownloadSaysWhatItIsFor is the rule a download is under (payday#111):

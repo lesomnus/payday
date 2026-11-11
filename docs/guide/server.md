@@ -272,15 +272,16 @@ each:
 Nothing has to be said for the writes to be cheap. A transaction `BeginTx`
 began keeps what the gate and the sink were told about the rows it names, and
 asks each of them once per row rather than once per reference -- the difference
-between a write that names a robot and a hundred that do. Inside a batch, this
-one is the batch's, and what the batch asked carries on into it.
+between a write that names a robot and a hundred that do. Inside a transaction
+somebody else began, this one is theirs, and what they asked carries on into it.
 
-And the reason `WithDriver` above hands on the driver it was given: inside a
-batch, this `Add` is already running in somebody else's transaction, because a
-batch puts the whole stack on one. Rebound with that driver, the transaction
-this method begins **is** that one — `dialect.BeginTx` on a driver that is
-already a transaction answers with a `Tx` that cannot end it, so the inner
-`Commit` is a no-op and the writes hold or fall with the batch. Rebuilt with the
+And the reason `WithDriver` above hands on the driver it was given: inside an
+RPC of your own that adds a robot among other rows, this `Add` is already
+running in somebody else's transaction, because that RPC put the whole stack on
+one. Rebound with that driver, the transaction this method begins **is** that
+one — `dialect.BeginTx` on a driver that is already a transaction answers with a
+`Tx` that cannot end it, so the inner `Commit` is a no-op and the writes hold or
+fall with the outer ones. Rebuilt with the
 original driver instead, it would open a second transaction on another
 connection: the writes split between two, and on SQLite the second waits out
 `busy_timeout` for a lock the first is holding. (What `BeginTx` refuses is a
@@ -299,7 +300,8 @@ for a failure that was not a statement's.
 
 The whole of it is compiled and run in
 `internal/apptest/cmd/composite_test.go` — one call writing both rows, a refusal
-halfway writing neither, and the same verb inside a batch.
+halfway writing neither, and the same verb inside a transaction somebody else
+began.
 
 ### The one thing that is easy to forget
 
@@ -335,7 +337,8 @@ underneath yours and answer with a stack your layer is not in.
 
 And nothing catches it at compile time: `enttx.Rebind` asks at run time, so a
 layer without it is `ErrNotBindable` the first time somebody opens a transaction
-— a batch, or a multi-write RPC — which is not the day the layer was written.
+— an RPC that writes several rows, or a verb completed as above — which is not
+the day the layer was written.
 
 `pd doctor` looks for exactly this. The `enttx.Binder` line above is what it
 prints at the end of the fix, and it is worth keeping: it turns a signature that
@@ -367,15 +370,13 @@ reaching those methods directly.
 
 Which verbs are internal is a property of your app, not of the schema, so payday
 leaves it to you -- all but the past's, which it decides
-([below](#except-the-pasts-which-payday-seals)). There are two ways, and **both
-cover a batch**.
+([below](#except-the-pasts-which-payday-seals)). There are two ways.
 
 **Leave them out of your `gate.Policy`.** A policy that answers from a list of
 what each caller may do refuses every method the list does not name. A verb
-nobody listed is then closed to every caller. The interceptor asks the policy
-for each call, and the batch `Guard` asks it again for each operation inside a
-batch, so one list closes both paths. It also fails closed: an entity added
-later starts with no callers until somebody lists them.
+nobody listed is then closed to every caller, since the interceptor asks the
+policy for each call. It also fails closed: an entity added later starts with no
+callers until somebody lists them.
 
 ```go
 func (p policy) May(ctx context.Context, c gate.Call) error {
@@ -393,8 +394,7 @@ func (p policy) May(ctx context.Context, c gate.Call) error {
 **Or refuse them in a layer above the one that writes them.** The layer answers
 those methods with `PermissionDenied`, or `Unimplemented` if you would rather not
 say they exist. The operations that write the rows sit **below** it and write
-through their own `Next()`, so they never pass it. A caller enters at the top,
-and so does a batch, because a batch dispatches into the same stack.
+through their own `Next()`, so they never pass it. A caller enters at the top.
 
 ```go
 type sealedHistory struct {
@@ -420,9 +420,6 @@ stacked, _ := app.Build(sink.WithWatch(w), pd.AuditBuild(), pd.GateBuild(), doma
 
 What does **not** work:
 
-- **An interceptor of your own.** A batch arrives as one call to
-  `BatchService/Do`, so your interceptor sees that method and not the ones
-  inside it. The batch `Guard` asks the `gate.Policy`, not your interceptor.
 - **`rpc: {add: {disabled: true}}`.** It removes the method from the generated
   server, and with it the path your own layer writes through.
 - **`grpcx.GeneralWrite`.** It opens or closes `Patch` and `Apply` for every
@@ -434,8 +431,8 @@ payday's own Event and Fact, in an app that keeps a past (payday#151), are
 the exception: which of their verbs are internal is not left to you. The
 generated `Audit` layer refuses every write of either that the `past`
 package did not make -- `Add` and `AddMany` of both, `Patch` and `Apply` of a
-fact -- from a caller over the wire, inside a batch, through `Ungated`, or
-from your own code through the stack, with `PermissionDenied`:
+fact -- from a caller over the wire, through `Ungated`, or from your own
+code through the stack, with `PermissionDenied`:
 
 ```
 a past is written by the past package: an event by past.Begin, and a fact by the op it answers
@@ -459,7 +456,7 @@ payday's, and not a property of your app:
 
 How the layer tells: `pd.Past`'s store marks each context it hands the servers
 with a key of the generated `pd` package's own, which nothing outside that
-package can make -- not your code, not a batch, not gRPC -- and the layer lets
+package can make -- not your code, not gRPC -- and the layer lets
 a write through on that mark alone. It is not about who is asking, so it is no
 credential anybody could hold; and the store marks no other context, not the
 one an operation goes on with nor the one `pd.PastIn` hands its work.
@@ -700,7 +697,8 @@ being conventions:
   it that can turn it off, and that is the point of it being there.
 - **The trail** is written inside the transaction that makes the write, so it
   cannot be a layer that forgets. In a transaction begun with
-  `dialect.BeginTx` — a batch, a layer that writes several rows — it is
+  `dialect.BeginTx` — a verb completed in a layer, an RPC of your own that
+  writes several rows — it is
   written together, a statement for every few hundred rows rather than one
   each: by the commit, and ahead of any statement in the transaction that
   names the trail's table, which so finds every row of it.
@@ -728,9 +726,10 @@ chain := grpcx.Serving(ctx, grpcx.WithDeadline(c.Server.CallTimeout())).
 until a deployment sets one. Both are **fields on the server** rather than
 settings, for the same reason: a mistake in a YAML file must not be able to turn
 authentication off or widen what a caller sees. `s.Policy` also goes to
-`c.Server.Guard` further down, which is what applies it to the operations inside
-a batch rather than to the envelope that carries them; see
-[the guard](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
+`c.Server.Guard` further down, which is what applies it to each row a
+`ResourceService.Watch` sends: a read the stream makes for its subscriber, which
+no interceptor sees, since gRPC dispatched the stream rather than the read; see
+[wiring the resource API](resources.md#wire-the-server).
 
 A server that only its own process can reach takes `auth.PlainInProcess()` in
 `s.Auth` instead. That is one served on an in-memory listener, such as another
@@ -769,8 +768,7 @@ app's:
 - **`Downloads`**, in `s.Downloads`: the methods that hand personal data out to
   be kept somewhere else -- an export, a file. Each is refused without a
   `payday-reason-bin` header saying what it is for -- any text, base64 on the wire as a `-bin` key is, so a page sends it with connect-es's `encodeBinaryHeader` --, and its row is written before
-  its answer leaves. It is called by itself: a batch refuses one as an
-  operation.
+  its answer leaves.
 
 And one is the app's code: what shows a person's data where no `personal`
 field carries it -- a name rendered into a sentence, a column of a CSV -- says
@@ -1340,8 +1338,8 @@ it.
   part of that answer is enforced.
 - [Declaring an entity](schema.md) — what the schema says and what follows
   from it.
-- [Several writes at once](batch.md) — one transaction, and the four rules that
-  have to be re-applied per operation.
+- [An RPC of your own](schema.md#an-rpc-of-your-own) — an act the generated
+  verbs do not name, several writes that hold or fall together among them.
 - [Putting a login in front of an app](signing-in.md) — the endpoint that mints
   a cookie, and the handler that reads it back.
 - [Testing](testing.md) — the two seams that make an answer comparable.

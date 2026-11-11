@@ -28,9 +28,9 @@
 //
 // What the gate learns is kept per frame, since a frame is what a read through
 // the wall is narrowed by and another frame is another question. By identity
-// rather than by comparing what two frames say: a batch narrows each of its
-// operations into a frame of its own, and an answer for one of them is not
-// proof about the next. What the sink learns is about the row and not about
+// rather than by comparing what two frames say: two calls narrowed alike are
+// still two frames, and an answer for one of them is not proof about the
+// next. What the sink learns is about the row and not about
 // who is asking, so every frame in the transaction shares it.
 //
 // Nothing the gate learns is kept for a call an account makes as itself

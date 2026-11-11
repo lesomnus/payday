@@ -55,9 +55,9 @@ func ClosedStream(is func(method string) bool) grpc.StreamServerInterceptor {
 // also what a caller reading the reflection listing should take from finding
 // the method there.
 //
-// It is exported for the same reason the bare interceptors are: a batch of
-// calls inside one call applies these rules per operation, and it has to refuse
-// in the same words the transport would have.
+// It is exported for what applies the rule to a method gRPC did not dispatch
+// -- a row a Watch reads for its subscriber (`resource.Guard`) -- which has to
+// refuse in the same words the transport would have.
 func ErrClosed(method string) error {
 	return status.Errorf(codes.Unimplemented, "%s is not served; it is how the servers write, not how a caller asks", method)
 }
