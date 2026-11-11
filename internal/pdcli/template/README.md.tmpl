@@ -158,7 +158,11 @@ be made on purpose, not left on.
 `Migrate` also refuses an index the schema declares that PostgreSQL left
 invalid -- a build `CONCURRENTLY` that did not finish, which a migration finds
 by its name and would take for made -- and prints the statements that make it
-again. `serve` says one and serves. See payday's `valid`.
+again. `serve` says one and serves. And both refuse a column an earlier build
+declared and this one does not, where it is NOT NULL with no default: a
+migration drops no column, and nothing this build writes would give it a
+value, so every row written to its table would be refused. What drops it is
+printed. See payday's `valid`.
 
 ## Adding an entity
 

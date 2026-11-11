@@ -1162,6 +1162,18 @@ before `Apply`. Any other index PostgreSQL holds invalid -- the copy a `REINDEX
 CONCURRENTLY` left, an operator's own -- is said in the log and refused nowhere.
 On SQLite it answers nil: a build there is in its transaction or not at all.
 
+The migration drops no column either, and that is the other thing it would take
+for in shape. A column an earlier build declared and this one does not -- a
+field taken out of the schema, one an overlay declared and the app took back --
+stays where it was, and if it is NOT NULL with no default, nothing this build
+writes gives it a value: every row written to its table is refused from then on.
+`valid.Columns` refuses such a column on a table the schema declares, on
+PostgreSQL and SQLite, and prints the statement that drops it -- or, on
+PostgreSQL, gives it a default, which keeps what it holds. `pd new`'s `Migrate`
+asks it beside `valid.Indexes`. A leftover that takes a row without a value,
+nullable or with a default, costs a write nothing and is left alone, unsaid: a
+deployment may keep one on purpose, as `entschema.Check` assumes too.
+
 ### And a check before serving
 
 ```go
@@ -1189,6 +1201,12 @@ told rather than refusing: an invalid index costs every write and the reads
 that wanted it, which is a thing to fix and not a reason to stop serving -- a
 server that refused would make its next restart an outage until somebody had
 built the index again. Migrating is what refuses it.
+
+A column it does not ask after either, since it asks only what is missing. It
+asks `valid.Columns` too, and that one it refuses: a column nothing writes that
+takes no row without a value is not a cost to every write but the end of every
+write to its table, and a server that started on it would fail in whichever
+handler wrote there first.
 
 ## 8. The commands
 

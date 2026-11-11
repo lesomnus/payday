@@ -44,6 +44,9 @@ if err := rename.Indexes(ctx, s.Db, s.Dialect, pd.IndexRenames); err != nil {
 if err := valid.Indexes(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
 	return err
 }
+if err := valid.Columns(ctx, s.Db, s.Dialect, entmigrate.Tables); err != nil {
+	return err
+}
 return entmigrate.NewSchema(s.Drv).Create(ctx)
 ```
 

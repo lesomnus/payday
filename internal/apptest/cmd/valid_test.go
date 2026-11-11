@@ -10,10 +10,12 @@ import (
 	"github.com/lesomnus/otx/log"
 	"github.com/protobuf-orm/ent/dialect"
 	entschema "github.com/protobuf-orm/ent/dialect/sql/schema"
+	entfield "github.com/protobuf-orm/ent/schema/field"
 	"github.com/stretchr/testify/require"
 
 	"github.com/lesomnus/payday/config"
 	"github.com/lesomnus/payday/pdtest"
+	"github.com/lesomnus/payday/rename"
 	"github.com/lesomnus/payday/valid"
 
 	"github.com/lesomnus/payday/internal/apptest/cli"
@@ -129,4 +131,50 @@ func execAll(t *testing.T, db *sql.DB, qs ...string) {
 		_, err := db.ExecContext(t.Context(), q)
 		require.NoError(t, err, q)
 	}
+}
+
+// TestAColumnAnEarlierBuildDeclaredThatTakesNoRowWithoutOneIsRefused: a store
+// an earlier build made, with a column this build does not declare that is NOT
+// NULL with no default -- the event's `desc`, as an app's overlay declared it
+// before an event's `desc` was in no column. A migration leaves it where it is
+// and `entschema.Check` passes it, and then every event written is refused.
+// `cli.Migrate` refuses it first instead, naming it and the statement that
+// drops it; what it says to run drops it; and then the store migrates and an
+// event is written.
+func TestAColumnAnEarlierBuildDeclaredThatTakesNoRowWithoutOneIsRefused(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+	db := dbOf(t)
+
+	// The store as the earlier build made it: this build's tables, and the
+	// column beside the event's.
+	s, err := cmd.Build(ctx, cmd.Config{Db: db, Watch: config.WatchConfig{Broker: config.BrokerMemory}})
+	x.NoError(err)
+	t.Cleanup(func() { s.Close() })
+	earlier := asEarlier(entmigrate.Tables, rename.Table{From: "none", To: "none"})
+	for _, tb := range earlier {
+		if tb.Name == "event" {
+			tb.Columns = append(tb.Columns, &entschema.Column{Name: "desc", Type: entfield.TypeString})
+		}
+	}
+	x.NoError(entmigrate.Create(ctx, entmigrate.NewSchema(s.Drv), earlier))
+	x.NoError(entschema.Check(ctx, s.Db, s.Dialect, entmigrate.Tables), "the shape a server checks for, which says nothing of it")
+
+	err = cli.Migrate(ctx, s)
+	x.ErrorIs(err, valid.ErrUnknownRequired)
+	x.ErrorContains(err, "event.desc")
+
+	run := []string{}
+	for _, line := range strings.Split(err.Error(), "\n") {
+		if line = strings.TrimSpace(line); strings.HasPrefix(line, "ALTER TABLE ") {
+			run = append(run, line)
+		}
+	}
+	x.Len(run, 1)
+	execAll(t, s.Db, run...)
+	x.NoError(cli.Migrate(ctx, s))
+
+	// And an event is written, as the past writes one.
+	b, ctx := buildOn(t, db, config.WatchConfig{Broker: config.BrokerMemory})
+	b.serviced(t, b.as(ctx), machine(t, b, b.as(ctx)), b.person(t, ctx, "alice"))
 }
