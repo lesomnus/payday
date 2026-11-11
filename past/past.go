@@ -37,8 +37,8 @@
 //
 // The app's Event and Fact are written by this package and by nothing else:
 // the generated Audit layer refuses every write of either that `pd.Past`'s
-// store did not hand the servers -- a call over the wire, an operation of a
-// batch, the ungated server, the app's own code -- with PermissionDenied. A
+// store did not hand the servers -- a call over the wire, the ungated server,
+// the app's own code -- with PermissionDenied. A
 // fact written by hand is a row no read here can be sure of, and an event that
 // names its own actor is who did it, forged. The store marks each context it
 // hands the servers with a key only the generated package can make, wherever

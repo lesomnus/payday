@@ -28,8 +28,8 @@ type Call struct {
 	// caller ([Records]).
 	operator, operatorTenant pdid.Id
 
-	// downloads are the methods [Config.Downloads] names, for what serves
-	// several in one call to ask of each ([IsDownload]).
+	// downloads are the methods [Config.Downloads] names, for what reads a
+	// method gRPC did not dispatch to ask of it ([IsDownload]).
 	downloads []string
 
 	// subjects is everybody the call carried, in the order it did; of is what
@@ -97,8 +97,9 @@ func (c *Call) add(wrote bool, subjects ...Subject) {
 }
 
 // IsDownload answers whether `method` is one [Config.Downloads] names, as the
-// call in `ctx` was told: what a batch asks of each of its operations, since
-// gRPC dispatched the batch and not them.
+// call in `ctx` was told: what a Watch asks of the read it makes for each row
+// it sends (`resource.Guard`), since gRPC dispatched the stream and not the
+// reads.
 func IsDownload(ctx context.Context, method string) bool {
 	c, ok := Of(ctx)
 	return ok && slices.Contains(c.downloads, method)

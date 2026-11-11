@@ -68,11 +68,11 @@
  * # Why this exists on this side at all
  *
  * Making an identifier is the one thing a client cannot ask the server for
- * without waiting for it. A client that can make its own writes a batch of rows
- * that already refer to one another, so the batch API needs no language for
- * "the thing I am about to create" -- and the same code names a row it is about
- * to send, holds it in a local store, and finds it again when the round trip
- * comes back.
+ * without waiting for it. A client that can make its own writes rows that
+ * already refer to one another, so a call that takes several of them needs no
+ * language for "the thing I am about to create" -- and the same code names a
+ * row it is about to send, holds it in a local store, and finds it again when
+ * the round trip comes back.
  *
  * @module
  */

@@ -94,7 +94,7 @@ func TestARefusalIsAskedAgain(t *testing.T) {
 }
 
 // What one frame may see is not an answer about another, even when the two say
-// the same thing: a batch narrows each operation into a frame of its own.
+// the same thing: each call is narrowed into a frame of its own.
 func TestAnotherFrameIsAnotherQuestion(t *testing.T) {
 	x := require.New(t)
 	ctx, drv := t.Context(), begun(t, driver{})

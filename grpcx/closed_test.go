@@ -81,8 +81,8 @@ func TestClosed(t *testing.T) {
 //
 // The guard lived in the option constructor, which answers with no options at
 // all when there is nothing to close. Everything that takes the interceptors as
-// functions -- a chain for a server that is not gRPC's, a batch applying them
-// per operation -- reaches them without going past it.
+// functions -- a chain for a server that is not gRPC's -- reaches them without
+// going past it.
 func TestNothingClosedIsNothingClosed(t *testing.T) {
 	x := require.New(t)
 

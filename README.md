@@ -29,8 +29,7 @@ it is generated rather than remembered.
   says how to reach the deployment, mounted wherever the app puts them; the
   output formats, the words a command answers to, and a command for an RPC of
   your own.
-- [docs/](docs/) — the rest: [batch](docs/guide/batch.md),
-  [keeping a past](docs/guide/past.md),
+- [docs/](docs/) — the rest: [keeping a past](docs/guide/past.md),
   [more than one proto package](docs/guide/packages.md),
   [refusals](docs/guide/errors.md), [signing somebody in](docs/guide/signing-in.md),
   [testing](docs/guide/testing.md) and [upgrading](docs/guide/upgrading.md), and the
@@ -117,9 +116,9 @@ does not have to try every table. See [`pdid`](pdid).
 people, and nobody calling your API should have to learn the name of the
 framework it was built with.
 
-One name survives on the wire, `payday.BatchService`, and it is a transport
-rather than a domain concept: several writes as one transaction, taking `Any`
-and taking no position on what is in it. It keeps its name the way
+One name survives on the wire, `payday.ResourceService`, and it is a transport
+rather than a domain concept: a live stream of what changed, of whatever entity,
+each row sent as its subscriber may read it. It keeps its name the way
 `grpc.health.v1.Health` does, so a client written once finds it in any payday
 app.
 
@@ -137,7 +136,6 @@ app.
 | [`watch`](watch) · [`spin`](spin) | publishing what changed, and the loops that do it |
 | [`meter`](meter) | what each tenant holds, measured and handed to a billing service's client |
 | [`entitle`](entitle) | what each tenant is entitled to, copied from a source of grants and read in the write's transaction |
-| [`batch`](batch) | several writes as one transaction |
 | [`web`](web) | the port a browser reaches |
 | [`version`](version) | refusing a server whose payday moved |
 | [`rename`](rename) · [`valid`](valid) | what a migration asks of a database before it finds a table, a column or an index by name: what was renamed moved first, an index left invalid refused, and a column nothing writes that takes no row without a value refused |

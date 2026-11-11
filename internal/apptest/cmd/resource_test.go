@@ -18,6 +18,7 @@ import (
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
 	"github.com/lesomnus/payday/internal/apptest/server/pd"
 	"github.com/protobuf-orm/ent/dialect"
+	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"google.golang.org/grpc"
 
 	"github.com/lesomnus/z"
@@ -26,6 +27,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/lesomnus/payday/grpcx"
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
@@ -213,23 +215,24 @@ func TestResourceWatchRejectsInvalidFilters(t *testing.T) {
 	}
 }
 
-func TestResourceBatchAndOutboxShareEnvelope(t *testing.T) {
+// One call's changes reach a subscriber as one publication, live, and each the
+// same again when the outbox replays it; and a call that wrote nothing in the
+// end -- its transaction rolled back -- publishes nothing and leaves no row to
+// replay.
+func TestResourceWatchAndOutboxShareEnvelope(t *testing.T) {
 	x := require.New(t)
 	b, ctx := queued(t)
 	conn := pdtest.Serve(t, b.grpc(t))
-	c := pdpb.NewResourceServiceClient(conn)
+	c := app.NewRobotServiceClient(conn)
 	events, stop := b.Watch.Subscribe()
 	defer stop()
-	req := func(alias string) *pdpb.Op {
-		return op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: alias}.Build())
-	}
-	_, err := c.Batch(b.travels(ctx), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{req("one"), req("two")}}.Build())
+	_, err := c.AddMany(b.travels(ctx), robots(b.Tenant, "one", "two"))
 	x.NoError(err)
 	live := <-events
 	x.Len(live.Changes, 2)
 	for _, change := range live.Changes {
-		x.Equal(app.RobotService_Add_FullMethodName, change.Resource.GetMethod())
-		x.Equal(pdpb.ResourceService_Batch_FullMethodName, change.Resource.GetCallMethod())
+		x.Equal(app.RobotService_AddMany_FullMethodName, change.Resource.GetMethod())
+		x.Equal(app.RobotService_AddMany_FullMethodName, change.Resource.GetCallMethod())
 	}
 	x.NotEqual(live.Changes[0].Resource.GetId(), live.Changes[1].Resource.GetId())
 	x.NoError(drainOnce(t, b))
@@ -238,11 +241,11 @@ func TestResourceBatchAndOutboxShareEnvelope(t *testing.T) {
 		x.True(proto.Equal(live.Changes[i].Resource, replayed.Changes[0].Resource))
 		x.Equal(live.Method, replayed.Method)
 	}
-	_, err = c.Batch(b.travels(ctx), pdpb.BatchRequest_builder{Ops: []*pdpb.Op{req("rollback"), req("rollback")}}.Build())
+	_, err = c.AddMany(b.travels(ctx), robots(b.Tenant, "rollback", "rollback"))
 	x.Error(err)
 	select {
 	case <-events:
-		t.Fatal("rolled-back batch published a change")
+		t.Fatal("a rolled-back call published a change")
 	default:
 	}
 	n, err := b.Ent.Outbox.Query().Count(ctx)
@@ -364,15 +367,29 @@ type failedCommitTx struct{ dialect.Tx }
 
 func (t failedCommitTx) Commit() error { _ = t.Tx.Rollback(); return errors.New("commit refused") }
 
-func TestResourceBatchFailedCommitDoesNotPublish(t *testing.T) {
+// An RPC of the app's own that writes several things as one puts the stack on
+// a transaction of its own; one whose commit fails answered with the error,
+// and what it wrote is published nowhere and left in no outbox.
+func TestResourceFailedCommitDoesNotPublish(t *testing.T) {
 	x := require.New(t)
 	b, ctx := queued(t)
-	server, err := pd.Resources(b.Walled, failedCommitDriver{b.Drv}, closedGuard, b.Watch, pd.ResourceProjector(b.Ent, pd.Wall(), closedGuard))
-	x.NoError(err)
 	events, stop := b.Watch.Subscribe()
 	defer stop()
-	req := pdpb.BatchRequest_builder{Ops: []*pdpb.Op{op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: "uncommitted"}.Build())}}.Build()
-	_, err = b.Watch.Unary()(b.as(ctx), req, &grpc.UnaryServerInfo{FullMethod: pdpb.ResourceService_Batch_FullMethodName}, func(ctx context.Context, _ any) (any, error) { return server.Batch(ctx, req) })
+	req := app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: "uncommitted"}.Build()
+	_, err := b.Watch.Unary()(b.as(ctx), req, &grpc.UnaryServerInfo{FullMethod: "/app.Jobs/Import"}, func(ctx context.Context, _ any) (any, error) {
+		drv, tx, err := dialect.BeginTx(ctx, failedCommitDriver{b.Drv})
+		if err != nil {
+			return nil, err
+		}
+		s, err := enttx.Rebind(b.Walled, drv)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := s.Robot().Add(ctx, req); err != nil {
+			return nil, err
+		}
+		return nil, tx.Commit()
+	})
 	x.ErrorContains(err, "commit refused")
 	n, err := b.Ent.Robot.Query().Count(ctx)
 	x.NoError(err)
@@ -474,26 +491,6 @@ func TestResourceOutboxRetainsFailedPublication(t *testing.T) {
 	x.True(proto.Equal(attempted.Changes[0].Resource, replayed.Changes[0].Resource))
 }
 
-func TestResourceAndLegacyBatchShareOperationLimit(t *testing.T) {
-	x := require.New(t)
-	b, ctx := build(t)
-	cfg := cmd0
-	cfg.Server.Limit = config.LimitConfig{Rate: 0.000001, Burst: 3}
-	server, err := b.Grpc(ctx, cfg)
-	x.NoError(err)
-	conn := pdtest.Serve(t, server)
-	request := func(names ...string) *pdpb.BatchRequest {
-		ops := make([]*pdpb.Op, 0, len(names))
-		for _, alias := range names {
-			ops = append(ops, op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: alias}.Build()))
-		}
-		return pdpb.BatchRequest_builder{Ops: ops}.Build()
-	}
-	_, err = pdpb.NewBatchServiceClient(conn).Do(b.travels(ctx), request("one", "two"))
-	x.NoError(err)
-	_, err = pdpb.NewResourceServiceClient(conn).Batch(b.travels(ctx), request("three", "four"))
-	x.Equal(codes.ResourceExhausted, status.Code(err))
-	n, err := b.Ent.Robot.Query().Count(ctx)
-	x.NoError(err)
-	x.Equal(2, n)
-}
+// closedGuard is what a deployment that serves the general writes to nobody
+// holds a Watch's rows to, which is the default.
+var closedGuard = resource.Guard{Closed: grpcx.GeneralWrite}

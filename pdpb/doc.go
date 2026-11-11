@@ -13,7 +13,8 @@
 //	                  generator reads this and refuses what it does not say;
 //	                  see internal/pdgen.
 //	(payday.field)    what a field declares -- `secret`, today.
-//	BatchService      several writes as one transaction; see payday/batch.
+//	ResourceService   a live stream of the rows that changed, each sent as
+//	                  its subscriber may read it; see payday/resource.
 //	TokenService      what a token stands for, asked of whoever issued it; see
 //	                  auth.Remote.
 //

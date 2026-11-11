@@ -413,7 +413,7 @@ return tx.Commit()
   transaction. `Begin` refuses a store on no transaction (`past.ErrNotInTx`).
   A layer that records operations holds the driver its stack talks to, as
   apptest's `server/core` does, and writes `WithDriver` to carry it: inside a
-  batch it is the batch's transaction, and the operation joins it.
+  transaction somebody else began it is theirs, and the operation joins it.
 - **What `Begin` reads rather than is told.** Who did it and in which tenant
   from the caller's frame -- a call with none is refused, and so is a frame of
   no tenant -- the trace from the span, the kind from the message's own
@@ -459,8 +459,7 @@ servers' (`bare.WithClock`), or a test's.
 Your Event and Fact have one writer, and it is the package. The generated
 `Audit` layer refuses every write of either that `pd.Past`'s store did not hand
 the servers -- `Add` and `AddMany` of both, `Patch` and `Apply` of a fact --
-however it arrives: a call over the wire, an operation of a batch, the ungated
-stack, your own code. The answer is `PermissionDenied`, to every caller alike:
+however it arrives: a call over the wire, the ungated stack, your own code. The answer is `PermissionDenied`, to every caller alike:
 
 ```
 a past is written by the past package: an event by past.Begin, and a fact by the op it answers

@@ -52,8 +52,8 @@ import (
 // Core is the layer that answers what this app wrote.
 //
 // It holds the driver the stack below it talks to, because an operation is
-// one transaction begun on it -- inside a batch, the batch's, which it joins
-// -- and the trail's content, which the past records an act beneath the
+// one transaction begun on it -- inside one already open, that one, which it
+// joins -- and the trail's content, which the past records an act beneath the
 // servers with (payday#151).
 type Core struct {
 	app.Overlay

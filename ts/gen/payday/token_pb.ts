@@ -215,8 +215,8 @@ export const GrantSchema: GenMessage<Grant> = /*@__PURE__*/
  * in front of it change one line of wiring.
  *
  * It is payday's own and not generated per app, for the same reason
- * `BatchService` is: there is nothing per app in it. A token is a string and an
- * answer is who it is -- neither mentions an entity.
+ * `ResourceService` is: there is nothing per app in it. A token is a string and
+ * an answer is who it is -- neither mentions an entity.
  *
  * # It is not public
  *

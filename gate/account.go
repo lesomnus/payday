@@ -19,8 +19,8 @@ import (
 //
 // # Which method it asks about
 //
-// The one gRPC dispatched -- what the caller asked for, and what a batch says
-// each of its operations is -- and not the one being served. A layer serving
+// The one gRPC dispatched -- what the caller asked for -- and not the one being
+// served. A layer serving
 // an account's method reads through the servers behind it, and those reads
 // are the wall's to narrow, by what that layer declared it reads; refusing
 // them here as methods of their own would leave the method nothing to read

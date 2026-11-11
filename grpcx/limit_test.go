@@ -246,8 +246,8 @@ func TestMemLimiter(t *testing.T) {
 //
 // [grpcx.Limit] answers with no options at all when there is nothing to limit,
 // and for a while that was the only guard there was -- so the bare interceptor,
-// which is what a chain and a batch reach for, dereferenced a nil limiter on
-// the first request it saw.
+// which is what a chain reaches for, dereferenced a nil limiter on the first
+// request it saw.
 func TestNoLimitIsNoLimit(t *testing.T) {
 	x := require.New(t)
 

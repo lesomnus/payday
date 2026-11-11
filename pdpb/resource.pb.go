@@ -24,24 +24,19 @@ var File_payday_resource_proto protoreflect.FileDescriptor
 
 const file_payday_resource_proto_rawDesc = "" +
 	"\n" +
-	"\x15payday/resource.proto\x12\x06payday\x1a\x12payday/batch.proto\x1a\x12payday/watch.proto2|\n" +
-	"\x0fResourceService\x124\n" +
-	"\x05Batch\x12\x14.payday.BatchRequest\x1a\x15.payday.BatchResponse\x123\n" +
+	"\x15payday/resource.proto\x12\x06payday\x1a\x12payday/watch.proto2F\n" +
+	"\x0fResourceService\x123\n" +
 	"\x05Watch\x12\x14.payday.WatchRequest\x1a\x12.payday.WatchEvent0\x01B!Z\x1fgithub.com/lesomnus/payday/pdpbb\beditionsp\xe8\a"
 
 var file_payday_resource_proto_goTypes = []any{
-	(*BatchRequest)(nil),  // 0: payday.BatchRequest
-	(*WatchRequest)(nil),  // 1: payday.WatchRequest
-	(*BatchResponse)(nil), // 2: payday.BatchResponse
-	(*WatchEvent)(nil),    // 3: payday.WatchEvent
+	(*WatchRequest)(nil), // 0: payday.WatchRequest
+	(*WatchEvent)(nil),   // 1: payday.WatchEvent
 }
 var file_payday_resource_proto_depIdxs = []int32{
-	0, // 0: payday.ResourceService.Batch:input_type -> payday.BatchRequest
-	1, // 1: payday.ResourceService.Watch:input_type -> payday.WatchRequest
-	2, // 2: payday.ResourceService.Batch:output_type -> payday.BatchResponse
-	3, // 3: payday.ResourceService.Watch:output_type -> payday.WatchEvent
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	0, // 0: payday.ResourceService.Watch:input_type -> payday.WatchRequest
+	1, // 1: payday.ResourceService.Watch:output_type -> payday.WatchEvent
+	1, // [1:2] is the sub-list for method output_type
+	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -52,7 +47,6 @@ func file_payday_resource_proto_init() {
 	if File_payday_resource_proto != nil {
 		return
 	}
-	file_payday_batch_proto_init()
 	file_payday_watch_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

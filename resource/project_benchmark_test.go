@@ -19,7 +19,7 @@ import (
 // what that benchmark's `project_filter` stage measured until CEL moved out of
 // this package (payday#163).
 func BenchmarkProject(b *testing.B) {
-	s, err := New(&pdpb.UnimplementedBatchServiceServer{}, nil, func(_ context.Context, m proto.Message) (proto.Message, error) { return m, nil })
+	s, err := New(nil, func(_ context.Context, m proto.Message) (proto.Message, error) { return m, nil })
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -12,10 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/gate"
 	"github.com/lesomnus/payday/grpcx"
-	"github.com/lesomnus/payday/pdpb"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
@@ -53,10 +51,9 @@ func aliases(n int) []string {
 }
 
 // An AddMany of many rows is that many Adds' worth of work, sent as one call.
-// Counted as one, it was that many calls' worth for the price of one -- the
-// thing a batch counts its operations one by one to stop. So a call costs what
-// it asks for: the schema says which RPCs those are (`pd.Cost`), and the limit
-// charges it.
+// Counted as one, it was that many calls' worth for the price of one. So a
+// call costs what it asks for: the schema says which RPCs those are
+// (`pd.Cost`), and the limit charges it.
 func TestAnAddManyCostsItsItems(t *testing.T) {
 	t.Run("as a call", func(t *testing.T) {
 		x := require.New(t)
@@ -77,61 +74,18 @@ func TestAnAddManyCostsItsItems(t *testing.T) {
 		x.Equal([]int{5, 1, 1}, l.charged(), "an AddMany of nothing is still a call")
 	})
 
-	t.Run("as an operation of a batch, by the schema's cost when the guard says none", func(t *testing.T) {
-		x := require.New(t)
-		b, ctx := build(t)
-
-		l := &counting{}
-		_, err := b.batched(t, batch.Guard{Closed: grpcx.GeneralWrite, Limiter: l, By: gate.ByTenant()}).Do(b.as(ctx), pdpb.BatchRequest_builder{
-			Ops: []*pdpb.Op{
-				op(t, app.RobotService_AddMany_FullMethodName, robots(b.Tenant, aliases(3)...)),
-				op(t, app.RobotService_Add_FullMethodName, robots(b.Tenant, "leg").GetItems()[0]),
-			},
-		}.Build())
-		x.NoError(err)
-		x.Equal([]int{3, 1}, l.charged())
-	})
-
 	t.Run("and refused when it costs more than is ever let through at once", func(t *testing.T) {
 		x := require.New(t)
 		b, ctx := build(t)
 
 		// Ten at once, and a call of twelve rows.
-		_, err := b.batched(t, batch.Guard{Closed: grpcx.GeneralWrite, Limiter: grpcx.NewLimiter(1, 10), By: gate.ByTenant()}).Do(b.as(ctx), pdpb.BatchRequest_builder{
-			Ops: []*pdpb.Op{op(t, app.RobotService_AddMany_FullMethodName, robots(b.Tenant, aliases(12)...))},
-		}.Build())
+		limit := grpcx.LimitUnary(grpcx.NewLimiter(1, 10), gate.ByTenant(), pd.Cost)
+		_, err := limit(b.as(ctx), robots(b.Tenant, aliases(12)...), &grpc.UnaryServerInfo{FullMethod: app.RobotService_AddMany_FullMethodName},
+			func(ctx context.Context, req any) (any, error) {
+				return b.Walled.Robot().AddMany(ctx, req.(*app.RobotAddManyRequest))
+			})
 		x.Equal(codes.ResourceExhausted, status.Code(err))
 		x.Contains(status.Convert(err).Message(), "ask for less")
 		x.Zero(b.Ent.Robot.Query().Where(robot.AliasHasPrefix("arm-")).CountX(ctx))
 	})
-}
-
-// A batch is one transaction, and an operation is not a row: one AddMany is a
-// thousand. So what a batch may write is bounded by the rows its operations
-// ask for, as well as by how many operations there are -- and a batch over it
-// is refused before anything is charged or written.
-func TestABatchIsBoundedByTheRowsItAsksFor(t *testing.T) {
-	x := require.New(t)
-	b, ctx := build(t)
-
-	l := &counting{}
-	g := batch.Guard{Closed: grpcx.GeneralWrite, Limiter: l, By: gate.ByTenant(), Rows: 5}
-
-	_, err := b.batched(t, g).Do(b.as(ctx), pdpb.BatchRequest_builder{
-		Ops: []*pdpb.Op{
-			op(t, app.RobotService_AddMany_FullMethodName, robots(b.Tenant, aliases(3)...)),
-			op(t, app.RobotService_AddMany_FullMethodName, robots(b.Tenant, aliases(6)[3:]...)),
-		},
-	}.Build())
-	x.Equal(codes.InvalidArgument, status.Code(err))
-	x.Contains(status.Convert(err).Message(), "6 rows")
-	x.Empty(l.charged(), "a batch refused for its size was charged")
-	x.Zero(b.Ent.Robot.Query().Where(robot.AliasHasPrefix("arm-")).CountX(ctx), "a batch refused for its size wrote")
-
-	// And one within it goes through.
-	_, err = b.batched(t, g).Do(b.as(ctx), pdpb.BatchRequest_builder{
-		Ops: []*pdpb.Op{op(t, app.RobotService_AddMany_FullMethodName, robots(b.Tenant, aliases(5)...))},
-	}.Build())
-	x.NoError(err)
-	x.Equal(5, b.Ent.Robot.Query().Where(robot.AliasHasPrefix("arm-")).CountX(ctx))
 }

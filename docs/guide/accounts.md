@@ -212,7 +212,7 @@ A frame of an account is refused every method but the ones it was made for --
 the ones the schema marks -- in two places, so that a resolver that made one for
 a method it should not have is refused anyway:
 
-- `gate.Decide`, which the gate's interceptor and a batch's guard ask, refuses
+- `gate.Decide`, which the gate's interceptor and a watch's guard ask, refuses
   it before a policy is asked;
 - the generated gate refuses it again on every method of every entity's
   service, by the method the caller asked for (`gate.AsAccount`).
@@ -312,7 +312,7 @@ A frame by hand, for a call made directly against a server:
 
 ```go
 ctx = frame.Into(ctx, frame.OfAccount(account, frame.Whole(), pd.AccountMethod))
-ctx = batch.AsOp(ctx, app.InvitationService_Accept_FullMethodName) // the method a caller asked for
+ctx = grpcx.AsMethod(ctx, app.InvitationService_Accept_FullMethodName) // the method a caller asked for
 ```
 
 The reference app has the whole of it, on SQLite and PostgreSQL:

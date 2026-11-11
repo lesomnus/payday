@@ -11,10 +11,10 @@ rewritten because rules written twice drift, and the way that drift is noticed
 is a row that one side can name and the other cannot find.
 
 The reason to have it at all is that **an identifier can be made here.** A
-client that mints its own writes a batch of rows that already refer to one
-another, so the batch API needs no language for "the thing I am about to
-create" — no placeholder, no second pass, no server-assigned handles to swap
-back in.
+client that mints its own writes rows that already refer to one another, so
+a call that takes several of them needs no language for "the thing I am about
+to create" — no placeholder, no second pass, no server-assigned handles to
+swap back in.
 
 ```sh
 npm install @lesomnus/payday

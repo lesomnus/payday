@@ -36,7 +36,6 @@ import { AuditService } from '../gen/app/payday/audit_svc_pb.js'
 import { RobotService } from '../gen/app/robot_svc_pb.js'
 import { JointService, FleetService, CellService } from '../gen/app/robot_svc_pb.js'
 import { ThingService } from '../gen/shared/thing_svc_pb.js'
-import { BatchService } from '@lesomnus/payday/pdpb'
 
 /**
  * App is every service this app serves, over one transport.
@@ -66,17 +65,6 @@ export interface App {
 	 * a call looks like.
 	 */
 	readonly thing: Client<typeof ThingService>
-
-	/**
-	 * Several writes as one transaction.
-	 *
-	 * It is payday's own service rather than one of this app's, which is why it
-	 * takes `Any` and takes no position on what is in it. What may go in an
-	 * operation is checked per operation by the server -- the credential, what
-	 * is closed, the rate limit and the policy -- so a batch is not a way past
-	 * anything the transport enforces.
-	 */
-	readonly batch: Client<typeof BatchService>
 }
 
 /** app wires every service of this app onto one transport. */
@@ -92,7 +80,5 @@ export function app(transport: Transport): App {
 		cell: createClient(CellService, transport),
 
 		thing: createClient(ThingService, transport),
-
-		batch: createClient(BatchService, transport),
 	}
 }

@@ -7,8 +7,6 @@
  * and the only way to find that out is to send bytes.
  */
 
-import { create } from '@bufbuild/protobuf'
-import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt'
 import { createGrpcTransport } from '@connectrpc/connect-node'
 import { ConnectError, Code } from '@connectrpc/connect'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -21,9 +19,7 @@ import { Store } from '@lesomnus/payday/store'
 import { app, type App } from './client.js'
 import { start, type Server } from './testsrv.js'
 import { entities, Robot, Tenant } from '../gen/entities.js'
-import { RobotDomain, JointDomain, TenantDomain, ThingDomain } from '../gen/domains.js'
-import { RobotSchema } from '../gen/app/robot_pb.js'
-import { RobotAddRequestSchema, JointAddRequestSchema } from '../gen/app/robot_svc_pb.js'
+import { RobotDomain, TenantDomain, ThingDomain } from '../gen/domains.js'
 
 let srv: Server
 let c: App
@@ -104,8 +100,9 @@ describe('the generated descriptors describe the same server', () => {
 	it('mints an identifier this side, and the server keeps it', async () => {
 		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
 
-		// Which is what makes a batch need no placeholder language: a client
-		// that names its own rows can write a batch that refers to itself.
+		// Which is what makes several rows need no placeholder language: a
+		// client that names its own rows can write ones that refer to each
+		// other, in one call of the app's own or in several.
 		const mine = pdid.newId(RobotDomain)
 		const made = await c.robot.add({
 			id: mine.bytes,
@@ -260,143 +257,5 @@ describe('what the server actually sends', () => {
 		// And the reference is kept, which is the other half: the row knows
 		// which tenant it is in without holding a copy of it.
 		expect(store.row(Robot.typeName, made.id)?.['tenantId']).toBeTypeOf('string')
-	})
-})
-
-/**
- * A batch, sent from here.
- *
- * The Go tests cover what a batch means -- the transaction, the four rules
- * applied per operation, the trail. What they cannot cover is this end: an `Op`
- * carries a `google.protobuf.Any`, and packing one means protobuf-es writing a
- * type URL that `anypb` in Go resolves to the same message. Nothing else in
- * either half sends an `Any` at all, so that agreement was never exercised by
- * anything, in a service whose entire request type is `Any`.
- *
- * A browser is also where a batch is most useful. An optimistic UI writes
- * several rows and shows them at once, and a transaction is what makes "shows
- * them at once" honest.
- */
-describe('a batch, packed here and unpacked there', () => {
-	it('writes two rows that refer to each other, with no placeholder language', async () => {
-		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
-
-		// Both identifiers, minted before either row exists. This is the whole
-		// of why payday needs no `$0.id`: the client names its own rows, so the
-		// second operation can refer to the first by writing the same bytes.
-		const robot = pdid.newId(RobotDomain)
-		const joint = pdid.newId(JointDomain)
-
-		const res = await c.batch.do({
-			ops: [
-				{
-					method: '/app.RobotService/Add',
-					request: anyPack(
-						RobotAddRequestSchema,
-						create(RobotAddRequestSchema, {
-							id: robot.bytes,
-							tenant: { key: { case: 'id', value: tenant.id } },
-							alias: 'arm-batched',
-						}),
-					),
-				},
-				{
-					method: '/app.JointService/Add',
-					request: anyPack(
-						JointAddRequestSchema,
-						create(JointAddRequestSchema, {
-							id: joint.bytes,
-							robot: { key: { case: 'id', value: robot.bytes } },
-							alias: 'elbow-batched',
-						}),
-					),
-				},
-			],
-		})
-
-		// One answer per operation, in the order they were written, and each is
-		// an `Any` this end has to unpack -- which is the same agreement in the
-		// other direction.
-		expect(res.results).toHaveLength(2)
-
-		const made = anyUnpack(res.results[0]!, RobotSchema)
-		expect(made).toBeDefined()
-		expect(pdid.from(made!.id).toString()).toBe(robot.toString())
-
-		// And read back, because a response echoes what it was given and a row
-		// that was never committed would answer exactly the same way.
-		const got = await c.joint.get({ ref: { key: { case: 'id', value: joint.bytes } } })
-		expect(got.alias).toBe('elbow-batched')
-		expect(pdid.from(got.robot!.id).toString()).toBe(robot.toString())
-	})
-
-	it('undoes the first when the second refuses', async () => {
-		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
-
-		const robot = pdid.newId(RobotDomain)
-
-		await expect(
-			c.batch.do({
-				ops: [
-					{
-						method: '/app.RobotService/Add',
-						request: anyPack(
-							RobotAddRequestSchema,
-							create(RobotAddRequestSchema, {
-								id: robot.bytes,
-								tenant: { key: { case: 'id', value: tenant.id } },
-								alias: 'arm-undone',
-							}),
-						),
-					},
-					// An identifier of the wrong kind, refused by the minter on
-					// the byte alone. Any refusal would do; this one is refused
-					// before the database is touched, which is the harder case
-					// for a rollback to get right.
-					{
-						method: '/app.JointService/Add',
-						request: anyPack(
-							JointAddRequestSchema,
-							create(JointAddRequestSchema, {
-								id: pdid.newId(RobotDomain).bytes,
-								robot: { key: { case: 'id', value: robot.bytes } },
-								alias: 'elbow-undone',
-							}),
-						),
-					},
-				],
-			}),
-		).rejects.toThrow(/ops\[1\]/)
-
-		// The first operation is gone, which is the difference between a batch
-		// and a loop over the same two calls.
-		await expect(
-			c.robot.get({ ref: { key: { case: 'id', value: robot.bytes } } }),
-		).rejects.toThrow()
-	})
-
-	it('is refused an Any that is not what the method takes', async () => {
-		const tenant = await c.tenant.get({ ref: { key: { case: 'alias', value: 'acme' } } })
-
-		// A well-formed request for a different RPC. It is refused rather than
-		// coerced: a request that decoded into another message would be a write
-		// the caller did not ask for, and both halves are only agreeing about
-		// the type URL if this fails.
-		await expect(
-			c.batch.do({
-				ops: [
-					{
-						method: '/app.JointService/Add',
-						request: anyPack(
-							RobotAddRequestSchema,
-							create(RobotAddRequestSchema, {
-								tenant: { key: { case: 'id', value: tenant.id } },
-								alias: 'arm-mismatched',
-							}),
-						),
-					},
-				],
-			}),
-		).rejects.toThrow(/ops\[0\]/)
 	})
 })

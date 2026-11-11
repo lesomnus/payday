@@ -289,10 +289,11 @@ type WatchEvent_builder struct {
 	Id []byte
 	// Mutation postimage, absent on deletion. Any identifies the resource type.
 	Value *anypb.Any
-	// Originating operation, including the inner operation of a Batch.
+	// Originating operation: the RPC the write was served under.
 	Method string
 	Kind   ChangeKind
-	// Outermost RPC; for example /payday.ResourceService/Batch.
+	// Outermost operation: what a custom transaction was named, and otherwise
+	// the same as method.
 	CallMethod string
 	// Mutation preimage. Present on deletion; on updates only when the application's
 	// recorder enables it. Absent on creation. Guard presence in CEL filters.

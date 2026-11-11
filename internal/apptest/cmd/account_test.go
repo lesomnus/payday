@@ -17,11 +17,10 @@ import (
 
 	"github.com/lesomnus/payday/account"
 	"github.com/lesomnus/payday/auth"
-	"github.com/lesomnus/payday/batch"
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/gate"
+	"github.com/lesomnus/payday/grpcx"
 	"github.com/lesomnus/payday/pdid"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -387,7 +386,7 @@ func TestAnAccountFrameReadsNoTenantsRowsThroughAnyMethod(t *testing.T) {
 	cs := each(w.Walled, every, func(method string) context.Context {
 		// Dispatched as itself, as gRPC would, and with nothing dispatched:
 		// both are refused, and the second is a call made in this process.
-		return batch.AsOp(framed(ctx), method)
+		return grpcx.AsMethod(framed(ctx), method)
 	})
 	cs = append(cs, each(w.Walled, every, func(string) context.Context { return framed(ctx) })...)
 
@@ -404,7 +403,7 @@ func TestAnAccountFrameReadsNoTenantsRowsThroughAnyMethod(t *testing.T) {
 
 	// And over the wire, with the interceptors in front: a resolver that
 	// answered an account's frame for every call is refused at the gate's
-	// interceptor before anything is read, and the batch per operation.
+	// interceptor before anything is read.
 	t.Run("over the wire", func(t *testing.T) {
 		x := require.New(t)
 
@@ -437,14 +436,6 @@ func TestAnAccountFrameReadsNoTenantsRowsThroughAnyMethod(t *testing.T) {
 		app.RegisterServer(bare, w.Walled)
 		_, err = app.NewTenantServiceClient(pdtest.Serve(t, bare)).List(as, app.TenantListRequest_builder{}.Build())
 		x.Equal(codes.PermissionDenied, status.Code(err))
-
-		// And a batch asks of each operation.
-		_, err = w.batched(t, batch.Guard{Closed: func(string) bool { return false }}).Do(
-			batch.AsOp(framed(ctx), "/payday.BatchService/Do"),
-			pdpb.BatchRequest_builder{Ops: []*pdpb.Op{op(t, app.RobotService_Get_FullMethodName, app.RobotGetRequest_builder{
-				Ref: app.RobotRef_builder{Id: w.robots[w.acme]}.Build(),
-			}.Build())}}.Build())
-		x.Equal(codes.PermissionDenied, status.Code(err))
 	})
 }
 
@@ -457,7 +448,7 @@ func TestAnAccountFrameReadsNoTenantsRowsThroughAnyMethod(t *testing.T) {
 func TestAnAccountReadsNothingItDidNotDeclare(t *testing.T) {
 	w, ctx := withAccounts(t)
 	own := app.HolderService_Memberships_FullMethodName
-	as := batch.AsOp(frame.Into(ctx, frame.OfAccount(w.both, frame.Whole(), pd.AccountMethod)), own)
+	as := grpcx.AsMethod(frame.Into(ctx, frame.OfAccount(w.both, frame.Whole(), pd.AccountMethod)), own)
 
 	// Every List there is, with nothing declared: nothing, of any of them.
 	// And the deployment's own server sees what is there, so the empty
@@ -538,7 +529,7 @@ func TestAnAccountReadsNothingItDidNotDeclare(t *testing.T) {
 		// A declaration is for a call an account makes as itself: a
 		// membership's reads are its tenant's, whatever it carries.
 		member := frame.Into(declared, frame.New(w.oneAcme, w.acme, frame.Whole()).WithScope(frame.Only(w.acme)))
-		vs, err = w.Walled.Holder().List(batch.AsOp(member, app.HolderService_List_FullMethodName), app.HolderListRequest_builder{}.Build())
+		vs, err = w.Walled.Holder().List(grpcx.AsMethod(member, app.HolderService_List_FullMethodName), app.HolderListRequest_builder{}.Build())
 		x.NoError(err)
 		for _, v := range vs.GetItems() {
 			x.Equal(w.acme.Bytes(), v.GetTenant().GetId())

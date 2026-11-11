@@ -705,10 +705,10 @@ func pastGlued(s *Schema) (*Entity, *Entity) {
 // # Why a key on the context
 //
 // A layer cannot tell what wrote a request by what it is handed: a call over
-// the wire, an operation of a batch and the store's own write are each a
-// context and a message. What only the store can do is put a value on the
-// context whose type nothing outside the generated package can name -- not an
-// app's code, not a batch's dispatch, not gRPC -- so that is what is read. An
+// the wire, an app's own code and the store's own write are each a context and
+// a message. What only the store can do is put a value on the context whose
+// type nothing outside the generated package can name -- not an app's code,
+// not gRPC -- so that is what is read. An
 // identity of the caller would be a credential, which somebody can hold; this
 // is a line of code, which only the store is.
 //
@@ -716,8 +716,8 @@ func pastGlued(s *Schema) (*Entity, *Entity) {
 //
 // In the Audit layer, beside the trail's own refusals and for their reason: it
 // is the layer every stack of an app is built with, the ungated one too, so
-// whatever enters a stack above it -- a call, a batch, the deployment's own
-// tool -- meets it. The store's writes carry their mark down through every
+// whatever enters a stack above it -- a call, the deployment's own tool --
+// meets it. The store's writes carry their mark down through every
 // layer between, so a layer that records the past may be anywhere: above the
 // gate, as rove's domain layer is, or beneath Audit, as apptest's core is.
 // What it does not reach is beneath it: a layer of the app's under Audit
@@ -787,7 +787,7 @@ func emitAuditPast(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportP
 	g.P("// on (payday#151).")
 	g.P("//")
 	g.P("// Unexported, so that nothing outside this package can put one on a")
-	g.P("// context: not an app's code, not a batch, not a call over the wire. And")
+	g.P("// context: not an app's code, not a call over the wire. And")
 	g.P("// the store marks the contexts it hands the servers and no other -- not the")
 	g.P("// one an operation goes on with, nor the one `PastIn` hands its work -- so")
 	g.P("// a mark goes no further than the write it is on.")

@@ -192,8 +192,8 @@ func TestTheCredentialCanOnlyNarrowWhatAPolicyAnswers(t *testing.T) {
 
 // TestTheInterceptorsServeWhatDecideAnswered, both shapes.
 //
-// `Decide` is exported because a batch applies it per operation, so it is the
-// function that gets the tests. What is left to check about the two
+// `Decide` is exported for what decides a method gRPC did not dispatch, so it is
+// the function that gets the tests. What is left to check about the two
 // interceptors is that a handler is served with the context the decision was
 // put on, and that a refusal never reaches one.
 func TestTheInterceptorsServeWhatDecideAnswered(t *testing.T) {

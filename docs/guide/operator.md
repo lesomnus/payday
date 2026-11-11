@@ -40,8 +40,8 @@ Not fields on `Tenant`, for two reasons.
 
 **A tenant can write its own row.** Its name, its alias and its labels are its
 own to change, so an operator's field beside them turns the rule into a check
-on *which fields this patch touches* — on every path that patches a tenant, in
-a batch as well as alone. A path that forgets is a tenant extending its own
+on *which fields this patch touches* — on every path that patches a tenant.
+A path that forgets is a tenant extending its own
 contract. An entity of its own makes the rule one about **an RPC**, which is a
 line in your policy and nothing else.
 

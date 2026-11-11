@@ -37,11 +37,11 @@
 // transaction refused at its commit takes the row along, and the call that
 // ends in that refusal writes it again as the refusal. A download is recorded
 // before its answer leaves, and refused when it cannot be; it is called by
-// itself, and refused as an operation of a batch, which can neither say what
-// it is for nor hold its answer back. A read is queued and written a second
-// later with the others ([Writer]), which is the one loss there is: a process
-// killed outright takes the last second's reads with it. One stopped writes
-// what it has first, and again once its server has stopped.
+// itself, and refused as the read a Watch makes for its subscriber, which can
+// neither say what it is for nor hold its answer back. A read is queued and
+// written a second later with the others ([Writer]), which is the one loss
+// there is: a process killed outright takes the last second's reads with it.
+// One stopped writes what it has first, and again once its server has stopped.
 //
 // A process that ends with its call -- a command at a shell -- has no second
 // to wait out, and writes a read's row as a download's is written, before its
@@ -68,7 +68,7 @@
 // # What it reads a message for
 //
 // The messages a call's answer and request are made of, and what payday
-// packs into an `Any` for a batch and a watch, unpacked once. An `Any` an app
+// packs into an `Any` for a watch, unpacked once. An `Any` an app
 // keeps in its own rows is its data, which no declaration describes, and is
 // not unpacked: a message packed in one packed in another is work that grows
 // with the square of its size, for whoever sent it.

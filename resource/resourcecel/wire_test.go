@@ -28,7 +28,7 @@ func TestWireFilterMatchesNativeCEL(t *testing.T) {
 	nested, err := anypb.New(wrapperspb.String("nested"))
 	require.NoError(t, err)
 	after.SetValue(nested)
-	event, err := resource.Event(created.GetId(), time.Now(), "/app/Patch", "/batch", pdpb.ChangeKind_CHANGE_KIND_UPDATED, before, after)
+	event, err := resource.Event(created.GetId(), time.Now(), "/app/Patch", "/app/Move", pdpb.ChangeKind_CHANGE_KIND_UPDATED, before, after)
 	require.NoError(t, err)
 	native, err := cel.NewEnv(cel.Types(&pdpb.WatchEvent{}), cel.Variable("event", cel.ObjectType("payday.WatchEvent")))
 	require.NoError(t, err)

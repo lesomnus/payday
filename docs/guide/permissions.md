@@ -180,8 +180,9 @@ which is what keeping the wall whole costs.
 
 Inside one transaction begun with `dialect.BeginTx` it is a read per edge per
 **row**: the second write naming a row asks what the first was told, and the
-answer is the one it got. A generated batch is such a transaction, and so is a
-layer's that writes several rows ([server guide](server.md#completing-a-generated-verb)).
+answer is the one it got. A layer's that writes several rows is such a
+transaction ([server guide](server.md#completing-a-generated-verb)), and so is an
+RPC of your own that does.
 It is the same read, remembered for the caller who asked it and only for a
 row named by identifier, until something writes that row: a `Patch`, an
 `Apply` or an `Erase` of it forgets what the transaction was told about it, so
@@ -265,10 +266,10 @@ chain = chain.With(gate.Interceptor(s.Policy))   // behind auth, whose frame it 
 
 `Server.Policy` is where an app sets it, and `cmd/serve.go` hands the same value
 to `c.Server.Guard` as well: the interceptor covers the calls gRPC dispatches
-and the guard covers the operations inside a batch, which arrive as one method
-carrying many. A policy in only the first place authorises `BatchService/Do`
-rather than what it asks for; see
-[batch](batch.md#3-the-guard-and-why-it-is-refused-rather-than-defaulted).
+and the guard covers the rows `ResourceService.Watch` sends, each a read of its
+resource's `Get` that gRPC never dispatched. A policy in only the first place
+lets a subscriber watch what it may not `Get`; see
+[the resource API](resources.md#wire-the-server).
 
 **A nil policy is not a missing piece.** Without one:
 
@@ -598,8 +599,8 @@ Before a deployment is reachable by anyone:
 - [ ] `gate.Interceptor` is installed **behind** `auth.Interceptor` — it reads
       the actor.
 - [ ] If you inject a policy, it went to **both** `gate.Interceptor` and
-      `c.Server.Guard`. The second is the operations inside a batch, which are
-      not the method gRPC dispatched.
+      `c.Server.Guard`. The second is the rows a watch sends, which are not
+      the method gRPC dispatched.
 - [ ] Credentials your issuer mints have a `Grant` you meant. The zero value
       allows nothing; `frame.Whole()` narrows nothing.
 - [ ] If you declared field 3, `pd.Grouped` is in the `bare.Scopes` beside the

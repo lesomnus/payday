@@ -4,9 +4,8 @@ import "context"
 
 type callKey struct{}
 
-// CallMethod identifies the outer call even while Batch replaces gRPC's method
-// with that of an operation. Direct writers use fallback unless Transaction names
-// their origin explicitly.
+// CallMethod identifies the outer call: the method a [Watch.Transaction] was
+// named with, and fallback -- the writer's own -- where none names one.
 func CallMethod(ctx context.Context, fallback string) string {
 	if m, ok := ctx.Value(callKey{}).(string); ok && m != "" {
 		return m

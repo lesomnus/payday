@@ -13,9 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// MaxWire bounds one publication and the listener's incomplete payloads. A Batch
-// may arrive as multiple events; neither the old nor the new Watch promises atomic
-// receipt. Resources contain public images, never the request or response.
+// MaxWire bounds one publication and the listener's incomplete payloads. A call
+// that changed many rows may arrive as multiple events; neither the old nor the
+// new Watch promises atomic receipt. Resources contain public images, never the
+// request or response.
 const MaxWire = 32 << 20
 const fragmentSize = 4500
 const fragmentTimeout = 30 * time.Second

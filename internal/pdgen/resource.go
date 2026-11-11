@@ -18,16 +18,15 @@ const pkgResourceSQL = protogen.GoImportPath("github.com/lesomnus/payday/resourc
 // predicates and secret declarations. Historical reads use the same Scope as
 // ordinary reads, evaluated against the recorded root row.
 func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
-	g.P("// Resources serves the common Batch and Watch API. project is required so custom")
-	g.P("// read layers cannot silently disappear from historical reads. ResourceProjector")
+	g.P("// Resources serves the common Watch API. project is required so custom read")
+	g.P("// layers cannot silently disappear from historical reads. ResourceProjector")
 	g.P("// handles bare.Scope and declared secrets; compose any additional read rules.")
 	g.P("//")
 	g.P("// Watch evaluates a filter in the language the binary links, which is CEL when")
 	g.P("// something imports github.com/lesomnus/payday/resource/resourcecel: a process,")
 	g.P("// never what its sandbox imports too. A binary that links none refuses a filter.")
-	g.P("func Resources(s ", root.Ident("Server"), ", drv ", pkgDialect.Ident("Driver"), ", guard ", pkgBatch.Ident("Guard"), ", w *", pkgWatch.Ident("Watch"), ", project ", pkgResource.Ident("Project"), ") (*", pkgResource.Ident("Server"), ",error){")
-	g.P("b,err:=Batch(s,drv,guard);if err!=nil{return nil,err}")
-	g.P("return ", pkgResource.Ident("New"), "(b,w,project,")
+	g.P("func Resources(w *", pkgWatch.Ident("Watch"), ", project ", pkgResource.Ident("Project"), ") (*", pkgResource.Ident("Server"), ",error){")
+	g.P("return ", pkgResource.Ident("New"), "(w,project,")
 	for _, e := range s.Sorted() {
 		g.P("&", root.Ident(e.GoName()), "{},")
 	}
@@ -47,12 +46,12 @@ func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	g.P("func publicResource(v ", pkgProto.Ident("Message"), ") ", pkgProto.Ident("Message"), " {return ", pkgResource.Ident("Redact"), "(v,resourceSecrets)}")
 	g.P("// ResourceProjector applies current Get authorization and scope to the historical")
 	g.P("// root row. Relations are checked against current rows, failing closed if gone.")
-	g.P("// Scope must be the one installed on the serving stack. Custom Get layers must")
-	g.P("// wrap this projector with their historical equivalent before serving Resources.")
-	g.P("func ResourceProjector(db *", p.Ent.Ident("Client"), ", scope ", p.Bare.Ident("Scope"), ", guard ", pkgBatch.Ident("Guard"), ") ", pkgResource.Ident("Project"), " {")
+	g.P("// Scope must be the one installed on the serving stack, and the guard built from")
+	g.P("// the configuration the interceptors are (`config.ServerConfig.Guard`). Custom")
+	g.P("// Get layers must wrap this projector with their historical equivalent before")
+	g.P("// serving Resources.")
+	g.P("func ResourceProjector(db *", p.Ent.Ident("Client"), ", scope ", p.Bare.Ident("Scope"), ", guard ", pkgResource.Ident("Guard"), ") ", pkgResource.Ident("Project"), " {")
 	g.P("return func(ctx ", pkgCtx.Ident("Context"), ", message ", pkgProto.Ident("Message"), ") (", pkgProto.Ident("Message"), ",error) {")
-	g.P("if guard.IsZero() {return nil,", pkgBatch.Ident("ErrNoGuard"), "}")
-	g.P("read:=guard; read.Limiter=nil; read.By=nil")
 	g.P("switch v:=message.(type) {")
 	for _, e := range s.Sorted() {
 		if !e.Rpcs().HasGet() {
@@ -67,7 +66,7 @@ func EmitResources(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 		name := e.GoName()
 		ep := p.EntPkg(e)
 		g.P("case *", root.Ident(name), ":")
-		g.P("ctx,err:=read.Allow(ctx,", root.Ident(name+"Service_Get_FullMethodName"), ",1);if err!=nil {")
+		g.P("ctx,err:=guard.Allow(ctx,", root.Ident(name+"Service_Get_FullMethodName"), ");if err!=nil {")
 		g.P("switch ", pkgStatus.Ident("Code"), "(err) {case ", pkgCodes.Ident("PermissionDenied"), ",", pkgCodes.Ident("Unauthenticated"), ",", pkgCodes.Ident("Unimplemented"), ":return nil,nil};return nil,err}")
 		g.P("pred,err:=", p.Bare.Ident(name+"Narrow"), "(ctx,scope,nil);if err!=nil{return nil,err}")
 		g.P("row,err:=", pkgResourceSQL.Ident("Row"), "(db.Dialect(),", ep.Ident("Table"), ",[]", pkgResourceSQL.Ident("Column"), "{")

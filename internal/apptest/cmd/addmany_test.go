@@ -345,8 +345,8 @@ func TestAnAddManyIsOnTheTrail(t *testing.T) {
 // TestAnAddManyAsksAboutARowOnceInATransaction, which is the transaction's and
 // not the call's: alone, an AddMany asks each item's questions, as that many
 // Adds would; in a transaction begun with `dialect.BeginTx` -- an app's
-// operation, or a Batch -- it asks each row once. And either way its rows are
-// one statement.
+// operation -- it asks each row once. And either way its rows are one
+// statement.
 func TestAnAddManyAsksAboutARowOnceInATransaction(t *testing.T) {
 	for _, tc := range []struct {
 		what  string
@@ -394,7 +394,7 @@ func TestAnAddManyAsksAboutARowOnceInATransaction(t *testing.T) {
 }
 
 // TestAnAddManyThatFailsPartwayIsNotCommitted, in a transaction somebody else
-// began -- an app's operation, a batch. The AddMany joins it and cannot take
+// began -- an app's operation. The AddMany joins it and cannot take
 // back the statements of it that held, so the transaction is told: its commit
 // is refused, and neither the rows nor what the trail kept of them holds. On
 // SQLite, which undoes a refused statement alone, the first five hundred rows

@@ -8,6 +8,7 @@ import (
 
 	"github.com/lesomnus/protobuf-patch/patch"
 	"github.com/lesomnus/z"
+	"github.com/protobuf-orm/ent/dialect"
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,6 @@ import (
 
 	"github.com/lesomnus/payday/past"
 	"github.com/lesomnus/payday/pdid"
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/pdtest"
 
 	app "github.com/lesomnus/payday/internal/apptest"
@@ -30,11 +30,10 @@ import (
 
 // The past has one writer (payday#151). The Audit layer refuses every write of
 // payday's Event and Fact but the ones `pd.Past`'s store hands the servers --
-// over the wire, inside a batch, through the ungated server, from the app's
-// own code -- since a fact written by hand is a row no read of the past can be
-// sure of, and an event that names its own actor is who did it, forged. And
-// the store's writes are let through wherever in a stack the layer that
-// records the past is.
+// over the wire, through the ungated server, from the app's own code -- since
+// a fact written by hand is a row no read of the past can be sure of, and an
+// event that names its own actor is who did it, forged. And the store's writes
+// are let through wherever in a stack the layer that records the past is.
 
 // byHand is a write of the past's tables as a caller would ask for one, and
 // what it would be answered with if anything let it through.
@@ -132,8 +131,8 @@ func (w byHand) through(ctx context.Context, s app.Server) error {
 	return err
 }
 
-// thePast is what of the past -- and of the robots a batch writes beside it --
-// a refused write leaves as it found it: how many rows there are, and what the
+// thePast is what of the past -- and of the robots written beside it -- a
+// refused write leaves as it found it: how many rows there are, and what the
 // fact a patch would change says, and at which version.
 type thePast struct {
 	Events, Facts, Robots int
@@ -163,10 +162,9 @@ func (b *built) thePast(t *testing.T, ctx context.Context, fact pdid.Id) thePast
 
 // TestThePastIsWrittenByThePackageAlone: a write of payday's Event or Fact that
 // `pd.Past`'s store did not make is refused, however it arrives -- over the
-// wire, inside a batch, through the ungated server, or from the app's own code
-// through the stack a caller reaches -- with PermissionDenied and a sentence
-// that says what writes one, and nothing written. What reads them reads as
-// before.
+// wire, through the ungated server, or from the app's own code through the
+// stack a caller reaches -- with PermissionDenied and a sentence that says what
+// writes one, and nothing written. What reads them reads as before.
 func TestThePastIsWrittenByThePackageAlone(t *testing.T) {
 	b, ctx := build(t)
 	as := b.as(ctx)
@@ -207,32 +205,6 @@ func TestThePastIsWrittenByThePackageAlone(t *testing.T) {
 			x.NoError(conn.Invoke(b.travels(ctx), app.EventService_List_FullMethodName, app.EventListRequest_builder{}.Build(), ls))
 			x.Len(ls.GetItems(), b.thePast(t, ctx, fact).Events)
 		})
-	})
-
-	t.Run("inside a batch, and the batch with it", func(t *testing.T) {
-		// The guard of a deployment that serves the general writes, as this
-		// one does, so that a patch and an apply reach the stack and are not
-		// turned away at the door for being general writes.
-		s, err := pd.Batch(b.Walled, b.Drv, cmd0.Server.Guard(b.Policy))
-		require.NoError(t, err)
-
-		for i, w := range ws {
-			t.Run(w.method, func(t *testing.T) {
-				refused(t, func() error {
-					_, err := s.Do(as, pdpb.BatchRequest_builder{Ops: []*pdpb.Op{
-						op(t, app.RobotService_Add_FullMethodName, app.RobotAddRequest_builder{
-							Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-							Alias:  fmt.Sprintf("arm-%d", 70+i),
-						}.Build()),
-						op(t, w.method, w.req),
-					}}.Build())
-					if err != nil {
-						require.Contains(t, err.Error(), "ops[1]")
-					}
-					return err
-				})
-			})
-		}
 	})
 
 	t.Run("through the ungated server", func(t *testing.T) {
@@ -282,8 +254,8 @@ func (b *built) aboveTheGate(t *testing.T) app.Server {
 // through the store, and the store's writes are let through wherever in the
 // stack the layer that makes them is -- beneath Audit, where `cmd.Build` puts
 // this app's core and where no write of it meets the layer at all, or above
-// the gate, where every one does -- and inside a batch, whose transaction the
-// operation joins.
+// the gate, where every one does -- and inside a transaction its caller
+// opened, which the operation joins.
 func TestThePastIsWrittenWhereverItsWriterIs(t *testing.T) {
 	b, ctx := build(t)
 	as := b.as(ctx)
@@ -346,18 +318,22 @@ func TestThePastIsWrittenWhereverItsWriterIs(t *testing.T) {
 			x.Equal(was+1, moves(t))
 		})
 
-		t.Run(c.name+", inside a batch", func(t *testing.T) {
+		// What an RPC of the app's own that writes several things as one
+		// does: the stack on a transaction it opened, two moves on it.
+		t.Run(c.name+", inside a transaction of its caller's", func(t *testing.T) {
 			x := require.New(t)
 
-			s, err := pd.Batch(c.s, b.Drv, cmd0.Server.Guard(b.Policy))
+			drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+			x.NoError(err)
+			s, err := enttx.Rebind(c.s, drv)
 			x.NoError(err)
 
 			was := moves(t)
-			_, err = s.Do(as, pdpb.BatchRequest_builder{Ops: []*pdpb.Op{
-				op(t, app.RobotService_Move_FullMethodName, move()),
-				op(t, app.RobotService_Move_FullMethodName, move()),
-			}}.Build())
+			_, err = s.Robot().Move(as, move())
 			x.NoError(err)
+			_, err = s.Robot().Move(as, move())
+			x.NoError(err)
+			x.NoError(tx.Commit())
 			x.Equal(was+2, moves(t))
 		})
 	}

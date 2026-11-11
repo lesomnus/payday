@@ -49,7 +49,7 @@ func (s *testStream) Send(v *pdpb.WatchEvent) error {
 func testServer(t *testing.T) (*Server, *watch.Watch, *pdpb.WatchEvent) {
 	t.Helper()
 	w := watch.New(watch.Memory())
-	s, err := New(&pdpb.UnimplementedBatchServiceServer{}, w, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil })
+	s, err := New(w, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil })
 	require.NoError(t, err)
 	id := pdid.New(1)
 	v, err := Event(id[:], time.Now(), "/app/Add", "/app/Add", pdpb.ChangeKind_CHANGE_KIND_CREATED, nil, pdpb.WatchEvent_builder{Id: id[:], Method: "public"}.Build())
@@ -247,10 +247,10 @@ func TestALanguageIsRegisteredOnce(t *testing.T) {
 		}
 		return filtered(func(context.Context, *pdpb.WatchEvent) (bool, error) { return true, nil }), nil
 	})
-	s, err := New(&pdpb.UnimplementedBatchServiceServer{}, nil, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil }, &pdpb.BatchRequest{})
+	s, err := New(nil, func(_ context.Context, v proto.Message) (proto.Message, error) { return v, nil }, &pdpb.WatchRequest{})
 	require.NoError(t, err)
 	require.NotNil(t, s.filters)
-	require.Equal(t, []protoreflect.FullName{"payday.WatchEvent", "payday.BatchRequest"}, told)
+	require.Equal(t, []protoreflect.FullName{"payday.WatchEvent", "payday.WatchRequest"}, told)
 
 	require.PanicsWithValue(t, "resource: a filter language is registered already", func() {
 		RegisterLanguage(func([]protoreflect.MessageDescriptor) (Filters, error) { return nil, nil })

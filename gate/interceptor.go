@@ -57,10 +57,10 @@ func Stream(p Policy) grpc.StreamServerInterceptor {
 // Decide asks whatever there is to ask and answers with the context the handler
 // is served with.
 //
-// It is exported because a batch of calls inside one call has to apply it per
-// operation: what a caller may see is keyed on the method gRPC dispatched, and
-// a batch arrives as one method carrying many. An interceptor cannot be called
-// from inside a handler; a function can.
+// It is exported for what decides a method gRPC did not dispatch: a row a Watch
+// reads for its subscriber, held to the Get of its kind (`resource.Guard`),
+// and a server in the same process asked by a method of its own. An
+// interceptor cannot be called from inside a handler; a function can.
 func Decide(ctx context.Context, p Policy, method string) (context.Context, error) {
 	f, ok := frame.From(ctx)
 	if !ok {

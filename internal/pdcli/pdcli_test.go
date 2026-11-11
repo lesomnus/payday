@@ -503,8 +503,8 @@ message Holder {
 //
 // `enttx.Rebind` asks for the binder at run time -- `any(s).(Binder[S])` -- so a
 // layer with no `WithDriver` is not a compile error anywhere. It is
-// `ErrNotBindable` the first time somebody opens a transaction, which is a batch
-// or a multi-write RPC, and which is not the day the layer was written.
+// `ErrNotBindable` the first time somebody opens a transaction, which is a
+// multi-write RPC, and which is not the day the layer was written.
 //
 // Embedding `Overlay` does not give it. `Overlay` embeds the generated `Server`
 // interface and `WithDriver` is deliberately not one of its methods: a promoted
