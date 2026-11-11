@@ -537,10 +537,10 @@ func TestOverlayMayAddAndMayNotChange(t *testing.T) {
 message Holder {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  string alias = 4;
-  string name = 5;
-  string desc = 6;
-  map<string, string> labels = 7;
+  string alias = 4 [(payday.field) = {personal: true}];
+  string name = 5 [(payday.field) = {personal: true}];
+  string desc = 6 [(payday.field) = {personal: true}];
+  map<string, string> labels = 7 [(payday.field) = {personal: true}];
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
@@ -598,17 +598,44 @@ message Site {
 		body: `  string handle = 4;`,
 		says: `redeclared as "handle"`,
 	}, {
+		what: "making one of payday's a list",
+		body: `  repeated string alias = 4 [(payday.field) = {personal: true}];`,
+		says: `4 is payday's "alias" (string) and was redeclared as "alias" (repeated string)`,
+	}, {
 		// The name and the type kept, and the column taken away: the wall
 		// and `auth` read an alias that is no longer in the table.
 		what: "taking one of payday's out of the table",
 		body: `  string alias = 4 [(orm.field) = {disabled: true}];`,
-		says: `4 is payday's "alias" (string) and was redeclared as "alias" (string, in no column)`,
+		says: `4 is payday's "alias" (string) and was redeclared with other options at (orm.field), (payday.field):`,
+	}, {
+		// The name and the type kept, and what a holder is called said to be
+		// about nobody: the trail would keep it as a value, where nothing that
+		// forgets the person reaches it.
+		what: "saying one of payday's is about nobody",
+		body: `  string alias = 4 [(payday.field) = {personal: false}];`,
+		says: `4 is payday's "alias" (string) and was redeclared with other options at (payday.field).personal:`,
+	}, {
+		// And the option that is not an option's: every JSON reader of the
+		// field reads it under the other name.
+		what: "naming one of payday's otherwise in JSON",
+		body: `  string alias = 4 [json_name = "handle", (payday.field) = {personal: true}];`,
+		says: `4 is payday's "alias" (string) and was redeclared with other options at json_name:`,
+	}, {
+		// Every option it had, and none of them said: the merge took the
+		// overlay's field whole.
+		what: "redeclaring one of payday's and saying none of what it says",
+		body: `  string alias = 4;`,
+		says: `4 is payday's "alias" (string) and was redeclared with other options at (payday.field):`,
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			// The overlay has already been merged by the time a generator sees
 			// it, so what is written here is the merged file: payday's Holder
 			// with that number replaced.
-			src := tenantOf("payday") + strings.Replace(holder(""), "  string alias = 4;", tt.body, 1)
+			const alias = "  string alias = 4 [(payday.field) = {personal: true}];"
+			if !strings.Contains(holder(""), alias) {
+				t.Fatalf("the fixture no longer says %q", alias)
+			}
+			src := tenantOf("payday") + strings.Replace(holder(""), alias, tt.body, 1)
 
 			_, err := readAs(t, "payday", src)
 			if err == nil {
@@ -689,10 +716,10 @@ func tenantOf(pkg string) string {
 	return `
 message Tenant {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  string alias = 4 [(orm.field) = {unique: true}];
-  string name = 5;
-  string desc = 6;
-  map<string, string> labels = 7;
+  string alias = 4 [(orm.field) = {unique: true}, (payday.field) = {personal: false}];
+  string name = 5 [(payday.field) = {personal: false}];
+  string desc = 6 [(payday.field) = {personal: false}];
+  map<string, string> labels = 7 [(payday.field) = {personal: false}];
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {rpc: {crud: true}};

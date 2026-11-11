@@ -146,9 +146,14 @@ merging takes the overlay's word and says nothing about it: without it
 the wall goes on reading a tenant and `auth` goes on looking a holder up — both
 against a column that is no longer what they were written for. What is compared
 is what payday shipped against what is about to be generated, by number: the
-name it was given, the kind it holds, and for a message field what it points at.
-The numbers you may use, and the refusal itself, are in
-[the schema guide](guide/schema.md#7-adding-to-paydays-entities).
+name it was given, the kind it holds and whether it is a list, for a message
+field what it points at, and everything said beside it -- its JSON name and
+every option. A field's options are merged with the field, which is to say
+replaced by the overlay's: one that keeps the name and the type and leaves out
+`(payday.field) = {personal: true}` puts a person's name on the trail as a
+value, and one that leaves out `(orm.field) = {disabled: true}` makes a column
+of what payday keeps in none. The numbers you may use, and the refusal itself,
+are in [the schema guide](guide/schema.md#7-adding-to-paydays-entities).
 
 **Adding to payday's options.** The merge also merges options. Where payday's
 entity and the overlay set the same option to message literals, the two are

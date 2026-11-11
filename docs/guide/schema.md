@@ -804,7 +804,7 @@ You may add at any number payday does not use; changing one it does is refused:
 ```
 an overlay may add to one of payday's entities and may not change it.
 payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.
-Of its Event and Fact, payday keeps every number they declare, and an app's own go at any other.
+Of its optional records, payday keeps every number they declare, and an app's own go at any other.
 Of its options, an overlay may add an index to (orm.message), and nothing else.
 
   app.Holder: 4 is payday's "alias" (string) and was redeclared as "handle" (string)
@@ -814,6 +814,22 @@ The check is there because the merge takes the overlay's word and says nothing
 about it. `int64 alias = 4` is a perfectly good message, so the app still
 **compiles** and what breaks does so at run time; the whole of that argument is
 [the generation contract §2](../schema.md#2-overlays-adding-never-overriding).
+
+A field of payday's is all of what is said of it, not only its name and its
+type: whether it is a list, its JSON name, and every option beside it. The
+merge takes the overlay's field whole, so an option payday's says and the
+overlay's does not is gone. `string alias = 4;` on Holder drops
+`(payday.field) = {personal: true}`, and what a person is called goes onto the
+trail as a value; `string desc = 6;` on an Event drops
+`(orm.field) = {disabled: true}`, and makes a column of the sentence an event
+is said in. Each is refused, by the option it says otherwise:
+
+```
+  app.Holder: 4 is payday's "alias" (string) and was redeclared with other options at (payday.field): payday's says [(payday.field) = {personal:true}], and this []
+```
+
+Redeclaring one exactly as payday declares it, option for option, changes
+nothing and is not refused -- and is nothing an overlay needs to do.
 
 An overlay may add an **index**, as above. payday's entity declares
 `(orm.message)` too, and the two are merged: the overlay's indexes are appended
