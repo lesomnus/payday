@@ -239,19 +239,21 @@ type lateAddr struct {
 	upstream string
 
 	mu      sync.Mutex
+	port    *port
 	l       net.Listener
 	conns   []net.Conn
 	stopped bool
 	wg      sync.WaitGroup
 }
 
+// late is an address on the loopback that refuses until it is opened. Its
+// port is held from here on (late_unix_test.go), so the refusal is this
+// address's and not another listener's answer.
 func late(t *testing.T, upstream string) *lateAddr {
 	t.Helper()
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	a := &lateAddr{t: t, addr: l.Addr().String(), upstream: upstream}
-	require.NoError(t, l.Close())
+	p := reserve(t)
+	a := &lateAddr{t: t, addr: p.addr, upstream: upstream, port: p}
 	t.Cleanup(a.stop)
 
 	return a
@@ -265,11 +267,9 @@ func (a *lateAddr) open() {
 		return
 	}
 
-	l, err := net.Listen("tcp", a.addr)
+	l, err := a.port.listen()
 	if err != nil {
-		// Taken in the moment it was closed, which is rare and is not what
-		// the test is about.
-		a.t.Errorf("listen again at %s: %v", a.addr, err)
+		a.t.Errorf("listen at %s: %v", a.addr, err)
 		return
 	}
 	a.l = l
@@ -321,6 +321,7 @@ func (a *lateAddr) hold(c net.Conn) {
 func (a *lateAddr) stop() {
 	a.mu.Lock()
 	a.stopped = true
+	a.port.close()
 	if a.l != nil {
 		a.l.Close()
 	}
