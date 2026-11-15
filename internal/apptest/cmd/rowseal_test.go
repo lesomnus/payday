@@ -132,7 +132,7 @@ func TestARowWrittenBeforeItsKindWasSealedIsListedAndARecordSealsIt(t *testing.T
 
 	newest := rows[len(rows)-1]
 	q := b.Ent.Robot.Query().Where(robot.IdEQ(k))
-	bare.RobotSelectInit(q, nil)
+	x.NoError(bare.RobotSelectInit(ctx, nil, q, nil))
 	r, err := q.Only(ctx)
 	x.NoError(err)
 	sum, err := d.Of(pdid.Id(k), r.Proto(), newest.DigestFields, audit.Line{Id: newest.Id, Created: newest.DateCreated, Action: newest.Action})

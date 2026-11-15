@@ -232,7 +232,9 @@ func (s ThingServiceServer) Get(ctx context.Context, req *apptest.ThingGetReques
 	}
 
 	q := s.Db.Thing.Query().Where(p)
-	ThingSelectInit(q, req.GetSelect())
+	if err := ThingSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -273,17 +275,25 @@ func ThingSelectedFields(m *apptest.ThingSelect) []string {
 	return vs
 }
 
-func ThingSelect(q *ent.ThingQuery, m *apptest.ThingSelect) {
+// ThingSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func ThingSelect(ctx context.Context, scope Scope, q *ent.ThingQuery, m *apptest.ThingSelect) error {
 	if !m.GetAll() {
 		fields := ThingSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func ThingSelectInit(q *ent.ThingQuery, m *apptest.ThingSelect) {
+// ThingSelectInit is [ThingSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func ThingSelectInit(ctx context.Context, scope Scope, q *ent.ThingQuery, m *apptest.ThingSelect) error {
 	if m != nil {
-		ThingSelect(q, m)
+		return ThingSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s ThingServiceServer) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {

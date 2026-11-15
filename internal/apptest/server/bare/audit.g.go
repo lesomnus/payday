@@ -269,7 +269,9 @@ func (s AuditServiceServer) Get(ctx context.Context, req *apptest.AuditGetReques
 	}
 
 	q := s.Db.Audit.Query().Where(p)
-	AuditSelectInit(q, req.GetSelect())
+	if err := AuditSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -340,17 +342,25 @@ func AuditSelectedFields(m *apptest.AuditSelect) []string {
 	return vs
 }
 
-func AuditSelect(q *ent.AuditQuery, m *apptest.AuditSelect) {
+// AuditSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func AuditSelect(ctx context.Context, scope Scope, q *ent.AuditQuery, m *apptest.AuditSelect) error {
 	if !m.GetAll() {
 		fields := AuditSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func AuditSelectInit(q *ent.AuditQuery, m *apptest.AuditSelect) {
+// AuditSelectInit is [AuditSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func AuditSelectInit(ctx context.Context, scope Scope, q *ent.AuditQuery, m *apptest.AuditSelect) error {
 	if m != nil {
-		AuditSelect(q, m)
+		return AuditSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s AuditServiceServer) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {

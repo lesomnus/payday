@@ -8671,7 +8671,9 @@ func checkedThing(db *ent.Client) audit.Kind {
 // a Get reads it.
 func rowsCell(ctx context.Context, db *ent.Client, ps ...predicate.Cell) ([]audit.Live, error) {
 	q := db.Cell.Query().Where(ps...)
-	bare.CellSelectInit(q, nil)
+	if err := bare.CellSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entCell.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8710,7 +8712,9 @@ func rowsEntitlement(ctx context.Context, db *ent.Client, ps ...predicate.Entitl
 // a Get reads it.
 func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]audit.Live, error) {
 	q := db.Event.Query().Where(ps...)
-	bare.EventSelectInit(q, nil)
+	if err := bare.EventSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entEvent.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8730,7 +8734,9 @@ func rowsEvent(ctx context.Context, db *ent.Client, ps ...predicate.Event) ([]au
 // a Get reads it.
 func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audit.Live, error) {
 	q := db.Fact.Query().Where(ps...)
-	bare.FactSelectInit(q, nil)
+	if err := bare.FactSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entFact.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8750,7 +8756,9 @@ func rowsFact(ctx context.Context, db *ent.Client, ps ...predicate.Fact) ([]audi
 // a Get reads it.
 func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]audit.Live, error) {
 	q := db.Fleet.Query().Where(ps...)
-	bare.FleetSelectInit(q, nil)
+	if err := bare.FleetSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entFleet.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8770,7 +8778,9 @@ func rowsFleet(ctx context.Context, db *ent.Client, ps ...predicate.Fleet) ([]au
 // a Get reads it.
 func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]audit.Live, error) {
 	q := db.Holder.Query().Where(ps...)
-	bare.HolderSelectInit(q, nil)
+	if err := bare.HolderSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entHolder.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8790,7 +8800,9 @@ func rowsHolder(ctx context.Context, db *ent.Client, ps ...predicate.Holder) ([]
 // a Get reads it.
 func rowsJob(ctx context.Context, db *ent.Client, ps ...predicate.Job) ([]audit.Live, error) {
 	q := db.Job.Query().Where(ps...)
-	bare.JobSelectInit(q, nil)
+	if err := bare.JobSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entJob.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8810,7 +8822,9 @@ func rowsJob(ctx context.Context, db *ent.Client, ps ...predicate.Job) ([]audit.
 // a Get reads it.
 func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]audit.Live, error) {
 	q := db.Joint.Query().Where(ps...)
-	bare.JointSelectInit(q, nil)
+	if err := bare.JointSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entJoint.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8830,7 +8844,9 @@ func rowsJoint(ctx context.Context, db *ent.Client, ps ...predicate.Joint) ([]au
 // a Get reads it.
 func rowsMachine(ctx context.Context, db *ent.Client, ps ...predicate.Machine) ([]audit.Live, error) {
 	q := db.Machine.Query().Where(ps...)
-	bare.MachineSelectInit(q, nil)
+	if err := bare.MachineSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entMachine.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8869,7 +8885,9 @@ func rowsNotificationReceiptRecord(ctx context.Context, db *ent.Client, ps ...pr
 // a Get reads it.
 func rowsNotificationRecord(ctx context.Context, db *ent.Client, ps ...predicate.NotificationRecord) ([]audit.Live, error) {
 	q := db.NotificationRecord.Query().Where(ps...)
-	bare.NotificationRecordSelectInit(q, nil)
+	if err := bare.NotificationRecordSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entNotificationRecord.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8889,7 +8907,9 @@ func rowsNotificationRecord(ctx context.Context, db *ent.Client, ps ...predicate
 // a Get reads it.
 func rowsPairing(ctx context.Context, db *ent.Client, ps ...predicate.Pairing) ([]audit.Live, error) {
 	q := db.Pairing.Query().Where(ps...)
-	bare.PairingSelectInit(q, nil)
+	if err := bare.PairingSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entPairing.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8928,7 +8948,9 @@ func rowsPulse(ctx context.Context, db *ent.Client, ps ...predicate.Pulse) ([]au
 // a Get reads it.
 func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) ([]audit.Live, error) {
 	q := db.Reading.Query().Where(ps...)
-	bare.ReadingSelectInit(q, nil)
+	if err := bare.ReadingSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entReading.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8948,7 +8970,9 @@ func rowsReading(ctx context.Context, db *ent.Client, ps ...predicate.Reading) (
 // a Get reads it.
 func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]audit.Live, error) {
 	q := db.Robot.Query().Where(ps...)
-	bare.RobotSelectInit(q, nil)
+	if err := bare.RobotSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entRobot.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8968,7 +8992,9 @@ func rowsRobot(ctx context.Context, db *ent.Client, ps ...predicate.Robot) ([]au
 // a Get reads it.
 func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audit.Live, error) {
 	q := db.Seal.Query().Where(ps...)
-	bare.SealSelectInit(q, nil)
+	if err := bare.SealSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entSeal.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -8988,7 +9014,9 @@ func rowsSeal(ctx context.Context, db *ent.Client, ps ...predicate.Seal) ([]audi
 // a Get reads it.
 func rowsStint(ctx context.Context, db *ent.Client, ps ...predicate.Stint) ([]audit.Live, error) {
 	q := db.Stint.Query().Where(ps...)
-	bare.StintSelectInit(q, nil)
+	if err := bare.StintSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entStint.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -9027,7 +9055,9 @@ func rowsTally(ctx context.Context, db *ent.Client, ps ...predicate.Tally) ([]au
 // a Get reads it.
 func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]audit.Live, error) {
 	q := db.Tenant.Query().Where(ps...)
-	bare.TenantSelectInit(q, nil)
+	if err := bare.TenantSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entTenant.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {
@@ -9047,7 +9077,9 @@ func rowsTenant(ctx context.Context, db *ent.Client, ps ...predicate.Tenant) ([]
 // a Get reads it.
 func rowsThing(ctx context.Context, db *ent.Client, ps ...predicate.Thing) ([]audit.Live, error) {
 	q := db.Thing.Query().Where(ps...)
-	bare.ThingSelectInit(q, nil)
+	if err := bare.ThingSelectInit(ctx, nil, q, nil); err != nil {
+		return nil, err
+	}
 
 	vs, err := q.Order(entThing.ById()).Limit(audit.RowsPage).All(ctx)
 	if err != nil {

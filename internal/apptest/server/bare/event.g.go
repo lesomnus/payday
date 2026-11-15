@@ -404,7 +404,9 @@ func (s EventServiceServer) Get(ctx context.Context, req *apptest.EventGetReques
 	}
 
 	q := s.Db.Event.Query().Where(p)
-	EventSelectInit(q, req.GetSelect())
+	if err := EventSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -466,22 +468,40 @@ func EventSelectedFields(m *apptest.EventSelect) []string {
 	return vs
 }
 
-func EventSelect(q *ent.EventQuery, m *apptest.EventSelect) {
+// EventSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func EventSelect(ctx context.Context, scope Scope, q *ent.EventQuery, m *apptest.EventSelect) error {
 	if !m.GetAll() {
 		fields := EventSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func EventSelectInit(q *ent.EventQuery, m *apptest.EventSelect) {
+// EventSelectInit is [EventSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func EventSelectInit(ctx context.Context, scope Scope, q *ent.EventQuery, m *apptest.EventSelect) error {
 	if m != nil {
-		EventSelect(q, m)
+		return EventSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func EventPick(req *apptest.EventRef) (predicate.Event, error) {

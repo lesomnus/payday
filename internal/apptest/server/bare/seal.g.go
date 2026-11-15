@@ -229,7 +229,9 @@ func (s SealServiceServer) Get(ctx context.Context, req *apptest.SealGetRequest)
 	}
 
 	q := s.Db.Seal.Query().Where(p)
-	SealSelectInit(q, req.GetSelect())
+	if err := SealSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -273,17 +275,25 @@ func SealSelectedFields(m *apptest.SealSelect) []string {
 	return vs
 }
 
-func SealSelect(q *ent.SealQuery, m *apptest.SealSelect) {
+// SealSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func SealSelect(ctx context.Context, scope Scope, q *ent.SealQuery, m *apptest.SealSelect) error {
 	if !m.GetAll() {
 		fields := SealSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func SealSelectInit(q *ent.SealQuery, m *apptest.SealSelect) {
+// SealSelectInit is [SealSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func SealSelectInit(ctx context.Context, scope Scope, q *ent.SealQuery, m *apptest.SealSelect) error {
 	if m != nil {
-		SealSelect(q, m)
+		return SealSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s SealServiceServer) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
