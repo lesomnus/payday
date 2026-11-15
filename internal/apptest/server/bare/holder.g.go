@@ -10,7 +10,6 @@ import (
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	holder "github.com/lesomnus/payday/internal/apptest/internal/ent/holder"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
@@ -295,7 +294,9 @@ func (s HolderServiceServer) Get(ctx context.Context, req *apptest.HolderGetRequ
 	}
 
 	q := s.Db.Holder.Query().Where(p)
-	HolderSelectInit(q, req.GetSelect())
+	if err := HolderSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -357,28 +358,55 @@ func HolderSelectedFields(m *apptest.HolderSelect) []string {
 	return vs
 }
 
-func HolderSelect(q *ent.HolderQuery, m *apptest.HolderSelect) {
+// HolderSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func HolderSelect(ctx context.Context, scope Scope, q *ent.HolderQuery, m *apptest.HolderSelect) error {
 	if !m.GetAll() {
 		fields := HolderSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if m.HasRobot() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithRobot(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetRobot())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetRobot())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func HolderSelectInit(q *ent.HolderQuery, m *apptest.HolderSelect) {
+// HolderSelectInit is [HolderSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func HolderSelectInit(ctx context.Context, scope Scope, q *ent.HolderQuery, m *apptest.HolderSelect) error {
 	if m != nil {
-		HolderSelect(q, m)
+		return HolderSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s HolderServiceServer) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {

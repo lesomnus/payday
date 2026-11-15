@@ -258,7 +258,9 @@ func (s JobServiceServer) Get(ctx context.Context, req *apptest.JobGetRequest) (
 	}
 
 	q := s.Db.Job.Query().Where(p)
-	JobSelectInit(q, req.GetSelect())
+	if err := JobSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -302,22 +304,40 @@ func JobSelectedFields(m *apptest.JobSelect) []string {
 	return vs
 }
 
-func JobSelect(q *ent.JobQuery, m *apptest.JobSelect) {
+// JobSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func JobSelect(ctx context.Context, scope Scope, q *ent.JobQuery, m *apptest.JobSelect) error {
 	if !m.GetAll() {
 		fields := JobSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func JobSelectInit(q *ent.JobQuery, m *apptest.JobSelect) {
+// JobSelectInit is [JobSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func JobSelectInit(ctx context.Context, scope Scope, q *ent.JobQuery, m *apptest.JobSelect) error {
 	if m != nil {
-		JobSelect(q, m)
+		return JobSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s JobServiceServer) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {

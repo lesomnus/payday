@@ -80,7 +80,9 @@ func (s AccessServiceServer) Get(ctx context.Context, req *apptest.AccessGetRequ
 	}
 
 	q := s.Db.Access.Query().Where(p)
-	AccessSelectInit(q, req.GetSelect())
+	if err := AccessSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -145,17 +147,25 @@ func AccessSelectedFields(m *apptest.AccessSelect) []string {
 	return vs
 }
 
-func AccessSelect(q *ent.AccessQuery, m *apptest.AccessSelect) {
+// AccessSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func AccessSelect(ctx context.Context, scope Scope, q *ent.AccessQuery, m *apptest.AccessSelect) error {
 	if !m.GetAll() {
 		fields := AccessSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func AccessSelectInit(q *ent.AccessQuery, m *apptest.AccessSelect) {
+// AccessSelectInit is [AccessSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func AccessSelectInit(ctx context.Context, scope Scope, q *ent.AccessQuery, m *apptest.AccessSelect) error {
 	if m != nil {
-		AccessSelect(q, m)
+		return AccessSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func AccessPick(req *apptest.AccessRef) (predicate.Access, error) {

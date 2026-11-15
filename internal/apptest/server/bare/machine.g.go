@@ -10,7 +10,6 @@ import (
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
@@ -309,7 +308,9 @@ func (s MachineServiceServer) Get(ctx context.Context, req *apptest.MachineGetRe
 	}
 
 	q := s.Db.Machine.Query().Where(p)
-	MachineSelectInit(q, req.GetSelect())
+	if err := MachineSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -389,28 +390,55 @@ func MachineSelectedFields(m *apptest.MachineSelect) []string {
 	return vs
 }
 
-func MachineSelect(q *ent.MachineQuery, m *apptest.MachineSelect) {
+// MachineSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func MachineSelect(ctx context.Context, scope Scope, q *ent.MachineQuery, m *apptest.MachineSelect) error {
 	if !m.GetAll() {
 		fields := MachineSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if m.HasRobot() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithRobot(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetRobot())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetRobot())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func MachineSelectInit(q *ent.MachineQuery, m *apptest.MachineSelect) {
+// MachineSelectInit is [MachineSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func MachineSelectInit(ctx context.Context, scope Scope, q *ent.MachineQuery, m *apptest.MachineSelect) error {
 	if m != nil {
-		MachineSelect(q, m)
+		return MachineSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s MachineServiceServer) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {

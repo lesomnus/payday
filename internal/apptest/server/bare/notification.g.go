@@ -242,7 +242,9 @@ func (s NotificationRecordServiceServer) Get(ctx context.Context, req *apptest.N
 	}
 
 	q := s.Db.NotificationRecord.Query().Where(p)
-	NotificationRecordSelectInit(q, req.GetSelect())
+	if err := NotificationRecordSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -304,17 +306,25 @@ func NotificationRecordSelectedFields(m *apptest.NotificationRecordSelect) []str
 	return vs
 }
 
-func NotificationRecordSelect(q *ent.NotificationRecordQuery, m *apptest.NotificationRecordSelect) {
+// NotificationRecordSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func NotificationRecordSelect(ctx context.Context, scope Scope, q *ent.NotificationRecordQuery, m *apptest.NotificationRecordSelect) error {
 	if !m.GetAll() {
 		fields := NotificationRecordSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func NotificationRecordSelectInit(q *ent.NotificationRecordQuery, m *apptest.NotificationRecordSelect) {
+// NotificationRecordSelectInit is [NotificationRecordSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func NotificationRecordSelectInit(ctx context.Context, scope Scope, q *ent.NotificationRecordQuery, m *apptest.NotificationRecordSelect) error {
 	if m != nil {
-		NotificationRecordSelect(q, m)
+		return NotificationRecordSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func NotificationRecordPick(req *apptest.NotificationRecordRef) (predicate.NotificationRecord, error) {

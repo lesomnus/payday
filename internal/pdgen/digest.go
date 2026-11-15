@@ -178,7 +178,14 @@ func emitDigests(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.Go
 		if v.Rpcs().HasGet() {
 			// As its Get reads it, which is what the recorder digests: the
 			// row a write handed over is that Get's.
-			g.P("	", p.Bare.Ident(e+"SelectInit"), "(q, nil)")
+			//
+			// With no scope, said here by the nil: this is the trail reading
+			// every row of a kind for itself, in whichever tenant, and a
+			// select reads each edge through the scope it is handed
+			// (`protoc-gen-orm-ent`, `<Entity>Select`).
+			g.P("	if err := ", p.Bare.Ident(e+"SelectInit"), "(ctx, nil, q, nil); err != nil {")
+			g.P("		return nil, err")
+			g.P("	}")
 		}
 		g.P("")
 		g.P("	vs, err := q.Order(", entPkg.Ident("ById"), "()).Limit(", pkgAudit.Ident("RowsPage"), ").All(ctx)")

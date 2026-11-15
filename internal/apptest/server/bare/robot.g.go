@@ -15,7 +15,6 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
-	thing "github.com/lesomnus/payday/internal/apptest/internal/ent/thing"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
@@ -253,7 +252,9 @@ func (s CellServiceServer) Get(ctx context.Context, req *apptest.CellGetRequest)
 	}
 
 	q := s.Db.Cell.Query().Where(p)
-	CellSelectInit(q, req.GetSelect())
+	if err := CellSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -288,22 +289,40 @@ func CellSelectedFields(m *apptest.CellSelect) []string {
 	return vs
 }
 
-func CellSelect(q *ent.CellQuery, m *apptest.CellSelect) {
+// CellSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func CellSelect(ctx context.Context, scope Scope, q *ent.CellQuery, m *apptest.CellSelect) error {
 	if !m.GetAll() {
 		fields := CellSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func CellSelectInit(q *ent.CellQuery, m *apptest.CellSelect) {
+// CellSelectInit is [CellSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func CellSelectInit(ctx context.Context, scope Scope, q *ent.CellQuery, m *apptest.CellSelect) error {
 	if m != nil {
-		CellSelect(q, m)
+		return CellSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
@@ -1003,7 +1022,9 @@ func (s RobotServiceServer) Get(ctx context.Context, req *apptest.RobotGetReques
 	}
 
 	q := s.Db.Robot.Query().Where(p)
-	RobotSelectInit(q, req.GetSelect())
+	if err := RobotSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -1056,34 +1077,70 @@ func RobotSelectedFields(m *apptest.RobotSelect) []string {
 	return vs
 }
 
-func RobotSelect(q *ent.RobotQuery, m *apptest.RobotSelect) {
+// RobotSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func RobotSelect(ctx context.Context, scope Scope, q *ent.RobotQuery, m *apptest.RobotSelect) error {
 	if !m.GetAll() {
 		fields := RobotSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasTenant() {
+		p, err := TenantNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithTenant(func(q *ent.TenantQuery) {
-			TenantSelect(q, m.GetTenant())
+			if p != nil {
+				q.Where(p)
+			}
+			err = TenantSelect(ctx, scope, q, m.GetTenant())
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if m.HasThing() {
+		p, err := ThingNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithThing(func(q *ent.ThingQuery) {
-			q.Where(thing.DateErasedIsNil())
-			ThingSelect(q, m.GetThing())
+			if p != nil {
+				q.Where(p)
+			}
+			err = ThingSelect(ctx, scope, q, m.GetThing())
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if m.HasCell() {
+		p, err := CellNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithCell(func(q *ent.CellQuery) {
-			q.Where(cell.DateErasedIsNil())
-			CellSelect(q, m.GetCell())
+			if p != nil {
+				q.Where(p)
+			}
+			err = CellSelect(ctx, scope, q, m.GetCell())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func RobotSelectInit(q *ent.RobotQuery, m *apptest.RobotSelect) {
+// RobotSelectInit is [RobotSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func RobotSelectInit(ctx context.Context, scope Scope, q *ent.RobotQuery, m *apptest.RobotSelect) error {
 	if m != nil {
-		RobotSelect(q, m)
+		return RobotSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s RobotServiceServer) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
@@ -1641,7 +1698,9 @@ func (s PairingServiceServer) Get(ctx context.Context, req *apptest.PairingGetRe
 	}
 
 	q := s.Db.Pairing.Query().Where(p)
-	PairingSelectInit(q, req.GetSelect())
+	if err := PairingSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -1673,29 +1732,55 @@ func PairingSelectedFields(m *apptest.PairingSelect) []string {
 	return vs
 }
 
-func PairingSelect(q *ent.PairingQuery, m *apptest.PairingSelect) {
+// PairingSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func PairingSelect(ctx context.Context, scope Scope, q *ent.PairingQuery, m *apptest.PairingSelect) error {
 	if !m.GetAll() {
 		fields := PairingSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasLead() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithLead(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetLead())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetLead())
 		})
+		if err != nil {
+			return err
+		}
 	}
 	if m.HasFollow() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithFollow(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetFollow())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetFollow())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func PairingSelectInit(q *ent.PairingQuery, m *apptest.PairingSelect) {
+// PairingSelectInit is [PairingSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func PairingSelectInit(ctx context.Context, scope Scope, q *ent.PairingQuery, m *apptest.PairingSelect) error {
 	if m != nil {
-		PairingSelect(q, m)
+		return PairingSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s PairingServiceServer) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
@@ -2183,7 +2268,9 @@ func (s JointServiceServer) Get(ctx context.Context, req *apptest.JointGetReques
 	}
 
 	q := s.Db.Joint.Query().Where(p)
-	JointSelectInit(q, req.GetSelect())
+	if err := JointSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -2218,23 +2305,40 @@ func JointSelectedFields(m *apptest.JointSelect) []string {
 	return vs
 }
 
-func JointSelect(q *ent.JointQuery, m *apptest.JointSelect) {
+// JointSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func JointSelect(ctx context.Context, scope Scope, q *ent.JointQuery, m *apptest.JointSelect) error {
 	if !m.GetAll() {
 		fields := JointSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasRobot() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithRobot(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetRobot())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetRobot())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func JointSelectInit(q *ent.JointQuery, m *apptest.JointSelect) {
+// JointSelectInit is [JointSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func JointSelectInit(ctx context.Context, scope Scope, q *ent.JointQuery, m *apptest.JointSelect) error {
 	if m != nil {
-		JointSelect(q, m)
+		return JointSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s JointServiceServer) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
@@ -2717,7 +2821,9 @@ func (s FleetServiceServer) Get(ctx context.Context, req *apptest.FleetGetReques
 	}
 
 	q := s.Db.Fleet.Query().Where(p)
-	FleetSelectInit(q, req.GetSelect())
+	if err := FleetSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -2752,17 +2858,25 @@ func FleetSelectedFields(m *apptest.FleetSelect) []string {
 	return vs
 }
 
-func FleetSelect(q *ent.FleetQuery, m *apptest.FleetSelect) {
+// FleetSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func FleetSelect(ctx context.Context, scope Scope, q *ent.FleetQuery, m *apptest.FleetSelect) error {
 	if !m.GetAll() {
 		fields := FleetSelectedFields(m)
 		q.Select(fields...)
 	}
+	return nil
 }
 
-func FleetSelectInit(q *ent.FleetQuery, m *apptest.FleetSelect) {
+// FleetSelectInit is [FleetSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func FleetSelectInit(ctx context.Context, scope Scope, q *ent.FleetQuery, m *apptest.FleetSelect) error {
 	if m != nil {
-		FleetSelect(q, m)
+		return FleetSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s FleetServiceServer) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
@@ -3400,7 +3514,9 @@ func (s ReadingServiceServer) Get(ctx context.Context, req *apptest.ReadingGetRe
 	}
 
 	q := s.Db.Reading.Query().Where(p)
-	ReadingSelectInit(q, req.GetSelect())
+	if err := ReadingSelectInit(ctx, s.Scope, q, req.GetSelect()); err != nil {
+		return nil, err
+	}
 
 	v, err := q.Only(ctx)
 	if err != nil {
@@ -3438,23 +3554,40 @@ func ReadingSelectedFields(m *apptest.ReadingSelect) []string {
 	return vs
 }
 
-func ReadingSelect(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
+// ReadingSelect loads what `m` asks for, each edge through the Narrow
+// of the entity it reaches: an edge whose target `scope` keeps from this
+// caller is answered as its reference alone, as an edge nobody asked for
+// is. A nil scope narrows by nothing but whether the row is still there.
+func ReadingSelect(ctx context.Context, scope Scope, q *ent.ReadingQuery, m *apptest.ReadingSelect) error {
 	if !m.GetAll() {
 		fields := ReadingSelectedFields(m)
 		q.Select(fields...)
 	}
 	if m.HasRobot() {
+		p, err := RobotNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
 		q.WithRobot(func(q *ent.RobotQuery) {
-			q.Where(robot.DateErasedIsNil())
-			RobotSelect(q, m.GetRobot())
+			if p != nil {
+				q.Where(p)
+			}
+			err = RobotSelect(ctx, scope, q, m.GetRobot())
 		})
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func ReadingSelectInit(q *ent.ReadingQuery, m *apptest.ReadingSelect) {
+// ReadingSelectInit is [ReadingSelect] for a select that may be
+// nil, which loads the keys of a list edge and nothing else.
+func ReadingSelectInit(ctx context.Context, scope Scope, q *ent.ReadingQuery, m *apptest.ReadingSelect) error {
 	if m != nil {
-		ReadingSelect(q, m)
+		return ReadingSelect(ctx, scope, q, m)
 	}
+	return nil
 }
 
 func (s ReadingServiceServer) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
