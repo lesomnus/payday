@@ -707,22 +707,27 @@ func (r *runner) printer(cmd *xli.Command) (Printer, error) {
 // means for it is the app's, and a [Printer] that had to be told would be an
 // interface with two methods for what is one thing -- the reason it has one.
 func (r *runner) printerAs(cmd *xli.Command, header bool) (Printer, error) {
+	loc, err := Location(cmd)
+	if err != nil {
+		return nil, err
+	}
+	opts := PrintOptions{Location: loc}
 	name, ok := flg.Find[string](cmd, "output")
 	if !ok || name == "" {
-		return r.byDefault(header), nil
+		return r.byDefault(header, opts), nil
 	}
 
 	if p, ok := r.opts.Printers[name]; ok {
 		return p, nil
 	}
 
-	return builtinAs(name, header)
+	return builtinAs(name, header, opts)
 }
 
 // byDefault is the format when nothing was asked for, and the only place a
 // per-message renderer is consulted. See [Options.Renderers].
-func (r *runner) byDefault(header bool) Printer {
-	p, err := builtinAs(r.opts.def(), header)
+func (r *runner) byDefault(header bool, opts ...PrintOptions) Printer {
+	p, err := builtinAs(r.opts.def(), header, opts...)
 	if err != nil {
 		if v, ok := r.opts.Printers[r.opts.def()]; ok {
 			p = v
@@ -747,16 +752,18 @@ func (r *runner) byDefault(header bool) Printer {
 // PrinterNamed returns a built-in output format, including template=... .
 // Applications can reuse the same names their CLI accepts without copying its
 // format switch. Per-tree custom formats remain in Options.Printers.
-func PrinterNamed(name string) (Printer, error) { return builtinAs(name, true) }
+func PrinterNamed(name string, opts ...PrintOptions) (Printer, error) {
+	return builtinAs(name, true, opts...)
+}
 
 func builtin(name string) (Printer, error) { return PrinterNamed(name) }
 
 // builtinAs is [builtin] told whether this is the first answer of several; only
 // the tables have anything to do with it.
-func builtinAs(name string, header bool) (Printer, error) {
+func builtinAs(name string, header bool, opts ...PrintOptions) (Printer, error) {
 	switch {
 	case name == "pretty":
-		return Pretty, nil
+		return prettyPrinter(printLocation(opts)), nil
 	case name == "prototext":
 		return ProtoText, nil
 	case name == "protojson":
@@ -766,9 +773,9 @@ func builtinAs(name string, header bool) (Printer, error) {
 	case name == "name":
 		return Name, nil
 	case name == "table":
-		return table(false, header), nil
+		return table(false, header, opts...), nil
 	case name == "wide":
-		return table(true, header), nil
+		return table(true, header, opts...), nil
 	case strings.HasPrefix(name, "template="):
 		return Template(strings.TrimPrefix(name, "template="))
 	}

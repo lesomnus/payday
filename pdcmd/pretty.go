@@ -46,35 +46,39 @@ import (
 // `_id` is an identifier, because that is payday's field-number rule written in
 // names; a `Timestamp` is a time. Nothing here is a guess about a particular
 // app's entity, which is why it needs nothing declared to be useful.
-var Pretty Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
-	rows := Rows(m)
-	for i, row := range rows {
-		if i > 0 {
-			if _, err := fmt.Fprintln(w); err != nil {
+var Pretty Printer = prettyPrinter(time.UTC)
+
+func prettyPrinter(loc *time.Location) Printer {
+	return PrinterFunc(func(w io.Writer, m proto.Message) error {
+		rows := Rows(m)
+		for i, row := range rows {
+			if i > 0 {
+				if _, err := fmt.Fprintln(w); err != nil {
+					return err
+				}
+			}
+			if err := pretty(w, row, "", loc); err != nil {
 				return err
 			}
 		}
-		if err := pretty(w, row, ""); err != nil {
-			return err
+
+		// What a list did not say: `next` is the only field of a list response that
+		// is not a row, and a person paging through needs it. Printed only when
+		// there is more, because empty means there was not.
+		v := m.ProtoReflect()
+		if fd := v.Descriptor().Fields().ByName("next"); fd != nil && fd.Kind() == protoreflect.StringKind {
+			if s := v.Get(fd).String(); s != "" {
+				fmt.Fprintf(w, "\nnext: %s\n", s)
+			}
 		}
-	}
 
-	// What a list did not say: `next` is the only field of a list response that
-	// is not a row, and a person paging through needs it. Printed only when
-	// there is more, because empty means there was not.
-	v := m.ProtoReflect()
-	if fd := v.Descriptor().Fields().ByName("next"); fd != nil && fd.Kind() == protoreflect.StringKind {
-		if s := v.Get(fd).String(); s != "" {
-			fmt.Fprintf(w, "\nnext: %s\n", s)
-		}
-	}
+		return nil
+	})
+}
 
-	return nil
-})
-
-func pretty(w io.Writer, m protoreflect.Message, indent string) error {
+func pretty(w io.Writer, m protoreflect.Message, indent string, loc *time.Location) error {
 	if jsonMapped(m.Descriptor()) {
-		b, err := jsonOf(m, indent)
+		b, err := humanJSON(m, indent, loc)
 		if err != nil {
 			return err
 		}
@@ -113,7 +117,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			fmt.Fprintf(w, "%s(%d)\n", name, l.Len())
 			for i := range l.Len() {
 				if fd.Kind() == protoreflect.MessageKind {
-					if err := pretty(w, l.Get(i).Message(), indent+"  "); err != nil {
+					if err := pretty(w, l.Get(i).Message(), indent+"  ", loc); err != nil {
 						return err
 					}
 					continue
@@ -128,7 +132,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			v.Map().Range(func(k protoreflect.MapKey, v protoreflect.Value) bool {
 				if fd.MapValue().Kind() == protoreflect.MessageKind && jsonMapped(fd.MapValue().Message()) {
 					var b []byte
-					b, err = jsonOf(v.Message(), indent+"  ")
+					b, err = humanJSON(v.Message(), indent+"  ", loc)
 					if err != nil {
 						return false
 					}
@@ -143,7 +147,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			}
 
 		case isTimestamp(fd):
-			fmt.Fprintf(w, "%s%s\n", name, timeOf(v))
+			fmt.Fprintf(w, "%s%s\n", name, timeOf(v, loc))
 
 		case isDuration(fd):
 			fmt.Fprintf(w, "%s%s\n", name, durationOf(v))
@@ -160,7 +164,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			fmt.Fprintf(w, "%s%s\n", name, ed.Name())
 
 		case fd.Kind() == protoreflect.MessageKind && jsonMapped(fd.Message()):
-			b, err := jsonOf(v.Message(), indent)
+			b, err := humanJSON(v.Message(), indent, loc)
 			if err != nil {
 				return err
 			}
@@ -178,7 +182,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			}
 
 			fmt.Fprintf(w, "%s\n", strings.TrimRight(name, " "))
-			if err := pretty(w, v.Message(), indent+"  "); err != nil {
+			if err := pretty(w, v.Message(), indent+"  ", loc); err != nil {
 				return err
 			}
 
@@ -290,13 +294,17 @@ func isZeroTime(m protoreflect.Message, fd protoreflect.FieldDescriptor) bool {
 	return asTime(m.Get(fd)).IsZero()
 }
 
-func timeOf(v protoreflect.Value) string {
+func timeOf(v protoreflect.Value, locations ...*time.Location) string {
 	t := asTime(v)
 	if t.IsZero() {
 		return "-"
 	}
 
-	return t.UTC().Format(time.RFC3339)
+	loc := time.UTC
+	if len(locations) > 0 && locations[0] != nil {
+		loc = locations[0]
+	}
+	return t.In(loc).Format(time.RFC3339)
 }
 
 func asTime(v protoreflect.Value) time.Time {

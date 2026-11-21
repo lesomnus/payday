@@ -123,7 +123,7 @@ func (t *Tree) Unary(method string, options ...UnaryOption) (*xli.Command, error
 		Name:  pdid.Name("", name),
 		Brief: string(md.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def()), flgInput()},
+		Flags: flg.Flags{flgOutput(r.opts.def()), TimeZoneFlag(), flgInput()},
 		Args:  args,
 
 		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {

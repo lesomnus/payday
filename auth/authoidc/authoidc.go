@@ -123,6 +123,15 @@ type Config struct {
 	// false only when this endpoint intentionally accepts OIDC ID tokens.
 	AccessToken bool
 
+	// Lazy defers discovery as well as key fetching until a Bearer credential
+	// arrives. Public calls and other authentication methods need no issuer.
+	Lazy bool
+
+	// RefreshInterval bounds remote discovery/JWKS requests, including failed
+	// fetches and unknown-key misses. Zero means one minute; negative is invalid.
+	// Concurrent misses share one request. Key rotation may wait this long.
+	RefreshInterval time.Duration
+
 	// Claims turns a verified token into an identity, and nil is [Subject].
 	Claims Claims
 }
@@ -132,11 +141,10 @@ var ErrNoAudience = errors.New("authoidc: no audience; a token for any relying p
 
 // New reads the provider's metadata and answers a handler for its tokens.
 //
-// It talks to the issuer, so it can fail and it takes as long as that takes.
-// That is deliberate: a deployment that cannot reach its provider at startup
-// cannot authenticate anybody, and finding out then is better than finding out
-// on the first request. Retrying is the caller's -- it knows whether it would
-// rather wait or exit.
+// By default discovery happens here, so an unavailable issuer can fail startup.
+// Config.Lazy defers it until the first Bearer credential; JWKS fetching is lazy
+// in either mode. Remote misses are coalesced and rate limited per handler.
+// Reuse the handler for the life of the server to retain its cache and limit.
 //
 //	h, err := authoidc.New(ctx, authoidc.Config{
 //		Issuer:   "https://auth.example.com",
@@ -149,12 +157,25 @@ func New(ctx context.Context, c Config) (auth.Handler, error) {
 		return nil, ErrNoAudience
 	}
 
+	if c.RefreshInterval < 0 {
+		return nil, fmt.Errorf("authoidc: negative refresh interval")
+	}
+	if c.RefreshInterval == 0 {
+		c.RefreshInterval = time.Minute
+	}
+	ctx = limitedClient(ctx, c.RefreshInterval)
+	if c.Lazy {
+		return &lazyHandler{config: c, context: context.WithoutCancel(ctx)}, nil
+	}
+	return discover(ctx, c)
+}
+
+func discover(ctx context.Context, c Config) (auth.Handler, error) {
 	p, err := oidc.NewProvider(ctx, c.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("authoidc: %s: %w", c.Issuer, err)
 	}
-
-	v := p.Verifier(&oidc.Config{ClientID: c.Audience})
+	v := p.VerifierContext(ctx, &oidc.Config{ClientID: c.Audience})
 	if c.AccessToken {
 		return AccessVerifier(v, c.Audience, c.Claims), nil
 	}
