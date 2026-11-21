@@ -33,11 +33,6 @@ type Accounts struct {
 	// Methods are the methods marked `(payday.method) = {account: {}}`, in the
 	// order the files declare them.
 	Methods []AccountMethod
-
-	// rpcs are every RPC of every entity's service: what the gate puts the
-	// question in front of, since a call an account makes as itself is
-	// refused all of them but its own.
-	rpcs []interceptRpc
 }
 
 // AccountMethod is one method an account calls as itself.
@@ -104,13 +99,16 @@ func readAccountMethods(files []*protogen.File) ([]AccountMethod, error) {
 				}
 
 				v, _ := proto.GetExtension(opts, pdpb.E_Method).(*pdpb.Method)
-				if !v.HasAccount() {
+				if !v.HasAccount() && !v.HasDirect() {
 					// A declaration that does nothing is one somebody relies on.
 					return nil, fmt.Errorf(
 						"%s: (payday.method) says nothing, and a method it is on is served as it was without it; "+
-							"`{account: {}}` is the one thing it says", m.Desc.FullName())
+							"say `{account: {}}` or `{direct: {}}`", m.Desc.FullName())
 				}
 
+				if !v.HasAccount() {
+					continue
+				}
 				vs = append(vs, AccountMethod{
 					Full:    "/" + string(svc.Desc.FullName()) + "/" + string(m.Desc.Name()),
 					Service: svc.GoName,
@@ -198,7 +196,7 @@ func (s *Schema) checkAccounts(d *accountsDeclared, methods []AccountMethod, fil
 		}
 	}
 
-	s.Accounts = &Accounts{Field: f, At: d.at, Methods: methods, rpcs: interceptRpcs(s, files)}
+	s.Accounts = &Accounts{Field: f, At: d.at, Methods: methods}
 
 	return nil
 }
@@ -460,9 +458,9 @@ func emitNothing(g *protogen.GeneratedFile) {
 	g.P("")
 }
 
-// emitGateAccounts writes, for an app that declares accounts, the question the
-// gate asks before anything else of every method of every entity's service:
-// whether a call an account makes as itself may be of it (`gate.AsAccount`).
+// emitGateAccounts enforces direct-call and account declarations on every
+// entity service, including calls made inside an overlay handler. Checking only
+// the outer transport method would let an allowed method call a restricted one.
 //
 // Every method, and not only the ones an account could find useful: a method
 // left out is one a frame of an account reaches, and the generated ones are
@@ -470,14 +468,9 @@ func emitNothing(g *protogen.GeneratedFile) {
 // installed by the gate's own accessor so that it is in front of what the gate
 // says of the service as well.
 func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath, served map[string]bool) {
-	a := s.Accounts
-	if a == nil {
-		return
-	}
-
 	by := map[string][]interceptRpc{}
 	var order []string
-	for _, v := range a.rpcs {
+	for _, v := range s.rpcs {
 		if _, ok := by[v.Entity]; !ok {
 			order = append(order, v.Entity)
 		}
@@ -486,7 +479,7 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 
 	for _, name := range order {
 		svc := root.Ident(name + "ServiceServer")
-		wrap := "accounts" + name
+		wrap := "guarded" + name
 
 		if !served[name] {
 			// Nothing else the gate says of this service, so this is the whole
@@ -497,19 +490,35 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 			g.P("")
 		}
 
-		g.P("// ", wrap, " is ", name, "Service as the gate serves it to a call an account")
-		g.P("// makes as itself: refused every method but the ones the schema marks the")
-		g.P("// account's own. See [gate.AsAccount].")
+		g.P("// ", wrap, " enforces method declarations on in-process calls too.")
 		g.P("type ", wrap, " struct{ ", svc, " }")
 		g.P("")
 
 		for _, v := range by[name] {
+			if v.Client {
+				kind := "ClientStreamingServer"
+				if v.Stream {
+					kind = "BidiStreamingServer"
+				}
+				g.P("func (s ", wrap, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", root.Ident(v.In), ", ", root.Ident(v.Out), "]) error {")
+				g.P(" if err := ", pkgGate.Ident("Direct"), "(out.Context(), ", root.Ident(v.Const), "); err != nil { return err }")
+				if s.Accounts != nil {
+					g.P(" if err := ", pkgGate.Ident("AsAccount"), "(out.Context(), ", root.Ident(v.Const), ", AccountMethod); err != nil { return err }")
+				}
+				g.P(" return s.", name, "ServiceServer.", v.Rpc, "(out)")
+				g.P("}")
+				g.P("")
+				continue
+			}
 			if v.Stream {
 				g.P("func (s ", wrap, ") ", v.Rpc, "(req *", root.Ident(v.In),
 					", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(v.Out), "]) error {")
-				g.P("	if err := ", pkgGate.Ident("AsAccount"), "(out.Context(), ", root.Ident(v.Const), ", AccountMethod); err != nil {")
-				g.P("		return err")
-				g.P("	}")
+				g.P("	if err := ", pkgGate.Ident("Direct"), "(out.Context(), ", root.Ident(v.Const), "); err != nil { return err }")
+				if s.Accounts != nil {
+					g.P("	if err := ", pkgGate.Ident("AsAccount"), "(out.Context(), ", root.Ident(v.Const), ", AccountMethod); err != nil {")
+					g.P("		return err")
+					g.P("	}")
+				}
 				g.P("")
 				g.P("	return s.", name, "ServiceServer.", v.Rpc, "(req, out)")
 				g.P("}")
@@ -519,9 +528,12 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 
 			g.P("func (s ", wrap, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"),
 				", req *", root.Ident(v.In), ") (*", root.Ident(v.Out), ", error) {")
-			g.P("	if err := ", pkgGate.Ident("AsAccount"), "(ctx, ", root.Ident(v.Const), ", AccountMethod); err != nil {")
-			g.P("		return nil, err")
-			g.P("	}")
+			g.P("	if err := ", pkgGate.Ident("Direct"), "(ctx, ", root.Ident(v.Const), "); err != nil { return nil, err }")
+			if s.Accounts != nil {
+				g.P("	if err := ", pkgGate.Ident("AsAccount"), "(ctx, ", root.Ident(v.Const), ", AccountMethod); err != nil {")
+				g.P("		return nil, err")
+				g.P("	}")
+			}
 			g.P("")
 			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(ctx, req)")
 			g.P("}")

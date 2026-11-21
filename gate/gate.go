@@ -136,6 +136,13 @@ type Call struct {
 	// Actor is the account too, and Tenant is Nil. See [frame.OfAccount].
 	Account   pdid.Id
 	AsAccount bool
+
+	// Caller and Subject identify both verified parties of a represented call.
+	// May and Where are asked once for each, with Actor/Row naming the party
+	// being checked. Nil on direct calls. Presence is the app-verified reference.
+	Caller   *frame.Principal
+	Subject  *frame.Principal
+	Presence string
 }
 
 // Policy is what a deployment consults about a caller, and is the seam for

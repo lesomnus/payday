@@ -43,6 +43,23 @@ func Only(ids ...pdid.Id) Tenants {
 	return Tenants{ids: slices.Clip(slices.Clone(ids))}
 }
 
+// Intersect keeps only tenants both parties may see.
+func (t Tenants) Intersect(other Tenants) Tenants {
+	if t.all {
+		return other
+	}
+	if other.all {
+		return t
+	}
+	var ids []pdid.Id
+	for _, id := range t.ids {
+		if slices.Contains(other.ids, id) {
+			ids = append(ids, id)
+		}
+	}
+	return Only(ids...)
+}
+
 // All reports whether this is every tenant there is, in which case there is
 // nothing to narrow by and [Tenants.Uuids] says nothing.
 func (t Tenants) All() bool { return t.all }
@@ -181,6 +198,17 @@ func NarrowSet(ctx context.Context, of Sets) (vs []uuid.UUID, all bool, err erro
 	if of != nil {
 		if given, all, err = of(ctx); err != nil {
 			return nil, false, err
+		}
+		if f.Caller != nil {
+			other, every, err := of(Into(ctx, f.Caller.Frame(f.Grant).WithScope(f.Scope)))
+			if err != nil {
+				return nil, false, err
+			}
+			if all {
+				given, all = other, every
+			} else if !every {
+				given = slices.DeleteFunc(slices.Clone(given), func(id uuid.UUID) bool { return !slices.Contains(other, id) })
+			}
 		}
 	}
 

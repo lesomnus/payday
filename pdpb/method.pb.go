@@ -28,6 +28,7 @@ const (
 type Method struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Account *Method_Account        `protobuf:"bytes,1,opt,name=account"`
+	xxx_hidden_Direct  *Method_Direct         `protobuf:"bytes,2,opt,name=direct"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -64,8 +65,19 @@ func (x *Method) GetAccount() *Method_Account {
 	return nil
 }
 
+func (x *Method) GetDirect() *Method_Direct {
+	if x != nil {
+		return x.xxx_hidden_Direct
+	}
+	return nil
+}
+
 func (x *Method) SetAccount(v *Method_Account) {
 	x.xxx_hidden_Account = v
+}
+
+func (x *Method) SetDirect(v *Method_Direct) {
+	x.xxx_hidden_Direct = v
 }
 
 func (x *Method) HasAccount() bool {
@@ -75,8 +87,19 @@ func (x *Method) HasAccount() bool {
 	return x.xxx_hidden_Account != nil
 }
 
+func (x *Method) HasDirect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Direct != nil
+}
+
 func (x *Method) ClearAccount() {
 	x.xxx_hidden_Account = nil
+}
+
+func (x *Method) ClearDirect() {
+	x.xxx_hidden_Direct = nil
 }
 
 type Method_builder struct {
@@ -108,6 +131,10 @@ type Method_builder struct {
 	// A method nobody marked is served as a membership, which is every method
 	// an app has until it marks one.
 	Account *Method_Account
+	// Direct requires the actor to call without a device or agent representing
+	// them. Authentication must first verify representation; this cannot detect
+	// an agent reusing the person's own credential.
+	Direct *Method_Direct
 }
 
 func (b0 Method_builder) Build() *Method {
@@ -115,6 +142,50 @@ func (b0 Method_builder) Build() *Method {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Account = b.Account
+	x.xxx_hidden_Direct = b.Direct
+	return m0
+}
+
+type Method_Direct struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Method_Direct) Reset() {
+	*x = Method_Direct{}
+	mi := &file_payday_method_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Method_Direct) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Method_Direct) ProtoMessage() {}
+
+func (x *Method_Direct) ProtoReflect() protoreflect.Message {
+	mi := &file_payday_method_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type Method_Direct_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 Method_Direct_builder) Build() *Method_Direct {
+	m0 := &Method_Direct{}
+	b, x := &b0, m0
+	_, _ = b, x
 	return m0
 }
 
@@ -127,7 +198,7 @@ type Method_Account struct {
 
 func (x *Method_Account) Reset() {
 	*x = Method_Account{}
-	mi := &file_payday_method_proto_msgTypes[1]
+	mi := &file_payday_method_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -139,7 +210,7 @@ func (x *Method_Account) String() string {
 func (*Method_Account) ProtoMessage() {}
 
 func (x *Method_Account) ProtoReflect() protoreflect.Message {
-	mi := &file_payday_method_proto_msgTypes[1]
+	mi := &file_payday_method_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -166,23 +237,27 @@ var File_payday_method_proto protoreflect.FileDescriptor
 
 const file_payday_method_proto_rawDesc = "" +
 	"\n" +
-	"\x13payday/method.proto\x12\x06payday\"E\n" +
+	"\x13payday/method.proto\x12\x06payday\"~\n" +
 	"\x06Method\x120\n" +
-	"\aaccount\x18\x01 \x01(\v2\x16.payday.Method.AccountR\aaccount\x1a\t\n" +
+	"\aaccount\x18\x01 \x01(\v2\x16.payday.Method.AccountR\aaccount\x12-\n" +
+	"\x06direct\x18\x02 \x01(\v2\x15.payday.Method.DirectR\x06direct\x1a\b\n" +
+	"\x06Direct\x1a\t\n" +
 	"\aAccountB&Z\x1fgithub.com/lesomnus/payday/pdpb\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
-var file_payday_method_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_payday_method_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_payday_method_proto_goTypes = []any{
 	(*Method)(nil),         // 0: payday.Method
-	(*Method_Account)(nil), // 1: payday.Method.Account
+	(*Method_Direct)(nil),  // 1: payday.Method.Direct
+	(*Method_Account)(nil), // 2: payday.Method.Account
 }
 var file_payday_method_proto_depIdxs = []int32{
-	1, // 0: payday.Method.account:type_name -> payday.Method.Account
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: payday.Method.account:type_name -> payday.Method.Account
+	1, // 1: payday.Method.direct:type_name -> payday.Method.Direct
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_payday_method_proto_init() }
@@ -196,7 +271,7 @@ func file_payday_method_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payday_method_proto_rawDesc), len(file_payday_method_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

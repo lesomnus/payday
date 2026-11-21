@@ -5,6 +5,7 @@ import "app/payday/tenant_svc.g.proto";
 import "app/robot.proto";
 import "google/protobuf/timestamp.proto";
 import "patch/patch.proto";
+import "payday.proto";
 import "shared/thing_svc.g.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -66,7 +67,10 @@ service RobotService {
   // between the groups a caller's grant is written in terms of, and after it
   // the same caller may no longer be able to read the row it just moved. That
   // is the whole reason it is worth being an operation somebody can point at.
-  rpc Move(RobotMoveRequest) returns (Robot);
+  rpc Move(RobotMoveRequest) returns (Robot) {
+    // Moving a robot between operating cells requires the person to call directly.
+    option (payday.method) = {direct: {}};
+  }
 }
 
 service PairingService {

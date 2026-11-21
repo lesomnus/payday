@@ -125,6 +125,23 @@ func (st AuditServiceServer) create(ctx context.Context, req *apptest.AuditAddRe
 	} else {
 		q.SetActorId(v)
 	}
+	if req.HasCallerId() {
+		if v, err := entuuid.FromBytes(req.GetCallerId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "caller_id: %s", err)
+		} else {
+			q.SetCallerId(v)
+		}
+	}
+	if req.HasCallerTenantId() {
+		if v, err := entuuid.FromBytes(req.GetCallerTenantId()); err != nil {
+			return nil, nil, status.Errorf(codes.InvalidArgument, "caller_tenant_id: %s", err)
+		} else {
+			q.SetCallerTenantId(v)
+		}
+	}
+	if req.HasPresence() {
+		q.SetPresence(req.GetPresence())
+	}
 	q.SetTraceId(req.GetTraceId())
 	q.SetAction(req.GetAction())
 	if v, err := entuuid.FromBytes(req.GetObjectId()); err != nil {
@@ -302,6 +319,15 @@ func AuditSelectedFields(m *apptest.AuditSelect) []string {
 	if m.GetActorId() {
 		vs = append(vs, audit.FieldActorId)
 	}
+	if m.GetCallerId() {
+		vs = append(vs, audit.FieldCallerId)
+	}
+	if m.GetCallerTenantId() {
+		vs = append(vs, audit.FieldCallerTenantId)
+	}
+	if m.GetPresence() {
+		vs = append(vs, audit.FieldPresence)
+	}
 	if m.GetTraceId() {
 		vs = append(vs, audit.FieldTraceId)
 	}
@@ -410,7 +436,7 @@ func AuditGetKey(ctx context.Context, db *ent.Client, ref *apptest.AuditRef) (uu
 var auditOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_audit_proto, "Audit")
 
 var auditPatchColumns = entpatch.Columns{
-	1: audit.FieldId, 2: audit.FieldTenantId, 8: audit.FieldActorId, 9: audit.FieldTraceId, 10: audit.FieldAction, 11: audit.FieldObjectId, 12: audit.FieldPatch, 15: audit.FieldDateCreated, 16: audit.FieldActorTenantId, 17: audit.FieldValue, 18: audit.FieldCounterpartTenantId, 19: audit.FieldDomain, 20: audit.FieldFields, 21: audit.FieldDigest, 22: audit.FieldDigestFields}
+	1: audit.FieldId, 2: audit.FieldTenantId, 8: audit.FieldActorId, 23: audit.FieldCallerId, 24: audit.FieldCallerTenantId, 25: audit.FieldPresence, 9: audit.FieldTraceId, 10: audit.FieldAction, 11: audit.FieldObjectId, 12: audit.FieldPatch, 15: audit.FieldDateCreated, 16: audit.FieldActorTenantId, 17: audit.FieldValue, 18: audit.FieldCounterpartTenantId, 19: audit.FieldDomain, 20: audit.FieldFields, 21: audit.FieldDigest, 22: audit.FieldDigestFields}
 
 func (s AuditServiceServer) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
 	if !req.HasPatch() {

@@ -621,3 +621,6 @@ Before a deployment is reachable by anyone:
 | [tenancy.md](../tenancy.md) | the model behind the wall, and deploying per tenant |
 | [schema.md](../schema.md) | what the schema owns, field 3, identifiers, slugs |
 | [runtime.md](../runtime.md) | every package, and how each rule is enforced |
+
+For verified device/person or agent/person calls, both parties are checked. See
+[Work at a shared device](representing.md) for verification and direct-only RPCs.

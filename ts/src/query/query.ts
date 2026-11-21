@@ -62,7 +62,7 @@ import {
 import { Code, ConnectError, createClient, type CallOptions, type Transport } from '@connectrpc/connect'
 
 import { random } from '../random.js'
-import { WRITES, key, type EntityDesc, type Key, type Queued, type Refusal, type Store } from '../store/index.js'
+import { WRITES, key, type EntityDesc, type Key, type Queued, type Refusal, type Representation, type Presence, type Store, type Writes } from '../store/index.js'
 
 /**
  * IDENTITY_HEADER is what every call made here says its store's identity in,
@@ -177,6 +177,7 @@ export interface Write {
 	readonly input: Message | undefined
 
 	readonly at: Date
+	readonly presence: Presence | undefined
 
 	readonly state: 'waiting' | 'refused'
 
@@ -190,6 +191,9 @@ export interface Write {
 
 /** QueriesOpts is what the query layer may be told beyond its store. */
 export interface QueriesOpts {
+	/** Device-owned writes and a person-specific cache. Make with DeviceQueue.represent. */
+	readonly representation?: Representation
+
 	/**
 	 * Services beside the entities', for a write [Queries.send] kept to one of
 	 * them.
@@ -220,6 +224,9 @@ export interface QueryOpts {
 /** Queries is every read a page has asked for, and what each of them named. */
 export class Queries {
 	private readonly store: Store
+	private readonly representation: Representation | undefined
+	private readonly queue: Writes
+	private closed = false
 	private readonly transport: Transport
 	private readonly live = new Map<string, Live>()
 	private readonly clients = new Map<DescService, Record<string, unknown>>()
@@ -242,11 +249,28 @@ export class Queries {
 
 	constructor(store: Store, transport: Transport, entities: readonly EntityDesc[], opts: QueriesOpts = {}) {
 		this.store = store
+		this.representation = opts.representation
+		if (opts.representation && store.identity !== opts.representation.identity) {
+			throw new Error('query: a represented person needs the Store identity from DeviceQueue.represent')
+		}
+		this.queue = opts.representation?.device.writes ?? store.writes
 		this.transport = transport
 		this.entities = new Map(entities.map((v) => [v.typeName, v]))
 
 		for (const v of entities) if (v.service !== undefined) this.services.set(v.service.typeName, v.service)
 		for (const v of opts.services ?? []) this.services.set(v.typeName, v)
+	}
+
+	/** Stops this person's reads and watches without discarding device-owned work. */
+	close(): void {
+		this.closed = true
+		for (const v of this.live.values()) {
+			v.gen++
+			v.stop?.abort()
+			v.off?.()
+			v.listeners.clear()
+		}
+		this.live.clear()
 	}
 
 	/**
@@ -279,6 +303,7 @@ export class Queries {
 		input: MessageInitShape<I>,
 		opts: QueryOpts = {},
 	): Entry<MessageShape<O>> {
+		if (this.closed) throw new Error('query: these queries are closed')
 		// Created before it is keyed, so that two callers who wrote the same
 		// request differently -- one leaving a default out -- ask one question.
 		const req = create(method.input, input) as Message
@@ -351,6 +376,7 @@ export class Queries {
 		const req = create(method.input, input) as Message
 		const res = (await this.invoke(method as DescMethod, req)) as Message
 
+		if (this.closed || this.store.writes.closed) throw new ConnectError('query: this operator is done', Code.Canceled)
 		const touched = this.landed(method as DescMethod, req, res)
 		if (opts.revalidate !== false) this.revalidate(touched)
 		this.resume()
@@ -436,6 +462,7 @@ export class Queries {
 		method: DescMethodUnary<I, O>,
 		input: MessageInitShape<I>,
 	): Promise<Write> {
+		if (this.closed || this.store.writes.closed) throw new Error('query: this operator is done')
 		const req = create(method.input, input)
 		this.refuseSecret(method as DescMethod, req)
 		this.services.set(method.parent.typeName, method.parent)
@@ -445,8 +472,9 @@ export class Queries {
 			method: nameOf(method as DescMethod),
 			input: toBinary(method.input, req),
 			at: Date.now(),
+			...(this.representation ? { presence: this.representation.presence, reader: this.store.identity } : {}),
 		}
-		await this.store.writes.add(v)
+		await this.queue.add(v)
 
 		void this.flush().catch(() => {})
 
@@ -458,10 +486,10 @@ export class Queries {
 	 * made, **now** -- the same array until one is kept, sent or refused.
 	 */
 	writes(): readonly Write[] {
-		const of = this.store.writes.all()
+		const of = this.queue.all()
 		if (this.seen?.of === of) return this.seen.v
 
-		const v = of.map((w) => this.writeOf(w))
+		const v = of.filter((w) => this.owns(w)).map((w) => this.writeOf(w))
 		this.seen = { of, v }
 
 		return v
@@ -469,7 +497,7 @@ export class Queries {
 
 	/** subscribeWrites tells `cb` when [Queries.writes] would answer differently. */
 	subscribeWrites(cb: () => void): () => void {
-		return this.store.subscribe([WRITES], cb)
+		return this.representation?.device.subscribe(cb) ?? this.store.subscribe([WRITES], cb)
 	}
 
 	/**
@@ -508,7 +536,7 @@ export class Queries {
 	 * never both.
 	 */
 	dismiss(id: string): Promise<void> {
-		return exclusive(this.lockName(), () => this.store.writes.drop(id))
+		return exclusive(this.lockName(), () => this.queue.drop(id))
 	}
 
 	/**
@@ -616,12 +644,12 @@ export class Queries {
 	 * re-read of each list on screen, not two hundred.
 	 */
 	private async drain(): Promise<void> {
-		const q = this.store.writes
+		const q = this.queue
 
 		// The caller is done, and whatever another page left on the mirror
 		// since is theirs to send, not this page's -- which no longer knows
 		// who it would be sending as.
-		if (q.closed) return
+		if (this.closed || q.closed) return
 
 		// Another page on this store may have sent some of these, or kept more.
 		await q.reload()
@@ -635,6 +663,7 @@ export class Queries {
 				// done -- and sending what a caller who has gone wrote, under
 				// whatever credential the transport carries now, is the one
 				// thing this must not do.
+				if (this.closed) return
 				if (!q.has(w.id)) continue
 
 				// Left waiting rather than dropped: a later deploy, or a page
@@ -654,7 +683,11 @@ export class Queries {
 					continue
 				}
 
-				const got = await this.attempt(method, req)
+				if (this.representation && (!w.presence || !w.reader)) {
+					await q.refuse(w.id, { code: Code.DataLoss, message: 'device write has no original presence', details: [] })
+					continue
+				}
+				const got = await this.attempt(method, req, this.said(w))
 				if (got === undefined) return
 				if (got instanceof ConnectError) {
 					await q.refuse(w.id, refusalOf(got))
@@ -665,7 +698,10 @@ export class Queries {
 				// sends it again -- which an `Add` with its own identifier
 				// survives -- rather than keeping a write that happened.
 				await q.drop(w.id)
-				for (const t of this.landed(method, req, got)) touched.add(t)
+				// An answer for A must never populate B's cache, including an Add retry's Get.
+				if (!this.closed && !this.store.writes.closed && this.owns(w)) {
+					for (const t of this.landed(method, req, got)) touched.add(t)
+				}
 			}
 		} finally {
 			this.revalidate(touched)
@@ -676,16 +712,16 @@ export class Queries {
 	 * attempt sends one write, and answers with the answer, with the refusal,
 	 * or with nothing when nobody judged it.
 	 */
-	private async attempt(method: DescMethod, req: Message): Promise<Message | ConnectError | undefined> {
+	private async attempt(method: DescMethod, req: Message, headers: Record<string, string>): Promise<Message | ConnectError | undefined> {
 		try {
-			return (await this.invoke(method, req)) as Message
+			return (await this.invoke(method, req, headers)) as Message
 		} catch (err) {
 			if (unjudged(err)) return undefined
 
 			const e = ConnectError.from(err)
 			if (e.code !== Code.AlreadyExists) return e
 
-			const was = await this.already(method, req)
+			const was = await this.already(method, req, headers)
 			if (was === null) return undefined
 
 			return was ?? e
@@ -706,7 +742,7 @@ export class Queries {
 	 * if each of its rows is there -- each read as its `Add` would be, and one
 	 * that names none, or is not there, is a refusal that stands.
 	 */
-	private async already(method: DescMethod, req: Message): Promise<Message | undefined | null> {
+	private async already(method: DescMethod, req: Message, headers: Record<string, string>): Promise<Message | undefined | null> {
 		if (method.name === 'AddMany') {
 			const add = method.parent.methods.find((m) => m.name === 'Add' && m.methodKind === 'unary')
 			const items = itemsOf(method, req)?.items
@@ -714,7 +750,7 @@ export class Queries {
 
 			const rows: Message[] = []
 			for (const item of items) {
-				const was = await this.already(add, item)
+				const was = await this.already(add, item, headers)
 				if (was === undefined || was === null) return was
 
 				rows.push(was)
@@ -733,7 +769,7 @@ export class Queries {
 		try {
 			const ref = create(get.input, { ref: { key: { case: 'id', value: id } } } as never) as Message
 
-			return (await this.invoke(get, ref)) as Message
+			return (await this.invoke(get, ref, headers)) as Message
 		} catch (err) {
 			return unjudged(err) ? null : undefined
 		}
@@ -795,7 +831,7 @@ export class Queries {
 	 * send it to.
 	 */
 	private resume(): void {
-		if (!this.store.writes.all().some((w) => w.refused === undefined)) return
+		if (!this.queue.all().some((w) => w.refused === undefined)) return
 
 		void this.flush().catch(() => {})
 	}
@@ -829,17 +865,25 @@ export class Queries {
 			method,
 			input,
 			at: new Date(v.at),
+			presence: v.presence,
 			state: v.refused === undefined ? 'waiting' : 'refused',
 			error: v.refused === undefined ? undefined : errorOf(v.refused),
 		}
 	}
 
-	/** lockName is what one store's sending is serialized on, across pages. */
-	private lockName(): string {
-		return `payday/${this.store.name}/writes`
+	private owns(write: Queued): boolean {
+		const presence = this.representation?.presence
+		return presence === undefined || (write.reader === this.store.identity &&
+			write.presence?.reference === presence.reference && write.presence.subject === presence.subject)
 	}
 
-	private async invoke(method: DescMethod, input: Message): Promise<unknown> {
+	/** lockName is what one store's sending is serialized on, across pages. */
+	private lockName(): string {
+		return this.representation ? `payday-queue/${this.representation.device.name}/writes` : `payday/${this.store.name}/writes`
+	}
+
+	private async invoke(method: DescMethod, input: Message, headers = this.said()): Promise<unknown> {
+		if (this.closed) throw new ConnectError('query: these queries are closed', Code.Canceled)
 		let client = this.clients.get(method.parent)
 		if (client === undefined) {
 			client = createClient(method.parent, this.transport) as unknown as Record<string, unknown>
@@ -848,12 +892,20 @@ export class Queries {
 
 		const f = client[method.localName] as (v: Message, o: CallOptions) => Promise<unknown>
 
-		return f(input, { headers: this.said() })
+		return f(input, { headers })
 	}
 
 	/** said is what every call made here says of its store; see [IDENTITY_HEADER]. */
-	private said(): Record<string, string> {
-		return { [IDENTITY_HEADER]: this.store.identity }
+	private said(write?: Queued): Record<string, string> {
+		const representation = this.representation
+		if (!representation) return { [IDENTITY_HEADER]: this.store.identity }
+		const presence = write?.presence ?? representation.presence
+		return {
+			[IDENTITY_HEADER]: representation.device.identity,
+			'payday-presence': presence.reference,
+			'payday-subject': presence.subject,
+			...(write ? { 'payday-recorded': new Date(write.at).toISOString() } : {}),
+		}
 	}
 
 	/**
@@ -1084,6 +1136,7 @@ export class Queries {
 				// an answer it already has changes nothing and tells nobody.
 				const req = create(m.input, { filters } as never)
 				for await (const res of f(req, { signal: stop.signal, headers: this.said() })) {
+					if (this.closed || this.store.writes.closed || stop.signal.aborted) return
 					const items = (res as unknown as Record<string, unknown>)['items'] as
 						| { id: Uint8Array; value?: Message }[]
 						| undefined

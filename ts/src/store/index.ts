@@ -23,3 +23,6 @@ export { key, bytes } from './desc.js'
 export type { EntityDesc, RefDesc, Row } from './desc.js'
 export { flatten, newer } from './flat.js'
 export type { Changes, Disk, Held, Queue, Queued, Refusal } from './disk.js'
+
+export { DeviceQueue } from './device.js'
+export type { DeviceOpts, Presence, Representation } from './device.js'

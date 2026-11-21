@@ -38,6 +38,13 @@ message Method {
   // an app has until it marks one.
   Account account = 1;
 
+  // Direct requires the actor to call without a device or agent representing
+  // them. Authentication must first verify representation; this cannot detect
+  // an agent reusing the person's own credential.
+  Direct direct = 2;
+
+  message Direct {}
+
   // Account is an RPC an account calls as itself. See [Method.account].
   message Account {}
 }

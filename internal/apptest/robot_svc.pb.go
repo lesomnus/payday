@@ -7,6 +7,7 @@
 package apptest
 
 import (
+	_ "github.com/lesomnus/payday/pdpb"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -6671,7 +6672,7 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\x18shared/thing_svc.g.proto\"e\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"e\n" +
 	"\x0eCellAddRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -6897,7 +6898,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
 	"\x05Patch\x12\x15.app.CellPatchRequest\x1a\t.app.Cell\x12)\n" +
 	"\x05Apply\x12\x15.app.CellApplyRequest\x1a\t.app.Cell\x12-\n" +
-	"\x05Erase\x12\f.app.CellRef\x1a\x16.app.CellEraseResponse2\xc9\x03\n" +
+	"\x05Erase\x12\f.app.CellRef\x1a\x16.app.CellEraseResponse2\xd1\x03\n" +
 	"\fRobotService\x12'\n" +
 	"\x03Add\x12\x14.app.RobotAddRequest\x1a\n" +
 	".app.Robot\x12>\n" +
@@ -6910,9 +6911,9 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	".app.Robot\x12/\n" +
 	"\x05Erase\x12\r.app.RobotRef\x1a\x17.app.RobotEraseResponse\x125\n" +
 	"\x04List\x12\x15.app.RobotListRequest\x1a\x16.app.RobotListResponse\x12:\n" +
-	"\x05Watch\x12\x16.app.RobotWatchRequest\x1a\x17.app.RobotWatchResponse0\x01\x12)\n" +
+	"\x05Watch\x12\x16.app.RobotWatchRequest\x1a\x17.app.RobotWatchResponse0\x01\x121\n" +
 	"\x04Move\x12\x15.app.RobotMoveRequest\x1a\n" +
-	".app.Robot2\x81\x02\n" +
+	".app.Robot\"\x06\xea\xcd\x16\x02\x12\x002\x81\x02\n" +
 	"\x0ePairingService\x12+\n" +
 	"\x03Add\x12\x16.app.PairingAddRequest\x1a\f.app.Pairing\x12+\n" +
 	"\x03Get\x12\x16.app.PairingGetRequest\x1a\f.app.Pairing\x12/\n" +

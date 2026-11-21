@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/audit_svc.g.proto.
  */
 export const file_app_payday_audit_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAi/gIKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDBIOCgZkb21haW4YEyABKA0SDgoGZmllbGRzGBQgAygNEg4KBmRpZ2VzdBgVIAEoDBIVCg1kaWdlc3RfZmllbGRzGBYgAygNIk8KD0F1ZGl0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkF1ZGl0U2VsZWN0Ih8KCEF1ZGl0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IqcCCgtBdWRpdFNlbGVjdBILCgNhbGwYASABKAgSEQoJdGVuYW50X2lkGAIgASgIEhAKCGFjdG9yX2lkGAggASgIEhAKCHRyYWNlX2lkGAkgASgIEg4KBmFjdGlvbhgKIAEoCBIRCglvYmplY3RfaWQYCyABKAgSDQoFcGF0Y2gYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEhcKD2FjdG9yX3RlbmFudF9pZBgQIAEoCBINCgV2YWx1ZRgRIAEoCBIdChVjb3VudGVycGFydF90ZW5hbnRfaWQYEiABKAgSDgoGZG9tYWluGBMgASgIEg4KBmZpZWxkcxgUIAEoCBIOCgZkaWdlc3QYFSABKAgSFQoNZGlnZXN0X2ZpZWxkcxgWIAEoCCLKAgoRQXVkaXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEhEKCXRlbmFudF9pZBgEIAEoDBIQCghhY3Rvcl9pZBgQIAEoDBIQCgh0cmFjZV9pZBgSIAEoDBIOCgZhY3Rpb24YFCABKAkSEQoJb2JqZWN0X2lkGBYgASgMEg0KBXBhdGNoGBggASgMEhcKD2FjdG9yX3RlbmFudF9pZBggIAEoDBINCgV2YWx1ZRgiIAEoDBIdChVjb3VudGVycGFydF90ZW5hbnRfaWQYJCABKAwSIgoaY291bnRlcnBhcnRfdGVuYW50X2lkX251bGwYJSABKAgSDgoGZG9tYWluGCYgASgNEg4KBmZpZWxkcxgoIAMoDRIOCgZkaWdlc3QYKiABKAwSFQoNZGlnZXN0X2ZpZWxkcxgsIAMoDSJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJBdWRpdEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIngKEEF1ZGl0TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5BdWRpdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAIiQwoRQXVkaXRMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuQXVkaXQSEwoEbmV4dBgCIAEoCUIFqgECCAIifQoLQXVkaXRGaWx0ZXISEQoJb2JqZWN0X2lkGAEgASgMEhAKCGFjdG9yX2lkGAIgASgMEhEKCXRlbmFudF9pZBgDIAEoDBIXCg9hY3Rvcl90ZW5hbnRfaWQYBCABKAwSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGAUgASgMMqICCgxBdWRpdFNlcnZpY2USJwoDQWRkEhQuYXBwLkF1ZGl0QWRkUmVxdWVzdBoKLmFwcC5BdWRpdBInCgNHZXQSFC5hcHAuQXVkaXRHZXRSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBVBhdGNoEhYuYXBwLkF1ZGl0UGF0Y2hSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBUFwcGx5EhYuYXBwLkF1ZGl0QXBwbHlSZXF1ZXN0GgouYXBwLkF1ZGl0Ei8KBUVyYXNlEg0uYXBwLkF1ZGl0UmVmGhcuYXBwLkF1ZGl0RXJhc2VSZXNwb25zZRI1CgRMaXN0EhUuYXBwLkF1ZGl0TGlzdFJlcXVlc3QaFi5hcHAuQXVkaXRMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_audit, file_google_protobuf_timestamp, file_patch_patch]);
+  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAivQMKD0F1ZGl0QWRkUmVxdWVzdBIKCgJpZBgBIAEoDBIYCgl0ZW5hbnRfaWQYAiABKAxCBaoBAggCEhcKCGFjdG9yX2lkGAggASgMQgWqAQIIAhIRCgljYWxsZXJfaWQYFyABKAwSGAoQY2FsbGVyX3RlbmFudF9pZBgYIAEoDBIQCghwcmVzZW5jZRgZIAEoCRIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIYCglvYmplY3RfaWQYCyABKAxCBaoBAggCEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh4KD2FjdG9yX3RlbmFudF9pZBgQIAEoDEIFqgECCAISFAoFdmFsdWUYESABKAxCBaoBAggCEh0KFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDBIOCgZkb21haW4YEyABKA0SDgoGZmllbGRzGBQgAygNEg4KBmRpZ2VzdBgVIAEoDBIVCg1kaWdlc3RfZmllbGRzGBYgAygNIk8KD0F1ZGl0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkF1ZGl0U2VsZWN0Ih8KCEF1ZGl0UmVmEgwKAmlkGAEgASgMSABCBQoDa2V5IuYCCgtBdWRpdFNlbGVjdBILCgNhbGwYASABKAgSEQoJdGVuYW50X2lkGAIgASgIEhAKCGFjdG9yX2lkGAggASgIEhEKCWNhbGxlcl9pZBgXIAEoCBIYChBjYWxsZXJfdGVuYW50X2lkGBggASgIEhAKCHByZXNlbmNlGBkgASgIEhAKCHRyYWNlX2lkGAkgASgIEg4KBmFjdGlvbhgKIAEoCBIRCglvYmplY3RfaWQYCyABKAgSDQoFcGF0Y2gYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEhcKD2FjdG9yX3RlbmFudF9pZBgQIAEoCBINCgV2YWx1ZRgRIAEoCBIdChVjb3VudGVycGFydF90ZW5hbnRfaWQYEiABKAgSDgoGZG9tYWluGBMgASgIEg4KBmZpZWxkcxgUIAEoCBIOCgZkaWdlc3QYFSABKAgSFQoNZGlnZXN0X2ZpZWxkcxgWIAEoCCLXAwoRQXVkaXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkF1ZGl0UmVmEhEKCXRlbmFudF9pZBgEIAEoDBIQCghhY3Rvcl9pZBgQIAEoDBIRCgljYWxsZXJfaWQYLiABKAwSFgoOY2FsbGVyX2lkX251bGwYLyABKAgSGAoQY2FsbGVyX3RlbmFudF9pZBgwIAEoDBIdChVjYWxsZXJfdGVuYW50X2lkX251bGwYMSABKAgSEAoIcHJlc2VuY2UYMiABKAkSFQoNcHJlc2VuY2VfbnVsbBgzIAEoCBIQCgh0cmFjZV9pZBgSIAEoDBIOCgZhY3Rpb24YFCABKAkSEQoJb2JqZWN0X2lkGBYgASgMEg0KBXBhdGNoGBggASgMEhcKD2FjdG9yX3RlbmFudF9pZBggIAEoDBINCgV2YWx1ZRgiIAEoDBIdChVjb3VudGVycGFydF90ZW5hbnRfaWQYJCABKAwSIgoaY291bnRlcnBhcnRfdGVuYW50X2lkX251bGwYJSABKAgSDgoGZG9tYWluGCYgASgNEg4KBmZpZWxkcxgoIAMoDRIOCgZkaWdlc3QYKiABKAwSFQoNZGlnZXN0X2ZpZWxkcxgsIAMoDSJMChFBdWRpdEFwcGx5UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuQXVkaXRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIkChJBdWRpdEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIngKEEF1ZGl0TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5BdWRpdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAIiQwoRQXVkaXRMaXN0UmVzcG9uc2USGQoFaXRlbXMYASADKAsyCi5hcHAuQXVkaXQSEwoEbmV4dBgCIAEoCUIFqgECCAIifQoLQXVkaXRGaWx0ZXISEQoJb2JqZWN0X2lkGAEgASgMEhAKCGFjdG9yX2lkGAIgASgMEhEKCXRlbmFudF9pZBgDIAEoDBIXCg9hY3Rvcl90ZW5hbnRfaWQYBCABKAwSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGAUgASgMMqICCgxBdWRpdFNlcnZpY2USJwoDQWRkEhQuYXBwLkF1ZGl0QWRkUmVxdWVzdBoKLmFwcC5BdWRpdBInCgNHZXQSFC5hcHAuQXVkaXRHZXRSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBVBhdGNoEhYuYXBwLkF1ZGl0UGF0Y2hSZXF1ZXN0GgouYXBwLkF1ZGl0EisKBUFwcGx5EhYuYXBwLkF1ZGl0QXBwbHlSZXF1ZXN0GgouYXBwLkF1ZGl0Ei8KBUVyYXNlEg0uYXBwLkF1ZGl0UmVmGhcuYXBwLkF1ZGl0RXJhc2VSZXNwb25zZRI1CgRMaXN0EhUuYXBwLkF1ZGl0TGlzdFJlcXVlc3QaFi5hcHAuQXVkaXRMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_audit, file_google_protobuf_timestamp, file_patch_patch]);
 
 /**
  * @generated from message app.AuditAddRequest
@@ -36,6 +36,21 @@ export type AuditAddRequest = Message<"app.AuditAddRequest"> & {
    * @generated from field: bytes actor_id = 8 [features.field_presence = IMPLICIT];
    */
   actorId: Uint8Array;
+
+  /**
+   * @generated from field: bytes caller_id = 23;
+   */
+  callerId: Uint8Array;
+
+  /**
+   * @generated from field: bytes caller_tenant_id = 24;
+   */
+  callerTenantId: Uint8Array;
+
+  /**
+   * @generated from field: string presence = 25;
+   */
+  presence: string;
 
   /**
    * @generated from field: bytes trace_id = 9 [features.field_presence = IMPLICIT];
@@ -170,6 +185,21 @@ export type AuditSelect = Message<"app.AuditSelect"> & {
   actorId: boolean;
 
   /**
+   * @generated from field: bool caller_id = 23;
+   */
+  callerId: boolean;
+
+  /**
+   * @generated from field: bool caller_tenant_id = 24;
+   */
+  callerTenantId: boolean;
+
+  /**
+   * @generated from field: bool presence = 25;
+   */
+  presence: boolean;
+
+  /**
    * @generated from field: bool trace_id = 9;
    */
   traceId: boolean;
@@ -255,6 +285,51 @@ export type AuditPatchRequest = Message<"app.AuditPatchRequest"> & {
    * @generated from field: bytes actor_id = 16;
    */
   actorId: Uint8Array;
+
+  /**
+   * @generated from field: bytes caller_id = 46;
+   */
+  callerId: Uint8Array;
+
+  /**
+   * Clear caller_id instead of writing it.
+   * It takes a field of its own because an unset value already means
+   * "leave it alone", so no value could have meant NULL. It wins
+   * outright: setting both this and caller_id clears.
+   *
+   * @generated from field: bool caller_id_null = 47;
+   */
+  callerIdNull: boolean;
+
+  /**
+   * @generated from field: bytes caller_tenant_id = 48;
+   */
+  callerTenantId: Uint8Array;
+
+  /**
+   * Clear caller_tenant_id instead of writing it.
+   * It takes a field of its own because an unset value already means
+   * "leave it alone", so no value could have meant NULL. It wins
+   * outright: setting both this and caller_tenant_id clears.
+   *
+   * @generated from field: bool caller_tenant_id_null = 49;
+   */
+  callerTenantIdNull: boolean;
+
+  /**
+   * @generated from field: string presence = 50;
+   */
+  presence: string;
+
+  /**
+   * Clear presence instead of writing it.
+   * It takes a field of its own because an unset value already means
+   * "leave it alone", so no value could have meant NULL. It wins
+   * outright: setting both this and presence clears.
+   *
+   * @generated from field: bool presence_null = 51;
+   */
+  presenceNull: boolean;
 
   /**
    * @generated from field: bytes trace_id = 18;
