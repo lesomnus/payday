@@ -545,9 +545,11 @@ What to decide on is in `bare.Change` and in the frame:
   callers are different kinds of thing, `f.Actor.Domain()` says so, and otherwise
   it is a field on your own actor type, which `f.Row` type-asserts to.
 
-Not `auth.Identity.Method`: how somebody authenticated never reaches the
-context, deliberately, because "a rule that turns on the way somebody
-authenticated is a rule that will be wrong one day".
+`f.Authentication` carries the verified credential method and proof time.
+These facts can support a [fresh-authentication rule](fresh-authentication.md),
+but a method name alone does not establish whether the actor is a person or
+machine. For represented calls, the actor's facts and `f.Caller.Authentication`
+describe different principals.
 
 Filtering is the smaller of two answers and usually the second one to try. If
 the problem is that the table is large, the window is `audit:` and no code — see
