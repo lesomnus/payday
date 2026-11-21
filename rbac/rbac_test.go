@@ -114,6 +114,8 @@ func TestReplacementAndSources(t *testing.T) {
 			for range 50 {
 				_, e := s.Grants(t.Context(), "@acme/kamino")
 				require.NoError(t, e)
+				_, e = s.Holders(t.Context(), "@acme/reader")
+				require.NoError(t, e)
 			}
 		})
 	}

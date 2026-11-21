@@ -69,12 +69,23 @@ func (s *Store) Pin(ctx context.Context) context.Context {
 	return context.WithValue(ctx, s, p)
 }
 
-func (s *Store) Grants(ctx context.Context, name string) ([]Grant, error) {
+func (s *Store) snapshot(ctx context.Context) *Snapshot {
 	p, ok := ctx.Value(s).(*Snapshot)
 	if !ok {
 		p, _ = s.Current()
 	}
-	return p.Grants(ctx, name)
+	return p
+}
+
+func (s *Store) Grants(ctx context.Context, name string) ([]Grant, error) {
+	return s.snapshot(ctx).Grants(ctx, name)
+}
+
+// Holders reads the same pinned revision as Grants, or the current snapshot
+// when the context has not been pinned. Pin before combining lookups outside
+// an intercepted request so a policy replacement cannot split the decision.
+func (s *Store) Holders(ctx context.Context, role string) ([]string, error) {
+	return s.snapshot(ctx).Holders(ctx, role)
 }
 
 // Interceptor pins unary requests and ends streams on an accepted change.

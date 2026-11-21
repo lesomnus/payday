@@ -51,6 +51,44 @@ removing a file binding cannot withdraw a grant still supplied by the database.
 File groups have their own membership; mapping them to mutable database groups
 requires the same delegation checks as database bindings.
 
+## Notify the holders of a role
+
+Use `Snapshot.Holders`, `Store.Holders` or `rbacfile.File.Holders` to select
+names for a role-based notice. Direct bindings and bound groups contribute
+their holders; duplicate memberships produce one name, sorted for stable
+delivery. A valid role name with no bindings returns an empty list, even if
+the role is not declared. A malformed name returns an error.
+
+```go
+// policy is the same *rbac.Store or *rbacfile.File used by the request gate.
+// The interceptor already pins requests. Background work pins explicitly.
+ctx = policy.Pin(ctx)
+names, err := policy.Holders(ctx, "@operator/reader")
+if err != nil {
+    return err
+}
+for _, name := range names {
+    // Resolve the canonical name using the application's directory and
+    // enqueue its notification. The application supplies this function.
+    if err := enqueueNotice(ctx, name, resourceID); err != nil {
+        return err
+    }
+}
+```
+
+The pin keeps `Holders` and `Grants` on one revision even if a file refresh
+arrives midway. A new operation pins a fresh context. For example, a purchasing
+role can select recipients when an engineering change takes effect, and a
+reader role can select recipients for a publication notice. Membership selects
+recipients; the application's object policy still decides whether a recipient
+may read that change or publication. These names can include service holders,
+so apply any human-recipient requirements in the application.
+
+`Source` and `Union` only promise forward grant lookup: an arbitrary external
+directory may not support enumerating all holders. For combined directories,
+compose their explicit recipient lookups in the application and preserve lookup
+errors rather than treating an unavailable directory as an empty audience.
+
 Credential restrictions remain an intersection with policy. `frame.IntersectMethod`
 handles crossing patterns such as `/app.*/Get` and `/app.ManifestService/*`.
 Config-backed authentication can attach `Identity.Changed` to the same accepted
