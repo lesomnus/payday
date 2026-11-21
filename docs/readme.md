@@ -10,6 +10,7 @@ comments, which are where the detail actually lives.
 | --- | --- |
 | [Permissions and the wall](guide/permissions.md) | who sees what, and where each part of that answer is enforced. **Start here** |
 | [Declaring an entity](guide/schema.md) | the options, the field numbers, `list:` and `watch:`, and everything generation refuses |
+| [Admission](guide/admission.md) | refuse a write using its request, previous row, person and device |
 | [The server](guide/server.md) | the stack, writing a layer, the interceptors, configuration, the commands |
 | [The page](guide/client.md) | reads that keep themselves current, writes that need no invalidation rule |
 | [Commands on your binary](guide/commands.md) | `get`/`list`/`watch`/`add`/`patch`/`erase` where the schema declared them, mounted wherever the app puts them, the output formats, aliases and hidden commands, and a command for an RPC of your own |

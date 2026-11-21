@@ -9,7 +9,6 @@ import (
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	notificationrecord "github.com/lesomnus/payday/internal/apptest/internal/ent/notificationrecord"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -30,11 +29,14 @@ type NotificationRecordServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewNotificationRecordServiceServer(db *ent.Client, opts ...Option) apptest.NotificationRecordServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return NotificationRecordServiceServer{Store: s.Store}
 }
@@ -144,7 +146,10 @@ func (st NotificationRecordServiceServer) create(ctx context.Context, req *appte
 }
 
 func (s NotificationRecordServiceServer) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +164,7 @@ func (s NotificationRecordServiceServer) Add(ctx context.Context, req *apptest.N
 	}
 
 	var stored *ent.NotificationRecord
-	if snapshotOptions(s.Rec, apptest.NotificationRecordService_Add_FullMethodName).Value {
+	if s.images(apptest.NotificationRecordService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -185,10 +190,11 @@ func (s NotificationRecordServiceServer) Add(ctx context.Context, req *apptest.N
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.NotificationRecordService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.NotificationRecord",
+		By:     apptest.NotificationRecordService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}

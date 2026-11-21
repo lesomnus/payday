@@ -19,6 +19,7 @@ import (
 	log "github.com/lesomnus/otx/log"
 	access "github.com/lesomnus/payday/access"
 	account "github.com/lesomnus/payday/account"
+	admission "github.com/lesomnus/payday/admission"
 	audit "github.com/lesomnus/payday/audit"
 	auth "github.com/lesomnus/payday/auth"
 	entitle "github.com/lesomnus/payday/entitle"
@@ -15296,4 +15297,153 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		r.w.Note(ctx, watch.Change{Method: c.Method, By: c.By, Key: k, Patch: doc, Resource: event})
 	}
 	return nil
+}
+
+// Admission protects the entities options names, including direct ent mutations.
+// Install once on the serving sink. Payday's recording tables are excluded;
+// their writes are consequences of admitted operations and cannot recurse.
+func Admission(policy admission.Policy, options admission.Options) bare.Option {
+	return func(s *bare.Server) error {
+		names, err := admission.Select(options.Entities, []string{
+			"app.Cell",
+			"app.Fleet",
+			"app.Holder",
+			"app.Job",
+			"app.Joint",
+			"app.Machine",
+			"app.Pairing",
+			"app.Pulse",
+			"app.Reading",
+			"app.Robot",
+			"app.Seal",
+			"app.Stint",
+			"app.Tally",
+			"app.Tenant",
+			"shared.Thing",
+		})
+		if err != nil {
+			return err
+		}
+		check, err := admission.New(policy, options, []admission.Entity{
+			{Row: &apptest.Access{}, Requests: []proto.Message{
+				&apptest.AccessRef{},
+			}},
+			{Row: &apptest.Archived{}, Requests: []proto.Message{}},
+			{Row: &apptest.Audit{}, Requests: []proto.Message{
+				&apptest.AuditRef{},
+				&apptest.AuditAddRequest{},
+				&apptest.AuditPatchRequest{},
+			}},
+			{Row: &apptest.Cell{}, Requests: []proto.Message{
+				&apptest.CellRef{},
+				&apptest.CellAddRequest{},
+				&apptest.CellPatchRequest{},
+			}},
+			{Row: &apptest.Entitlement{}, Requests: []proto.Message{}},
+			{Row: &apptest.Event{}, Requests: []proto.Message{
+				&apptest.EventRef{},
+				&apptest.EventAddRequest{},
+			}},
+			{Row: &apptest.Fact{}, Requests: []proto.Message{
+				&apptest.FactRef{},
+				&apptest.FactAddRequest{},
+				&apptest.FactPatchRequest{},
+			}},
+			{Row: &apptest.Fleet{}, Requests: []proto.Message{
+				&apptest.FleetRef{},
+				&apptest.FleetAddRequest{},
+				&apptest.FleetPatchRequest{},
+			}},
+			{Row: &apptest.Holder{}, Requests: []proto.Message{
+				&apptest.HolderRef{},
+				&apptest.HolderAddRequest{},
+				&apptest.HolderPatchRequest{},
+			}},
+			{Row: &apptest.Job{}, Requests: []proto.Message{
+				&apptest.JobRef{},
+				&apptest.JobAddRequest{},
+				&apptest.JobPatchRequest{},
+			}},
+			{Row: &apptest.Joint{}, Requests: []proto.Message{
+				&apptest.JointRef{},
+				&apptest.JointAddRequest{},
+				&apptest.JointPatchRequest{},
+			}},
+			{Row: &apptest.Machine{}, Requests: []proto.Message{
+				&apptest.MachineRef{},
+				&apptest.MachineAddRequest{},
+				&apptest.MachinePatchRequest{},
+			}},
+			{Row: &apptest.NotificationReceiptRecord{}, Requests: []proto.Message{}},
+			{Row: &apptest.NotificationRecord{}, Requests: []proto.Message{
+				&apptest.NotificationRecordRef{},
+				&apptest.NotificationRecordAddRequest{},
+			}},
+			{Row: &apptest.Outbox{}, Requests: []proto.Message{}},
+			{Row: &apptest.Owed{}, Requests: []proto.Message{}},
+			{Row: &apptest.Pairing{}, Requests: []proto.Message{
+				&apptest.PairingRef{},
+				&apptest.PairingAddRequest{},
+				&apptest.PairingPatchRequest{},
+			}},
+			{Row: &apptest.Pulse{}, Requests: []proto.Message{}},
+			{Row: &apptest.Reading{}, Requests: []proto.Message{
+				&apptest.ReadingRef{},
+				&apptest.ReadingAddRequest{},
+				&apptest.ReadingPatchRequest{},
+			}},
+			{Row: &apptest.Robot{}, Requests: []proto.Message{
+				&apptest.RobotRef{},
+				&apptest.RobotAddRequest{},
+				&apptest.RobotPatchRequest{},
+			}},
+			{Row: &apptest.RowSeal{}, Requests: []proto.Message{}},
+			{Row: &apptest.Seal{}, Requests: []proto.Message{
+				&apptest.SealRef{},
+				&apptest.SealAddRequest{},
+				&apptest.SealPatchRequest{},
+			}},
+			{Row: &apptest.Stint{}, Requests: []proto.Message{
+				&apptest.StintRef{},
+				&apptest.StintAddRequest{},
+				&apptest.StintPatchRequest{},
+			}},
+			{Row: &apptest.Tally{}, Requests: []proto.Message{}},
+			{Row: &apptest.Tenant{}, Requests: []proto.Message{
+				&apptest.TenantRef{},
+				&apptest.TenantAddRequest{},
+				&apptest.TenantPatchRequest{},
+			}},
+			{Row: &apptest.Thing{}, Requests: []proto.Message{
+				&apptest.ThingRef{},
+				&apptest.ThingAddRequest{},
+				&apptest.ThingPatchRequest{},
+			}},
+		}, resourceSecrets)
+		if err != nil {
+			return err
+		}
+		return bare.WithAdmission(admitter{check}, names...)(s)
+	}
+}
+
+type admitter struct{ check *admission.Checker }
+
+func (a admitter) Admit(ctx context.Context, c bare.Change) error {
+	id, err := audit.Identifier(c.Key)
+	if err != nil {
+		return err
+	}
+	return a.check.Check(ctx, admission.Call{Entity: c.Entity, Object: id, Method: c.Method, By: c.By, Request: c.Request, Previous: c.Previous, Value: c.Value})
+}
+
+// AdmissionUnary captures the outer request before an app layer changes it or
+// turns it into several writes. Put it at the transport boundary. In-process
+// custom calls and individual stream messages can use bare.Origin explicitly.
+func AdmissionUnary(ctx context.Context, req any, info *grpc.UnaryServerInfo, next grpc.UnaryHandler) (any, error) {
+	v, ok := req.(proto.Message)
+	if !ok {
+		return nil, status.Error(codes.Internal, "admission: RPC request is not a protobuf message")
+	}
+	return next(bare.Origin(ctx, info.FullMethod, v), req)
 }

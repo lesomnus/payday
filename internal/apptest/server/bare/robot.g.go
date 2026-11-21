@@ -16,7 +16,6 @@ import (
 	reading "github.com/lesomnus/payday/internal/apptest/internal/ent/reading"
 	robot "github.com/lesomnus/payday/internal/apptest/internal/ent/robot"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -41,11 +40,14 @@ type CellServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewCellServiceServer(db *ent.Client, opts ...Option) apptest.CellServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return CellServiceServer{Store: s.Store}
 }
@@ -154,7 +156,10 @@ func (st CellServiceServer) create(ctx context.Context, req *apptest.CellAddRequ
 }
 
 func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +174,7 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	}
 
 	var stored *ent.Cell
-	if snapshotOptions(s.Rec, apptest.CellService_Add_FullMethodName).Value {
+	if s.images(apptest.CellService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -195,10 +200,11 @@ func (s CellServiceServer) Add(ctx context.Context, req *apptest.CellAddRequest)
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.CellService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Cell",
+		By:     apptest.CellService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -326,6 +332,9 @@ func CellSelectInit(ctx context.Context, scope Scope, q *ent.CellQuery, m *appte
 }
 
 func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(cellOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -375,6 +384,9 @@ var cellPatchColumns = entpatch.Columns{
 	1: cell.FieldId, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
 
 func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -402,7 +414,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +435,7 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 	}
 
 	var previous *apptest.Cell
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -489,7 +501,8 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Cell",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -506,6 +519,9 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 }
 
 func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := CellPick(req)
 	if err != nil {
 		return nil, err
@@ -515,7 +531,7 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -526,8 +542,8 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 
 	var k any
 	var previous *apptest.Cell
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.CellService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.CellService_Erase_FullMethodName)
 		var v *ent.Cell
 		var err error
 		if images.Previous {
@@ -557,7 +573,8 @@ func (s CellServiceServer) Erase(ctx context.Context, req *apptest.CellRef) (*ap
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Cell",
 			By:       apptest.CellService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,
@@ -617,11 +634,14 @@ type RobotServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewRobotServiceServer(db *ent.Client, opts ...Option) apptest.RobotServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return RobotServiceServer{Store: s.Store}
 }
@@ -800,7 +820,10 @@ func (st RobotServiceServer) create(ctx context.Context, req *apptest.RobotAddRe
 }
 
 func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -815,7 +838,7 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	}
 
 	var stored *ent.Robot
-	if snapshotOptions(s.Rec, apptest.RobotService_Add_FullMethodName).Value {
+	if s.images(apptest.RobotService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -841,10 +864,11 @@ func (s RobotServiceServer) Add(ctx context.Context, req *apptest.RobotAddReques
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.RobotService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Robot",
+		By:     apptest.RobotService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -872,6 +896,9 @@ const robotAddManyRows = 500
 // is written. A refusal by the database is the whole statement's, and does
 // not say which row it was about.
 func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	items := req.GetItems()
 	if len(items) > RobotAddManyMax {
 		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", RobotAddManyMax, len(items))
@@ -880,7 +907,7 @@ func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddMa
 		return apptest.RobotAddManyResponse_builder{}.Build(), nil
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -889,7 +916,7 @@ func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddMa
 	st := s
 	st.Db = tx.Db
 
-	images := snapshotOptions(s.Rec, apptest.RobotService_AddMany_FullMethodName).Value
+	images := s.images(apptest.RobotService_AddMany_FullMethodName).Value
 	qs := make([]*ent.RobotCreate, len(items))
 	dss := make([][]func(v *apptest.Robot), len(items))
 	stored := make([]*ent.Robot, len(items))
@@ -933,10 +960,11 @@ func (s RobotServiceServer) AddMany(ctx context.Context, req *apptest.RobotAddMa
 			if stored[i] != nil {
 				value = s.image(stored[i].Proto())
 			}
-			if err := record(ctx, s.Rec, st.Db, Change{
-				By:    apptest.RobotService_AddMany_FullMethodName,
-				Key:   u.Id,
-				Value: value,
+			if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+				Entity: "app.Robot",
+				By:     apptest.RobotService_AddMany_FullMethodName,
+				Key:    u.Id,
+				Value:  value,
 			}); err != nil {
 				return nil, err
 			}
@@ -1144,6 +1172,9 @@ func RobotSelectInit(ctx context.Context, scope Scope, q *ent.RobotQuery, m *app
 }
 
 func (s RobotServiceServer) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(robotOrmEntity, req.ProtoReflect(), func(ed graph.Edge, ref protoreflect.Message) (protoreflect.Value, error) {
 		switch ed.Number() {
 		case 30:
@@ -1209,6 +1240,9 @@ var robotPatchColumns = entpatch.Columns{
 	1: robot.FieldId, 2: robot.TenantColumn, 30: robot.ThingColumn, 3: robot.CellColumn, 4: robot.FieldAlias, 8: robot.FieldSecret, 31: robot.FieldDateAttested, 32: robot.FieldKeeper, 33: robot.FieldOwnerId, 13: robot.FieldDateUpdated, 15: robot.FieldDateCreated, 14: robot.FieldDateErased}
 
 func (s RobotServiceServer) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -1236,7 +1270,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1257,7 +1291,7 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 	}
 
 	var previous *apptest.Robot
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -1326,7 +1360,8 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Robot",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -1343,6 +1378,9 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 }
 
 func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := RobotPick(req)
 	if err != nil {
 		return nil, err
@@ -1352,7 +1390,7 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1363,8 +1401,8 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 
 	var k any
 	var previous *apptest.Robot
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.RobotService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.RobotService_Erase_FullMethodName)
 		var v *ent.Robot
 		var err error
 		if images.Previous {
@@ -1395,7 +1433,8 @@ func (s RobotServiceServer) Erase(ctx context.Context, req *apptest.RobotRef) (*
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Robot",
 			By:       apptest.RobotService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,
@@ -1465,11 +1504,14 @@ type PairingServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewPairingServiceServer(db *ent.Client, opts ...Option) apptest.PairingServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return PairingServiceServer{Store: s.Store}
 }
@@ -1600,7 +1642,10 @@ func (st PairingServiceServer) create(ctx context.Context, req *apptest.PairingA
 }
 
 func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1615,7 +1660,7 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	}
 
 	var stored *ent.Pairing
-	if snapshotOptions(s.Rec, apptest.PairingService_Add_FullMethodName).Value {
+	if s.images(apptest.PairingService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -1641,10 +1686,11 @@ func (s PairingServiceServer) Add(ctx context.Context, req *apptest.PairingAddRe
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.PairingService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Pairing",
+		By:     apptest.PairingService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -1784,6 +1830,9 @@ func PairingSelectInit(ctx context.Context, scope Scope, q *ent.PairingQuery, m 
 }
 
 func (s PairingServiceServer) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(pairingOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -1833,6 +1882,9 @@ var pairingPatchColumns = entpatch.Columns{
 	1: pairing.FieldId, 2: pairing.LeadColumn, 8: pairing.FollowColumn, 15: pairing.FieldDateCreated}
 
 func (s PairingServiceServer) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -1860,7 +1912,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1881,7 +1933,7 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 	}
 
 	var previous *apptest.Pairing
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -1947,7 +1999,8 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Pairing",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -1964,6 +2017,9 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 }
 
 func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := PairingPick(req)
 	if err != nil {
 		return nil, err
@@ -1973,7 +2029,7 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1984,8 +2040,8 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 
 	var k any
 	var previous *apptest.Pairing
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.PairingService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.PairingService_Erase_FullMethodName)
 		var v *ent.Pairing
 		var err error
 		if images.Previous {
@@ -2013,7 +2069,8 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Pairing",
 			By:       apptest.PairingService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,
@@ -2055,11 +2112,14 @@ type JointServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewJointServiceServer(db *ent.Client, opts ...Option) apptest.JointServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return JointServiceServer{Store: s.Store}
 }
@@ -2170,7 +2230,10 @@ func (st JointServiceServer) create(ctx context.Context, req *apptest.JointAddRe
 }
 
 func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2185,7 +2248,7 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	}
 
 	var stored *ent.Joint
-	if snapshotOptions(s.Rec, apptest.JointService_Add_FullMethodName).Value {
+	if s.images(apptest.JointService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -2211,10 +2274,11 @@ func (s JointServiceServer) Add(ctx context.Context, req *apptest.JointAddReques
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.JointService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Joint",
+		By:     apptest.JointService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -2342,6 +2406,9 @@ func JointSelectInit(ctx context.Context, scope Scope, q *ent.JointQuery, m *app
 }
 
 func (s JointServiceServer) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(jointOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -2391,6 +2458,9 @@ var jointPatchColumns = entpatch.Columns{
 	1: joint.FieldId, 2: joint.RobotColumn, 4: joint.FieldAlias, 14: joint.FieldDateErased}
 
 func (s JointServiceServer) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -2418,7 +2488,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2439,7 +2509,7 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 	}
 
 	var previous *apptest.Joint
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -2505,7 +2575,8 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Joint",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -2522,6 +2593,9 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 }
 
 func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := JointPick(req)
 	if err != nil {
 		return nil, err
@@ -2531,7 +2605,7 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2542,8 +2616,8 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 
 	var k any
 	var previous *apptest.Joint
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.JointService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.JointService_Erase_FullMethodName)
 		var v *ent.Joint
 		var err error
 		if images.Previous {
@@ -2573,7 +2647,8 @@ func (s JointServiceServer) Erase(ctx context.Context, req *apptest.JointRef) (*
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Joint",
 			By:       apptest.JointService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,
@@ -2633,11 +2708,14 @@ type FleetServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewFleetServiceServer(db *ent.Client, opts ...Option) apptest.FleetServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return FleetServiceServer{Store: s.Store}
 }
@@ -2723,7 +2801,10 @@ func (st FleetServiceServer) create(ctx context.Context, req *apptest.FleetAddRe
 }
 
 func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2738,7 +2819,7 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	}
 
 	var stored *ent.Fleet
-	if snapshotOptions(s.Rec, apptest.FleetService_Add_FullMethodName).Value {
+	if s.images(apptest.FleetService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -2764,10 +2845,11 @@ func (s FleetServiceServer) Add(ctx context.Context, req *apptest.FleetAddReques
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.FleetService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Fleet",
+		By:     apptest.FleetService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -2880,6 +2962,9 @@ func FleetSelectInit(ctx context.Context, scope Scope, q *ent.FleetQuery, m *app
 }
 
 func (s FleetServiceServer) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(fleetOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -2929,6 +3014,9 @@ var fleetPatchColumns = entpatch.Columns{
 	1: fleet.FieldId, 4: fleet.FieldAlias, 14: fleet.FieldDateErased}
 
 func (s FleetServiceServer) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -2956,7 +3044,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2977,7 +3065,7 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 	}
 
 	var previous *apptest.Fleet
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -3043,7 +3131,8 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Fleet",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -3060,6 +3149,9 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 }
 
 func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := FleetPick(req)
 	if err != nil {
 		return nil, err
@@ -3069,7 +3161,7 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3080,8 +3172,8 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 
 	var k any
 	var previous *apptest.Fleet
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.FleetService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.FleetService_Erase_FullMethodName)
 		var v *ent.Fleet
 		var err error
 		if images.Previous {
@@ -3111,7 +3203,8 @@ func (s FleetServiceServer) Erase(ctx context.Context, req *apptest.FleetRef) (*
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Fleet",
 			By:       apptest.FleetService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,
@@ -3173,11 +3266,14 @@ type ReadingServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewReadingServiceServer(db *ent.Client, opts ...Option) apptest.ReadingServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return ReadingServiceServer{Store: s.Store}
 }
@@ -3292,7 +3388,10 @@ func (st ReadingServiceServer) create(ctx context.Context, req *apptest.ReadingA
 }
 
 func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3307,7 +3406,7 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	}
 
 	var stored *ent.Reading
-	if snapshotOptions(s.Rec, apptest.ReadingService_Add_FullMethodName).Value {
+	if s.images(apptest.ReadingService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -3333,10 +3432,11 @@ func (s ReadingServiceServer) Add(ctx context.Context, req *apptest.ReadingAddRe
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.ReadingService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Reading",
+		By:     apptest.ReadingService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -3364,6 +3464,9 @@ const readingAddManyRows = 500
 // is written. A refusal by the database is the whole statement's, and does
 // not say which row it was about.
 func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	items := req.GetItems()
 	if len(items) > ReadingAddManyMax {
 		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", ReadingAddManyMax, len(items))
@@ -3372,7 +3475,7 @@ func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingA
 		return apptest.ReadingAddManyResponse_builder{}.Build(), nil
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3381,7 +3484,7 @@ func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingA
 	st := s
 	st.Db = tx.Db
 
-	images := snapshotOptions(s.Rec, apptest.ReadingService_AddMany_FullMethodName).Value
+	images := s.images(apptest.ReadingService_AddMany_FullMethodName).Value
 	qs := make([]*ent.ReadingCreate, len(items))
 	dss := make([][]func(v *apptest.Reading), len(items))
 	stored := make([]*ent.Reading, len(items))
@@ -3425,10 +3528,11 @@ func (s ReadingServiceServer) AddMany(ctx context.Context, req *apptest.ReadingA
 			if stored[i] != nil {
 				value = s.image(stored[i].Proto())
 			}
-			if err := record(ctx, s.Rec, st.Db, Change{
-				By:    apptest.ReadingService_AddMany_FullMethodName,
-				Key:   u.Id,
-				Value: value,
+			if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+				Entity: "app.Reading",
+				By:     apptest.ReadingService_AddMany_FullMethodName,
+				Key:    u.Id,
+				Value:  value,
 			}); err != nil {
 				return nil, err
 			}
@@ -3591,6 +3695,9 @@ func ReadingSelectInit(ctx context.Context, scope Scope, q *ent.ReadingQuery, m 
 }
 
 func (s ReadingServiceServer) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(readingOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -3640,6 +3747,9 @@ var readingPatchColumns = entpatch.Columns{
 	1: reading.FieldId, 2: reading.RobotColumn, 9: reading.FieldTenantId, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
 
 func (s ReadingServiceServer) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -3667,7 +3777,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3688,7 +3798,7 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 	}
 
 	var previous *apptest.Reading
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -3754,7 +3864,8 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Reading",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -3771,6 +3882,9 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 }
 
 func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := ReadingPick(req)
 	if err != nil {
 		return nil, err
@@ -3780,7 +3894,7 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3791,8 +3905,8 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 
 	var k any
 	var previous *apptest.Reading
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.ReadingService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.ReadingService_Erase_FullMethodName)
 		var v *ent.Reading
 		var err error
 		if images.Previous {
@@ -3820,7 +3934,8 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Reading",
 			By:       apptest.ReadingService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,

@@ -11,7 +11,6 @@ import (
 	job "github.com/lesomnus/payday/internal/apptest/internal/ent/job"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -35,11 +34,14 @@ type JobServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewJobServiceServer(db *ent.Client, opts ...Option) apptest.JobServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return JobServiceServer{Store: s.Store}
 }
@@ -160,7 +162,10 @@ func (st JobServiceServer) create(ctx context.Context, req *apptest.JobAddReques
 }
 
 func (s JobServiceServer) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +180,7 @@ func (s JobServiceServer) Add(ctx context.Context, req *apptest.JobAddRequest) (
 	}
 
 	var stored *ent.Job
-	if snapshotOptions(s.Rec, apptest.JobService_Add_FullMethodName).Value {
+	if s.images(apptest.JobService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -201,10 +206,11 @@ func (s JobServiceServer) Add(ctx context.Context, req *apptest.JobAddRequest) (
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.JobService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Job",
+		By:     apptest.JobService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -341,6 +347,9 @@ func JobSelectInit(ctx context.Context, scope Scope, q *ent.JobQuery, m *apptest
 }
 
 func (s JobServiceServer) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(jobOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -390,6 +399,9 @@ var jobPatchColumns = entpatch.Columns{
 	1: job.FieldId, 2: job.TenantColumn, 8: job.FieldRobotId, 9: job.FieldIssuerId, 10: job.FieldCompleted, 13: job.FieldDateUpdated, 15: job.FieldDateCreated}
 
 func (s JobServiceServer) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -417,7 +429,7 @@ func (s JobServiceServer) apply(ctx context.Context, ref *apptest.JobRef, doc *p
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -438,7 +450,7 @@ func (s JobServiceServer) apply(ctx context.Context, ref *apptest.JobRef, doc *p
 	}
 
 	var previous *apptest.Job
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -507,7 +519,8 @@ func (s JobServiceServer) apply(ctx context.Context, ref *apptest.JobRef, doc *p
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Job",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -524,6 +537,9 @@ func (s JobServiceServer) apply(ctx context.Context, ref *apptest.JobRef, doc *p
 }
 
 func (s JobServiceServer) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := JobPick(req)
 	if err != nil {
 		return nil, err
@@ -533,7 +549,7 @@ func (s JobServiceServer) Erase(ctx context.Context, req *apptest.JobRef) (*appt
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -544,8 +560,8 @@ func (s JobServiceServer) Erase(ctx context.Context, req *apptest.JobRef) (*appt
 
 	var k any
 	var previous *apptest.Job
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.JobService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.JobService_Erase_FullMethodName)
 		var v *ent.Job
 		var err error
 		if images.Previous {
@@ -573,7 +589,8 @@ func (s JobServiceServer) Erase(ctx context.Context, req *apptest.JobRef) (*appt
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Job",
 			By:       apptest.JobService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,

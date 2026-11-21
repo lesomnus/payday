@@ -9,7 +9,6 @@ import (
 	ent "github.com/lesomnus/payday/internal/apptest/internal/ent"
 	event "github.com/lesomnus/payday/internal/apptest/internal/ent/event"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -31,11 +30,14 @@ type EventServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewEventServiceServer(db *ent.Client, opts ...Option) apptest.EventServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return EventServiceServer{Store: s.Store}
 }
@@ -182,7 +184,10 @@ func (st EventServiceServer) create(ctx context.Context, req *apptest.EventAddRe
 }
 
 func (s EventServiceServer) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +202,7 @@ func (s EventServiceServer) Add(ctx context.Context, req *apptest.EventAddReques
 	}
 
 	var stored *ent.Event
-	if snapshotOptions(s.Rec, apptest.EventService_Add_FullMethodName).Value {
+	if s.images(apptest.EventService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -223,10 +228,11 @@ func (s EventServiceServer) Add(ctx context.Context, req *apptest.EventAddReques
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.EventService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Event",
+		By:     apptest.EventService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -254,6 +260,9 @@ const eventAddManyRows = 500
 // is written. A refusal by the database is the whole statement's, and does
 // not say which row it was about.
 func (s EventServiceServer) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	items := req.GetItems()
 	if len(items) > EventAddManyMax {
 		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", EventAddManyMax, len(items))
@@ -262,7 +271,7 @@ func (s EventServiceServer) AddMany(ctx context.Context, req *apptest.EventAddMa
 		return apptest.EventAddManyResponse_builder{}.Build(), nil
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +280,7 @@ func (s EventServiceServer) AddMany(ctx context.Context, req *apptest.EventAddMa
 	st := s
 	st.Db = tx.Db
 
-	images := snapshotOptions(s.Rec, apptest.EventService_AddMany_FullMethodName).Value
+	images := s.images(apptest.EventService_AddMany_FullMethodName).Value
 	qs := make([]*ent.EventCreate, len(items))
 	dss := make([][]func(v *apptest.Event), len(items))
 	stored := make([]*ent.Event, len(items))
@@ -315,10 +324,11 @@ func (s EventServiceServer) AddMany(ctx context.Context, req *apptest.EventAddMa
 			if stored[i] != nil {
 				value = s.image(stored[i].Proto())
 			}
-			if err := record(ctx, s.Rec, st.Db, Change{
-				By:    apptest.EventService_AddMany_FullMethodName,
-				Key:   u.Id,
-				Value: value,
+			if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+				Entity: "app.Event",
+				By:     apptest.EventService_AddMany_FullMethodName,
+				Key:    u.Id,
+				Value:  value,
 			}); err != nil {
 				return nil, err
 			}
