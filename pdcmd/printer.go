@@ -154,7 +154,7 @@ func Template(text string) (Printer, error) {
 // `wide` is kubectl's `priority`: the same table with the columns that are
 // worth having and not worth the width. Splitting them is what keeps the
 // default narrow enough to read in a terminal.
-func Table(wide bool) Printer { return table(wide, true) }
+func Table(wide bool, opts ...PrintOptions) Printer { return table(wide, true, opts...) }
 
 // table is [Table] told whether to show its header.
 //
@@ -163,7 +163,7 @@ func Table(wide bool) Printer { return table(wide, true) }
 // ever used would be a table with no header for every command after the first.
 // What knows this is the caller, which is the only thing that knows whether
 // this answer is one of several; see [runner.printerAs].
-func table(wide, header bool) Printer {
+func table(wide, header bool, opts ...PrintOptions) Printer {
 	return PrinterFunc(func(w io.Writer, m proto.Message) error {
 		rows := tableRows(m)
 		if len(rows) == 0 {
@@ -171,7 +171,7 @@ func table(wide, header bool) Printer {
 			return err
 		}
 
-		cols, err := columnsOf(rows[0].Descriptor(), wide)
+		cols, err := columnsOf(rows[0].Descriptor(), wide, opts...)
 		if err != nil {
 			return err
 		}
@@ -235,15 +235,15 @@ type column struct {
 // recognises, and a uuid at the left edge pushes everything readable off the
 // screen. It is a column of its own so that `-o wide` still answers "which
 // row exactly", and `-o name` answers it without a table at all.
-func columnsOf(d protoreflect.MessageDescriptor, wide bool) ([]column, error) {
-	if vs, err := itemColumns(d, wide); vs != nil || err != nil {
+func columnsOf(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptions) ([]column, error) {
+	if vs, err := itemColumns(d, wide, opts...); vs != nil || err != nil {
 		return vs, err
 	}
-	if vs, declared, err := declaredColumns(d, wide); declared || err != nil {
+	if vs, declared, err := declaredColumns(d, wide, opts...); declared || err != nil {
 		return vs, err
 	}
 	if !entityMessage(d) {
-		return scalarColumns(d), nil
+		return scalarColumns(d, opts...), nil
 	}
 
 	fs := d.Fields()
@@ -300,7 +300,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) ([]column, error) {
 // list response by `items`: what makes this shape is `id`, `value` and
 // `action` together, which is what `pd gen` writes and what a hand-written
 // stream of the same thing would have to write to mean the same.
-func itemColumns(d protoreflect.MessageDescriptor, wide bool) ([]column, error) {
+func itemColumns(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptions) ([]column, error) {
 	fs := d.Fields()
 
 	id := fs.ByName("id")
@@ -329,7 +329,7 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool) ([]column, error) 
 		return m.Get(ad).String()
 	}}}
 
-	cols, err := columnsOf(vd.Message(), wide)
+	cols, err := columnsOf(vd.Message(), wide, opts...)
 	if err != nil {
 		return nil, err
 	}

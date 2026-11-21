@@ -1085,6 +1085,10 @@ move shared payload declarations to a separate `.proto` file imported by both,
 or arrange the overlays so their dependencies run in one direction. Unknown
 or ambiguous names remain compiler errors without a guessed import.
 
+For fields the server supplies during creation, use `stamped` and put the
+application layer behind the generated gate; see
+[filling server-owned fields](server.md#fill-server-owned-fields-on-add).
+
 Implementing it is [a layer](server.md#3-writing-a-layer), which is also what
 puts it on the trail: an RPC nothing listed is audited for the same reason an
 `Add` is.
