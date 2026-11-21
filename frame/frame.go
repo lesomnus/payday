@@ -42,6 +42,12 @@ type key struct{}
 
 // Frame is what is known about a request other than what it asks for.
 type Frame struct {
+	// Authentication records how and when Actor authenticated. It is evidence
+	// supplied by trusted authentication code, never additional authority.
+	// In a represented call these are the person's facts; Caller carries the
+	// device's. An unknown time remains zero.
+	Authentication Authentication
+
 	// Actor is who the request is from, by identifier. A verified configuration
 	// principal can have no persistent actor; then Actor is Nil and Name
 	// identifies it. Applications must require a persistent actor for writes
@@ -122,22 +128,24 @@ type Frame struct {
 // Principal is a verified party without a credential or computed access scope.
 // The credential's Grant remains on Frame and narrows both parties' authority.
 type Principal struct {
-	Actor      pdid.Id
-	Tenant     pdid.Id
-	Name       string
-	TenantName string
-	Row        proto.Message
-	Account    pdid.Id
+	Authentication Authentication
+	Actor          pdid.Id
+	Tenant         pdid.Id
+	Name           string
+	TenantName     string
+	Row            proto.Message
+	Account        pdid.Id
 }
 
 // Principal answers the party this frame is being served as.
 func (f *Frame) Principal() Principal {
-	return Principal{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, TenantName: f.TenantName, Row: f.Row, Account: f.Account}
+	return Principal{Authentication: f.Authentication, Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, TenantName: f.TenantName, Row: f.Row, Account: f.Account}
 }
 
 // Frame builds a direct frame for checking this party's own permissions.
 func (p Principal) Frame(grant Grant) *Frame {
 	f := New(p.Actor, p.Tenant, grant)
+	f.Authentication = p.Authentication
 	f.Name = p.Name
 	f.TenantName = p.TenantName
 	f.Row = p.Row

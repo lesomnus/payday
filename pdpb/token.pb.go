@@ -87,20 +87,21 @@ func (b0 TokenIntrospectRequest_builder) Build() *TokenIntrospectRequest {
 
 // TokenIntrospectResponse is `auth.Identity` as it crosses.
 //
-// Every field here fills one there, and the one field of `auth.Identity` that
-// is missing is `Method`: how a caller authenticated is answered by whatever
-// read the credential, and a store that could name it would be naming the
-// wrong process's answer.
+// Every field here fills one there. Method is deliberately absent: how a
+// caller authenticated is answered by whatever read the credential, and a
+// store that could name it would be naming the wrong process's answer. Local
+// authority names and process-local change channels do not cross here either.
 type TokenIntrospectResponse struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_TenantId    []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
-	xxx_hidden_Tenant      string                 `protobuf:"bytes,3,opt,name=tenant"`
-	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
-	xxx_hidden_Grant       *Grant                 `protobuf:"bytes,5,opt,name=grant"`
-	xxx_hidden_DateExpires *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=date_expires,json=dateExpires"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                        protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                []byte                 `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_TenantId          []byte                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId"`
+	xxx_hidden_Tenant            string                 `protobuf:"bytes,3,opt,name=tenant"`
+	xxx_hidden_Alias             string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Grant             *Grant                 `protobuf:"bytes,5,opt,name=grant"`
+	xxx_hidden_DateExpires       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=date_expires,json=dateExpires"`
+	xxx_hidden_DateAuthenticated *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=date_authenticated,json=dateAuthenticated"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *TokenIntrospectResponse) Reset() {
@@ -170,6 +171,13 @@ func (x *TokenIntrospectResponse) GetDateExpires() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *TokenIntrospectResponse) GetDateAuthenticated() *timestamppb.Timestamp {
+	if x != nil {
+		return x.xxx_hidden_DateAuthenticated
+	}
+	return nil
+}
+
 func (x *TokenIntrospectResponse) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -200,6 +208,10 @@ func (x *TokenIntrospectResponse) SetDateExpires(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateExpires = v
 }
 
+func (x *TokenIntrospectResponse) SetDateAuthenticated(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateAuthenticated = v
+}
+
 func (x *TokenIntrospectResponse) HasGrant() bool {
 	if x == nil {
 		return false
@@ -214,12 +226,23 @@ func (x *TokenIntrospectResponse) HasDateExpires() bool {
 	return x.xxx_hidden_DateExpires != nil
 }
 
+func (x *TokenIntrospectResponse) HasDateAuthenticated() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_DateAuthenticated != nil
+}
+
 func (x *TokenIntrospectResponse) ClearGrant() {
 	x.xxx_hidden_Grant = nil
 }
 
 func (x *TokenIntrospectResponse) ClearDateExpires() {
 	x.xxx_hidden_DateExpires = nil
+}
+
+func (x *TokenIntrospectResponse) ClearDateAuthenticated() {
+	x.xxx_hidden_DateAuthenticated = nil
 }
 
 type TokenIntrospectResponse_builder struct {
@@ -255,6 +278,9 @@ type TokenIntrospectResponse_builder struct {
 	// once, at the handshake, and without this would be served for as long as it
 	// stays open -- which for a Watch is until somebody hangs up.
 	DateExpires *timestamppb.Timestamp
+	// Last authentication time known by the verifier. Unset means unknown.
+	// Issuing or using a token does not establish a new authentication time.
+	DateAuthenticated *timestamppb.Timestamp
 }
 
 func (b0 TokenIntrospectResponse_builder) Build() *TokenIntrospectResponse {
@@ -267,6 +293,7 @@ func (b0 TokenIntrospectResponse_builder) Build() *TokenIntrospectResponse {
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Grant = b.Grant
 	x.xxx_hidden_DateExpires = b.DateExpires
+	x.xxx_hidden_DateAuthenticated = b.DateAuthenticated
 	return m0
 }
 
@@ -437,14 +464,15 @@ const file_payday_token_proto_rawDesc = "" +
 	"\n" +
 	"\x12payday/token.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\".\n" +
 	"\x16TokenIntrospectRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\xd8\x01\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xa3\x02\n" +
 	"\x17TokenIntrospectResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12\x16\n" +
 	"\x06tenant\x18\x03 \x01(\tR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12#\n" +
 	"\x05grant\x18\x05 \x01(\v2\r.payday.GrantR\x05grant\x12=\n" +
-	"\fdate_expires\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpires\"\xa6\x01\n" +
+	"\fdate_expires\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpires\x12I\n" +
+	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\"\xa6\x01\n" +
 	"\x05Grant\x12\x1d\n" +
 	"\n" +
 	"any_tenant\x18\x01 \x01(\bR\tanyTenant\x12\x18\n" +
@@ -468,13 +496,14 @@ var file_payday_token_proto_goTypes = []any{
 var file_payday_token_proto_depIdxs = []int32{
 	2, // 0: payday.TokenIntrospectResponse.grant:type_name -> payday.Grant
 	3, // 1: payday.TokenIntrospectResponse.date_expires:type_name -> google.protobuf.Timestamp
-	0, // 2: payday.TokenService.Introspect:input_type -> payday.TokenIntrospectRequest
-	1, // 3: payday.TokenService.Introspect:output_type -> payday.TokenIntrospectResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: payday.TokenIntrospectResponse.date_authenticated:type_name -> google.protobuf.Timestamp
+	0, // 3: payday.TokenService.Introspect:input_type -> payday.TokenIntrospectRequest
+	1, // 4: payday.TokenService.Introspect:output_type -> payday.TokenIntrospectResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_payday_token_proto_init() }

@@ -130,10 +130,16 @@ type Identity struct {
 	// provide change notifications. This is process-local and not serialized
 	// by TokenService.
 	Changed <-chan struct{}
-	// Method is what the claim was read from, for the log and for nothing
-	// else. A rule that turns on the way somebody authenticated is a rule that
-	// will be wrong one day.
+	// Method is the handler that admitted the credential. It is a recording
+	// and credential-policy hint, not proof of a human, MFA, or a direct call.
+	// Trusted handlers set it; it is never accepted from a request header.
 	Method string
+
+	// DateAuthenticated is the last authentication time the verifier knows,
+	// not token issuance, session creation or the last use of a credential.
+	// Zero means unknown and cannot satisfy a freshness check. Handlers that
+	// merely trust a name or check a long-lived key must not invent a time.
+	DateAuthenticated time.Time
 
 	// Tenant is the alias of whoever holds the actor, and Alias is the actor's
 	// name within it. They come as a pair: an alias with no tenant names one
@@ -190,6 +196,11 @@ type Identity struct {
 	// which for a Watch is until somebody hangs up. See [Identity.Valid] and
 	// the note on cutting a stream in [InterceptorStream].
 	DateExpires time.Time
+}
+
+// Authentication returns the verified facts that travel with this party.
+func (v Identity) Authentication() frame.Authentication {
+	return frame.Authentication{Method: v.Method, Date: v.DateAuthenticated}
 }
 
 // Valid reports whether this credential is still good at `at`.

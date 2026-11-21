@@ -104,6 +104,12 @@ func IdentityFrom(v *pdpb.TokenIntrospectResponse) (Identity, error) {
 	}
 
 	id.Grant = g
+	if u := v.GetDateAuthenticated(); u != nil {
+		if err := u.CheckValid(); err != nil {
+			return Identity{}, fmt.Errorf("date_authenticated: %w", err)
+		}
+		id.DateAuthenticated = u.AsTime()
+	}
 	if u := v.GetDateExpires(); u != nil {
 		id.DateExpires = u.AsTime()
 	}
@@ -123,6 +129,12 @@ func Introspection(id Identity) (*pdpb.TokenIntrospectResponse, error) {
 		Tenant: id.Tenant,
 		Alias:  id.Alias,
 		Grant:  grantOf(id.Grant),
+	}
+	if !id.DateAuthenticated.IsZero() {
+		res.DateAuthenticated = timestamppb.New(id.DateAuthenticated)
+		if err := res.DateAuthenticated.CheckValid(); err != nil {
+			return nil, fmt.Errorf("date_authenticated: %w", err)
+		}
 	}
 	if !id.DateExpires.IsZero() {
 		res.DateExpires = timestamppb.New(id.DateExpires)
