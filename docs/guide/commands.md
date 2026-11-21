@@ -252,6 +252,26 @@ nothing, and answers a NotFound that is true and says nothing about the
 mistake. `holder get @acme/arm-01#robot` is refused with both kinds in the
 message, and so is `holder get` of a robot's identifier.
 
+A unique key can be explicit too. For a generated `PartRef` with a `number`
+key, these select the same row:
+
+```sh
+$ app part get number=MOTOR-0042
+$ app part patch number=MOTOR-0042 '{"name":"Spindle motor"}'
+```
+
+The key is a member of the generated reference's `key` oneof. A single-field
+index accepts its scalar value; a composite index accepts JSON:
+
+```sh
+$ app part get 'slot={"tenant":"@acme","number":"MOTOR-0042"}'
+```
+
+Use the index name from the generated `PartRef`, which may differ from its
+column name. Misspelled keys are errors. There is no implicit default key for
+a bare word. A `key=value` selects an existing row; creation fields belong in
+an `add` request's JSON.
+
 `add` takes the same syntax for the name the new row is to have:
 
 ```sh
@@ -281,6 +301,21 @@ The cell is named by identifier because that is the only way a `CellRef` can
 name one: what a reference may say is what the schema made unique, and `Cell`
 declares no unique index over its alias — see
 [`alias`](schema.md#4-alias--the-name-a-person-writes).
+
+### References can be written directly
+
+A field whose type is a generated `XxxRef` accepts the same spelling as `REF`:
+
+```sh
+$ app holder add '{"tenant":"@acme","alias":"bob"}'
+$ app part list '{"filters":[{"ref":"number=MOTOR-0042"}]}'
+```
+
+The rule also applies in repeated fields and map values. A one-field unique
+index can be written as `{"ref":{"number":"MOTOR-0042"}}`; its expanded
+protobuf form is `{"ref":{"number":{"number":"MOTOR-0042"}}}`. Composite
+indices keep their object shape. Ordinary messages and free-form `Struct`
+values keep their own JSON contract. `--in protojson` disables these shortcuts.
 
 ### Identifiers can be written as uuids
 
@@ -344,6 +379,49 @@ JSON representation in both `json` and `pretty`, including when nested in lists
 or maps. An `Any` payload keeps its canonical protojson representation, including
 base64 identifiers inside the packed message. Singular timestamps and durations
 keep their existing human-readable form in `pretty`.
+
+### Choosing table columns
+
+Declare the columns with the entity, then run `pd gen`:
+
+```proto
+option (payday.entity) = {
+  domain: 19
+  columns: [
+    {field: "model"},
+    {field: "hours"},
+    {field: "running"},
+    {field: "spec.axes", title: "AXES"},
+    {field: "id", wide: true}
+  ]
+};
+```
+
+This is the test app's `Machine`. Its normal table shows MODEL, HOURS, RUNNING
+and AXES; `-o wide` adds ID. These columns replace the defaults. Titles default
+to the uppercase field path. Paths can cross singular messages and must end in
+a scalar, timestamp, duration or scalar wrapper. Generation rejects missing
+paths, collections, secrets and a declaration with only wide columns. A missing
+optional value prints `-`; present zero and false values remain visible.
+
+A custom RPC response without entity metadata prints its scalar fields as
+columns. If it holds exactly one repeated message field, those messages become
+the rows. If it holds multiple such fields, no list is guessed: its own scalar
+fields are shown. An empty list prints `(none)`.
+
+Templates use the same values as `-o json`, including UUID identifiers:
+
+```sh
+$ app holder get @acme/bob -o 'template={{.id}} {{.name}}'
+```
+
+A custom command can reuse a built-in printer by name:
+
+```go
+printer, err := pdcmd.PrinterNamed("table")
+if err != nil { return err }
+return printer.Print(w, response)
+```
 
 ### Adding a format
 
@@ -465,6 +543,30 @@ Two things it works out for itself:
 
   pdcmd: app.RobotService.Nope: app.RobotService has no such method
   ```
+
+A custom RPC may accept no reference, for example when it resolves the caller's
+current job. Opt in to omission explicitly; protobuf field presence does not
+say whether the handler requires a reference:
+
+```go
+c, err := t.Unary("app.JobService.Current", pdcmd.OptionalArg())
+// app job current
+// app job current @acme/job-42
+// app job current '{"otherField":"value"}'
+```
+
+For an RPC that looks up a part by its number, choose that request field as the
+positional argument:
+
+```go
+c, err := t.Unary("app.PartService.Resolve", pdcmd.Arg("number"))
+// app part resolve MOTOR-0042
+```
+
+`Arg` accepts a singular field, using its protobuf scalar type. Strings retain
+leading zeros. A message field takes JSON or, for a generated reference, the
+reference syntax above. Combine `Arg` with `OptionalArg()` when the handler
+allows omission. The trailing JSON still overrides the positional value.
 
 This is also how the absent verb is mounted, if your app wants it:
 

@@ -241,7 +241,7 @@ func flgOutput(def string) *flg.String {
 func flgInput() *flg.String {
 	return &flg.String{
 		Name:  "in",
-		Brief: "how REQ is read: json (identifiers may be uuids) or protojson (default json)",
+		Brief: "how REQ is read: json (UUIDs and reference shorthand) or protojson (default json)",
 	}
 }
 
@@ -589,6 +589,9 @@ func isRaw(s string) bool {
 // both because it is the same thing being said, and `@acme/arm-01` on an `add`
 // meaning "in acme, called arm-01" is the reading somebody already has.
 func setNew(in proto.Message, r Ref) error {
+	if r.Key != "" {
+		return fmt.Errorf("NAME: a unique reference selects an existing row; set creation fields in the request JSON")
+	}
 	m := in.ProtoReflect()
 	fs := m.Descriptor().Fields()
 

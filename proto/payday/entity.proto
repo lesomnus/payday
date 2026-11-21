@@ -315,6 +315,18 @@ message Entity {
   // what another was.
   repeated Former formerly = 11;
 
+  // Columns replace the CLI table defaults. Paths name scalar fields, including
+  // fields reached through singular messages. A wide column appears only in
+  // `-o wide`; at least one column must appear in the ordinary table.
+  repeated Column columns = 12;
+
+  message Column {
+    string field = 1;
+    // Title defaults to the upper-case field path.
+    string title = 2;
+    bool wide = 3;
+  }
+
   // Former is a name an entity had. See [Entity.formerly].
   message Former {
     // Message is the message's name then, in this package: `TenantDomain`.

@@ -744,7 +744,12 @@ func (r *runner) byDefault(header bool) Printer {
 	})
 }
 
-func builtin(name string) (Printer, error) { return builtinAs(name, true) }
+// PrinterNamed returns a built-in output format, including template=... .
+// Applications can reuse the same names their CLI accepts without copying its
+// format switch. Per-tree custom formats remain in Options.Printers.
+func PrinterNamed(name string) (Printer, error) { return builtinAs(name, true) }
+
+func builtin(name string) (Printer, error) { return PrinterNamed(name) }
 
 // builtinAs is [builtin] told whether this is the first answer of several; only
 // the tables have anything to do with it.

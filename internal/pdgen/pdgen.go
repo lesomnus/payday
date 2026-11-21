@@ -33,6 +33,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/lesomnus/payday/internal/pdcolumn"
 	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/schema"
@@ -509,6 +510,10 @@ func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
 				"name and whether its rows are behind the tenant wall\n\n"+
 				"    option (payday.entity) = {domain: %d, tenanted: {via: \"tenant\"}};",
 			suggestDomain(e))
+	}
+
+	if _, err := pdcolumn.Resolve(m.Desc, opts.GetColumns()); err != nil {
+		return nil, err
 	}
 
 	d := opts.GetDomain()
