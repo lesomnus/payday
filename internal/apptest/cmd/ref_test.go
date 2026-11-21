@@ -129,3 +129,22 @@ func TestTheKindReachesACommandTheAppWiredItself(t *testing.T) {
 	x.Contains(got.Err.Error(), "robot")
 	x.Contains(got.Err.Error(), "holder")
 }
+
+// A CLI reference is still resolved by the generated server and its wall.
+func TestUniqueKeysAndNestedReferencesTravelTheStack(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+	for _, args := range [][]string{
+		{"tenant", "get", "alias=acme"},
+		{"holder", "get", `slug={"tenant":"@acme","alias":"admin"}`},
+		{"holder", "add", `{"tenant":"@acme","alias":"nested-cli"}`},
+		{"holder", "get", "@acme/nested-cli"},
+	} {
+		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
+		require.NoError(t, got.Err, args)
+		require.NotEmpty(t, got.Stdout)
+	}
+	got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, "holder", "add", "alias=surprise")
+	require.ErrorContains(t, got.Err, "existing row")
+}

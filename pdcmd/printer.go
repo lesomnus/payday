@@ -111,7 +111,7 @@ func Template(text string) (Printer, error) {
 	}
 
 	return PrinterFunc(func(w io.Writer, m proto.Message) error {
-		b, err := protojson.Marshal(m)
+		b, err := jsonOf(m.ProtoReflect(), "")
 		if err != nil {
 			return err
 		}
@@ -147,9 +147,9 @@ func Template(text string) (Printer, error) {
 // rule reserves by name. An entity that has them gets a useful table with
 // nothing declared.
 //
-// Columns declared on the entity are the next step and go in
-// `(payday.entity)`; when they arrive they replace this default rather than
-// extend it.
+// Columns declared in `(payday.entity).columns` replace the defaults.
+// Ordinary RPC responses show their scalar fields; an unambiguous repeated
+// message field supplies rows for a response containing a list.
 //
 // # wide
 //
@@ -167,13 +167,19 @@ func Table(wide bool) Printer { return table(wide, true) }
 // this answer is one of several; see [runner.printerAs].
 func table(wide, header bool) Printer {
 	return PrinterFunc(func(w io.Writer, m proto.Message) error {
-		rows := Rows(m)
+		rows := tableRows(m)
 		if len(rows) == 0 {
 			_, err := fmt.Fprintln(w, "(none)")
 			return err
 		}
 
-		cols := columnsOf(rows[0].Descriptor(), wide)
+		cols, err := columnsOf(rows[0].Descriptor(), wide)
+		if err != nil {
+			return err
+		}
+		if len(cols) == 0 {
+			return fmt.Errorf("%s has no scalar table columns; use -o json", rows[0].Descriptor().FullName())
+		}
 
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 		if header {
@@ -219,6 +225,7 @@ func Rows(m proto.Message) []protoreflect.Message {
 }
 
 type column struct {
+	key  bool
 	head string
 	read func(protoreflect.Message) string
 }
@@ -230,9 +237,15 @@ type column struct {
 // recognises, and a uuid at the left edge pushes everything readable off the
 // screen. It is a column of its own so that `-o wide` still answers "which
 // row exactly", and `-o name` answers it without a table at all.
-func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
-	if vs := itemColumns(d, wide); vs != nil {
-		return vs
+func columnsOf(d protoreflect.MessageDescriptor, wide bool) ([]column, error) {
+	if vs, err := itemColumns(d, wide); vs != nil || err != nil {
+		return vs, err
+	}
+	if vs, declared, err := declaredColumns(d, wide); declared || err != nil {
+		return vs, err
+	}
+	if !entityMessage(d) {
+		return scalarColumns(d), nil
 	}
 
 	fs := d.Fields()
@@ -244,7 +257,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 			return
 		}
 
-		vs = append(vs, column{head: head, read: func(m protoreflect.Message) string {
+		vs = append(vs, column{key: name == "id", head: head, read: func(m protoreflect.Message) string {
 			if !m.Has(fd) {
 				return "-"
 			}
@@ -268,7 +281,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 		add("Id", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 	}
 
-	return vs
+	return vs, nil
 }
 
 // itemColumns is the table for what a watch sends, which is not a row.
@@ -289,23 +302,23 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool) []column {
 // list response by `items`: what makes this shape is `id`, `value` and
 // `action` together, which is what `pd gen` writes and what a hand-written
 // stream of the same thing would have to write to mean the same.
-func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
+func itemColumns(d protoreflect.MessageDescriptor, wide bool) ([]column, error) {
 	fs := d.Fields()
 
 	id := fs.ByName("id")
 	vd := fs.ByName("value")
 	ad := fs.ByName("action")
 	if id == nil || vd == nil || ad == nil {
-		return nil
+		return nil, nil
 	}
 	if id.Kind() != protoreflect.BytesKind || id.IsList() {
-		return nil
+		return nil, nil
 	}
 	if vd.Kind() != protoreflect.MessageKind || vd.IsList() {
-		return nil
+		return nil, nil
 	}
 	if ad.Kind() != protoreflect.StringKind || ad.IsList() {
-		return nil
+		return nil, nil
 	}
 
 	vs := []column{{head: "ACTION", read: func(m protoreflect.Message) string {
@@ -318,8 +331,12 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
 		return m.Get(ad).String()
 	}}}
 
-	for _, c := range columnsOf(vd.Message(), wide) {
-		if c.head == "Id" {
+	cols, err := columnsOf(vd.Message(), wide)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range cols {
+		if c.key {
 			// The item names the row itself, and says so for one that is gone
 			// as well. Two Id columns would be the same uuid twice.
 			continue
@@ -341,7 +358,7 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool) []column {
 		}
 
 		return uuidOf(m.Get(id).Bytes())
-	}})
+	}}), nil
 }
 
 // uuidOf prints an identifier the way a person writes one back.

@@ -1,6 +1,7 @@
 package pdcmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,12 +16,13 @@ import (
 
 // Ref is how a person names one row on a command line.
 //
-// Either an identifier, or a [slug]:
+// An identifier, a [slug], or an explicit unique key:
 //
 //	019ff7c9-8a1e-8c3d-9f02-2b6c1f0a4d51
 //	@acme/alice
 //	@alice
 //	@acme/alice#holder
+//	number=MOTOR-0042
 //
 // The tenant is part of the name and not a flag, because an alias without one
 // names somebody in every tenant and nobody in particular. Where it may be left
@@ -36,6 +38,11 @@ import (
 // so [Ref.Expect] runs where slug's own readers have nothing to check against.
 type Ref struct {
 	Id pdid.Id
+
+	// Key selects a generated unique-index member; Value is its literal or
+	// composite JSON value. This spelling does not assign a default name key.
+	Key   string
+	Value string
 
 	Tenant string
 	Alias  string
@@ -107,6 +114,24 @@ func (r Ref) Expect(d pdid.Domain) error {
 // that should fail loudly here rather than fill in the wrong field.
 func (r Ref) Fill(m protoreflect.Message) error {
 	fs := m.Descriptor().Fields()
+	if r.Key != "" {
+		fd := fs.ByName(protoreflect.Name(r.Key))
+		if fd == nil {
+			fd = fs.ByJSONName(r.Key)
+		}
+		if !reference(m.Descriptor()) || fd == nil || fd.ContainingOneof() == nil || fd.ContainingOneof().Name() != "key" {
+			return fmt.Errorf("%s: %q is not a unique reference key", m.Descriptor().FullName(), r.Key)
+		}
+		v, err := positionalValue(fd, r.Value)
+		if err != nil {
+			return fmt.Errorf("%s: %w", r.Key, err)
+		}
+		b, err := json.Marshal(map[string]any{fd.JSONName(): v})
+		if err != nil {
+			return err
+		}
+		return unmarshalJson(b, m.Interface(), false)
+	}
 
 	if !r.Id.IsZero() {
 		fd := fs.ByName("id")
@@ -184,6 +209,19 @@ func (RefParser) Parse(s string) (Ref, error) {
 	}
 
 	if !slug.Is(s) {
+		if key, value, ok := strings.Cut(s, "="); ok {
+			if !protoreflect.Name(key).IsValid() {
+				return Ref{}, fmt.Errorf("invalid reference key %q", key)
+			}
+			if key == "id" {
+				id, err := pdid.Parse(value)
+				if err != nil {
+					return Ref{}, err
+				}
+				return Ref{Id: id}, nil
+			}
+			return Ref{Key: key, Value: value}, nil
+		}
 		// Not a slug, so it has to be an identifier -- and it is parsed here
 		// rather than passed along as bytes so that a mistyped uuid is refused
 		// by the command instead of by the server, which cannot say which
@@ -208,6 +246,9 @@ func (RefParser) Parse(s string) (Ref, error) {
 }
 
 func (RefParser) ToString(v Ref) string {
+	if v.Key != "" {
+		return v.Key + "=" + v.Value
+	}
 	if !v.Id.IsZero() {
 		return v.Id.String()
 	}
@@ -228,5 +269,5 @@ func (RefParser) ToString(v Ref) string {
 }
 
 func (RefParser) String() string {
-	return "Id|@[TENANT/]ALIAS[#KIND]"
+	return "Id|@[TENANT/]ALIAS[#KIND]|KEY=VALUE"
 }

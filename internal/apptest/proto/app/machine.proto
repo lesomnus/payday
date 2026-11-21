@@ -105,6 +105,13 @@ message Machine {
   };
   option (payday.entity) = {
     domain: 19
+    columns: [
+      {field: "model"},
+      {field: "hours"},
+      {field: "running"},
+      {field: "spec.axes", title: "AXES"},
+      {field: "id", wide: true}
+    ]
   };
 }
 

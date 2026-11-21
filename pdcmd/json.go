@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/lesomnus/payday/pdid"
 )
@@ -277,12 +278,15 @@ func unmarshalJson(b []byte, m proto.Message, strict bool) error {
 		return protojson.Unmarshal(b, m)
 	}
 
-	var v any
-	if err := json.Unmarshal(b, &v); err != nil {
+	v, err := decodeJSON(b)
+	if err != nil {
 		return err
 	}
 
-	v = toWire(v, m.ProtoReflect().Descriptor())
+	v, err = toWire(v, m.ProtoReflect().Descriptor())
+	if err != nil {
+		return err
+	}
 
 	out, err := json.Marshal(v)
 	if err != nil {
@@ -292,13 +296,35 @@ func unmarshalJson(b []byte, m proto.Message, strict bool) error {
 	return protojson.Unmarshal(out, m)
 }
 
-// toWire rewrites the uuid strings in a decoded document into base64.
-func toWire(x any, d protoreflect.MessageDescriptor) any {
-	obj, ok := x.(map[string]any)
-	if !ok || d == nil {
-		return x
+// toWire expands reference shorthand and encodes UUID strings as base64.
+func toWire(x any, d protoreflect.MessageDescriptor) (any, error) {
+	if d == nil || jsonMapped(d) {
+		return x, nil
 	}
-
+	if reference(d) {
+		if text, ok := x.(string); ok {
+			ref, err := RefParser{}.Parse(text)
+			if err != nil {
+				return nil, err
+			}
+			if err := ref.Expect(referenceDomain(d)); err != nil {
+				return nil, err
+			}
+			m := dynamicpb.NewMessage(d)
+			if err := ref.Fill(m); err != nil {
+				return nil, err
+			}
+			raw, err := protojson.Marshal(m)
+			if err != nil {
+				return nil, err
+			}
+			return decodeJSON(raw)
+		}
+	}
+	obj, ok := x.(map[string]any)
+	if !ok {
+		return x, nil
+	}
 	fs := d.Fields()
 	for k, v := range obj {
 		fd := fs.ByJSONName(k)
@@ -310,39 +336,55 @@ func toWire(x any, d protoreflect.MessageDescriptor) any {
 			// one to refuse it, with the name and the position it knows.
 			continue
 		}
-
-		switch vs := v.(type) {
-		case []any:
-			for i, e := range vs {
-				vs[i] = oneToWire(e, fd)
+		var err error
+		switch {
+		case fd.IsMap():
+			if values, ok := v.(map[string]any); ok {
+				for key, item := range values {
+					values[key], err = oneToWire(item, fd.MapValue())
+					if err != nil {
+						return nil, fmt.Errorf("%s[%s]: %w", k, key, err)
+					}
+				}
 			}
-
+		case fd.IsList():
+			if values, ok := v.([]any); ok {
+				for i, item := range values {
+					values[i], err = oneToWire(item, fd)
+					if err != nil {
+						return nil, fmt.Errorf("%s[%d]: %w", k, i, err)
+					}
+				}
+			}
 		default:
-			obj[k] = oneToWire(v, fd)
+			obj[k], err = oneToWire(v, fd)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", k, err)
+			}
 		}
 	}
-
-	return obj
+	return obj, nil
 }
 
-func oneToWire(x any, fd protoreflect.FieldDescriptor) any {
+func oneToWire(x any, fd protoreflect.FieldDescriptor) (any, error) {
 	if fd.Kind() == protoreflect.MessageKind {
+		// Only a generated Ref's unique-index member gets this abbreviation.
+		// An ordinary one-field message keeps its ordinary protobuf contract.
+		if _, object := x.(map[string]any); !object && x != nil && compactKey(fd) {
+			inner := fd.Message().Fields().Get(0)
+			x = map[string]any{inner.JSONName(): x}
+		}
 		return toWire(x, fd.Message())
 	}
-
 	s, ok := x.(string)
 	if !ok || fd.Kind() != protoreflect.BytesKind || !isId(fd) {
-		return x
+		return x, nil
 	}
-
 	id, err := pdid.Parse(s)
 	if err != nil {
-		// Not a uuid, so it is whatever it already was -- base64, most likely,
-		// and protojson's to read.
-		return x
+		return x, nil
 	}
-
-	return base64.StdEncoding.EncodeToString(id.Bytes())
+	return base64.StdEncoding.EncodeToString(id.Bytes()), nil
 }
 
 // jsonMapped identifies messages whose protobuf JSON form is not a traversal

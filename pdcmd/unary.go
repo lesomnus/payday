@@ -2,6 +2,7 @@ package pdcmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -47,9 +48,10 @@ import (
 // `RobotMoveRequest` follows, because an RPC about a row names it the way every
 // other RPC names one.
 //
-// Everything else about the request is the trailing protojson, for the reason
-// on [argRaw]: a flag per field would be a second copy of the schema.
-func (t *Tree) Unary(method string) (*xli.Command, error) {
+// [Arg] chooses a different singular positional field. [OptionalArg] permits
+// omission when the handler accepts it. Everything else is trailing JSON:
+// a flag per field would be a second copy of the schema.
+func (t *Tree) Unary(method string, options ...UnaryOption) (*xli.Command, error) {
 	i := strings.LastIndexByte(method, '.')
 	if i < 0 {
 		return nil, fmt.Errorf("pdcmd: %s: expected <package>.<Service>.<Method>", method)
@@ -82,31 +84,34 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 
 	r := t.run
 
-	// A request that names a row takes the argument that names one. `setRef`
-	// reads the same field, so the two cannot disagree about which requests
-	// have one.
-	//
-	// The kind of thing the reference names comes from the field's own type:
-	// the `ref` of a request about a Robot is an `app.RobotRef`, and "the name
-	// of the entity, then Ref" is the same generated rule `setRef` reads field
-	// names by. An app whose type the registry cannot answer for -- a ref
-	// declared by hand, outside the generation -- gets no expectation, which
-	// [Ref.Expect] reads as nothing to check: the claim was still parsed, so a
-	// "#word" this app has no domain for is refused either way.
-	takesRef := false
-	expect := pdid.Unknown
-	if fd := md.Input().Fields().ByName("ref"); fd != nil && fd.Kind() == protoreflect.MessageKind {
-		takesRef = true
-
-		name := strings.TrimSuffix(string(fd.Message().FullName()), "Ref")
-		if d, ok := pdid.Lookup(name); ok {
-			expect = d
+	config := unaryOptions{}
+	for _, opt := range options {
+		if opt == nil {
+			return nil, fmt.Errorf("pdcmd: nil Unary option")
+		}
+		if err := opt(&config); err != nil {
+			return nil, err
 		}
 	}
-
+	field := config.field
+	if !config.arg && md.Input().Fields().ByName("ref") != nil {
+		field = "ref"
+	}
+	var fd protoreflect.FieldDescriptor
+	argName := ""
 	args := arg.Args{}
-	if takesRef {
-		args = append(args, &ArgRef{Name: "REF"})
+	if field != "" {
+		fd = md.Input().Fields().ByName(protoreflect.Name(field))
+		if fd == nil {
+			fd = md.Input().Fields().ByJSONName(field)
+		}
+		if fd == nil || fd.IsList() || fd.IsMap() {
+			return nil, fmt.Errorf("pdcmd: %s: %s must name a singular request field", method, field)
+		}
+		argName = strings.ToUpper(string(fd.Name()))
+		args = append(args, &arg.String{Name: argName, Optional: config.optional})
+	} else if config.optional {
+		return nil, fmt.Errorf("pdcmd: %s: OptionalArg needs a positional field", method)
 	}
 	args = append(args, argRaw())
 
@@ -127,21 +132,64 @@ func (t *Tree) Unary(method string) (*xli.Command, error) {
 				return err
 			}
 
-			if takesRef {
-				ref := arg.MustGet[Ref](cmd, "REF")
-				if err := ref.Expect(expect); err != nil {
-					return err
-				}
-				if err := setRef(in, ref); err != nil {
-					return err
+			raw := []string{}
+			if fd != nil {
+				if text, ok := arg.Get[string](cmd, argName); ok {
+					if config.optional && isRaw(text) {
+						raw = append(raw, text)
+					} else {
+						v, err := positionalValue(fd, text)
+						if err != nil {
+							return fmt.Errorf("%s: %w", argName, err)
+						}
+						b, err := json.Marshal(map[string]any{fd.JSONName(): v})
+						if err != nil {
+							return err
+						}
+						if err := unmarshalJson(b, in, false); err != nil {
+							return fmt.Errorf("%s: %w", argName, err)
+						}
+					}
 				}
 			}
-
-			if err := r.run(ctx, cmd, md, in); err != nil {
+			if err := r.run(ctx, cmd, md, in, raw...); err != nil {
 				return err
 			}
 
 			return next(ctx)
 		})),
 	}, nil
+}
+
+// UnaryOption selects how a custom command takes its positional argument.
+type UnaryOption func(*unaryOptions) error
+
+type unaryOptions struct {
+	field         string
+	arg, optional bool
+}
+
+// Arg names the singular request field filled by the positional argument.
+// Without it, Unary uses ref when present. JSON still overrides the argument.
+func Arg(field string) UnaryOption {
+	return func(o *unaryOptions) error {
+		if o.arg || field == "" {
+			return fmt.Errorf("pdcmd: Arg must name one request field, once")
+		}
+		o.field, o.arg = field, true
+		return nil
+	}
+}
+
+// OptionalArg permits an omitted positional argument. Whether a server accepts
+// an absent reference is application behavior; protobuf presence cannot tell us.
+// A JSON object or '-' in the argument's place is read as the request body.
+func OptionalArg() UnaryOption {
+	return func(o *unaryOptions) error {
+		if o.optional {
+			return fmt.Errorf("pdcmd: OptionalArg declared twice")
+		}
+		o.optional = true
+		return nil
+	}
 }
