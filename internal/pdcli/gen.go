@@ -87,7 +87,7 @@ func (g Gen) Run(ctx context.Context) error {
 	for _, step := range steps {
 		g.say("pd: %s", step.what)
 		if err := step.do(ctx); err != nil {
-			return fmt.Errorf("%s: %w", step.what, err)
+			return fmt.Errorf("%s: %w", step.what, g.contractImportHints(err))
 		}
 	}
 
