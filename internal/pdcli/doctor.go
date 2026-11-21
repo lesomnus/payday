@@ -140,6 +140,7 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 	vs = append(vs, doctorSandbox(ctx, l)...)
 	vs = append(vs, doctorPage(l)...)
 	vs = append(vs, doctorVersions(ctx, l)...)
+	vs = append(vs, doctorPrinter(ctx, l)...)
 
 	return vs
 }

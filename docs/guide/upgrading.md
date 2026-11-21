@@ -260,3 +260,35 @@ The rest of a Renovate configuration stays the app's: its schedule, its
 reviewers, and rules of its own. A rule in the app's own `packageRules` is read
 after the preset's and wins.
 
+
+## 5. Copied schema formatting changed after another dependency moved
+
+`go tool pd` and the Go generators share the app's module graph. A new client
+library can raise `protocompile` or `protobuf-patch` through Go's minimum version
+selection even if the payday version did not change. Their printers can then
+format copied `.proto` files differently, and `pd gen --check` correctly reports
+that the committed files no longer match this generation.
+
+Run `go tool pd doctor` from the app. It compares the graph's selected printer
+versions with the requirements in that app's selected payday `go.mod`. It also
+reports forks and local `replace` directives; a version label on a local checkout
+does not establish which printer is built. The check reads the graph, honors
+`go.work`, and does not edit module or generated files. Findings are advisory,
+not a promise that every other generator dependency is identical.
+
+For example, adding a roster client can raise a printer while the app still
+requires the old version directly. Inspect `go mod graph` and
+`go list -m -json github.com/bufbuild/protocompile` to find that dependency.
+Either align the dependency versions, or accept the selected printer by
+regenerating, reviewing and committing the result:
+
+```sh
+go tool pd gen --ts
+git diff -- proto
+go tool pd gen --check --ts
+```
+
+Omit `--ts` for an app without a page. Do not edit the copied payday schema by
+hand or add a forced downgrade without checking the client that required the
+newer printer. This diagnostic makes the cause visible; it does not isolate the
+generator from Go's module selection or pin all output to the payday version.
