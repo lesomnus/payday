@@ -179,6 +179,64 @@ writes the rows below as well -- stays an override, and an `AddMany` beside it
 is then a second road to the same act that writes none of them: override it
 too, or do not ask for one.
 
+### Fill server-owned fields on Add
+
+Declare `(payday.field) = {stamped: true}` on a field that only the application
+may supply when a row is created. The generated **Gate** refuses a caller's
+value before passing the request to the next layer. The bare database server
+accepts the value supplied by an application layer behind that gate.
+
+The last builder handles the request first. Put the layer that fills the
+fields before `pd.GateBuild()` in the builder list:
+
+```go
+stacked, err := api.Build(sink,
+    core.Build(),
+    pd.AuditBuild(),
+    pd.GateBuild())
+// request -> Gate -> Audit -> Core -> sink
+```
+
+For a per-row transformation, the generated `WithAddRule` helper covers both
+`Add` and every item of `AddMany`:
+
+```go
+func (s Core) Robot() api.RobotServiceServer {
+    return bare.RobotWithAddRule(s.Next().Robot(),
+        func(ctx context.Context, req *api.RobotAddRequest) (*api.RobotAddRequest, error) {
+            // The application verifies attestation before supplying this time.
+            date, err := s.attested(ctx)
+            if err != nil {
+                return nil, err
+            }
+            out := proto.Clone(req).(*api.RobotAddRequest)
+            out.SetDateAttested(timestamppb.New(date))
+            return out, nil
+        })
+}
+```
+
+`attested` is application code; the framework does not manufacture the proof.
+The gate checks all items of a batch before the application layer runs. A
+caller that supplies the stamp is refused even if the layer would overwrite
+it. Clone the input before filling it so the original request stays available
+for auditing or other observers. Forward the filled request through `s.Next()`;
+calling the outer stack again sends it through the caller-input checks again.
+The layer must also implement `WithDriver`, as the example above does.
+
+Other examples are an author derived from the authenticated frame, an issued
+record number, and an alias derived from that number. Mark each server-owned
+field `stamped`; add `immutable` separately if later patching must be forbidden.
+If issuing a number writes a sequence row, include it and the new record in
+one transaction using the pattern below. A rule that only fills values does
+not itself start a transaction around unrelated writes.
+
+With implicit scalar presence, zero is indistinguishable from an omitted
+field; an explicit zero is refused only when the request field has presence.
+`stamped` controls creation, while the application's policy controls later
+changes. For custom RPCs, validate their own input before deriving server-owned
+values; they are not generated `Add` requests.
+
 ### Completing a generated verb
 
 The `Add` above guards: it checks a rule and passes the same write on. A layer
@@ -1293,6 +1351,19 @@ serves over HTTP goes, on the same mux:
 ```go
 h.Handle("POST /session", sessions.Serve(login))
 ```
+
+The generated HTTP listener uses `server.tls`, including the client CA and
+`client_cert_optional`, just like the gRPC listener. A configured certificate
+means HTTPS and HTTP/2 through ALPN; an invalid TLS configuration stops startup.
+With an empty TLS block it serves plaintext, for local development or behind a
+TLS-terminating proxy. A deployment with required client certificates requires
+them on the browser port too; a cookie does not bypass the TLS handshake.
+
+Apps created before this wiring was added must update their own `serveHttp`:
+`pd gen` preserves app-owned Go files. Resolve `c.Server.Tls.Server()` before
+`net.Listen`, return its error, and set the result on `http.Server.TLSConfig`.
+Call `srv.ServeTLS(l, "", "")` when that result is non-nil, and `srv.Serve(l)`
+otherwise. The certificate is already loaded; `ServeTLS` also configures HTTP/2.
 
 A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide with
 one — and `ServeMux` panics rather than shadowing if one somehow does.

@@ -59,6 +59,7 @@
 import type { Transport } from '@connectrpc/connect'
 import { createDrpcTransport } from '@lesomnus/grpc-dgram/transport/connect'
 import { open, type WasmApp, type WasmSock } from '@lesomnus/grpc-dgram/wasm'
+import { SandboxLink } from './link.js'
 
 // The two globals this module needs from a page, declared rather than by
 // putting `DOM` in `lib` -- which would make every browser global compile in a
@@ -117,6 +118,13 @@ export interface Sandbox {
 	 * other -- there is no cast and nothing above it knows which one it got.
 	 */
 	readonly transport: Transport
+
+	/**
+	 * False simulates a disconnected network: new calls fail with Unavailable
+	 * and in-flight calls/streams end. True permits new calls to the same
+	 * server and database; it does not resume interrupted calls. Defaults true.
+	 */
+	reachable: boolean
 
 	/** The wasm instance, for a page that wants to take it down. */
 	readonly sock: WasmSock
@@ -301,6 +309,7 @@ export async function start(opts: Opts): Promise<Sandbox> {
 		...(opts.wasmExec === undefined ? {} : { wasmExec: new URL(opts.wasmExec, location.href) }),
 	})
 
+	const link = new SandboxLink(createDrpcTransport(sock.dial()))
 	return {
 		// No cast. `createDrpcTransport` answers a Connect `Transport` and an
 		// app's `client.ts` takes one, which is the whole reason the sandbox and
@@ -311,9 +320,11 @@ export async function start(opts: Opts): Promise<Sandbox> {
 		// own `node_modules`, and two copies of `@connectrpc/connect` are two
 		// nominally different `Transport`s. Published, with the peer dependency
 		// it declares, there is one copy.
-		transport: createDrpcTransport(sock.dial()),
+		transport: link.transport,
+		get reachable() { return link.reachable },
+		set reachable(value: boolean) { link.reachable = value },
 		sock,
-		close: () => sock.close(),
+		close: () => { link.close(); sock.close() },
 	}
 }
 

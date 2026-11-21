@@ -413,6 +413,30 @@ The transport is the only line that differs. Nothing above `store.ts` knows
 which one it got, and that is what makes the sandbox worth having rather than a
 demo that drifts.
 
+Use the sandbox instance's `reachable` switch to test a disconnected page:
+
+```ts
+box.reachable = false
+// Calls through box.transport now fail with Connect Code.Unavailable.
+// Pending unary calls and existing streams also end with Unavailable.
+box.reachable = true
+// New calls reach the same running server and its existing database.
+```
+
+The transport object stays the same, so clients already created from it see the
+switch too. An interrupted stream must be opened again after reconnection;
+setting `reachable` does not replay calls. For a shop-floor workflow, turn it
+off, capture records into the application's offline queue, then turn it on and
+exercise the normal queue retry path. For a live screen, watch the current
+stream fail and the application's reconnect logic open a new one. An in-flight
+write has the same uncertain outcome as a real disconnect: the server may have
+committed before its answer was lost.
+
+Caller cancellation still reports cancellation and ordinary server refusals
+keep their codes. `box.close()` stops the server permanently; reachability
+cannot reopen a closed instance. The switch applies to `box.transport`, not to
+a separate connection an application opens directly from `box.sock`.
+
 The sandbox is not written by `pd new` — it makes `grpc-dgram` a direct
 requirement of your app, which a backend-only one should not acquire by
 scaffolding. Ask for it when you want it:
