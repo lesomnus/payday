@@ -73,10 +73,10 @@ message TokenIntrospectRequest {
 
 // TokenIntrospectResponse is `auth.Identity` as it crosses.
 //
-// Every field here fills one there, and the one field of `auth.Identity` that
-// is missing is `Method`: how a caller authenticated is answered by whatever
-// read the credential, and a store that could name it would be naming the
-// wrong process's answer.
+// Every field here fills one there. Method is deliberately absent: how a
+// caller authenticated is answered by whatever read the credential, and a
+// store that could name it would be naming the wrong process's answer. Local
+// authority names and process-local change channels do not cross here either.
 message TokenIntrospectResponse {
   // Who to serve the request as, by identifier.
   //
@@ -112,6 +112,10 @@ message TokenIntrospectResponse {
   // once, at the handshake, and without this would be served for as long as it
   // stays open -- which for a Watch is until somebody hangs up.
   google.protobuf.Timestamp date_expires = 6;
+
+  // Last authentication time known by the verifier. Unset means unknown.
+  // Issuing or using a token does not establish a new authentication time.
+  google.protobuf.Timestamp date_authenticated = 7;
 }
 
 // Grant is `frame.Grant` as it crosses: three axes, each either narrowed to a

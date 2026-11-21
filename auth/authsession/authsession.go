@@ -169,6 +169,11 @@ type Session struct {
 	// may do" answers [frame.Whole].
 	Grant frame.Grant
 
+	// DateAuthenticated is supplied by Verify or the code calling Mint after
+	// it verifies a sign-in. Mint, Touch and Inspect never replace it with
+	// their own clock. Stores must preserve it; zero means unknown.
+	DateAuthenticated time.Time
+
 	// Expires is when it stops working whatever happens, counted from the
 	// sign-in. [Sessions.Serve] fills it from the lifetime unless a [Verify]
 	// set one, which is how an app gives a short session to somebody who has
@@ -533,10 +538,11 @@ func (s *Sessions) handler(read func(context.Context, string) (Session, error), 
 		}
 
 		return auth.Identity{
-			Method:   Method,
-			Id:       v.Id,
-			TenantId: v.TenantId,
-			Grant:    v.Grant,
+			Method:            Method,
+			DateAuthenticated: v.DateAuthenticated,
+			Id:                v.Id,
+			TenantId:          v.TenantId,
+			Grant:             v.Grant,
 
 			// Carried so that a **stream** ends when the session does, by
 			// whichever clock runs out first. A call presents its cookie every

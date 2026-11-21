@@ -286,6 +286,15 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// nothing cannot break a good one either.
 				v := *f
 				v.Grant = id.Grant
+				if f.Caller == nil {
+					v.Authentication = id.Authentication()
+				} else {
+					// The credential admitted the device. Its fresh authentication
+					// cannot refresh the person the presence verifier established.
+					caller := *f.Caller
+					caller.Authentication = id.Authentication()
+					v.Caller = &caller
+				}
 				md, _ := metadata.FromIncomingContext(ctx)
 				if (len(md.Get(PresenceHeader)) > 0 || len(md.Get(SubjectHeader)) > 0 || len(md.Get(RecordedHeader)) > 0) && f.Caller == nil {
 					return nil, Identity{}, status.Error(codes.Unauthenticated, "this call's presence was not verified")

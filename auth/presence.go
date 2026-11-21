@@ -62,6 +62,12 @@ func Represent(next Resolver, verify Presence) Resolver {
 		if err != nil || caller == nil {
 			return caller, err
 		}
+		// The verifier sees the credential's facts even though the transport
+		// interceptor has not yet received the resolved frame. Keep the
+		// resolver's frame unmodified in case it is shared or cached.
+		copy := *caller
+		copy.Authentication = identity.Authentication()
+		caller = &copy
 		md, _ := metadata.FromIncomingContext(ctx)
 		reference, err := single(md, PresenceHeader)
 		if err != nil {

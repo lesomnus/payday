@@ -77,11 +77,12 @@ func NewSealed(keys ...[]byte) (*Sealed, error) {
 // sealed is what goes under the seal. The grant is the wire form `auth` already
 // has for it, so a Grant round-trips without this package learning its shape.
 type sealed struct {
-	Id       string            `json:"id"`
-	TenantId string            `json:"tenant,omitempty"`
-	Grant    []byte            `json:"grant,omitempty"`
-	Expires  int64             `json:"exp,omitempty"`
-	Held     map[string]string `json:"held,omitempty"`
+	DateAuthenticated *time.Time        `json:"date_authenticated,omitempty"`
+	Id                string            `json:"id"`
+	TenantId          string            `json:"tenant,omitempty"`
+	Grant             []byte            `json:"grant,omitempty"`
+	Expires           int64             `json:"exp,omitempty"`
+	Held              map[string]string `json:"held,omitempty"`
 }
 
 // Seal answers with the session as a key.
@@ -96,6 +97,9 @@ func (s *Sealed) Seal(v Session) (string, error) {
 	}
 
 	body := sealed{Id: v.Id, TenantId: v.TenantId, Grant: grant, Held: v.Held}
+	if !v.DateAuthenticated.IsZero() {
+		body.DateAuthenticated = &v.DateAuthenticated
+	}
 	if !v.Expires.IsZero() {
 		body.Expires = v.Expires.Unix()
 	}
@@ -146,6 +150,9 @@ func (s *Sealed) Get(ctx context.Context, key string) (Session, error) {
 	}
 
 	v := Session{Key: key, Id: body.Id, TenantId: body.TenantId, Held: body.Held}
+	if body.DateAuthenticated != nil {
+		v.DateAuthenticated = *body.DateAuthenticated
+	}
 	if body.Expires != 0 {
 		v.Expires = time.Unix(body.Expires, 0)
 	}

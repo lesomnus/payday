@@ -37,9 +37,12 @@ package authoidc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"google.golang.org/grpc/metadata"
@@ -61,6 +64,9 @@ const Method = "oidc"
 // What it must fill is enough for a `Resolver` to find somebody: either
 // [auth.Identity.Id], or [auth.Identity.Tenant] and [auth.Identity.Alias]
 // together.
+//
+// Verifier fills Method and DateAuthenticated from the verified token; a Claims
+// callback cannot replace auth_time with issuance or the current clock.
 //
 // What it must not do is decide anything. A claim saying "admin" is a claim,
 // and what an admin may do is `gate.Policy`'s to say against a row that was
@@ -182,6 +188,10 @@ func Verifier(v *oidc.IDTokenVerifier, claims Claims) auth.Handler {
 				return auth.Identity{}, fmt.Errorf("%s: %w", Method, err)
 			}
 
+			date, err := authenticatedDate(t)
+			if err != nil {
+				return auth.Identity{}, err
+			}
 			id, err := claims(ctx, t)
 			if err != nil {
 				return auth.Identity{}, err
@@ -191,6 +201,7 @@ func Verifier(v *oidc.IDTokenVerifier, claims Claims) auth.Handler {
 			// reason [auth.TokenStore] gives: how somebody authenticated is not
 			// the answer's to give.
 			id.Method = Method
+			id.DateAuthenticated = date
 			if id.DateExpires.IsZero() && !t.Expiry.IsZero() {
 				id.DateExpires = t.Expiry
 			}
@@ -239,4 +250,25 @@ func Blocked(h auth.Handler, is func(ctx context.Context, id auth.Identity) (boo
 
 		return id, nil
 	})
+}
+
+// auth_time describes the original authentication, including in a refreshed
+// token. iat describes issuance and cannot substitute for missing evidence.
+// Only inspect these claims after the library has verified the token.
+func authenticatedDate(token *oidc.IDToken) (time.Time, error) {
+	var claims struct {
+		Date json.RawMessage `json:"auth_time"`
+	}
+	if err := token.Claims(&claims); err != nil {
+		return time.Time{}, fmt.Errorf("%s: invalid authentication claims", Method)
+	}
+	if len(claims.Date) == 0 {
+		return time.Time{}, nil
+	}
+	var seconds float64
+	if string(claims.Date) == "null" || json.Unmarshal(claims.Date, &seconds) != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < -62135596800 || seconds >= 253402300800 {
+		return time.Time{}, fmt.Errorf("%s: invalid auth_time", Method)
+	}
+	whole := math.Floor(seconds)
+	return time.Unix(int64(whole), int64((seconds-whole)*1e9)).UTC(), nil
 }

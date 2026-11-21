@@ -251,3 +251,34 @@ func TestAConfigurationWithNoAudienceIsRefused(t *testing.T) {
 	_, err := authoidc.New(t.Context(), authoidc.Config{Issuer: issuer})
 	x.ErrorIs(err, authoidc.ErrNoAudience)
 }
+
+func TestAuthenticationTimeIsTheVerifiedOriginalTime(t *testing.T) {
+	p := newIdp(t)
+	date := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	for _, value := range []any{date.Unix(), float64(date.Unix()) + 0.5} {
+		claims := good()
+		claims["auth_time"] = value
+		id, err := p.handler(nil).Handle(with("Bearer " + p.mint(t, claims)))
+		require.NoError(t, err)
+		want := date
+		if _, ok := value.(float64); ok {
+			want = want.Add(500 * time.Millisecond)
+		}
+		require.Equal(t, want, id.DateAuthenticated)
+		require.False(t, id.Authentication().Fresh(time.Now(), 5*time.Minute), "a newly issued token keeps an old authentication time")
+	}
+	id, err := p.handler(func(_ context.Context, token *oidc.IDToken) (auth.Identity, error) {
+		id, err := authoidc.Subject(context.Background(), token)
+		id.DateAuthenticated = time.Now()
+		return id, err
+	}).Handle(with("Bearer " + p.mint(t, good())))
+	require.NoError(t, err)
+	require.True(t, id.DateAuthenticated.IsZero(), "neither iat nor a claim mapper manufactures missing auth_time")
+	for _, bad := range []any{"today", nil, true, map[string]any{"time": date.Unix()}, 1e100} {
+		claims := good()
+		claims["auth_time"] = bad
+		_, err := p.handler(nil).Handle(with("Bearer " + p.mint(t, claims)))
+		require.Error(t, err)
+		require.NotErrorIs(t, err, auth.ErrNoCredential)
+	}
+}

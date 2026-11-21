@@ -52,9 +52,14 @@ func login(ctx context.Context, r *http.Request) (authsession.Session, error) {
 		Id:       who.String(),
 		TenantId: tenant.String(),
 		Grant:    frame.Whole(),
+		DateAuthenticated: time.Now().UTC(), // the proof was just verified above
 	}, nil
 }
 ```
+
+The recorded time is preserved when the session is used or its idle deadline
+moves. See [requiring a recent sign-in](fresh-authentication.md) for approval
+checks, OIDC authentication time and represented callers.
 
 That is the whole of it. What follows is the parts people get wrong.
 

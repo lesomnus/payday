@@ -38,6 +38,11 @@ device identity and grant; `Caller` is its resolved principal. `Request` is the
 read-only protobuf request for a unary call, and nil for a stream. This lets an
 app also check a body field such as `session_id` against the named presence.
 
+When a rule needs recent authentication, set `person.Authentication` from the
+verified presence's original proof. `c.Caller.Authentication` describes the
+device, and `c.Recorded` is a request claim, so neither supplies the person's
+proof time. See [requiring a recent sign-in](fresh-authentication.md).
+
 Return `PermissionDenied` for a presence the app refuses, and `auth.ErrUnavailable`
 for a verifier that cannot currently answer. A temporary outage leaves queued
 work waiting; a refusal stays visible for resolution and does not block other
