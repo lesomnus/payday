@@ -54,6 +54,42 @@ for an endpoint that intentionally consumes OIDC ID tokens. An issuer using a
 proprietary access-token profile needs an explicit mapper and validation for
 that profile; turning off this option is not equivalent protection.
 
+## Start during an issuer outage and follow key rotation
+
+Reuse one handler for the server's lifetime. `New` discovers the issuer at
+startup by default; JWKS is fetched when the first token needs a key. Set
+`Lazy: true` to defer discovery too, so public routes or another authentication
+method can serve during an issuer outage:
+
+```go
+h, err := authoidc.New(ctx, authoidc.Config{
+    Issuer: "https://sso.example.com",
+    Audience: resource,
+    AccessToken: true,
+    Lazy: true,
+    RefreshInterval: time.Minute,
+    Claims: directoryClaims, // your mapper from the previous example
+})
+```
+
+The default interval is one minute. Remote discovery and JWKS responses,
+including failures, are reused during that interval; simultaneous misses share
+one fetch. Random `kid` values and bad signatures under a known `kid` cannot
+cause a remote fetch for every request. Known cached keys continue to verify
+valid tokens during an outage. A newly published signing key can take up to the
+interval to be fetched after the previous attempt, so publish replacement keys
+before issuing tokens that need them. This is a refresh limit, not a token
+revocation mechanism or a maximum age for already cached signing keys.
+
+With lazy discovery, a request carrying no Bearer credential does not contact
+the issuer. An unavailable discovery endpoint returns `auth.ErrUnavailable`
+for token-bearing calls and can be retried after the interval. Canceling one
+caller does not cancel shared discovery for others. `oidc.ClientContext` still
+selects your HTTP client; payday copies it, preserves its settings, and supplies
+a ten-second timeout only when it had none. `Verifier`/`AccessVerifier` with a
+caller-supplied key set retain that key set's own fetching policy; these limits
+belong to `New`.
+
 ## Map a directory subject to the local holder
 
 `Authority` is a trusted namespace chosen in the verified claims mapper. Keep
