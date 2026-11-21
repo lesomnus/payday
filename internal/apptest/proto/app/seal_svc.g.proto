@@ -7,6 +7,7 @@ package app;
 
 import "app/seal.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -25,12 +26,15 @@ service SealService {
 }
 
 message SealAddRequest {
-	bytes id = 1;
+	bytes id = 1 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	string alias = 4 [
 		features.field_presence = IMPLICIT
 	];
 	bytes secret = 8 [
-		features.field_presence = IMPLICIT
+		(orm.field) = {type: TYPE_BYTES}
+		, features.field_presence = IMPLICIT
 	];
 	string code = 9 [
 		features.field_presence = IMPLICIT
@@ -40,7 +44,9 @@ message SealAddRequest {
 
 message SealRef {
 	oneof key {
-		bytes id = 1;
+		bytes id = 1 [
+			(orm.field) = {type: TYPE_UUID}
+		];
 	}
 }
 
@@ -61,7 +67,9 @@ message SealGetRequest {
 message SealPatchRequest {
 	SealRef ref = 1;
 	string alias = 8;
-	bytes secret = 16;
+	bytes secret = 16 [
+		(orm.field) = {type: TYPE_BYTES}
+	];
 	string code = 18;
 }
 

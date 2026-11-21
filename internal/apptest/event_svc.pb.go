@@ -7,6 +7,7 @@
 package apptest
 
 import (
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	anypb "google.golang.org/protobuf/types/known/anypb"
@@ -1541,20 +1542,20 @@ var File_app_payday_event_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/event_svc.g.proto\x12\x03app\x1a\x16app/payday/event.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xba\x03\n" +
-	"\x0fEventAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x1capp/payday/event_svc.g.proto\x12\x03app\x1a\x16app/payday/event.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xda\x03\n" +
+	"\x0fEventAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x19\n" +
-	"\x04kind\x18\b \x01(\tB\x05\xaa\x01\x02\b\x02R\x04kind\x12\x19\n" +
-	"\bactor_id\x18\t \x01(\fR\aactorId\x12?\n" +
+	"\x04kind\x18\b \x01(\tB\x05\xaa\x01\x02\b\x02R\x04kind\x12!\n" +
+	"\bactor_id\x18\t \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12?\n" +
 	"\rdate_occurred\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\fdateOccurred\x12\x1d\n" +
-	"\x06reason\x18\v \x01(\tB\x05\xaa\x01\x02\b\x02R\x06reason\x12\x1d\n" +
+	"\x06reason\x18\v \x01(\tB\x05\xaa\x01\x02\b\x02R\x06reason\x12%\n" +
 	"\n" +
-	"subject_id\x18\f \x01(\fR\tsubjectId\x12=\n" +
+	"subject_id\x18\f \x01(\fB\x06\xea\x82\x16\x02\x10@R\tsubjectId\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12\x19\n" +
-	"\btrace_id\x18\x10 \x01(\fR\atraceId\x12\x19\n" +
-	"\bcause_id\x18\x12 \x01(\fR\acauseId\x12*\n" +
+	"\btrace_id\x18\x10 \x01(\fR\atraceId\x12!\n" +
+	"\bcause_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\acauseId\x12*\n" +
 	"\x05value\x18\x13 \x01(\v2\x14.google.protobuf.AnyR\x05value\x12\x19\n" +
 	"\x04said\x18\x11 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04said\"A\n" +
 	"\x13EventAddManyRequest\x12*\n" +
@@ -1564,9 +1565,9 @@ const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	".app.EventR\x05items\"\\\n" +
 	"\x0fEventGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.EventRefR\x03ref\x12(\n" +
-	"\x06select\x18\x02 \x01(\v2\x10.app.EventSelectR\x06select\"#\n" +
-	"\bEventRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x06select\x18\x02 \x01(\v2\x10.app.EventSelectR\x06select\"+\n" +
+	"\bEventRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xfb\x02\n" +
 	"\vEventSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
@@ -1592,14 +1593,14 @@ const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	"\x11EventListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.EventR\x05items\x12\x19\n" +
-	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\x97\x01\n" +
+	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\xaf\x01\n" +
 	"\vEventFilter\x12\x1f\n" +
-	"\x03ref\x18\x01 \x01(\v2\r.app.EventRefR\x03ref\x12\x1d\n" +
+	"\x03ref\x18\x01 \x01(\v2\r.app.EventRefR\x03ref\x12%\n" +
 	"\n" +
-	"subject_id\x18\x02 \x01(\fR\tsubjectId\x12\x12\n" +
-	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x19\n" +
-	"\bactor_id\x18\x04 \x01(\fR\aactorId\x12\x19\n" +
-	"\bcause_id\x18\x05 \x01(\fR\acauseId2\xd7\x01\n" +
+	"subject_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\tsubjectId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12!\n" +
+	"\bactor_id\x18\x04 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12!\n" +
+	"\bcause_id\x18\x05 \x01(\fB\x06\xea\x82\x16\x02\x10@R\acauseId2\xd7\x01\n" +
 	"\fEventService\x12'\n" +
 	"\x03Add\x12\x14.app.EventAddRequest\x1a\n" +
 	".app.Event\x12>\n" +

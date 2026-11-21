@@ -8,6 +8,7 @@ package apptest
 
 import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -2559,32 +2560,32 @@ var File_app_payday_audit_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xf8\x04\n" +
-	"\x0fAuditAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
-	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12 \n" +
-	"\bactor_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\aactorId\x12\x1b\n" +
-	"\tcaller_id\x18\x17 \x01(\fR\bcallerId\x12(\n" +
-	"\x10caller_tenant_id\x18\x18 \x01(\fR\x0ecallerTenantId\x12\x1a\n" +
+	"\x1capp/payday/audit_svc.g.proto\x12\x03app\x1a\x16app/payday/audit.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xb0\x05\n" +
+	"\x0fAuditAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12(\n" +
+	"\ttenant_id\x18\x02 \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\btenantId\x12&\n" +
+	"\bactor_id\x18\b \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\aactorId\x12#\n" +
+	"\tcaller_id\x18\x17 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bcallerId\x120\n" +
+	"\x10caller_tenant_id\x18\x18 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x0ecallerTenantId\x12\x1a\n" +
 	"\bpresence\x18\x19 \x01(\tR\bpresence\x12 \n" +
 	"\btrace_id\x18\t \x01(\fB\x05\xaa\x01\x02\b\x02R\atraceId\x12\x1d\n" +
 	"\x06action\x18\n" +
-	" \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\x12\"\n" +
-	"\tobject_id\x18\v \x01(\fB\x05\xaa\x01\x02\b\x02R\bobjectId\x12\x1b\n" +
+	" \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\x12(\n" +
+	"\tobject_id\x18\v \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\bobjectId\x12\x1b\n" +
 	"\x05patch\x18\f \x01(\fB\x05\xaa\x01\x02\b\x02R\x05patch\x12=\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12-\n" +
-	"\x0factor_tenant_id\x18\x10 \x01(\fB\x05\xaa\x01\x02\b\x02R\ractorTenantId\x12\x1b\n" +
-	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x122\n" +
-	"\x15counterpart_tenant_id\x18\x12 \x01(\fR\x13counterpartTenantId\x12\x16\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x123\n" +
+	"\x0factor_tenant_id\x18\x10 \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\ractorTenantId\x12\x1b\n" +
+	"\x05value\x18\x11 \x01(\fB\x05\xaa\x01\x02\b\x02R\x05value\x12:\n" +
+	"\x15counterpart_tenant_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x13counterpartTenantId\x12\x16\n" +
 	"\x06domain\x18\x13 \x01(\rR\x06domain\x12\x16\n" +
 	"\x06fields\x18\x14 \x03(\rR\x06fields\x12\x16\n" +
 	"\x06digest\x18\x15 \x01(\fR\x06digest\x12#\n" +
 	"\rdigest_fields\x18\x16 \x03(\rR\fdigestFields\"\\\n" +
 	"\x0fAuditGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12(\n" +
-	"\x06select\x18\x02 \x01(\v2\x10.app.AuditSelectR\x06select\"#\n" +
-	"\bAuditRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x06select\x18\x02 \x01(\v2\x10.app.AuditSelectR\x06select\"+\n" +
+	"\bAuditRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xa2\x04\n" +
 	"\vAuditSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1b\n" +
@@ -2605,24 +2606,24 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x06domain\x18\x13 \x01(\bR\x06domain\x12\x16\n" +
 	"\x06fields\x18\x14 \x01(\bR\x06fields\x12\x16\n" +
 	"\x06digest\x18\x15 \x01(\bR\x06digest\x12#\n" +
-	"\rdigest_fields\x18\x16 \x01(\bR\fdigestFields\"\xcf\x05\n" +
+	"\rdigest_fields\x18\x16 \x01(\bR\fdigestFields\"\x87\x06\n" +
 	"\x11AuditPatchRequest\x12\x1f\n" +
-	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\x1b\n" +
-	"\ttenant_id\x18\x04 \x01(\fR\btenantId\x12\x19\n" +
-	"\bactor_id\x18\x10 \x01(\fR\aactorId\x12\x1b\n" +
-	"\tcaller_id\x18. \x01(\fR\bcallerId\x12$\n" +
-	"\x0ecaller_id_null\x18/ \x01(\bR\fcallerIdNull\x12(\n" +
-	"\x10caller_tenant_id\x180 \x01(\fR\x0ecallerTenantId\x121\n" +
+	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12#\n" +
+	"\ttenant_id\x18\x04 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12!\n" +
+	"\bactor_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12#\n" +
+	"\tcaller_id\x18. \x01(\fB\x06\xea\x82\x16\x02\x10@R\bcallerId\x12$\n" +
+	"\x0ecaller_id_null\x18/ \x01(\bR\fcallerIdNull\x120\n" +
+	"\x10caller_tenant_id\x180 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x0ecallerTenantId\x121\n" +
 	"\x15caller_tenant_id_null\x181 \x01(\bR\x12callerTenantIdNull\x12\x1a\n" +
 	"\bpresence\x182 \x01(\tR\bpresence\x12#\n" +
 	"\rpresence_null\x183 \x01(\bR\fpresenceNull\x12\x19\n" +
 	"\btrace_id\x18\x12 \x01(\fR\atraceId\x12\x16\n" +
-	"\x06action\x18\x14 \x01(\tR\x06action\x12\x1b\n" +
-	"\tobject_id\x18\x16 \x01(\fR\bobjectId\x12\x14\n" +
-	"\x05patch\x18\x18 \x01(\fR\x05patch\x12&\n" +
-	"\x0factor_tenant_id\x18  \x01(\fR\ractorTenantId\x12\x14\n" +
-	"\x05value\x18\" \x01(\fR\x05value\x122\n" +
-	"\x15counterpart_tenant_id\x18$ \x01(\fR\x13counterpartTenantId\x12;\n" +
+	"\x06action\x18\x14 \x01(\tR\x06action\x12#\n" +
+	"\tobject_id\x18\x16 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12\x14\n" +
+	"\x05patch\x18\x18 \x01(\fR\x05patch\x12.\n" +
+	"\x0factor_tenant_id\x18  \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x14\n" +
+	"\x05value\x18\" \x01(\fR\x05value\x12:\n" +
+	"\x15counterpart_tenant_id\x18$ \x01(\fB\x06\xea\x82\x16\x02\x10@R\x13counterpartTenantId\x12;\n" +
 	"\x1acounterpart_tenant_id_null\x18% \x01(\bR\x17counterpartTenantIdNull\x12\x16\n" +
 	"\x06domain\x18& \x01(\rR\x06domain\x12\x16\n" +
 	"\x06fields\x18( \x03(\rR\x06fields\x12\x16\n" +
@@ -2641,13 +2642,13 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x11AuditListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.AuditR\x05items\x12\x19\n" +
-	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\xbe\x01\n" +
-	"\vAuditFilter\x12\x1b\n" +
-	"\tobject_id\x18\x01 \x01(\fR\bobjectId\x12\x19\n" +
-	"\bactor_id\x18\x02 \x01(\fR\aactorId\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\fR\btenantId\x12&\n" +
-	"\x0factor_tenant_id\x18\x04 \x01(\fR\ractorTenantId\x122\n" +
-	"\x15counterpart_tenant_id\x18\x05 \x01(\fR\x13counterpartTenantId2\xa2\x02\n" +
+	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\xe6\x01\n" +
+	"\vAuditFilter\x12#\n" +
+	"\tobject_id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bobjectId\x12!\n" +
+	"\bactor_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12#\n" +
+	"\ttenant_id\x18\x03 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12.\n" +
+	"\x0factor_tenant_id\x18\x04 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12:\n" +
+	"\x15counterpart_tenant_id\x18\x05 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x13counterpartTenantId2\xa2\x02\n" +
 	"\fAuditService\x12'\n" +
 	"\x03Add\x12\x14.app.AuditAddRequest\x1a\n" +
 	".app.Audit\x12'\n" +

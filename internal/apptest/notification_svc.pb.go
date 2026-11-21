@@ -10,6 +10,7 @@
 package apptest
 
 import (
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -1110,26 +1111,26 @@ var File_app_payday_notification_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_notification_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"#app/payday/notification_svc.g.proto\x12\x03app\x1a\x1dapp/payday/notification.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbf\x03\n" +
-	"\x1cNotificationRecordAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12\"\n" +
-	"\ttenant_id\x18\x02 \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12\x19\n" +
+	"#app/payday/notification_svc.g.proto\x12\x03app\x1a\x1dapp/payday/notification.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xd5\x03\n" +
+	"\x1cNotificationRecordAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12(\n" +
+	"\ttenant_id\x18\x02 \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\btenantId\x12\x19\n" +
 	"\x04kind\x18\b \x01(\tB\x05\xaa\x01\x02\b\x02R\x04kind\x12\"\n" +
-	"\ttopic_key\x18\t \x01(\tB\x05\xaa\x01\x02\b\x02R\btopicKey\x12\x1b\n" +
+	"\ttopic_key\x18\t \x01(\tB\x05\xaa\x01\x02\b\x02R\btopicKey\x12#\n" +
 	"\tsource_id\x18\n" +
-	" \x01(\fR\bsourceId\x12(\n" +
+	" \x01(\fB\x06\xea\x82\x16\x02\x10@R\bsourceId\x12(\n" +
 	"\fpayload_type\x18\v \x01(\tB\x05\xaa\x01\x02\b\x02R\vpayloadType\x12#\n" +
 	"\rpayload_value\x18\f \x01(\fR\fpayloadValue\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x12!\n" +
 	"\bproducer\x18\x10 \x01(\tB\x05\xaa\x01\x02\b\x02R\bproducer\x12.\n" +
 	"\x0fidempotency_key\x18\x11 \x01(\tB\x05\xaa\x01\x02\b\x02R\x0eidempotencyKey\x12.\n" +
-	"\x0fpayload_present\x18\x12 \x01(\bB\x05\xaa\x01\x02\b\x02R\x0epayloadPresent\"\x86\x01\n" +
-	"\"NotificationRecordRefByPublication\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12\x1a\n" +
+	"\x0fpayload_present\x18\x12 \x01(\bB\x05\xaa\x01\x02\b\x02R\x0epayloadPresent\"\x8e\x01\n" +
+	"\"NotificationRecordRefByPublication\x12#\n" +
+	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12\x1a\n" +
 	"\bproducer\x18\x10 \x01(\tR\bproducer\x12'\n" +
-	"\x0fidempotency_key\x18\x11 \x01(\tR\x0eidempotencyKey\"}\n" +
-	"\x15NotificationRecordRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12K\n" +
+	"\x0fidempotency_key\x18\x11 \x01(\tR\x0eidempotencyKey\"\x85\x01\n" +
+	"\x15NotificationRecordRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02id\x12K\n" +
 	"\vpublication\x18\x02 \x01(\v2'.app.NotificationRecordRefByPublicationH\x00R\vpublicationB\x05\n" +
 	"\x03key\"\x93\x03\n" +
 	"\x18NotificationRecordSelect\x12\x10\n" +

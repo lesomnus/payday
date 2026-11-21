@@ -8,6 +8,7 @@ package app;
 import "app/payday/tenant_svc.g.proto";
 import "app/stint.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -26,22 +27,28 @@ service StintService {
 }
 
 message StintAddRequest {
-	bytes id = 1;
+	bytes id = 1 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	TenantRef tenant = 2;
 	bytes robot_id = 8 [
-		features.field_presence = IMPLICIT
+		(orm.field) = {type: TYPE_UUID}
+		, features.field_presence = IMPLICIT
 	];
 	google.protobuf.Timestamp date_start = 9;
 	google.protobuf.Timestamp date_end = 10;
 	bytes event_id = 11 [
-		features.field_presence = IMPLICIT
+		(orm.field) = {type: TYPE_UUID}
+		, features.field_presence = IMPLICIT
 	];
 	google.protobuf.Timestamp date_created = 15;
 }
 
 message StintRef {
 	oneof key {
-		bytes id = 1;
+		bytes id = 1 [
+			(orm.field) = {type: TYPE_UUID}
+		];
 	}
 }
 
@@ -62,7 +69,9 @@ message StintGetRequest {
 
 message StintPatchRequest {
 	StintRef ref = 1;
-	bytes robot_id = 16;
+	bytes robot_id = 16 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	google.protobuf.Timestamp date_start = 18;
 	google.protobuf.Timestamp date_end = 20;
 	// Clear date_end instead of writing it.
@@ -70,7 +79,9 @@ message StintPatchRequest {
 	// "leave it alone", so no value could have meant NULL. It wins
 	// outright: setting both this and date_end clears.
 	bool date_end_null = 21;
-	bytes event_id = 22;
+	bytes event_id = 22 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 }
 
 message StintApplyRequest {

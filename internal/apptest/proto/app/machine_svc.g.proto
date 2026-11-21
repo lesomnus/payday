@@ -9,6 +9,7 @@ import "app/machine.proto";
 import "app/payday/tenant_svc.g.proto";
 import "app/robot_svc.g.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -27,7 +28,9 @@ service MachineService {
 }
 
 message MachineAddRequest {
-	bytes id = 1;
+	bytes id = 1 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	TenantRef tenant = 2;
 	string alias = 4 [
 		features.field_presence = IMPLICIT
@@ -48,7 +51,9 @@ message MachineAddRequest {
 	uint64 cycles = 16 [
 		features.field_presence = IMPLICIT
 	];
-	bytes maker_id = 17;
+	bytes maker_id = 17 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	RobotRef robot = 18;
 	Mode mode = 19 [
 		features.field_presence = IMPLICIT
@@ -65,7 +70,9 @@ message MachineAddRequest {
 
 message MachineRef {
 	oneof key {
-		bytes id = 1;
+		bytes id = 1 [
+			(orm.field) = {type: TYPE_UUID}
+		];
 	}
 }
 
@@ -106,7 +113,9 @@ message MachinePatchRequest {
 	bool running = 22;
 	bytes firmware = 24;
 	uint64 cycles = 32;
-	bytes maker_id = 34;
+	bytes maker_id = 34 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	// Clear maker_id instead of writing it.
 	// It takes a field of its own because an unset value already means
 	// "leave it alone", so no value could have meant NULL. It wins

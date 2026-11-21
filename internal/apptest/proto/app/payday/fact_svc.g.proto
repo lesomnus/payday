@@ -4,6 +4,7 @@ package app;
 import "app/payday/fact.proto";
 import "app/payday/tenant_svc.g.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -24,18 +25,24 @@ service FactService {
 }
 
 message FactAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
-  bytes subject_id = 8 [features.field_presence = IMPLICIT];
+  bytes subject_id = 8 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
   string key = 9 [features.field_presence = IMPLICIT];
   string value = 10 [features.field_presence = IMPLICIT];
   uint32 field_number = 12 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
   uint32 domain = 16 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_start = 17;
-  bytes event_id = 19 [features.field_presence = IMPLICIT];
+  bytes event_id = 19 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
   google.protobuf.Timestamp date_superseded = 20;
-  bytes superseded_by = 21;
+  bytes superseded_by = 21 [(orm.field) = {type: TYPE_UUID}];
 }
 
 message FactAddManyRequest {
@@ -53,7 +60,7 @@ message FactGetRequest {
 
 message FactRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -75,7 +82,7 @@ message FactSelect {
 
 message FactPatchRequest {
   FactRef ref = 1;
-  bytes subject_id = 16;
+  bytes subject_id = 16 [(orm.field) = {type: TYPE_UUID}];
   string key = 18;
   string value = 20;
   uint32 field_number = 24;
@@ -95,14 +102,14 @@ message FactPatchRequest {
   bool date_updated_force = 27;
   uint32 domain = 32;
   google.protobuf.Timestamp date_start = 34;
-  bytes event_id = 38;
+  bytes event_id = 38 [(orm.field) = {type: TYPE_UUID}];
   google.protobuf.Timestamp date_superseded = 40;
   // Clear date_superseded instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and date_superseded clears.
   bool date_superseded_null = 41;
-  bytes superseded_by = 42;
+  bytes superseded_by = 42 [(orm.field) = {type: TYPE_UUID}];
   // Clear superseded_by instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
@@ -153,6 +160,6 @@ message FactListResponse {
 
 message FactFilter {
   FactRef ref = 1;
-  bytes subject_id = 2;
+  bytes subject_id = 2 [(orm.field) = {type: TYPE_UUID}];
   uint32 field_number = 3;
 }
