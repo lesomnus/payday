@@ -14,6 +14,7 @@ comments, which are where the detail actually lives.
 | [The server](guide/server.md) | the stack, writing a layer, the interceptors, configuration, the commands |
 | [The page](guide/client.md) | reads that keep themselves current, writes that need no invalidation rule |
 | [Commands on your binary](guide/commands.md) | `get`/`list`/`watch`/`add`/`patch`/`erase` where the schema declared them, mounted wherever the app puts them, the output formats, aliases and hidden commands, and a command for an RPC of your own |
+| [Walk every page in Go](guide/paging.md) | lazy iteration over generated List methods on a server or gRPC client |
 | [Resource events](guide/resources.md) | the shared Watch API, CEL filters and mutation images |
 | [More than one proto package](guide/packages.md) | `option (payday.app)`, and two apps linked into one process |
 | [Refusals](guide/errors.md) | a field-level error, from the server to a form field |
