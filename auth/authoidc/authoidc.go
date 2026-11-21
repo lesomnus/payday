@@ -86,7 +86,7 @@ type Claims func(ctx context.Context, t *oidc.IDToken) (auth.Identity, error)
 // own [Claims] and fills `TenantId`.
 func Subject(_ context.Context, t *oidc.IDToken) (auth.Identity, error) {
 	if t.Subject == "" {
-		return auth.Identity{}, fmt.Errorf("%w: the token names nobody", auth.ErrNoCredential)
+		return auth.Identity{}, fmt.Errorf("%s: the token names nobody", Method)
 	}
 
 	return auth.Identity{
@@ -117,6 +117,11 @@ type Config struct {
 	// over. It is the check most often left out and the one worth being unable
 	// to leave out.
 	Audience string
+
+	// AccessToken requires the RFC 9068 access-token profile, including a
+	// protected at+jwt type, client_id and this resource's audience. Leave it
+	// false only when this endpoint intentionally accepts OIDC ID tokens.
+	AccessToken bool
 
 	// Claims turns a verified token into an identity, and nil is [Subject].
 	Claims Claims
@@ -149,7 +154,11 @@ func New(ctx context.Context, c Config) (auth.Handler, error) {
 		return nil, fmt.Errorf("authoidc: %s: %w", c.Issuer, err)
 	}
 
-	return Verifier(p.Verifier(&oidc.Config{ClientID: c.Audience}), c.Claims), nil
+	v := p.Verifier(&oidc.Config{ClientID: c.Audience})
+	if c.AccessToken {
+		return AccessVerifier(v, c.Audience, c.Claims), nil
+	}
+	return Verifier(v, c.Claims), nil
 }
 
 // Verifier is [New] for a verifier that was made some other way.
@@ -158,6 +167,10 @@ func New(ctx context.Context, c Config) (auth.Handler, error) {
 // whose key set is a file, a test that mints its own tokens -- and for nothing
 // else. Everything after the verifying is the same.
 func Verifier(v *oidc.IDTokenVerifier, claims Claims) auth.Handler {
+	return verifier(v, claims, "")
+}
+
+func verifier(v *oidc.IDTokenVerifier, claims Claims, accessAudience string) auth.Handler {
 	if claims == nil {
 		claims = Subject
 	}
@@ -186,6 +199,20 @@ func Verifier(v *oidc.IDTokenVerifier, claims Claims) auth.Handler {
 				// ago is for whoever reads the log, and a caller who is told
 				// which one learns something about a token they do not hold.
 				return auth.Identity{}, fmt.Errorf("%s: %w", Method, err)
+			}
+
+			// A presented token with no subject is malformed, even when a custom
+			// mapper could invent an identity. It must not fall through to MTLS.
+			if t.Subject == "" {
+				return auth.Identity{}, fmt.Errorf("%s: the token names nobody", Method)
+			}
+			if accessAudience != "" {
+				if err := accessType(strings.TrimSpace(raw)); err != nil {
+					return auth.Identity{}, err
+				}
+				if _, err := ReadAccess(t, accessAudience); err != nil {
+					return auth.Identity{}, err
+				}
 			}
 
 			date, err := authenticatedDate(t)
@@ -265,9 +292,13 @@ func authenticatedDate(token *oidc.IDToken) (time.Time, error) {
 	if len(claims.Date) == 0 {
 		return time.Time{}, nil
 	}
+	return numericDate(claims.Date, "auth_time")
+}
+
+func numericDate(raw json.RawMessage, name string) (time.Time, error) {
 	var seconds float64
-	if string(claims.Date) == "null" || json.Unmarshal(claims.Date, &seconds) != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < -62135596800 || seconds >= 253402300800 {
-		return time.Time{}, fmt.Errorf("%s: invalid auth_time", Method)
+	if len(raw) == 0 || string(raw) == "null" || json.Unmarshal(raw, &seconds) != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < -62135596800 || seconds >= 253402300800 {
+		return time.Time{}, fmt.Errorf("%s: invalid %s", Method, name)
 	}
 	whole := math.Floor(seconds)
 	return time.Unix(int64(whole), int64((seconds-whole)*1e9)).UTC(), nil

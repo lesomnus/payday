@@ -893,6 +893,9 @@ h, err := authoidc.New(ctx, authoidc.Config{
 })
 ```
 
+For API credentials, set `AccessToken: true` and map external subjects with
+`Authority` + `Id`; see [accepting an SSO access token](access-tokens.md).
+
 `Audience` is required rather than optional: a verifier that skips it accepts a
 token minted for **any** relying party of the same issuer.
 

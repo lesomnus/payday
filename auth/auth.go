@@ -149,9 +149,14 @@ type Identity struct {
 
 	// Id is the identifier the credential named, when it named one directly,
 	// written the way [pdid.Id.String] writes one -- and empty when the
-	// credential gave an alias instead. Whatever fills it owes a [Resolver] a
+	// credential gave an alias instead. For local identities this must be a
 	// string [pdid.Parse] can read: [ParseName] parses before it writes, and a
-	// [TokenStore] that hands out identifiers owes the same.
+	// [TokenStore] that hands out local identifiers owes the same.
+	//
+	// An external directory can instead supply its opaque subject when
+	// Authority identifies that verified directory. An authority-aware
+	// Resolver maps the (Authority, Id) pair to a local actor before building
+	// the frame; it must not parse that external subject as a payday ID.
 	//
 	// Text like the rest, and this is the one field where that costs
 	// something: it was parsed here and whatever resolves it parses it again.
