@@ -66,6 +66,10 @@
 			"types": "./dist/src/pderr/index.d.ts",
 			"import": "./dist/src/pderr/index.js"
 		},
+		"./rpc": {
+			"types": "./dist/src/rpc.d.ts",
+			"import": "./dist/src/rpc.js"
+		},
 		"./sandbox": {
 			"types": "./dist/src/sandbox/index.d.ts",
 			"import": "./dist/src/sandbox/index.js"
