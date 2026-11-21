@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -147,36 +148,38 @@ func TestRemoteOverTheWire(t *testing.T) {
 	// store rather than here -- which is why this asserts the value arrived and
 	// then asserts the one thing payday does with it.
 	t.Run("an expiry crosses and cuts a stream", func(t *testing.T) {
-		x := require.New(t)
+		synctest.Test(t, func(t *testing.T) {
+			x := require.New(t)
 
-		at := time.Now().Add(50 * time.Millisecond)
+			at := time.Now().Add(50 * time.Millisecond)
 
-		v := admin()
-		v.Grant = frame.Whole()
-		v.DateExpires = at
+			v := admin()
+			v.Grant = frame.Whole()
+			v.DateExpires = at
 
-		c := dial(t, &tokens{vs: map[string]auth.Identity{"rk_short": v}})
+			c := dial(t, &tokens{vs: map[string]auth.Identity{"rk_short": v}})
 
-		id, err := auth.Remote(c).Lookup(t.Context(), "rk_short")
-		x.NoError(err)
-		x.True(at.Equal(id.DateExpires), "the expiry is what the store said")
-		x.True(id.Valid(time.Now()))
-		x.False(id.Valid(at.Add(time.Second)))
+			id, err := auth.Remote(c).Lookup(t.Context(), "rk_short")
+			x.NoError(err)
+			x.True(at.Equal(id.DateExpires), "the expiry is what the store said")
+			x.True(id.Valid(time.Now()))
+			x.False(id.Valid(at.Add(time.Second)))
 
-		// And the stream it was handed to ends by itself.
-		err = auth.InterceptorStream(auth.Bearer(auth.Remote(c)), known(), nil)(
-			nil,
-			fakeStream{ctx: incoming("Bearer rk_short")},
-			&grpc.StreamServerInfo{FullMethod: getMethod},
-			func(_ any, ss grpc.ServerStream) error {
-				<-ss.Context().Done()
+			// And the stream it was handed to ends by itself.
+			err = auth.InterceptorStream(auth.Bearer(auth.Remote(c)), known(), nil)(
+				nil,
+				fakeStream{ctx: incoming("Bearer rk_short")},
+				&grpc.StreamServerInfo{FullMethod: getMethod},
+				func(_ any, ss grpc.ServerStream) error {
+					<-ss.Context().Done()
 
-				return ss.Context().Err()
-			},
-		)
-		x.Error(err)
-		x.Equal(codes.Unauthenticated, status.Code(err))
-		x.Contains(err.Error(), "expired")
+					return ss.Context().Err()
+				},
+			)
+			x.Error(err)
+			x.Equal(codes.Unauthenticated, status.Code(err))
+			x.Contains(err.Error(), "expired")
+		})
 	})
 
 	t.Run("a token nobody has heard of stops the search", func(t *testing.T) {
