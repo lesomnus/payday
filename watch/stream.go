@@ -69,6 +69,15 @@ func Stream(
 	snapshot func(sent Seen) error,
 	send func(ks map[pdid.Id]string, sent Seen) error,
 ) error {
+	return StreamScope(ctx, w, Interest{Service: service}, snapshot, send)
+}
+
+// StreamScope is Stream with a conservative set of row interests. Generated
+// watches use the IDs their filters already resolved; arbitrary predicates
+// must keep a broader interest rather than omit a row entering their result.
+func StreamScope(ctx context.Context, w *Watch, interest Interest,
+	snapshot func(Seen) error, send func(map[pdid.Id]string, Seen) error,
+) error {
 	// Before the subscription rather than after, so that a deployment with no
 	// broker refuses here instead of sending a snapshot it will never follow up
 	// on. A first message and then nothing is the shape a client cannot tell
@@ -78,8 +87,11 @@ func Stream(
 	}
 
 	// First, and before anything is read. See above.
-	events, stop := w.Subscribe()
-	defer stop()
+	sub, err := w.Open(ctx, interest)
+	if err != nil {
+		return err
+	}
+	defer sub.Close()
 
 	sent := Seen{}
 	if snapshot != nil {
@@ -89,7 +101,7 @@ func Stream(
 	}
 
 	for {
-		ks, err := Next(ctx, events, service)
+		ks, err := Next(ctx, sub.Events, interest.Service)
 		if err != nil {
 			return err
 		}

@@ -388,6 +388,8 @@ func notificationsLocked(ctx {{ctx "Context"}},driver {{drv "Driver"}},keys []{{
 func(s notificationStore) Change(ctx {{ctx "Context"}},change {{w "Change"}})({{n "Hint"}},bool,error){
     switch change.Key.Domain(){
     case {{.Record}}Domain:
+        // New publications retain their write-time topic; legacy events still resolve through storage.
+        if len(change.Signal)>0{hint,err:={{n "Signal"}}(change.Signal);return hint,true,err}
         row,err:=s.Find(ctx,change.Key);if {{status "Code"}}(err)=={{codes "NotFound"}}{return {{n "Hint"}}{},false,nil};if err!=nil{return {{n "Hint"}}{},false,err}
         return {{n "Hint"}}{Tenant:row.Tenant,Topics:[]{{n "Topic"}}{row.Topic}},true,nil
     default:
@@ -415,7 +417,7 @@ const NotificationKeep = {{.Keep}} * 24 * {{time "Hour"}}
 // topics a batch took from, once it commits, so that a stream showing one
 // drops it.
 func NotificationExpirer(driver {{drv "Driver"}}, changes *{{w "Watch"}}, content {{audit "Contents"}}) {{n "Expirer"}} {
-    return {{n "Expirer"}}{Keep:NotificationKeep,Watch:changes,Erase:func(ctx {{ctx "Context"}},before {{time "Time"}},limit int)([]{{n "Notification"}},error){
+    return {{n "Expirer"}}{Keep:NotificationKeep,Watch:changes,Namespace:{{printf "%q" .Namespace}},Erase:func(ctx {{ctx "Context"}},before {{time "Time"}},limit int)([]{{n "Notification"}},error){
         return notificationErase(ctx,driver,content,before,limit)
     }}
 }

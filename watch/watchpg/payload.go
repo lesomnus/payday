@@ -43,13 +43,16 @@ func packets(v watch.Event) ([]string, error) {
 	for _, c := range v.Changes {
 		budget += len(c.Method) + len(c.By) + 128
 		budget += (len(c.Signal)*4 + 2) / 3
+		for _, route := range c.Routes {
+			budget += len(route)*6 + 4
+		}
 		if c.Resource != nil {
 			budget += (proto.Size(c.Resource)*4 + 2) / 3
 		}
 		if budget > MaxWire {
 			return nil, errors.New("watchpg: publication exceeds payload limit")
 		}
-		item := change{By: c.By, Key: c.Key.String(), Method: c.Method, Signal: c.Signal}
+		item := change{By: c.By, Key: c.Key.String(), Method: c.Method, Signal: c.Signal, Routes: c.Routes}
 		if c.Resource != nil {
 			b, err := proto.Marshal(c.Resource)
 			if err != nil {

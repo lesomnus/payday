@@ -389,11 +389,12 @@ type wire struct {
 }
 
 type change struct {
-	Method   string `json:"m,omitempty"`
-	Resource []byte `json:"r,omitempty"`
-	Signal   []byte `json:"s,omitempty"`
-	By       string `json:"b"`
-	Key      string `json:"k"`
+	Method   string        `json:"m,omitempty"`
+	Resource []byte        `json:"r,omitempty"`
+	Signal   []byte        `json:"s,omitempty"`
+	By       string        `json:"b"`
+	Key      string        `json:"k"`
+	Routes   []watch.Route `json:"q"`
 }
 
 func decode(s string) (watch.Event, error) {
@@ -422,7 +423,7 @@ func decode(s string) (watch.Event, error) {
 		if err != nil {
 			return watch.Event{}, err
 		}
-		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource, Signal: c.Signal})
+		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource, Signal: c.Signal, Routes: c.Routes})
 	}
 
 	for _, p := range []struct {

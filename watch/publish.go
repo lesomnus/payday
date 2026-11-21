@@ -20,7 +20,9 @@ import (
 // and nothing is published at all, since there is nowhere for it to remember
 // into. Neither is an error and both are wiring somebody can read.
 type Watch struct {
-	to Broker
+	to    Broker
+	mu    sync.Mutex
+	local *broadcast
 }
 
 func New(to Broker) *Watch { return &Watch{to: to} }

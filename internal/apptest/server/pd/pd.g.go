@@ -2446,7 +2446,7 @@ func (s sinkHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStream
 			"this deployment publishes no changes; see WithWatch")
 	}
 
-	return watch.Stream(ctx, s.w, HolderService, snapshot,
+	return watch.StreamScope(ctx, s.w, watch.Interest{Service: HolderService, Keys: watching}, snapshot,
 		func(ks map[pdid.Id]string, sent watch.Seen) error {
 			items := make([]*apptest.HolderWatchItem, 0, len(ks))
 			for k, action := range ks {
@@ -3565,7 +3565,7 @@ func (s sinkRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamin
 			"this deployment publishes no changes; see WithWatch")
 	}
 
-	return watch.Stream(ctx, s.w, RobotService, snapshot,
+	return watch.StreamScope(ctx, s.w, watch.Interest{Service: RobotService, Keys: watching}, snapshot,
 		func(ks map[pdid.Id]string, sent watch.Seen) error {
 			items := make([]*apptest.RobotWatchItem, 0, len(ks))
 			for k, action := range ks {
@@ -10818,6 +10818,44 @@ func (s interceptStint) Erase(ctx context.Context, req *apptest.StintRef) (*appt
 		apptest.StintService_Erase_FullMethodName, req, s.StintServiceServer.Erase)
 }
 
+// routingSnapshots captures notification metadata in the write transaction.
+func routingSnapshots(method string) bare.SnapshotOptions {
+	if watch.ServiceOf(method) == "/app.NotificationRecordService/" {
+		return bare.SnapshotOptions{Value: true, Previous: true}
+	}
+	return bare.SnapshotOptions{}
+}
+
+// changeRouting never substitutes the caller's tenant for the changed row's.
+// A nil result means metadata was unavailable; receivers must overdeliver.
+func changeRouting(c bare.Change) ([]watch.Route, []byte, error) {
+	key, err := pdid.From(keyBytes(c.Key))
+	if err != nil {
+		return nil, nil, nil
+	}
+	if key.Domain() == NotificationRecordDomain {
+		image := c.Value
+		if image == nil {
+			image = c.Previous
+		}
+		v, ok := image.(*apptest.NotificationRecord)
+		if !ok || v == nil {
+			return nil, nil, nil
+		}
+		row, err := notificationRow(v)
+		if err != nil {
+			return nil, nil, err
+		}
+		hint := notify.Hint{Tenant: row.Tenant, Topics: []notify.Topic{row.Topic}}
+		signal, err := json.Marshal(hint)
+		if err != nil {
+			return nil, nil, err
+		}
+		return notify.Routes("github.com/lesomnus/payday/internal/apptest", hint), signal, nil
+	}
+	return []watch.Route{}, nil, nil
+}
+
 // WatchRecorder answers with the recorder that remembers a write for `w`.
 //
 // It is the other end of the hook the trail hangs off, and it wants the
@@ -10836,6 +10874,8 @@ type watchRecorder struct {
 
 var _ bare.Recorder = watchRecorder{}
 
+func (watchRecorder) Snapshots(method string) bare.SnapshotOptions { return routingSnapshots(method) }
+
 func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change) error {
 	k, err := pdid.From(keyBytes(c.Key))
 	if err != nil {
@@ -10851,11 +10891,16 @@ func (r watchRecorder) Record(ctx context.Context, _ bare.Server, c bare.Change)
 		}
 	}
 
+	routes, signal, err := changeRouting(c)
+	if err != nil {
+		return err
+	}
 	r.w.Note(ctx, watch.Change{
 		Method: c.Method,
 		By:     c.By,
 		Key:    k,
 		Patch:  doc,
+		Routes: routes, Signal: signal,
 	})
 
 	return nil
@@ -10893,6 +10938,8 @@ type outboxRecorder struct{}
 
 var _ bare.Recorder = outboxRecorder{}
 
+func (outboxRecorder) Snapshots(method string) bare.SnapshotOptions { return routingSnapshots(method) }
+
 // Record writes the row.
 //
 // Unlike the watch recorder it **refuses** when it cannot, which is the
@@ -10927,6 +10974,14 @@ func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 		tenant = f.Tenant
 	}
 
+	routes, signal, err := changeRouting(c)
+	if err != nil {
+		return err
+	}
+	routing, err := json.Marshal(routes)
+	if err != nil {
+		return err
+	}
 	return s.Db.Outbox.Create().
 		SetId(pdid.New(OutboxDomain).Uuid()).
 		SetTenantId(tenant.Uuid()).
@@ -10935,6 +10990,7 @@ func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) 
 		SetBy(c.By).
 		SetObjectId(k.Uuid()).
 		SetPatch(doc).
+		SetRoutes(routing).SetSignal(append([]byte{}, signal...)).
 		Exec(ctx)
 }
 
@@ -11034,6 +11090,16 @@ func (d drain) once(ctx context.Context) (int, error) {
 		ks[i] = v.Id
 		var resource *pdpb.WatchEvent
 		call := v.Method
+		var routes []watch.Route
+		if v.Routes != nil && len(*v.Routes) > 0 {
+			if err := json.Unmarshal(*v.Routes, &routes); err != nil {
+				return 0, err
+			}
+		}
+		var signal []byte
+		if v.Signal != nil {
+			signal = *v.Signal
+		}
 		if v.Event != nil && len(*v.Event) > 0 {
 			resource = &pdpb.WatchEvent{}
 			if err := proto.Unmarshal(*v.Event, resource); err != nil {
@@ -11051,6 +11117,7 @@ func (d drain) once(ctx context.Context) (int, error) {
 				Key:      pdid.Id(v.ObjectId),
 				Patch:    v.Patch,
 				Resource: resource,
+				Routes:   routes, Signal: signal,
 			}},
 		}); err != nil {
 			return 0, err
@@ -13137,6 +13204,11 @@ func notificationsLocked(ctx context.Context, driver dialect.Driver, keys []uuid
 func (s notificationStore) Change(ctx context.Context, change watch.Change) (notify.Hint, bool, error) {
 	switch change.Key.Domain() {
 	case NotificationRecordDomain:
+		// New publications retain their write-time topic; legacy events still resolve through storage.
+		if len(change.Signal) > 0 {
+			hint, err := notify.Signal(change.Signal)
+			return hint, true, err
+		}
 		row, err := s.Find(ctx, change.Key)
 		if status.Code(err) == codes.NotFound {
 			return notify.Hint{}, false, nil
@@ -13170,7 +13242,7 @@ const NotificationKeep = 90 * 24 * time.Hour
 // topics a batch took from, once it commits, so that a stream showing one
 // drops it.
 func NotificationExpirer(driver dialect.Driver, changes *watch.Watch, content audit.Contents) notify.Expirer {
-	return notify.Expirer{Keep: NotificationKeep, Watch: changes, Erase: func(ctx context.Context, before time.Time, limit int) ([]notify.Notification, error) {
+	return notify.Expirer{Keep: NotificationKeep, Watch: changes, Namespace: "github.com/lesomnus/payday/internal/apptest", Erase: func(ctx context.Context, before time.Time, limit int) ([]notify.Notification, error) {
 		return notificationErase(ctx, driver, content, before, limit)
 	}}
 }
@@ -15091,6 +15163,9 @@ type resourceRecorder struct {
 // Snapshots requests only images this publisher uses; ordinary audit recorders
 // need none. Deletes retain their only image for historical authorization.
 func (r resourceRecorder) Snapshots(method string) bare.SnapshotOptions {
+	if options := routingSnapshots(method); options.Value || options.Previous {
+		return options
+	}
 	switch resourceChangeKind(method) {
 	case pdpb.ChangeKind_CHANGE_KIND_CREATED:
 		return bare.SnapshotOptions{Value: true}
@@ -15279,7 +15354,15 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 			return err
 		}
 	}
+	routes, signal, err := changeRouting(c)
+	if err != nil {
+		return err
+	}
 	if r.outbox {
+		routing, err := json.Marshal(routes)
+		if err != nil {
+			return err
+		}
 		data, err := proto.Marshal(event)
 		if err != nil {
 			return err
@@ -15289,12 +15372,12 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 			actor = f.Actor
 			tenant = f.Tenant
 		}
-		if err := s.Db.Outbox.Create().SetId(id.Uuid()).SetDateCreated(at).SetActorId(actor.Uuid()).SetTenantId(tenant.Uuid()).SetMethod(c.Method).SetBy(c.By).SetObjectId(k.Uuid()).SetPatch(doc).SetEvent(data).Exec(ctx); err != nil {
+		if err := s.Db.Outbox.Create().SetId(id.Uuid()).SetDateCreated(at).SetActorId(actor.Uuid()).SetTenantId(tenant.Uuid()).SetMethod(c.Method).SetBy(c.By).SetObjectId(k.Uuid()).SetPatch(doc).SetEvent(data).SetRoutes(routing).SetSignal(append([]byte{}, signal...)).Exec(ctx); err != nil {
 			return err
 		}
 	}
 	if r.w != nil {
-		r.w.Note(ctx, watch.Change{Method: c.Method, By: c.By, Key: k, Patch: doc, Resource: event})
+		r.w.Note(ctx, watch.Change{Method: c.Method, By: c.By, Key: k, Patch: doc, Resource: event, Routes: routes, Signal: signal})
 	}
 	return nil
 }

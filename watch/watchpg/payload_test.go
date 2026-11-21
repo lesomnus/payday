@@ -103,3 +103,13 @@ func TestAppWideSignalsAllowAnAbsentResourceKey(t *testing.T) {
 		x.ErrorContains(err, "key")
 	}
 }
+
+func TestRoutingCompletenessSurvivesTheWire(t *testing.T) {
+	for _, routes := range [][]watch.Route{nil, {}, {watch.RouteKey("app", "topic")}} {
+		chunks, err := packets(watch.Event{Changes: []watch.Change{{Key: pdid.New(3), Routes: routes}}})
+		require.NoError(t, err)
+		output, err := decode(chunks[0])
+		require.NoError(t, err)
+		require.Equal(t, routes, output.Changes[0].Routes)
+	}
+}

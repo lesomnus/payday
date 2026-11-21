@@ -2,13 +2,13 @@ package notify
 
 import (
 	"context"
-	"encoding/json"
 	"slices"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/lesomnus/payday/pdid"
+	"github.com/lesomnus/payday/watch"
 )
 
 // InvalidationMethod identifies server-authored policy invalidations on the
@@ -34,8 +34,13 @@ func (s *Service) Listen(ctx context.Context, req ListenRequest, send func(Event
 	if send == nil {
 		return status.Error(codes.Internal, "notification listener has no sender")
 	}
-	changes, stop := s.watch.Subscribe()
-	defer stop()
+	routes := Routes(s.namespace, Hint{Tenant: req.Tenant, Topics: topics})
+	routes = append(routes, Routes(s.namespace, Hint{Tenant: req.Tenant, Topics: topics, Reader: reader})...)
+	sub, err := s.watch.Open(ctx, watch.Interest{Routes: routes})
+	if err != nil {
+		return err
+	}
+	defer sub.Close()
 	// Install the subscription before readiness, then reauthorize so a policy
 	// change racing initial authorization cannot install a stale subscription.
 	if err := s.reauthorize(ctx, req.Tenant, reader, topics); err != nil {
@@ -48,26 +53,17 @@ func (s *Service) Listen(ctx context.Context, req ListenRequest, send func(Event
 		select {
 		case <-ctx.Done():
 			return status.FromContextError(ctx.Err()).Err()
-		case event, ok := <-changes:
+		case event, ok := <-sub.Events:
 			if !ok {
 				return status.Error(codes.ResourceExhausted, "notification stream lost its broker connection or fell behind; reconnect and reconcile")
 			}
 			invalidated := make(map[Topic]bool)
-			for _, change := range event.Changes {
-				var h Hint
-				var relevant bool
-				if change.By == InvalidationMethod || change.By == ReceiptMethod {
-					if err := json.Unmarshal(change.Signal, &h); err != nil {
-						return status.Error(codes.Internal, "invalid notification hint")
-					}
-					relevant = true
-				} else {
-					h, relevant, err = s.store.Change(ctx, change)
-					if err != nil {
-						return err
-					}
-				}
-				if !relevant || h.Tenant != req.Tenant || (!h.Reader.IsZero() && h.Reader != reader) {
+			hints, err := s.resolve(ctx, event)
+			if err != nil {
+				return err
+			}
+			for _, h := range hints {
+				if h.Tenant != req.Tenant || (!h.Reader.IsZero() && h.Reader != reader) {
 					continue
 				}
 				for _, t := range h.Topics {
@@ -139,5 +135,5 @@ func (s *Service) Invalidate(ctx context.Context, tenantID pdid.Id, topics []Top
 	if s.watch == nil || s.watch.Broker() == nil {
 		return status.Error(codes.Unavailable, "notification broker is unavailable")
 	}
-	return invalidate(ctx, s.watch, tenantID, ts)
+	return invalidate(ctx, s.watch, s.namespace, tenantID, ts)
 }

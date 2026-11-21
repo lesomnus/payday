@@ -64,6 +64,10 @@ type Expirer struct {
 	// erased notification only when it queries again for another reason.
 	Watch *watch.Watch
 
+	// Namespace is the app namespace used by its notification server. Generated
+	// expirers fill it so their invalidations use the same scoped routes.
+	Namespace string
+
 	// Every is the wait between passes: an hour when it is zero.
 	Every time.Duration
 
@@ -180,7 +184,7 @@ func (e Expirer) said(ctx context.Context, vs []Notification) error {
 	var errs []error
 	for _, tenant := range order {
 		for chunk := range slices.Chunk(topics[tenant], 100) {
-			errs = append(errs, invalidate(ctx, e.Watch, tenant, chunk))
+			errs = append(errs, invalidate(ctx, e.Watch, e.Namespace, tenant, chunk))
 		}
 	}
 
@@ -190,12 +194,19 @@ func (e Expirer) said(ctx context.Context, vs []Notification) error {
 // invalidate says to the broker that `topics` of `tenant`'s namespace changed
 // in a way only a fresh query and the policy can say: what [Service.Invalidate]
 // says after an app's policy change, and an [Expirer] after an expiry.
-func invalidate(ctx context.Context, w *watch.Watch, tenant pdid.Id, topics []Topic) error {
-	signal, err := json.Marshal(Hint{Tenant: tenant, Topics: topics})
+func invalidate(ctx context.Context, w *watch.Watch, namespace string, tenant pdid.Id, topics []Topic) error {
+	hint := Hint{Tenant: tenant, Topics: topics}
+	signal, err := json.Marshal(hint)
 	if err != nil {
 		return err
 	}
 
+	var routes []watch.Route
+	if namespace != "" {
+		routes = Routes(namespace, hint)
+	}
+	// An older hand-written expirer knows no app namespace. Its hint still
+	// reaches every interested stream through unknown-routing fallback.
 	return watch.Confirm(context.WithoutCancel(ctx), w.Broker(), watch.Event{Tenant: tenant,
-		Method: InvalidationMethod, Changes: []watch.Change{{By: InvalidationMethod, Key: tenant, Signal: signal}}})
+		Method: InvalidationMethod, Changes: []watch.Change{{By: InvalidationMethod, Key: tenant, Signal: signal, Routes: routes}}})
 }

@@ -411,11 +411,12 @@ func (s *Service) noteReceipt(ctx context.Context, r Receipt, topic Topic) error
 	if s.watch == nil {
 		return nil
 	}
-	signal, err := json.Marshal(Hint{Tenant: r.Tenant, Topics: []Topic{topic}, Reader: r.Reader})
+	hint := Hint{Tenant: r.Tenant, Topics: []Topic{topic}, Reader: r.Reader}
+	signal, err := json.Marshal(hint)
 	if err != nil {
 		return err
 	}
-	s.watch.Note(ctx, watch.Change{Method: watch.CallMethod(ctx, ReceiptMethod), By: ReceiptMethod, Key: r.ID, Signal: signal})
+	s.watch.Note(ctx, watch.Change{Method: watch.CallMethod(ctx, ReceiptMethod), By: ReceiptMethod, Key: r.ID, Signal: signal, Routes: Routes(s.namespace, hint)})
 	return nil
 }
 
