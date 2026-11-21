@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -810,27 +811,29 @@ func TestEndingSomebodysSessionsEndsThemNow(t *testing.T) {
 // TestAnIdleSessionEndsWithoutEndingAWorkingOne is the whole of what the second
 // clock buys.
 func TestAnIdleSessionEndsWithoutEndingAWorkingOne(t *testing.T) {
-	x := require.New(t)
+	synctest.Test(t, func(t *testing.T) {
+		x := require.New(t)
 
-	s := authsession.New(authsession.NewMemStore(),
-		authsession.WithIdle(100*time.Millisecond),
-		authsession.WithLifetime(time.Hour))
+		s := authsession.New(authsession.NewMemStore(),
+			authsession.WithIdle(100*time.Millisecond),
+			authsession.WithLifetime(time.Hour))
 
-	c := signIn(t, s, who("019-abc", "019-acme"))
+		c := signIn(t, s, who("019-abc", "019-acme"))
 
-	// Used, so it keeps going. Past the idle window several times over.
-	for range 5 {
-		time.Sleep(60 * time.Millisecond)
+		// Used, so it keeps going. Past the idle window several times over.
+		for range 5 {
+			time.Sleep(60 * time.Millisecond)
+
+			_, err := s.Handler().Handle(carrying(c))
+			x.NoError(err, "a session in use went stale")
+		}
+
+		// Left alone, so it stops.
+		time.Sleep(150 * time.Millisecond)
 
 		_, err := s.Handler().Handle(carrying(c))
-		x.NoError(err, "a session in use went stale")
-	}
-
-	// Left alone, so it stops.
-	time.Sleep(150 * time.Millisecond)
-
-	_, err := s.Handler().Handle(carrying(c))
-	x.ErrorIs(err, authsession.ErrNoSession)
+		x.ErrorIs(err, authsession.ErrNoSession)
+	})
 }
 
 // TestTheIdleClockNeverPassesTheOtherOne, which is what makes the pair safe:
