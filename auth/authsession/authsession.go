@@ -462,6 +462,18 @@ var ErrOtherIdentity = errors.New("authsession: this call was made for another c
 // its call came through `web`'s transcoder, and headers travel across that as
 // metadata -- `cookie` among them, and [IdentityHeader] beside it.
 func (s *Sessions) Handler() auth.Handler {
+	return s.handler(s.Read, true)
+}
+
+// Recheck reads the same cookie and checks the same identity binding as Handler,
+// without counting the check as use or writing a response cookie. Use it when
+// periodically reauthorizing an open stream: the server asking again must not
+// keep an otherwise idle browser signed in. An ordinary new call uses Handler.
+func (s *Sessions) Recheck() auth.Handler {
+	return s.handler(s.Inspect, false)
+}
+
+func (s *Sessions) handler(read func(context.Context, string) (Session, error), clear bool) auth.Handler {
 	return auth.HandlerFunc(func(ctx context.Context) (auth.Identity, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -473,9 +485,9 @@ func (s *Sessions) Handler() auth.Handler {
 			return auth.Identity{}, auth.ErrNoCredential
 		}
 
-		v, err := s.Read(ctx, key)
+		v, err := read(ctx, key)
 		if err != nil {
-			if errors.Is(err, ErrNoSession) {
+			if clear && errors.Is(err, ErrNoSession) {
 				// The browser is told to drop it, on the way to the refusal.
 				//
 				// Left alone, a cookie the server has forgotten is presented
@@ -546,6 +558,18 @@ func (s *Sessions) Handler() auth.Handler {
 // store that could not be reached is [auth.ErrUnavailable], which is not the
 // caller's fault and must not read as a bad cookie.
 func (s *Sessions) Read(ctx context.Context, key string) (Session, error) {
+	return s.read(ctx, key, true)
+}
+
+// Inspect answers whether the session still stands, with its clocks unchanged.
+// It makes only a Store.Get call: no idle renewal or deletion, even on expiry.
+// It has Read's expiry and error semantics. Use Recheck for an auth.Handler
+// that also extracts the cookie and enforces IdentityHeader.
+func (s *Sessions) Inspect(ctx context.Context, key string) (Session, error) {
+	return s.read(ctx, key, false)
+}
+
+func (s *Sessions) read(ctx context.Context, key string, use bool) (Session, error) {
 	v, err := s.store.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, ErrNoSession) {
@@ -571,7 +595,10 @@ func (s *Sessions) Read(ctx context.Context, key string) (Session, error) {
 		return Session{}, fmt.Errorf("%w", ErrNoSession)
 	}
 
-	return s.used(ctx, v, now), nil
+	if use {
+		v = s.used(ctx, v, now)
+	}
+	return v, nil
 }
 
 // Take is the session a key names, dead or alive, and its end -- what a
