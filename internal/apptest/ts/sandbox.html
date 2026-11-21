@@ -98,6 +98,21 @@ try {
 
 	say('list:', (await c.robot.list({ filters: [] })).items.length)
 
+	// The same client and same database survive a simulated disconnection.
+	const watching = c.robot.watch({ filters: [{ ref: { key: { case: 'id', value: r.id } } }] })[Symbol.asyncIterator]()
+	await watching.next()
+	const waiting = watching.next().then(() => 'unexpected message', e => String(e).match(/\[(\w+)\]/)?.[1] ?? String(e))
+	sb.reachable = false
+	say('offline watch:', await waiting)
+	try {
+		await c.robot.list({})
+		say('offline unary: unexpectedly reached the server')
+	} catch (e) {
+		say('offline unary:', String(e).match(/\[(\w+)\]/)?.[1] ?? String(e))
+	}
+	sb.reachable = true
+	say('reconnected list:', (await c.robot.list({})).items.length)
+
 	// Calls at once, which a page makes and a process does not. Two things in
 	// `wasm/main.go` hold these at eight, and each was found by losing it:
 	// without the leading slash in the DSN the second connection reads an

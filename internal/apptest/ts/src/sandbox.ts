@@ -19,7 +19,7 @@ import { start as open, type Load, type Sandbox as Instance } from '@lesomnus/pa
 import { app, type App } from './client.js'
 
 /** Sandbox is this app, and the instance it is running inside. */
-export interface Sandbox {
+export interface Sandbox extends Instance {
 	readonly app: App
 
 	/**
@@ -77,10 +77,5 @@ export async function start(url = '/app.wasm', onProgress?: (v: Load) => void): 
 	// whole reason a sandbox is worth having: `app()` is the same call the real
 	// server gets, and nothing above it knows which one it got. Code that only
 	// ever ran against a fake is code that has never run.
-	return {
-		app: app(box.transport),
-		transport: box.transport,
-		sock: box.sock,
-		close: box.close,
-	}
+	return Object.assign(box, { app: app(box.transport) })
 }
