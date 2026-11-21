@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
-	"text/tabwriter"
 	"text/template"
 	"time"
 
@@ -181,24 +179,24 @@ func table(wide, header bool) Printer {
 			return fmt.Errorf("%s has no scalar table columns; use -o json", rows[0].Descriptor().FullName())
 		}
 
-		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+		cells := make([][]string, 0, len(rows)+1)
 		if header {
 			hs := make([]string, len(cols))
 			for i, c := range cols {
 				hs[i] = c.head
 			}
-			fmt.Fprintln(tw, strings.Join(hs, "\t"))
+			cells = append(cells, hs)
 		}
 
 		for _, row := range rows {
 			vs := make([]string, len(cols))
 			for i, c := range cols {
-				vs[i] = c.read(row)
+				vs[i] = cellText(c.read(row))
 			}
-			fmt.Fprintln(tw, strings.Join(vs, "\t"))
+			cells = append(cells, vs)
 		}
 
-		return tw.Flush()
+		return printCells(w, cells)
 	})
 }
 

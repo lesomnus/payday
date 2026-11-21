@@ -411,6 +411,9 @@ a scalar, timestamp, duration or scalar wrapper. Generation rejects missing
 paths, collections, secrets and a declaration with only wide columns. A missing
 optional value prints `-`; present zero and false values remain visible.
 
+Table padding measures terminal cells, including Hangul, other wide text,
+combining marks and joined emoji. The gap between columns stays three cells.
+
 A custom RPC response without entity metadata prints its scalar fields as
 columns. If it holds exactly one repeated message field, those messages become
 the rows. If it holds multiple such fields, no list is guessed: its own scalar
