@@ -412,7 +412,7 @@ fields are shown. An empty list prints `(none)`.
 Templates use the same values as `-o json`, including UUID identifiers:
 
 ```sh
-$ app holder get @acme/bob -o 'template={{.id}} {{.name}}'
+$ app holder get -o 'template={{.id}} {{.name}}' @acme/bob
 ```
 
 A custom command can reuse a built-in printer by name:
