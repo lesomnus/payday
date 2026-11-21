@@ -74,6 +74,17 @@ func jsonOf(m protoreflect.Message, indent string) ([]byte, error) {
 		return nil, err
 	}
 
+	// These JSON shapes are values in their own right. Their object keys are
+	// not protobuf fields: Struct's "fields" and Any's "type_url" are absent.
+	// Scalars and arrays must also work when they are the root response.
+	if jsonMapped(m.Descriptor()) {
+		b := &bytes.Buffer{}
+		if err := json.Indent(b, raw, indent, "  "); err != nil {
+			return nil, err
+		}
+		return b.Bytes(), nil
+	}
+
 	var decoded map[string]any
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return nil, err
@@ -162,6 +173,15 @@ func emitOne(b *bytes.Buffer, x any, fd protoreflect.FieldDescriptor, indent str
 	// walking it as the entry would find neither and print `{}`.
 	if m, ok := x.(map[string]any); ok && fd.IsMap() {
 		return emitMap(b, m, fd.MapValue(), indent)
+	}
+
+	if fd.Kind() == protoreflect.MessageKind && jsonMapped(fd.Message()) {
+		out, err := json.MarshalIndent(x, indent, "  ")
+		if err != nil {
+			return err
+		}
+		b.Write(out)
+		return nil
 	}
 
 	// A nested message, and only when it really came out as an object: a
@@ -323,4 +343,23 @@ func oneToWire(x any, fd protoreflect.FieldDescriptor) any {
 	}
 
 	return base64.StdEncoding.EncodeToString(id.Bytes())
+}
+
+// jsonMapped identifies messages whose protobuf JSON form is not a traversal
+// of their fields. Keep the allowlist explicit: other google.protobuf messages
+// (notably descriptors) are ordinary messages and still use schema ordering.
+// Any keeps the packed value's protojson form too, including its identifiers.
+func jsonMapped(d protoreflect.MessageDescriptor) bool {
+	if d == nil {
+		return false
+	}
+	switch d.FullName() {
+	case "google.protobuf.Any", "google.protobuf.Struct", "google.protobuf.Value", "google.protobuf.ListValue",
+		"google.protobuf.Timestamp", "google.protobuf.Duration", "google.protobuf.FieldMask",
+		"google.protobuf.DoubleValue", "google.protobuf.FloatValue", "google.protobuf.Int64Value", "google.protobuf.UInt64Value",
+		"google.protobuf.Int32Value", "google.protobuf.UInt32Value", "google.protobuf.BoolValue", "google.protobuf.StringValue", "google.protobuf.BytesValue":
+		return true
+	default:
+		return false
+	}
 }

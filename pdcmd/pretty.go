@@ -73,6 +73,14 @@ var Pretty Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 })
 
 func pretty(w io.Writer, m protoreflect.Message, indent string) error {
+	if jsonMapped(m.Descriptor()) {
+		b, err := jsonOf(m, indent)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, "%s%s\n", indent, b)
+		return err
+	}
 	fs := m.Descriptor().Fields()
 
 	// Widest name first, so the values line up. Over the fields that will
@@ -116,10 +124,23 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 
 		case fd.IsMap():
 			fmt.Fprintf(w, "%s\n", name)
+			var err error
 			v.Map().Range(func(k protoreflect.MapKey, v protoreflect.Value) bool {
+				if fd.MapValue().Kind() == protoreflect.MessageKind && jsonMapped(fd.MapValue().Message()) {
+					var b []byte
+					b, err = jsonOf(v.Message(), indent+"  ")
+					if err != nil {
+						return false
+					}
+					_, err = fmt.Fprintf(w, "%s  %s: %s\n", indent, k.String(), b)
+					return err == nil
+				}
 				fmt.Fprintf(w, "%s  %s: %s\n", indent, k.String(), v.String())
 				return true
 			})
+			if err != nil {
+				return err
+			}
 
 		case isTimestamp(fd):
 			fmt.Fprintf(w, "%s%s\n", name, timeOf(v))
@@ -137,6 +158,15 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 			}
 
 			fmt.Fprintf(w, "%s%s\n", name, ed.Name())
+
+		case fd.Kind() == protoreflect.MessageKind && jsonMapped(fd.Message()):
+			b, err := jsonOf(v.Message(), indent)
+			if err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "%s%s\n", name, b); err != nil {
+				return err
+			}
 
 		case fd.Kind() == protoreflect.MessageKind:
 			// A nested entity is shown on one line when it can be -- its

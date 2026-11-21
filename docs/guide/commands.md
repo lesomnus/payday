@@ -339,6 +339,12 @@ the easy answer and would have broken the round trip.
 payday identifier is a `bytes` field, and prototext prints bytes as an escaped
 string. The exact format was also the one nobody could use.
 
+`Struct`, `Value`, `ListValue`, `Any`, and wrapper messages retain their protobuf
+JSON representation in both `json` and `pretty`, including when nested in lists
+or maps. An `Any` payload keeps its canonical protojson representation, including
+base64 identifiers inside the packed message. Singular timestamps and durations
+keep their existing human-readable form in `pretty`.
+
 ### Adding a format
 
 An app's own format is not a lesser kind of format — it is the same one-method
