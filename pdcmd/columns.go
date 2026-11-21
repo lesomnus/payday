@@ -8,7 +8,6 @@ import (
 
 	"github.com/lesomnus/payday/internal/pdcolumn"
 	"github.com/lesomnus/payday/pdpb"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -17,36 +16,36 @@ func entityMessage(d protoreflect.MessageDescriptor) bool {
 	return proto.HasExtension(d.Options(), pdpb.E_Entity)
 }
 
-func declaredColumns(d protoreflect.MessageDescriptor, wide bool) ([]column, bool, error) {
-	opts, _ := proto.GetExtension(d.Options(), pdpb.E_Entity).(*pdpb.Entity)
-	if len(opts.GetColumns()) == 0 {
+func declaredColumns(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptions) ([]column, bool, error) {
+	entity, _ := proto.GetExtension(d.Options(), pdpb.E_Entity).(*pdpb.Entity)
+	if len(entity.GetColumns()) == 0 {
 		return nil, false, nil
 	}
-	specs, err := pdcolumn.Resolve(d, opts.GetColumns())
+	specs, err := pdcolumn.Resolve(d, entity.GetColumns())
 	if err != nil {
 		return nil, true, err
 	}
 	cols := []column{}
 	for _, spec := range specs {
 		if !spec.Wide || wide {
-			cols = append(cols, pathColumn(spec.Title, spec.Path))
+			cols = append(cols, pathColumn(spec.Title, spec.Path, opts...))
 		}
 	}
 	return cols, true, nil
 }
 
-func scalarColumns(d protoreflect.MessageDescriptor) []column {
+func scalarColumns(d protoreflect.MessageDescriptor, opts ...PrintOptions) []column {
 	var out []column
 	for i := 0; i < d.Fields().Len(); i++ {
 		f := d.Fields().Get(i)
 		if pdcolumn.Scalar(f) && !pdcolumn.Secret(f) {
-			out = append(out, pathColumn(strings.ToUpper(string(f.Name())), []protoreflect.FieldDescriptor{f}))
+			out = append(out, pathColumn(strings.ToUpper(string(f.Name())), []protoreflect.FieldDescriptor{f}, opts...))
 		}
 	}
 	return out
 }
 
-func pathColumn(title string, path []protoreflect.FieldDescriptor) column {
+func pathColumn(title string, path []protoreflect.FieldDescriptor, opts ...PrintOptions) column {
 	return column{key: len(path) == 1 && path[0].Name() == "id", head: title, read: func(m protoreflect.Message) string {
 		for i, f := range path {
 			if !m.IsValid() || (f.HasPresence() && !m.Has(f)) {
@@ -54,7 +53,7 @@ func pathColumn(title string, path []protoreflect.FieldDescriptor) column {
 			}
 			v := m.Get(f)
 			if i == len(path)-1 {
-				return tableValue(v, f)
+				return tableValue(v, f, opts...)
 			}
 			m = v.Message()
 		}
@@ -62,7 +61,7 @@ func pathColumn(title string, path []protoreflect.FieldDescriptor) column {
 	}}
 }
 
-func tableValue(v protoreflect.Value, f protoreflect.FieldDescriptor) string {
+func tableValue(v protoreflect.Value, f protoreflect.FieldDescriptor, opts ...PrintOptions) string {
 	switch f.Kind() {
 	case protoreflect.BytesKind:
 		if isId(f) {
@@ -75,7 +74,7 @@ func tableValue(v protoreflect.Value, f protoreflect.FieldDescriptor) string {
 		}
 		return fmt.Sprint(v.Enum())
 	case protoreflect.MessageKind:
-		b, err := protojson.Marshal(v.Message().Interface())
+		b, err := humanJSON(v.Message(), "", printLocation(opts))
 		if err != nil {
 			return "<invalid>"
 		}
