@@ -213,6 +213,28 @@ A store may forget a session whenever it likes. Expiry is checked by the handler
 regardless, so a cache with a TTL is a legitimate store and a table you never
 sweep is too.
 
+### Checking an open stream again
+
+Use `sessions.Recheck()` when a stream periodically authenticates its original
+cookie again. It is an `auth.Handler` with the same cookie and store-identity
+checks as `sessions.Handler()`, but checking does not renew the idle deadline:
+
+```go
+recheck := sessions.Recheck()
+identity, err := recheck.Handle(stream.Context())
+// Resolve the identity and apply the app's current policy again as usual.
+```
+
+For a cookie value already extracted, `sessions.Inspect(ctx, key)` returns the
+live session and its existing clocks without a store write. Both methods refuse
+expired or revoked sessions, and distinguish a store outage from a bad cookie.
+They do not establish a new stream deadline or refresh an existing one.
+
+New requests still use `Handler` or `Read`, which count as activity. A forgotten
+tab checked every five minutes must still expire at its original idle deadline;
+the server's check is not the person's activity. `Recheck` writes no response
+cookie, so it also works after a stream's response headers have been sent.
+
 ### Or in the cookie
 
 `authsession.NewSealed(key)` is a store with nothing to store: the session is
