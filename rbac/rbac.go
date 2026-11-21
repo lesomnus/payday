@@ -155,10 +155,13 @@ func Name(v string) (tenant string, err error) {
 
 // Snapshot is immutable, including with respect to the Rules it was built
 // from and the grants returned to callers.
-type Snapshot struct{ byHolder map[string][]Grant }
+type Snapshot struct {
+	byHolder map[string][]Grant
+	byRole   map[string][]string
+}
 
 func New(r Rules) (*Snapshot, error) {
-	s := &Snapshot{byHolder: map[string][]Grant{}}
+	s := &Snapshot{byHolder: map[string][]Grant{}, byRole: map[string][]string{}}
 	for _, name := range slices.Sorted(maps.Keys(r.Roles)) {
 		if _, err := Name(name); err != nil {
 			return nil, fmt.Errorf("role: %w", err)
@@ -213,6 +216,20 @@ func New(r Rules) (*Snapshot, error) {
 			s.byHolder[member] = append(s.byHolder[member], Grant{Role: b.Role, Methods: slices.Clone(role.Methods)})
 		}
 	}
+	// Build the reverse index from the evaluated grants so group expansion
+	// cannot acquire different rules in the two lookup directions.
+	for holder, grants := range s.byHolder {
+		seen := map[string]bool{}
+		for _, grant := range grants {
+			if !seen[grant.Role] {
+				s.byRole[grant.Role] = append(s.byRole[grant.Role], holder)
+				seen[grant.Role] = true
+			}
+		}
+	}
+	for _, holders := range s.byRole {
+		slices.Sort(holders)
+	}
 	return s, nil
 }
 
@@ -227,4 +244,15 @@ func (s *Snapshot) Grants(_ context.Context, name string) ([]Grant, error) {
 		out[i].Methods = slices.Clone(out[i].Methods)
 	}
 	return out, nil
+}
+
+// Holders returns the sorted, distinct holder names bound to role, directly
+// or through groups. An unknown role has no holders; a malformed name is an
+// error. Membership alone does not grant a role. The returned slice is owned
+// by the caller. This lookup selects names, not permission to read an object.
+func (s *Snapshot) Holders(_ context.Context, role string) ([]string, error) {
+	if _, err := Name(role); err != nil {
+		return nil, err
+	}
+	return slices.Clone(s.byRole[role]), nil
 }
