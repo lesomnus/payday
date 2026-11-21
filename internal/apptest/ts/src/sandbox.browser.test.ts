@@ -156,6 +156,9 @@ describe.runIf(enabled)("the sandbox", () => {
     expect(say).toContain("tenant: acme");
     expect(say).toContain("robot: arm-01");
     expect(say).toContain("list: 1");
+    expect(say).toContain("offline unary: unavailable");
+    expect(say).toContain("offline watch: unavailable");
+    expect(say).toContain("reconnected list: 1");
 
     // Calls at once, which a page makes and a process does not -- the database
     // is one worker thread here. See `sandbox.html` for what losing this looks
