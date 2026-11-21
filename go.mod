@@ -45,6 +45,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/ent v0.0.0-20261024205432-0dd7dadc81bc
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656
+	github.com/rivo/uniseg v0.4.7
 	github.com/stretchr/testify v1.12.1
 	github.com/transparency-dev/merkle v0.0.2
 	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0
@@ -97,7 +98,6 @@ require (
 	github.com/protobuf-orm/protoc-gen-orm-ent v0.0.0-20261121161445-42bbeb7810e8 // indirect
 	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
 	github.com/protobuf-orm/protoc-gen-orm-service v0.0.0-20261121165649-aa6870b89525 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/tidwall/btree v1.8.1 // indirect
 	github.com/zclconf/go-cty v1.19.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect

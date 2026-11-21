@@ -98,13 +98,13 @@ func pretty(w io.Writer, m protoreflect.Message, indent string) error {
 		}
 
 		shown = append(shown, fd)
-		if n := len(fd.Name()); n > width {
+		if n := displayWidth(string(fd.Name())); n > width {
 			width = n
 		}
 	}
 
 	for _, fd := range shown {
-		name := fmt.Sprintf("%s%-*s ", indent, width, fd.Name())
+		name := indent + padCells(string(fd.Name()), width+1)
 		v := m.Get(fd)
 
 		switch {
