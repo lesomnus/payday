@@ -11,7 +11,6 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	stint "github.com/lesomnus/payday/internal/apptest/internal/ent/stint"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -35,11 +34,14 @@ type StintServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewStintServiceServer(db *ent.Client, opts ...Option) apptest.StintServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return StintServiceServer{Store: s.Store}
 }
@@ -166,7 +168,10 @@ func (st StintServiceServer) create(ctx context.Context, req *apptest.StintAddRe
 }
 
 func (s StintServiceServer) Add(ctx context.Context, req *apptest.StintAddRequest) (*apptest.Stint, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +186,7 @@ func (s StintServiceServer) Add(ctx context.Context, req *apptest.StintAddReques
 	}
 
 	var stored *ent.Stint
-	if snapshotOptions(s.Rec, apptest.StintService_Add_FullMethodName).Value {
+	if s.images(apptest.StintService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -207,10 +212,11 @@ func (s StintServiceServer) Add(ctx context.Context, req *apptest.StintAddReques
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.StintService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Stint",
+		By:     apptest.StintService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -347,6 +353,9 @@ func StintSelectInit(ctx context.Context, scope Scope, q *ent.StintQuery, m *app
 }
 
 func (s StintServiceServer) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(stintOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -396,6 +405,9 @@ var stintPatchColumns = entpatch.Columns{
 	1: stint.FieldId, 2: stint.TenantColumn, 8: stint.FieldRobotId, 9: stint.FieldDateStart, 10: stint.FieldDateEnd, 11: stint.FieldEventId, 15: stint.FieldDateCreated}
 
 func (s StintServiceServer) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -423,7 +435,7 @@ func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, do
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +456,7 @@ func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, do
 	}
 
 	var previous *apptest.Stint
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -510,7 +522,8 @@ func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, do
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Stint",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -527,6 +540,9 @@ func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, do
 }
 
 func (s StintServiceServer) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := StintPick(req)
 	if err != nil {
 		return nil, err
@@ -536,7 +552,7 @@ func (s StintServiceServer) Erase(ctx context.Context, req *apptest.StintRef) (*
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -547,8 +563,8 @@ func (s StintServiceServer) Erase(ctx context.Context, req *apptest.StintRef) (*
 
 	var k any
 	var previous *apptest.Stint
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.StintService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.StintService_Erase_FullMethodName)
 		var v *ent.Stint
 		var err error
 		if images.Previous {
@@ -576,7 +592,8 @@ func (s StintServiceServer) Erase(ctx context.Context, req *apptest.StintRef) (*
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Stint",
 			By:       apptest.StintService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,

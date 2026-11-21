@@ -38,6 +38,10 @@ them. `Sink` is the innermost because two things it does have to be: the wall is
 a predicate and belongs in the `WHERE` clause, and the trail has to be written
 inside the transaction that makes the write it describes.
 
+For rules that must see the request and previous row on every generated write,
+install [admission](admission.md) on the sink. Its transaction guard also catches
+unaccounted direct ent mutations.
+
 Everything between is yours. `pd new` writes none of it — an app starts with no
 layer of its own and adds one when it has a rule to put there.
 

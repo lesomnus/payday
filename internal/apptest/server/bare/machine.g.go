@@ -11,7 +11,6 @@ import (
 	machine "github.com/lesomnus/payday/internal/apptest/internal/ent/machine"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -36,11 +35,14 @@ type MachineServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewMachineServiceServer(db *ent.Client, opts ...Option) apptest.MachineServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return MachineServiceServer{Store: s.Store}
 }
@@ -210,7 +212,10 @@ func (st MachineServiceServer) create(ctx context.Context, req *apptest.MachineA
 }
 
 func (s MachineServiceServer) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +230,7 @@ func (s MachineServiceServer) Add(ctx context.Context, req *apptest.MachineAddRe
 	}
 
 	var stored *ent.Machine
-	if snapshotOptions(s.Rec, apptest.MachineService_Add_FullMethodName).Value {
+	if s.images(apptest.MachineService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -251,10 +256,11 @@ func (s MachineServiceServer) Add(ctx context.Context, req *apptest.MachineAddRe
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.MachineService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Machine",
+		By:     apptest.MachineService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -442,6 +448,9 @@ func MachineSelectInit(ctx context.Context, scope Scope, q *ent.MachineQuery, m 
 }
 
 func (s MachineServiceServer) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(machineOrmEntity, req.ProtoReflect(), func(ed graph.Edge, ref protoreflect.Message) (protoreflect.Value, error) {
 		switch ed.Number() {
 		case 18:
@@ -501,6 +510,9 @@ var machinePatchColumns = entpatch.Columns{
 	1: machine.FieldId, 2: machine.TenantColumn, 4: machine.FieldAlias, 8: machine.FieldModel, 9: machine.FieldHours, 10: machine.FieldLoad, 11: machine.FieldRunning, 12: machine.FieldFirmware, 16: machine.FieldCycles, 17: machine.FieldMakerId, 18: machine.RobotColumn, 19: machine.FieldMode, 20: machine.FieldDateServiced, 21: machine.FieldSpec, 22: machine.FieldTags, 23: machine.FieldSettings, 24: machine.FieldOperator, 13: machine.FieldDateUpdated, 14: machine.FieldDateErased, 15: machine.FieldDateCreated}
 
 func (s MachineServiceServer) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -528,7 +540,7 @@ func (s MachineServiceServer) apply(ctx context.Context, ref *apptest.MachineRef
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +561,7 @@ func (s MachineServiceServer) apply(ctx context.Context, ref *apptest.MachineRef
 	}
 
 	var previous *apptest.Machine
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -618,7 +630,8 @@ func (s MachineServiceServer) apply(ctx context.Context, ref *apptest.MachineRef
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Machine",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -635,6 +648,9 @@ func (s MachineServiceServer) apply(ctx context.Context, ref *apptest.MachineRef
 }
 
 func (s MachineServiceServer) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := MachinePick(req)
 	if err != nil {
 		return nil, err
@@ -644,7 +660,7 @@ func (s MachineServiceServer) Erase(ctx context.Context, req *apptest.MachineRef
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -655,8 +671,8 @@ func (s MachineServiceServer) Erase(ctx context.Context, req *apptest.MachineRef
 
 	var k any
 	var previous *apptest.Machine
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.MachineService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.MachineService_Erase_FullMethodName)
 		var v *ent.Machine
 		var err error
 		if images.Previous {
@@ -687,7 +703,8 @@ func (s MachineServiceServer) Erase(ctx context.Context, req *apptest.MachineRef
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Machine",
 			By:       apptest.MachineService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,

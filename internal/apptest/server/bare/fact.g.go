@@ -11,7 +11,6 @@ import (
 	fact "github.com/lesomnus/payday/internal/apptest/internal/ent/fact"
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -35,11 +34,14 @@ type FactServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewFactServiceServer(db *ent.Client, opts ...Option) apptest.FactServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return FactServiceServer{Store: s.Store}
 }
@@ -178,7 +180,10 @@ func (st FactServiceServer) create(ctx context.Context, req *apptest.FactAddRequ
 }
 
 func (s FactServiceServer) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +198,7 @@ func (s FactServiceServer) Add(ctx context.Context, req *apptest.FactAddRequest)
 	}
 
 	var stored *ent.Fact
-	if snapshotOptions(s.Rec, apptest.FactService_Add_FullMethodName).Value {
+	if s.images(apptest.FactService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -219,10 +224,11 @@ func (s FactServiceServer) Add(ctx context.Context, req *apptest.FactAddRequest)
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.FactService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Fact",
+		By:     apptest.FactService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -250,6 +256,9 @@ const factAddManyRows = 500
 // is written. A refusal by the database is the whole statement's, and does
 // not say which row it was about.
 func (s FactServiceServer) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	items := req.GetItems()
 	if len(items) > FactAddManyMax {
 		return nil, status.Errorf(codes.InvalidArgument, "items: at most %d in one call, and there are %d", FactAddManyMax, len(items))
@@ -258,7 +267,7 @@ func (s FactServiceServer) AddMany(ctx context.Context, req *apptest.FactAddMany
 		return apptest.FactAddManyResponse_builder{}.Build(), nil
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +276,7 @@ func (s FactServiceServer) AddMany(ctx context.Context, req *apptest.FactAddMany
 	st := s
 	st.Db = tx.Db
 
-	images := snapshotOptions(s.Rec, apptest.FactService_AddMany_FullMethodName).Value
+	images := s.images(apptest.FactService_AddMany_FullMethodName).Value
 	qs := make([]*ent.FactCreate, len(items))
 	dss := make([][]func(v *apptest.Fact), len(items))
 	stored := make([]*ent.Fact, len(items))
@@ -311,10 +320,11 @@ func (s FactServiceServer) AddMany(ctx context.Context, req *apptest.FactAddMany
 			if stored[i] != nil {
 				value = s.image(stored[i].Proto())
 			}
-			if err := record(ctx, s.Rec, st.Db, Change{
-				By:    apptest.FactService_AddMany_FullMethodName,
-				Key:   u.Id,
-				Value: value,
+			if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+				Entity: "app.Fact",
+				By:     apptest.FactService_AddMany_FullMethodName,
+				Key:    u.Id,
+				Value:  value,
 			}); err != nil {
 				return nil, err
 			}
@@ -501,6 +511,9 @@ func FactSelectInit(ctx context.Context, scope Scope, q *ent.FactQuery, m *appte
 }
 
 func (s FactServiceServer) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(factOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -550,6 +563,9 @@ var factPatchColumns = entpatch.Columns{
 	1: fact.FieldId, 2: fact.TenantColumn, 8: fact.FieldSubjectId, 9: fact.FieldKey, 10: fact.FieldValue, 12: fact.FieldFieldNumber, 13: fact.FieldDateUpdated, 15: fact.FieldDateCreated, 16: fact.FieldDomain, 17: fact.FieldDateStart, 19: fact.FieldEventId, 20: fact.FieldDateSuperseded, 21: fact.FieldSupersededBy}
 
 func (s FactServiceServer) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -577,7 +593,7 @@ func (s FactServiceServer) apply(ctx context.Context, ref *apptest.FactRef, doc 
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +614,7 @@ func (s FactServiceServer) apply(ctx context.Context, ref *apptest.FactRef, doc 
 	}
 
 	var previous *apptest.Fact
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -667,7 +683,8 @@ func (s FactServiceServer) apply(ctx context.Context, ref *apptest.FactRef, doc 
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Fact",
 			By:       by,
 			Key:      k,
 			Patch:    doc,

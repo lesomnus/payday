@@ -11,7 +11,6 @@ import (
 	predicate "github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
 	seal "github.com/lesomnus/payday/internal/apptest/internal/ent/seal"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
-	ent1 "github.com/protobuf-orm/ent"
 	dialect "github.com/protobuf-orm/ent/dialect"
 	sql "github.com/protobuf-orm/ent/dialect/sql"
 	sqlgraph "github.com/protobuf-orm/ent/dialect/sql/sqlgraph"
@@ -34,11 +33,14 @@ type SealServiceServer struct {
 //
 // It takes the options of [Server] so that what is built here can be told
 // where to report its writes and what it may see. Built without them, it
-// reports nowhere and sees everything.
+// reports nowhere and sees everything. An invalid option panics; use NewServer
+// to handle configuration errors before constructing individual services.
 func NewSealServiceServer(db *ent.Client, opts ...Option) apptest.SealServiceServer {
 	s := Server{Store: Store{Db: db}}
 	for _, opt := range opts {
-		opt(&s)
+		if err := opt(&s); err != nil {
+			panic(err)
+		}
 	}
 	return SealServiceServer{Store: s.Store}
 }
@@ -131,7 +133,10 @@ func (st SealServiceServer) create(ctx context.Context, req *apptest.SealAddRequ
 }
 
 func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +151,7 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	}
 
 	var stored *ent.Seal
-	if snapshotOptions(s.Rec, apptest.SealService_Add_FullMethodName).Value {
+	if s.images(apptest.SealService_Add_FullMethodName).Value {
 		q.Stored(&stored)
 	}
 
@@ -172,10 +177,11 @@ func (s SealServiceServer) Add(ctx context.Context, req *apptest.SealAddRequest)
 	if stored != nil {
 		value = s.image(stored.Proto())
 	}
-	if err := record(ctx, s.Rec, st.Db, Change{
-		By:    apptest.SealService_Add_FullMethodName,
-		Key:   u.Id,
-		Value: value,
+	if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+		Entity: "app.Seal",
+		By:     apptest.SealService_Add_FullMethodName,
+		Key:    u.Id,
+		Value:  value,
 	}); err != nil {
 		return nil, err
 	}
@@ -297,6 +303,9 @@ func SealSelectInit(ctx context.Context, scope Scope, q *ent.SealQuery, m *appte
 }
 
 func (s SealServiceServer) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	doc, err := ormpatch.FromPatchRequest(sealOrmEntity, req.ProtoReflect(), nil)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
@@ -346,6 +355,9 @@ var sealPatchColumns = entpatch.Columns{
 	1: seal.FieldId, 4: seal.FieldAlias, 8: seal.FieldSecret, 9: seal.FieldCode, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
 
 func (s SealServiceServer) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	if !req.HasPatch() {
 		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
 	}
@@ -373,7 +385,7 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		return nil, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, true)
+	tx, err := join(ctx, s.Db, true, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +406,7 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 	}
 
 	var previous *apptest.Seal
-	images := snapshotOptions(s.Rec, by)
+	images := s.images(by)
 	if images.Previous && mod != nil {
 		u, err := st.snapshot(ctx, p, true)
 		if err != nil {
@@ -460,7 +472,8 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 		if images.Value {
 			value = s.image(out)
 		}
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Seal",
 			By:       by,
 			Key:      k,
 			Patch:    doc,
@@ -477,6 +490,9 @@ func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc 
 }
 
 func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
 	p, err := SealPick(req)
 	if err != nil {
 		return nil, err
@@ -486,7 +502,7 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		return nil, err
 	}
 
-	tx, err := ent1.JoinTx[*ent.Client, *ent.Tx](ctx, s.Db, s.Rec != nil)
+	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -497,8 +513,8 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 
 	var k any
 	var previous *apptest.Seal
-	if s.Rec != nil {
-		images := snapshotOptions(s.Rec, apptest.SealService_Erase_FullMethodName)
+	if s.Rec != nil || s.admission != nil {
+		images := s.images(apptest.SealService_Erase_FullMethodName)
 		var v *ent.Seal
 		var err error
 		if images.Previous {
@@ -528,7 +544,8 @@ func (s SealServiceServer) Erase(ctx context.Context, req *apptest.SealRef) (*ap
 		return nil, err
 	}
 	if n > 0 {
-		if err := record(ctx, s.Rec, st.Db, Change{
+		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
+			Entity:   "app.Seal",
 			By:       apptest.SealService_Erase_FullMethodName,
 			Key:      k,
 			Previous: previous,

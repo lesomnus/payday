@@ -624,3 +624,7 @@ Before a deployment is reachable by anyone:
 
 For verified device/person or agent/person calls, both parties are checked. See
 [Work at a shared device](representing.md) for verification and direct-only RPCs.
+
+For refusals that depend on the write request and previous row, use
+[Admission](admission.md) after the gate and wall. It can also consult both
+parties of a represented call.
