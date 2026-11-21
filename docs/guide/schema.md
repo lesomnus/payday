@@ -1073,6 +1073,18 @@ what you write joins whatever `pd gen` put there. `WidgetRef` needs no import:
 the overlay is merged **into** the file that declares it, so importing that file
 would be importing itself.
 
+A type declared in another contract needs an explicit import in the overlay,
+for example `import "app/part_svc.g.proto";` for a `NumberMove` message in the
+part contract. The same rule applies to types contributed by that contract's
+overlay and to nested messages and enums. Do not edit the generated file.
+When compilation cannot resolve a type, `pd gen` looks through the generated
+contracts and names the declaring file, the import statement and the source
+overlay to edit. It preserves the compiler's original position and error.
+If that import would create a cycle among contracts, the diagnostic says so:
+move shared payload declarations to a separate `.proto` file imported by both,
+or arrange the overlays so their dependencies run in one direction. Unknown
+or ambiguous names remain compiler errors without a guessed import.
+
 Implementing it is [a layer](server.md#3-writing-a-layer), which is also what
 puts it on the trail: an RPC nothing listed is audited for the same reason an
 `Add` is.
