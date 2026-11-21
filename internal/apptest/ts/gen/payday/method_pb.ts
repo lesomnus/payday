@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/method.proto.
  */
 export const file_payday_method: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvbWV0aG9kLnByb3RvEgZwYXlkYXkiPAoGTWV0aG9kEicKB2FjY291bnQYASABKAsyFi5wYXlkYXkuTWV0aG9kLkFjY291bnQaCQoHQWNjb3VudEImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH");
+  fileDesc("ChNwYXlkYXkvbWV0aG9kLnByb3RvEgZwYXlkYXkibQoGTWV0aG9kEicKB2FjY291bnQYASABKAsyFi5wYXlkYXkuTWV0aG9kLkFjY291bnQSJQoGZGlyZWN0GAIgASgLMhUucGF5ZGF5Lk1ldGhvZC5EaXJlY3QaCAoGRGlyZWN0GgkKB0FjY291bnRCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw");
 
 /**
  * Method is what payday has to be told about an RPC an app declares itself.
@@ -53,6 +53,15 @@ export type Method = Message<"payday.Method"> & {
    * @generated from field: payday.Method.Account account = 1;
    */
   account?: Method_Account | undefined;
+
+  /**
+   * Direct requires the actor to call without a device or agent representing
+   * them. Authentication must first verify representation; this cannot detect
+   * an agent reusing the person's own credential.
+   *
+   * @generated from field: payday.Method.Direct direct = 2;
+   */
+  direct?: Method_Direct | undefined;
 };
 
 /**
@@ -61,6 +70,19 @@ export type Method = Message<"payday.Method"> & {
  */
 export const MethodSchema: GenMessage<Method> = /*@__PURE__*/
   messageDesc(file_payday_method, 0);
+
+/**
+ * @generated from message payday.Method.Direct
+ */
+export type Method_Direct = Message<"payday.Method.Direct"> & {
+};
+
+/**
+ * Describes the message payday.Method.Direct.
+ * Use `create(Method_DirectSchema)` to create a new message.
+ */
+export const Method_DirectSchema: GenMessage<Method_Direct> = /*@__PURE__*/
+  messageDesc(file_payday_method, 0, 0);
 
 /**
  * Account is an RPC an account calls as itself. See [Method.account].
@@ -75,5 +97,5 @@ export type Method_Account = Message<"payday.Method.Account"> & {
  * Use `create(Method_AccountSchema)` to create a new message.
  */
 export const Method_AccountSchema: GenMessage<Method_Account> = /*@__PURE__*/
-  messageDesc(file_payday_method, 0, 0);
+  messageDesc(file_payday_method, 0, 1);
 

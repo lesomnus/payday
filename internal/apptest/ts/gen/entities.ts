@@ -81,7 +81,7 @@ export const Audit = {
 	schema: AuditSchema,
 	domain: 3,
 	key: "id",
-	ids: ["id", "tenantId", "actorId", "objectId", "actorTenantId", "counterpartTenantId"],
+	ids: ["id", "tenantId", "actorId", "callerId", "callerTenantId", "objectId", "actorTenantId", "counterpartTenantId"],
 	service: AuditService,
 } as const satisfies EntityDesc
 

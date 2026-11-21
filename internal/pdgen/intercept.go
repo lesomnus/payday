@@ -16,15 +16,16 @@ type interceptRpc struct {
 	// In and Out are the request and answer messages' Go names. For a stream,
 	// Out is what the stream sends.
 	In, Out string
-	// Stream says which of the two interceptors runs it.
+	// Stream says the server sends a stream; Client says the client does.
 	Stream bool
+	Client bool
 }
 
 // interceptRpcs is every Rpc of every entity service, taken from the contracts
 // rather than from a list, so an RPC an overlay adds is wrapped without
 // anybody coming back here -- the streaming ones too, since a layer has a shape
 // for a stream.
-func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
+func interceptRpcs(s *Schema, files []*protogen.File, clients bool) []interceptRpc {
 	by := map[string]*Entity{}
 	for _, v := range s.Sorted() {
 		by[v.GoName()+"Service"] = v
@@ -44,10 +45,9 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 
 			for _, m := range svc.Methods {
 				// A client stream has no single request to hand an
-				// interceptor and payday generates none; skipping it here
-				// rather than emitting something that would not compile is
-				// what says so.
-				if m.Desc.IsStreamingClient() {
+				// interceptor adapter. The gate needs no request and still
+				// wraps it, so it collects client streams too.
+				if m.Desc.IsStreamingClient() && !clients {
 					continue
 				}
 
@@ -58,6 +58,7 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 					In:     m.Input.GoIdent.GoName,
 					Out:    m.Output.GoIdent.GoName,
 					Stream: m.Desc.IsStreamingServer(),
+					Client: m.Desc.IsStreamingClient(),
 				})
 			}
 		}
@@ -99,7 +100,7 @@ func interceptRpcs(s *Schema, files []*protogen.File) []interceptRpc {
 // decides whether it does. Above the gate it sees what the caller asked for;
 // below, it sees what the app did about it.
 func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath, files []*protogen.File) {
-	vs := interceptRpcs(s, files)
+	vs := interceptRpcs(s, files, false)
 	if len(vs) == 0 {
 		return
 	}

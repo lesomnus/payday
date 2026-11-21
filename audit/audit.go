@@ -52,6 +52,12 @@ type Row struct {
 	Tenant pdid.Id
 	Actor  pdid.Id
 
+	// Caller is the device or agent credential holder on a represented call.
+	// These are recorded facts, not additional grants to read this trail.
+	Caller       pdid.Id
+	CallerTenant pdid.Id
+	Presence     string
+
 	// Trace is the trace the request belonged to, empty if it was not traced.
 	// Sixteen bytes as OpenTelemetry spells one, which is not a UUID however
 	// alike they look.
@@ -86,6 +92,26 @@ func (v Row) CounterpartBytes() []byte {
 	}
 
 	return v.Counterpart.Bytes()
+}
+
+// CallerBytes is nil on a direct call, so nullable columns remain NULL.
+func (v Row) CallerBytes() []byte {
+	if v.Caller.IsZero() {
+		return nil
+	}
+	return v.Caller.Bytes()
+}
+func (v Row) CallerTenantBytes() []byte {
+	if v.Caller.IsZero() {
+		return nil
+	}
+	return v.CallerTenant.Bytes()
+}
+func (v Row) PresenceValue() *string {
+	if v.Caller.IsZero() {
+		return nil
+	}
+	return &v.Presence
 }
 
 // concerning is where [Concerning] keeps it.
@@ -166,6 +192,11 @@ func Of(ctx context.Context, method string, key any, patch proto.Message) (Row, 
 	if f, ok := frame.From(ctx); ok {
 		v.Actor = f.Actor
 		v.Tenant = f.Tenant
+		if f.Caller != nil {
+			v.Caller = f.Caller.Actor
+			v.CallerTenant = f.Caller.Tenant
+			v.Presence = f.Presence
+		}
 	}
 
 	return v, nil

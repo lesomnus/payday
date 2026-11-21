@@ -69,8 +69,17 @@ func Decide(ctx context.Context, p Policy, method string) (context.Context, erro
 		// behind it that reads a scope.
 		return ctx, nil
 	}
+	if err := Direct(ctx, method); err != nil {
+		return nil, err
+	}
 
 	c := Call{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, Row: f.Row, Action: method, Account: f.Account, AsAccount: f.AsAccount()}
+	if f.Caller != nil {
+		subject := f.Principal()
+		c.Caller = f.Caller
+		c.Subject = &subject
+		c.Presence = f.Presence
+	}
 	if f.AsAccount() {
 		// A call an account makes as itself, which is of the methods its
 		// frame was made for and no other -- before a policy is asked, since
@@ -97,6 +106,22 @@ func Decide(ctx context.Context, p Policy, method string) (context.Context, erro
 	t, err := holds(ctx, p, f, c)
 	if err != nil {
 		return nil, err
+	}
+	if f.Caller != nil {
+		caller := f.Caller.Frame(f.Grant)
+		as := frame.Into(ctx, caller)
+		other := c
+		other.Actor, other.Tenant, other.Name, other.Row, other.Account = caller.Actor, caller.Tenant, caller.Name, caller.Row, caller.Account
+		if p != nil {
+			if err := p.May(as, other); err != nil {
+				return nil, err
+			}
+		}
+		allowed, err := holds(as, p, caller, other)
+		if err != nil {
+			return nil, err
+		}
+		t = t.Intersect(allowed)
 	}
 
 	// The credential last, because it can only take away. A token naming every

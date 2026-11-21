@@ -75,6 +75,12 @@ message Audit {
   // anything.
   bytes actor_id = 8 [(orm.field) = {type: TYPE_UUID}];
 
+  // The credential holder on a represented call. NULL for a direct call.
+  // These facts do not widen who may read the trail.
+  bytes caller_id = 23 [(orm.field) = {type: TYPE_UUID nullable: true}];
+  bytes caller_tenant_id = 24 [(orm.field) = {type: TYPE_UUID nullable: true}];
+  string presence = 25 [(orm.field) = {nullable: true}];
+
   // The trace the request belonged to, empty if it was not traced. Sixteen
   // bytes as OpenTelemetry spells one, which is not a UUID however alike they
   // look, so it is stored as what it is.

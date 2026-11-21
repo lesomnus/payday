@@ -900,6 +900,57 @@ func (m *AuditMutation) OldActorId(ctx context.Context) (v uuid.UUID, err error)
 	return oldValue.ActorId, nil
 }
 
+// OldCallerId returns the old "caller_id" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldCallerId(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldCallerId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldCallerId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCallerId: %w", err)
+	}
+	return oldValue.CallerId, nil
+}
+
+// OldCallerTenantId returns the old "caller_tenant_id" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldCallerTenantId(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldCallerTenantId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldCallerTenantId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCallerTenantId: %w", err)
+	}
+	return oldValue.CallerTenantId, nil
+}
+
+// OldPresence returns the old "presence" field's value of the Audit entity.
+// If the Audit object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuditMutation) OldPresence(ctx context.Context) (v *string, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldPresence is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldPresence requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPresence: %w", err)
+	}
+	return oldValue.Presence, nil
+}
+
 // OldTraceId returns the old "trace_id" field's value of the Audit entity.
 // If the Audit object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
@@ -1113,6 +1164,12 @@ func (m *AuditMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldTenantId(ctx)
 	case audit.FieldActorId:
 		return m.OldActorId(ctx)
+	case audit.FieldCallerId:
+		return m.OldCallerId(ctx)
+	case audit.FieldCallerTenantId:
+		return m.OldCallerTenantId(ctx)
+	case audit.FieldPresence:
+		return m.OldPresence(ctx)
 	case audit.FieldTraceId:
 		return m.OldTraceId(ctx)
 	case audit.FieldAction:

@@ -187,6 +187,7 @@ type Entity struct {
 type Schema struct {
 	Entities  []*Entity
 	Resources []*ReadResource
+	rpcs      []interceptRpc
 
 	// Tenant is the entity a wall is made of, and nil for a schema that has
 	// none. A schema with a tenanted entity and no tenant does not get this
@@ -408,6 +409,7 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 		return nil, err
 	}
 
+	s.rpcs = interceptRpcs(s, files, true)
 	return s, nil
 }
 

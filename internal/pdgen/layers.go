@@ -136,15 +136,9 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("}")
 	g.P("")
 
-	// In an app whose holders are memberships of accounts, what the gate
-	// answers every service in: refused to a call an account makes as itself,
-	// but for the methods that are its own. Every accessor below answers in
-	// it, and [emitGateAccounts] writes one for each service the gate says
-	// nothing else of.
-	wrap := ""
-	if s.Accounts != nil {
-		wrap = "accounts"
-	}
+	// Method declarations also guard in-process calls through every accessor.
+	// Keeping this outside the app layers prevents an overlay from bypassing it.
+	wrap := "guarded"
 	served := map[string]bool{"Tenant": true, "Holder": true}
 
 	// Tenant: neither putting one up nor taking one down is asked for from
@@ -1023,6 +1017,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 		g.P("			SetDigest(digest).")
 		g.P("			SetDigestFields(covered).")
 		g.P("			SetDateCreated(at.Created)")
+		g.P("		if !v.Caller.IsZero() { q.SetCallerId(v.Caller.Uuid()).SetCallerTenantId(v.CallerTenant.Uuid()).SetPresence(v.Presence) }")
 		g.P("		if !v.Counterpart.IsZero() {")
 		g.P("			q.SetCounterpartTenantId(", pkgUuid.Ident("UUID"), "(v.Counterpart))")
 		g.P("		}")
@@ -1041,6 +1036,7 @@ func emitRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.G
 	g.P("		TenantId:      tenant[:],")
 	g.P("		ActorTenantId: v.Tenant.Bytes(),")
 	g.P("		ActorId:       v.Actor.Bytes(),")
+	g.P("		CallerId: v.CallerBytes(), CallerTenantId: v.CallerTenantBytes(), Presence: v.PresenceValue(),")
 	// The three columns payday computes that are NOT NULL; see [emitNotNull]
 	// for why they are normalized here rather than where each is produced.
 	g.P("		TraceId:       notNull(v.Trace),")
@@ -1102,6 +1098,7 @@ func keepsTrail(s *Schema) bool {
 		"action": true, "object_id": true, "patch": true, "date_created": true,
 		"actor_tenant_id": true, "value": true, "counterpart_tenant_id": true,
 		"domain": true, "fields": true, "digest": true, "digest_fields": true,
+		"caller_id": true, "caller_tenant_id": true, "presence": true,
 	}
 	n := 0
 	for p := range v.Props() {

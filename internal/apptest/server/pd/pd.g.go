@@ -4516,7 +4516,7 @@ type gateTenant struct {
 func (s Gate) Tenant() apptest.TenantServiceServer {
 	v := gateTenant{s, s.Next().Tenant()}
 	v.TenantServiceServer = bare.TenantWithAddRule(v.TenantServiceServer, v.admit)
-	return accountsTenant{v}
+	return guardedTenant{v}
 }
 
 // admit refuses every row: no tenant is served by an Add, nor by an
@@ -4540,7 +4540,7 @@ type gateHolder struct {
 func (s Gate) Holder() apptest.HolderServiceServer {
 	v := gateHolder{s, s.Next().Holder()}
 	v.HolderServiceServer = bare.HolderWithAddRule(v.HolderServiceServer, v.admit)
-	return accountsHolder{v}
+	return guardedHolder{v}
 }
 
 // admit is the one thing about a holder this layer still says, and it is here
@@ -4705,7 +4705,7 @@ type gateCell struct {
 func (s Gate) Cell() apptest.CellServiceServer {
 	v := gateCell{s, s.Next().Cell()}
 	v.CellServiceServer = bare.CellWithAddRule(v.CellServiceServer, v.admit)
-	return accountsCell{v}
+	return guardedCell{v}
 }
 
 // admit refuses a Cell put into a Tenant this caller cannot see.
@@ -4749,7 +4749,7 @@ type gateEvent struct {
 func (s Gate) Event() apptest.EventServiceServer {
 	v := gateEvent{s, s.Next().Event()}
 	v.EventServiceServer = bare.EventWithAddRule(v.EventServiceServer, v.admit)
-	return accountsEvent{v}
+	return guardedEvent{v}
 }
 
 // admit refuses a Event put into a Tenant this caller cannot see.
@@ -4793,7 +4793,7 @@ type gateFact struct {
 func (s Gate) Fact() apptest.FactServiceServer {
 	v := gateFact{s, s.Next().Fact()}
 	v.FactServiceServer = bare.FactWithAddRule(v.FactServiceServer, v.admit)
-	return accountsFact{v}
+	return guardedFact{v}
 }
 
 // admit refuses a Fact put into a Tenant this caller cannot see.
@@ -4841,7 +4841,7 @@ type gateJob struct {
 func (s Gate) Job() apptest.JobServiceServer {
 	v := gateJob{s, s.Next().Job()}
 	v.JobServiceServer = bare.JobWithAddRule(v.JobServiceServer, v.admit)
-	return accountsJob{v}
+	return guardedJob{v}
 }
 
 // admit refuses a Job put into a Tenant this caller cannot see.
@@ -4885,7 +4885,7 @@ type gateJoint struct {
 func (s Gate) Joint() apptest.JointServiceServer {
 	v := gateJoint{s, s.Next().Joint()}
 	v.JointServiceServer = bare.JointWithAddRule(v.JointServiceServer, v.admit)
-	return accountsJoint{v}
+	return guardedJoint{v}
 }
 
 // admit refuses a Joint put into a Robot this caller cannot see.
@@ -4929,7 +4929,7 @@ type gateMachine struct {
 func (s Gate) Machine() apptest.MachineServiceServer {
 	v := gateMachine{s, s.Next().Machine()}
 	v.MachineServiceServer = bare.MachineWithAddRule(v.MachineServiceServer, v.admit)
-	return accountsMachine{v}
+	return guardedMachine{v}
 }
 
 // admit refuses a Machine put into a Tenant this caller cannot see.
@@ -5062,7 +5062,7 @@ type gatePairing struct {
 func (s Gate) Pairing() apptest.PairingServiceServer {
 	v := gatePairing{s, s.Next().Pairing()}
 	v.PairingServiceServer = bare.PairingWithAddRule(v.PairingServiceServer, v.admit)
-	return accountsPairing{v}
+	return guardedPairing{v}
 }
 
 // admit refuses a Pairing put into a Robot this caller cannot see.
@@ -5121,7 +5121,7 @@ type gateReading struct {
 func (s Gate) Reading() apptest.ReadingServiceServer {
 	v := gateReading{s, s.Next().Reading()}
 	v.ReadingServiceServer = bare.ReadingWithAddRule(v.ReadingServiceServer, v.admit)
-	return accountsReading{v}
+	return guardedReading{v}
 }
 
 // admit refuses a Reading put into a Robot this caller cannot see.
@@ -5165,7 +5165,7 @@ type gateRobot struct {
 func (s Gate) Robot() apptest.RobotServiceServer {
 	v := gateRobot{s, s.Next().Robot()}
 	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
-	return accountsRobot{v}
+	return guardedRobot{v}
 }
 
 // admit refuses a Robot put into a Tenant this caller cannot see.
@@ -5302,7 +5302,7 @@ type gateStint struct {
 func (s Gate) Stint() apptest.StintServiceServer {
 	v := gateStint{s, s.Next().Stint()}
 	v.StintServiceServer = bare.StintWithAddRule(v.StintServiceServer, v.admit)
-	return accountsStint{v}
+	return guardedStint{v}
 }
 
 // admit refuses a Stint put into a Tenant this caller cannot see.
@@ -5338,12 +5338,13 @@ func (s gateStint) admit(ctx context.Context, req *apptest.StintAddRequest) (*ap
 	return req, nil
 }
 
-// accountsTenant is TenantService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsTenant struct{ apptest.TenantServiceServer }
+// guardedTenant enforces method declarations on in-process calls too.
+type guardedTenant struct{ apptest.TenantServiceServer }
 
-func (s accountsTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+func (s guardedTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.Tenant, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5351,7 +5352,10 @@ func (s accountsTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) 
 	return s.TenantServiceServer.Add(ctx, req)
 }
 
-func (s accountsTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
+func (s guardedTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5359,7 +5363,10 @@ func (s accountsTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) 
 	return s.TenantServiceServer.Get(ctx, req)
 }
 
-func (s accountsTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
+func (s guardedTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5367,7 +5374,10 @@ func (s accountsTenant) Patch(ctx context.Context, req *apptest.TenantPatchReque
 	return s.TenantServiceServer.Patch(ctx, req)
 }
 
-func (s accountsTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
+func (s guardedTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5375,7 +5385,10 @@ func (s accountsTenant) Apply(ctx context.Context, req *apptest.TenantApplyReque
 	return s.TenantServiceServer.Apply(ctx, req)
 }
 
-func (s accountsTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
+func (s guardedTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5383,7 +5396,10 @@ func (s accountsTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*app
 	return s.TenantServiceServer.Erase(ctx, req)
 }
 
-func (s accountsTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
+func (s guardedTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
+	if err := gate.Direct(ctx, apptest.TenantService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.TenantService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5392,15 +5408,16 @@ func (s accountsTenant) List(ctx context.Context, req *apptest.TenantListRequest
 }
 
 func (s Gate) Thing() apptest.ThingServiceServer {
-	return accountsThing{s.Next().Thing()}
+	return guardedThing{s.Next().Thing()}
 }
 
-// accountsThing is ThingService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsThing struct{ apptest.ThingServiceServer }
+// guardedThing enforces method declarations on in-process calls too.
+type guardedThing struct{ apptest.ThingServiceServer }
 
-func (s accountsThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+func (s guardedThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*apptest.Thing, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5408,7 +5425,10 @@ func (s accountsThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*
 	return s.ThingServiceServer.Add(ctx, req)
 }
 
-func (s accountsThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
+func (s guardedThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5416,7 +5436,10 @@ func (s accountsThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*
 	return s.ThingServiceServer.Get(ctx, req)
 }
 
-func (s accountsThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
+func (s guardedThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5424,7 +5447,10 @@ func (s accountsThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest
 	return s.ThingServiceServer.Patch(ctx, req)
 }
 
-func (s accountsThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+func (s guardedThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5432,7 +5458,10 @@ func (s accountsThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest
 	return s.ThingServiceServer.Apply(ctx, req)
 }
 
-func (s accountsThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
+func (s guardedThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.ThingEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5440,7 +5469,10 @@ func (s accountsThing) Erase(ctx context.Context, req *apptest.ThingRef) (*appte
 	return s.ThingServiceServer.Erase(ctx, req)
 }
 
-func (s accountsThing) List(ctx context.Context, req *apptest.ThingListRequest) (*apptest.ThingListResponse, error) {
+func (s guardedThing) List(ctx context.Context, req *apptest.ThingListRequest) (*apptest.ThingListResponse, error) {
+	if err := gate.Direct(ctx, apptest.ThingService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ThingService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5448,12 +5480,13 @@ func (s accountsThing) List(ctx context.Context, req *apptest.ThingListRequest) 
 	return s.ThingServiceServer.List(ctx, req)
 }
 
-// accountsCell is CellService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsCell struct{ apptest.CellServiceServer }
+// guardedCell enforces method declarations on in-process calls too.
+type guardedCell struct{ apptest.CellServiceServer }
 
-func (s accountsCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+func (s guardedCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptest.Cell, error) {
+	if err := gate.Direct(ctx, apptest.CellService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.CellService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5461,7 +5494,10 @@ func (s accountsCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*ap
 	return s.CellServiceServer.Add(ctx, req)
 }
 
-func (s accountsCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
+func (s guardedCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
+	if err := gate.Direct(ctx, apptest.CellService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.CellService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5469,7 +5505,10 @@ func (s accountsCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*ap
 	return s.CellServiceServer.Get(ctx, req)
 }
 
-func (s accountsCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+func (s guardedCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
+	if err := gate.Direct(ctx, apptest.CellService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.CellService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5477,7 +5516,10 @@ func (s accountsCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) 
 	return s.CellServiceServer.Patch(ctx, req)
 }
 
-func (s accountsCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+func (s guardedCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	if err := gate.Direct(ctx, apptest.CellService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.CellService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5485,7 +5527,10 @@ func (s accountsCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) 
 	return s.CellServiceServer.Apply(ctx, req)
 }
 
-func (s accountsCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
+func (s guardedCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.CellEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.CellService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.CellService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5493,12 +5538,13 @@ func (s accountsCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest
 	return s.CellServiceServer.Erase(ctx, req)
 }
 
-// accountsRobot is RobotService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsRobot struct{ apptest.RobotServiceServer }
+// guardedRobot enforces method declarations on in-process calls too.
+type guardedRobot struct{ apptest.RobotServiceServer }
 
-func (s accountsRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+func (s guardedRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5506,7 +5552,10 @@ func (s accountsRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*
 	return s.RobotServiceServer.Add(ctx, req)
 }
 
-func (s accountsRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+func (s guardedRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest) (*apptest.RobotAddManyResponse, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_AddMany_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_AddMany_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5514,7 +5563,10 @@ func (s accountsRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyReq
 	return s.RobotServiceServer.AddMany(ctx, req)
 }
 
-func (s accountsRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
+func (s guardedRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5522,7 +5574,10 @@ func (s accountsRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*
 	return s.RobotServiceServer.Get(ctx, req)
 }
 
-func (s accountsRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+func (s guardedRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5530,7 +5585,10 @@ func (s accountsRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest
 	return s.RobotServiceServer.Patch(ctx, req)
 }
 
-func (s accountsRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+func (s guardedRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5538,7 +5596,10 @@ func (s accountsRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest
 	return s.RobotServiceServer.Apply(ctx, req)
 }
 
-func (s accountsRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
+func (s guardedRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5546,7 +5607,10 @@ func (s accountsRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*appte
 	return s.RobotServiceServer.Erase(ctx, req)
 }
 
-func (s accountsRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
+func (s guardedRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*apptest.RobotListResponse, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5554,7 +5618,10 @@ func (s accountsRobot) List(ctx context.Context, req *apptest.RobotListRequest) 
 	return s.RobotServiceServer.List(ctx, req)
 }
 
-func (s accountsRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
+func (s guardedRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
+	if err := gate.Direct(out.Context(), apptest.RobotService_Watch_FullMethodName); err != nil {
+		return err
+	}
 	if err := gate.AsAccount(out.Context(), apptest.RobotService_Watch_FullMethodName, AccountMethod); err != nil {
 		return err
 	}
@@ -5562,7 +5629,10 @@ func (s accountsRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStre
 	return s.RobotServiceServer.Watch(req, out)
 }
 
-func (s accountsRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
+func (s guardedRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Move_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.RobotService_Move_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5570,12 +5640,13 @@ func (s accountsRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) 
 	return s.RobotServiceServer.Move(ctx, req)
 }
 
-// accountsPairing is PairingService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsPairing struct{ apptest.PairingServiceServer }
+// guardedPairing enforces method declarations on in-process calls too.
+type guardedPairing struct{ apptest.PairingServiceServer }
 
-func (s accountsPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+func (s guardedPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	if err := gate.Direct(ctx, apptest.PairingService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.PairingService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5583,7 +5654,10 @@ func (s accountsPairing) Add(ctx context.Context, req *apptest.PairingAddRequest
 	return s.PairingServiceServer.Add(ctx, req)
 }
 
-func (s accountsPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+func (s guardedPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+	if err := gate.Direct(ctx, apptest.PairingService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.PairingService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5591,7 +5665,10 @@ func (s accountsPairing) Get(ctx context.Context, req *apptest.PairingGetRequest
 	return s.PairingServiceServer.Get(ctx, req)
 }
 
-func (s accountsPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+func (s guardedPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	if err := gate.Direct(ctx, apptest.PairingService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.PairingService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5599,7 +5676,10 @@ func (s accountsPairing) Patch(ctx context.Context, req *apptest.PairingPatchReq
 	return s.PairingServiceServer.Patch(ctx, req)
 }
 
-func (s accountsPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+func (s guardedPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
+	if err := gate.Direct(ctx, apptest.PairingService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.PairingService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5607,7 +5687,10 @@ func (s accountsPairing) Apply(ctx context.Context, req *apptest.PairingApplyReq
 	return s.PairingServiceServer.Apply(ctx, req)
 }
 
-func (s accountsPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
+func (s guardedPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.PairingService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.PairingService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5615,12 +5698,13 @@ func (s accountsPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*a
 	return s.PairingServiceServer.Erase(ctx, req)
 }
 
-// accountsJoint is JointService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsJoint struct{ apptest.JointServiceServer }
+// guardedJoint enforces method declarations on in-process calls too.
+type guardedJoint struct{ apptest.JointServiceServer }
 
-func (s accountsJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+func (s guardedJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	if err := gate.Direct(ctx, apptest.JointService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JointService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5628,7 +5712,10 @@ func (s accountsJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*
 	return s.JointServiceServer.Add(ctx, req)
 }
 
-func (s accountsJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
+func (s guardedJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
+	if err := gate.Direct(ctx, apptest.JointService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JointService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5636,7 +5723,10 @@ func (s accountsJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*
 	return s.JointServiceServer.Get(ctx, req)
 }
 
-func (s accountsJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+func (s guardedJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	if err := gate.Direct(ctx, apptest.JointService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JointService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5644,7 +5734,10 @@ func (s accountsJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest
 	return s.JointServiceServer.Patch(ctx, req)
 }
 
-func (s accountsJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
+func (s guardedJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
+	if err := gate.Direct(ctx, apptest.JointService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JointService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5652,7 +5745,10 @@ func (s accountsJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest
 	return s.JointServiceServer.Apply(ctx, req)
 }
 
-func (s accountsJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
+func (s guardedJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.JointService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JointService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5661,15 +5757,16 @@ func (s accountsJoint) Erase(ctx context.Context, req *apptest.JointRef) (*appte
 }
 
 func (s Gate) Fleet() apptest.FleetServiceServer {
-	return accountsFleet{s.Next().Fleet()}
+	return guardedFleet{s.Next().Fleet()}
 }
 
-// accountsFleet is FleetService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsFleet struct{ apptest.FleetServiceServer }
+// guardedFleet enforces method declarations on in-process calls too.
+type guardedFleet struct{ apptest.FleetServiceServer }
 
-func (s accountsFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
+func (s guardedFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*apptest.Fleet, error) {
+	if err := gate.Direct(ctx, apptest.FleetService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FleetService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5677,7 +5774,10 @@ func (s accountsFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*
 	return s.FleetServiceServer.Add(ctx, req)
 }
 
-func (s accountsFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
+func (s guardedFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
+	if err := gate.Direct(ctx, apptest.FleetService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FleetService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5685,7 +5785,10 @@ func (s accountsFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*
 	return s.FleetServiceServer.Get(ctx, req)
 }
 
-func (s accountsFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+func (s guardedFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
+	if err := gate.Direct(ctx, apptest.FleetService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FleetService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5693,7 +5796,10 @@ func (s accountsFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest
 	return s.FleetServiceServer.Patch(ctx, req)
 }
 
-func (s accountsFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
+func (s guardedFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
+	if err := gate.Direct(ctx, apptest.FleetService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FleetService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5701,7 +5807,10 @@ func (s accountsFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest
 	return s.FleetServiceServer.Apply(ctx, req)
 }
 
-func (s accountsFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
+func (s guardedFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.FleetService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FleetService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5709,12 +5818,13 @@ func (s accountsFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*appte
 	return s.FleetServiceServer.Erase(ctx, req)
 }
 
-// accountsReading is ReadingService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsReading struct{ apptest.ReadingServiceServer }
+// guardedReading enforces method declarations on in-process calls too.
+type guardedReading struct{ apptest.ReadingServiceServer }
 
-func (s accountsReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+func (s guardedReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5722,7 +5832,10 @@ func (s accountsReading) Add(ctx context.Context, req *apptest.ReadingAddRequest
 	return s.ReadingServiceServer.Add(ctx, req)
 }
 
-func (s accountsReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+func (s guardedReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_AddMany_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_AddMany_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5730,7 +5843,10 @@ func (s accountsReading) AddMany(ctx context.Context, req *apptest.ReadingAddMan
 	return s.ReadingServiceServer.AddMany(ctx, req)
 }
 
-func (s accountsReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+func (s guardedReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5738,7 +5854,10 @@ func (s accountsReading) Get(ctx context.Context, req *apptest.ReadingGetRequest
 	return s.ReadingServiceServer.Get(ctx, req)
 }
 
-func (s accountsReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+func (s guardedReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5746,7 +5865,10 @@ func (s accountsReading) Patch(ctx context.Context, req *apptest.ReadingPatchReq
 	return s.ReadingServiceServer.Patch(ctx, req)
 }
 
-func (s accountsReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+func (s guardedReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5754,7 +5876,10 @@ func (s accountsReading) Apply(ctx context.Context, req *apptest.ReadingApplyReq
 	return s.ReadingServiceServer.Apply(ctx, req)
 }
 
-func (s accountsReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
+func (s guardedReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.ReadingService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.ReadingService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5762,12 +5887,13 @@ func (s accountsReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*a
 	return s.ReadingServiceServer.Erase(ctx, req)
 }
 
-// accountsJob is JobService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsJob struct{ apptest.JobServiceServer }
+// guardedJob enforces method declarations on in-process calls too.
+type guardedJob struct{ apptest.JobServiceServer }
 
-func (s accountsJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+func (s guardedJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*apptest.Job, error) {
+	if err := gate.Direct(ctx, apptest.JobService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JobService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5775,7 +5901,10 @@ func (s accountsJob) Add(ctx context.Context, req *apptest.JobAddRequest) (*appt
 	return s.JobServiceServer.Add(ctx, req)
 }
 
-func (s accountsJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+func (s guardedJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	if err := gate.Direct(ctx, apptest.JobService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JobService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5783,7 +5912,10 @@ func (s accountsJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*appt
 	return s.JobServiceServer.Get(ctx, req)
 }
 
-func (s accountsJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+func (s guardedJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
+	if err := gate.Direct(ctx, apptest.JobService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JobService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5791,7 +5923,10 @@ func (s accountsJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*
 	return s.JobServiceServer.Patch(ctx, req)
 }
 
-func (s accountsJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+func (s guardedJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
+	if err := gate.Direct(ctx, apptest.JobService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JobService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5799,7 +5934,10 @@ func (s accountsJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*
 	return s.JobServiceServer.Apply(ctx, req)
 }
 
-func (s accountsJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+func (s guardedJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.JobService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.JobService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5807,12 +5945,13 @@ func (s accountsJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.J
 	return s.JobServiceServer.Erase(ctx, req)
 }
 
-// accountsMachine is MachineService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsMachine struct{ apptest.MachineServiceServer }
+// guardedMachine enforces method declarations on in-process calls too.
+type guardedMachine struct{ apptest.MachineServiceServer }
 
-func (s accountsMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+func (s guardedMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+	if err := gate.Direct(ctx, apptest.MachineService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.MachineService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5820,7 +5959,10 @@ func (s accountsMachine) Add(ctx context.Context, req *apptest.MachineAddRequest
 	return s.MachineServiceServer.Add(ctx, req)
 }
 
-func (s accountsMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+func (s guardedMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+	if err := gate.Direct(ctx, apptest.MachineService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.MachineService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5828,7 +5970,10 @@ func (s accountsMachine) Get(ctx context.Context, req *apptest.MachineGetRequest
 	return s.MachineServiceServer.Get(ctx, req)
 }
 
-func (s accountsMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+func (s guardedMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	if err := gate.Direct(ctx, apptest.MachineService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.MachineService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5836,7 +5981,10 @@ func (s accountsMachine) Patch(ctx context.Context, req *apptest.MachinePatchReq
 	return s.MachineServiceServer.Patch(ctx, req)
 }
 
-func (s accountsMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+func (s guardedMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
+	if err := gate.Direct(ctx, apptest.MachineService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.MachineService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5844,7 +5992,10 @@ func (s accountsMachine) Apply(ctx context.Context, req *apptest.MachineApplyReq
 	return s.MachineServiceServer.Apply(ctx, req)
 }
 
-func (s accountsMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+func (s guardedMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.MachineService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.MachineService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5853,15 +6004,16 @@ func (s accountsMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*a
 }
 
 func (s Gate) Access() apptest.AccessServiceServer {
-	return accountsAccess{s.Next().Access()}
+	return guardedAccess{s.Next().Access()}
 }
 
-// accountsAccess is AccessService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsAccess struct{ apptest.AccessServiceServer }
+// guardedAccess enforces method declarations on in-process calls too.
+type guardedAccess struct{ apptest.AccessServiceServer }
 
-func (s accountsAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+func (s guardedAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+	if err := gate.Direct(ctx, apptest.AccessService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AccessService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5869,7 +6021,10 @@ func (s accountsAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) 
 	return s.AccessServiceServer.Get(ctx, req)
 }
 
-func (s accountsAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+func (s guardedAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*apptest.AccessListResponse, error) {
+	if err := gate.Direct(ctx, apptest.AccessService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AccessService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5878,15 +6033,16 @@ func (s accountsAccess) List(ctx context.Context, req *apptest.AccessListRequest
 }
 
 func (s Gate) Audit() apptest.AuditServiceServer {
-	return accountsAudit{s.Next().Audit()}
+	return guardedAudit{s.Next().Audit()}
 }
 
-// accountsAudit is AuditService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsAudit struct{ apptest.AuditServiceServer }
+// guardedAudit enforces method declarations on in-process calls too.
+type guardedAudit struct{ apptest.AuditServiceServer }
 
-func (s accountsAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+func (s guardedAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*apptest.Audit, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5894,7 +6050,10 @@ func (s accountsAudit) Add(ctx context.Context, req *apptest.AuditAddRequest) (*
 	return s.AuditServiceServer.Add(ctx, req)
 }
 
-func (s accountsAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
+func (s guardedAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5902,7 +6061,10 @@ func (s accountsAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*
 	return s.AuditServiceServer.Get(ctx, req)
 }
 
-func (s accountsAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+func (s guardedAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5910,7 +6072,10 @@ func (s accountsAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest
 	return s.AuditServiceServer.Patch(ctx, req)
 }
 
-func (s accountsAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+func (s guardedAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5918,7 +6083,10 @@ func (s accountsAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest
 	return s.AuditServiceServer.Apply(ctx, req)
 }
 
-func (s accountsAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
+func (s guardedAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5926,7 +6094,10 @@ func (s accountsAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*appte
 	return s.AuditServiceServer.Erase(ctx, req)
 }
 
-func (s accountsAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
+func (s guardedAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
+	if err := gate.Direct(ctx, apptest.AuditService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.AuditService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5934,12 +6105,13 @@ func (s accountsAudit) List(ctx context.Context, req *apptest.AuditListRequest) 
 	return s.AuditServiceServer.List(ctx, req)
 }
 
-// accountsEvent is EventService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsEvent struct{ apptest.EventServiceServer }
+// guardedEvent enforces method declarations on in-process calls too.
+type guardedEvent struct{ apptest.EventServiceServer }
 
-func (s accountsEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+func (s guardedEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*apptest.Event, error) {
+	if err := gate.Direct(ctx, apptest.EventService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.EventService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5947,7 +6119,10 @@ func (s accountsEvent) Add(ctx context.Context, req *apptest.EventAddRequest) (*
 	return s.EventServiceServer.Add(ctx, req)
 }
 
-func (s accountsEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+func (s guardedEvent) AddMany(ctx context.Context, req *apptest.EventAddManyRequest) (*apptest.EventAddManyResponse, error) {
+	if err := gate.Direct(ctx, apptest.EventService_AddMany_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.EventService_AddMany_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5955,7 +6130,10 @@ func (s accountsEvent) AddMany(ctx context.Context, req *apptest.EventAddManyReq
 	return s.EventServiceServer.AddMany(ctx, req)
 }
 
-func (s accountsEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+func (s guardedEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+	if err := gate.Direct(ctx, apptest.EventService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.EventService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5963,7 +6141,10 @@ func (s accountsEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*
 	return s.EventServiceServer.Get(ctx, req)
 }
 
-func (s accountsEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+func (s guardedEvent) List(ctx context.Context, req *apptest.EventListRequest) (*apptest.EventListResponse, error) {
+	if err := gate.Direct(ctx, apptest.EventService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.EventService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5971,12 +6152,13 @@ func (s accountsEvent) List(ctx context.Context, req *apptest.EventListRequest) 
 	return s.EventServiceServer.List(ctx, req)
 }
 
-// accountsFact is FactService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsFact struct{ apptest.FactServiceServer }
+// guardedFact enforces method declarations on in-process calls too.
+type guardedFact struct{ apptest.FactServiceServer }
 
-func (s accountsFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+func (s guardedFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*apptest.Fact, error) {
+	if err := gate.Direct(ctx, apptest.FactService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5984,7 +6166,10 @@ func (s accountsFact) Add(ctx context.Context, req *apptest.FactAddRequest) (*ap
 	return s.FactServiceServer.Add(ctx, req)
 }
 
-func (s accountsFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+func (s guardedFact) AddMany(ctx context.Context, req *apptest.FactAddManyRequest) (*apptest.FactAddManyResponse, error) {
+	if err := gate.Direct(ctx, apptest.FactService_AddMany_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_AddMany_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -5992,7 +6177,10 @@ func (s accountsFact) AddMany(ctx context.Context, req *apptest.FactAddManyReque
 	return s.FactServiceServer.AddMany(ctx, req)
 }
 
-func (s accountsFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+func (s guardedFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+	if err := gate.Direct(ctx, apptest.FactService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6000,7 +6188,10 @@ func (s accountsFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*ap
 	return s.FactServiceServer.Get(ctx, req)
 }
 
-func (s accountsFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+func (s guardedFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
+	if err := gate.Direct(ctx, apptest.FactService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6008,7 +6199,10 @@ func (s accountsFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) 
 	return s.FactServiceServer.Patch(ctx, req)
 }
 
-func (s accountsFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+func (s guardedFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
+	if err := gate.Direct(ctx, apptest.FactService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6016,7 +6210,10 @@ func (s accountsFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) 
 	return s.FactServiceServer.Apply(ctx, req)
 }
 
-func (s accountsFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+func (s guardedFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
+	if err := gate.Direct(ctx, apptest.FactService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.FactService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6024,12 +6221,13 @@ func (s accountsFact) List(ctx context.Context, req *apptest.FactListRequest) (*
 	return s.FactServiceServer.List(ctx, req)
 }
 
-// accountsHolder is HolderService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsHolder struct{ apptest.HolderServiceServer }
+// guardedHolder enforces method declarations on in-process calls too.
+type guardedHolder struct{ apptest.HolderServiceServer }
 
-func (s accountsHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+func (s guardedHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6037,7 +6235,10 @@ func (s accountsHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) 
 	return s.HolderServiceServer.Add(ctx, req)
 }
 
-func (s accountsHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+func (s guardedHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6045,7 +6246,10 @@ func (s accountsHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) 
 	return s.HolderServiceServer.Get(ctx, req)
 }
 
-func (s accountsHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+func (s guardedHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6053,7 +6257,10 @@ func (s accountsHolder) Patch(ctx context.Context, req *apptest.HolderPatchReque
 	return s.HolderServiceServer.Patch(ctx, req)
 }
 
-func (s accountsHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+func (s guardedHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6061,7 +6268,10 @@ func (s accountsHolder) Apply(ctx context.Context, req *apptest.HolderApplyReque
 	return s.HolderServiceServer.Apply(ctx, req)
 }
 
-func (s accountsHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
+func (s guardedHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6069,7 +6279,10 @@ func (s accountsHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*app
 	return s.HolderServiceServer.Erase(ctx, req)
 }
 
-func (s accountsHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
+func (s guardedHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_List_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_List_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6077,7 +6290,10 @@ func (s accountsHolder) List(ctx context.Context, req *apptest.HolderListRequest
 	return s.HolderServiceServer.List(ctx, req)
 }
 
-func (s accountsHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
+func (s guardedHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
+	if err := gate.Direct(out.Context(), apptest.HolderService_Watch_FullMethodName); err != nil {
+		return err
+	}
 	if err := gate.AsAccount(out.Context(), apptest.HolderService_Watch_FullMethodName, AccountMethod); err != nil {
 		return err
 	}
@@ -6085,7 +6301,10 @@ func (s accountsHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerSt
 	return s.HolderServiceServer.Watch(req, out)
 }
 
-func (s accountsHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
+func (s guardedHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Memberships_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.HolderService_Memberships_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6094,17 +6313,18 @@ func (s accountsHolder) Memberships(ctx context.Context, req *apptest.HolderMemb
 }
 
 func (s Gate) NotificationRecord() apptest.NotificationRecordServiceServer {
-	return accountsNotificationRecord{s.Next().NotificationRecord()}
+	return guardedNotificationRecord{s.Next().NotificationRecord()}
 }
 
-// accountsNotificationRecord is NotificationRecordService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsNotificationRecord struct {
+// guardedNotificationRecord enforces method declarations on in-process calls too.
+type guardedNotificationRecord struct {
 	apptest.NotificationRecordServiceServer
 }
 
-func (s accountsNotificationRecord) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+func (s guardedNotificationRecord) Add(ctx context.Context, req *apptest.NotificationRecordAddRequest) (*apptest.NotificationRecord, error) {
+	if err := gate.Direct(ctx, apptest.NotificationRecordService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.NotificationRecordService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6112,7 +6332,10 @@ func (s accountsNotificationRecord) Add(ctx context.Context, req *apptest.Notifi
 	return s.NotificationRecordServiceServer.Add(ctx, req)
 }
 
-func (s accountsNotificationRecord) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+func (s guardedNotificationRecord) Get(ctx context.Context, req *apptest.NotificationRecordGetRequest) (*apptest.NotificationRecord, error) {
+	if err := gate.Direct(ctx, apptest.NotificationRecordService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.NotificationRecordService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6121,15 +6344,16 @@ func (s accountsNotificationRecord) Get(ctx context.Context, req *apptest.Notifi
 }
 
 func (s Gate) Seal() apptest.SealServiceServer {
-	return accountsSeal{s.Next().Seal()}
+	return guardedSeal{s.Next().Seal()}
 }
 
-// accountsSeal is SealService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsSeal struct{ apptest.SealServiceServer }
+// guardedSeal enforces method declarations on in-process calls too.
+type guardedSeal struct{ apptest.SealServiceServer }
 
-func (s accountsSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+func (s guardedSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	if err := gate.Direct(ctx, apptest.SealService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.SealService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6137,7 +6361,10 @@ func (s accountsSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*ap
 	return s.SealServiceServer.Add(ctx, req)
 }
 
-func (s accountsSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+func (s guardedSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+	if err := gate.Direct(ctx, apptest.SealService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.SealService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6145,7 +6372,10 @@ func (s accountsSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*ap
 	return s.SealServiceServer.Get(ctx, req)
 }
 
-func (s accountsSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+func (s guardedSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	if err := gate.Direct(ctx, apptest.SealService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.SealService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6153,7 +6383,10 @@ func (s accountsSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) 
 	return s.SealServiceServer.Patch(ctx, req)
 }
 
-func (s accountsSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+func (s guardedSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
+	if err := gate.Direct(ctx, apptest.SealService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.SealService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6161,7 +6394,10 @@ func (s accountsSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) 
 	return s.SealServiceServer.Apply(ctx, req)
 }
 
-func (s accountsSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
+func (s guardedSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.SealService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.SealService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6169,12 +6405,13 @@ func (s accountsSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest
 	return s.SealServiceServer.Erase(ctx, req)
 }
 
-// accountsStint is StintService as the gate serves it to a call an account
-// makes as itself: refused every method but the ones the schema marks the
-// account's own. See [gate.AsAccount].
-type accountsStint struct{ apptest.StintServiceServer }
+// guardedStint enforces method declarations on in-process calls too.
+type guardedStint struct{ apptest.StintServiceServer }
 
-func (s accountsStint) Add(ctx context.Context, req *apptest.StintAddRequest) (*apptest.Stint, error) {
+func (s guardedStint) Add(ctx context.Context, req *apptest.StintAddRequest) (*apptest.Stint, error) {
+	if err := gate.Direct(ctx, apptest.StintService_Add_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.StintService_Add_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6182,7 +6419,10 @@ func (s accountsStint) Add(ctx context.Context, req *apptest.StintAddRequest) (*
 	return s.StintServiceServer.Add(ctx, req)
 }
 
-func (s accountsStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*apptest.Stint, error) {
+func (s guardedStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*apptest.Stint, error) {
+	if err := gate.Direct(ctx, apptest.StintService_Get_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.StintService_Get_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6190,7 +6430,10 @@ func (s accountsStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*
 	return s.StintServiceServer.Get(ctx, req)
 }
 
-func (s accountsStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+func (s guardedStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
+	if err := gate.Direct(ctx, apptest.StintService_Patch_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.StintService_Patch_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6198,7 +6441,10 @@ func (s accountsStint) Patch(ctx context.Context, req *apptest.StintPatchRequest
 	return s.StintServiceServer.Patch(ctx, req)
 }
 
-func (s accountsStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+func (s guardedStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
+	if err := gate.Direct(ctx, apptest.StintService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.StintService_Apply_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6206,7 +6452,10 @@ func (s accountsStint) Apply(ctx context.Context, req *apptest.StintApplyRequest
 	return s.StintServiceServer.Apply(ctx, req)
 }
 
-func (s accountsStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+func (s guardedStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
+	if err := gate.Direct(ctx, apptest.StintService_Erase_FullMethodName); err != nil {
+		return nil, err
+	}
 	if err := gate.AsAccount(ctx, apptest.StintService_Erase_FullMethodName, AccountMethod); err != nil {
 		return nil, err
 	}
@@ -6548,6 +6797,9 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 			SetDigest(digest).
 			SetDigestFields(covered).
 			SetDateCreated(at.Created)
+		if !v.Caller.IsZero() {
+			q.SetCallerId(v.Caller.Uuid()).SetCallerTenantId(v.CallerTenant.Uuid()).SetPresence(v.Presence)
+		}
 		if !v.Counterpart.IsZero() {
 			q.SetCounterpartTenantId(uuid.UUID(v.Counterpart))
 		}
@@ -6560,11 +6812,12 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 	}
 
 	_, err = s.Audit().Add(ctx, apptest.AuditAddRequest_builder{
-		Id:                  at.Id[:],
-		DateCreated:         timestamppb.New(at.Created),
-		TenantId:            tenant[:],
-		ActorTenantId:       v.Tenant.Bytes(),
-		ActorId:             v.Actor.Bytes(),
+		Id:            at.Id[:],
+		DateCreated:   timestamppb.New(at.Created),
+		TenantId:      tenant[:],
+		ActorTenantId: v.Tenant.Bytes(),
+		ActorId:       v.Actor.Bytes(),
+		CallerId:      v.CallerBytes(), CallerTenantId: v.CallerTenantBytes(), Presence: v.PresenceValue(),
 		TraceId:             notNull(v.Trace),
 		Action:              v.Action,
 		ObjectId:            v.Object.Bytes(),

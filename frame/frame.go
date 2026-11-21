@@ -31,6 +31,7 @@ package frame
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -91,6 +92,23 @@ type Frame struct {
 	// and in [Frame.Actor] both, and no tenant.
 	Account pdid.Id
 
+	// Caller is the verified device or agent whose credential admitted this
+	// call, when Actor is a person it represents. Nil is a direct call.
+	// Only trusted authentication/resolution code sets this; a header naming
+	// a person is not proof that the caller may represent them.
+	Caller *Principal
+
+	// Presence names the app-verified presence or delegation under which the
+	// call was made. It is a reference, never a bearer token or other secret.
+	// Queued calls keep their original reference across an operator change.
+	Presence string
+
+	// PresenceExpires bounds a represented call, and PresenceChanged closes when
+	// its app-owned presence is revoked. The verifier sets these; queued writes
+	// may receive a new acceptance deadline under an explicit late-write policy.
+	PresenceExpires time.Time
+	PresenceChanged <-chan struct{}
+
 	// asAccount says this is a call an account makes as itself. Only
 	// [OfAccount] sets it, so no frame written out field by field is one, and
 	// a frame that is one stays one through every copy.
@@ -99,6 +117,32 @@ type Frame struct {
 	// calls is which methods a call framed as an account may be of; see
 	// [OfAccount].
 	calls func(method string) bool
+}
+
+// Principal is a verified party without a credential or computed access scope.
+// The credential's Grant remains on Frame and narrows both parties' authority.
+type Principal struct {
+	Actor      pdid.Id
+	Tenant     pdid.Id
+	Name       string
+	TenantName string
+	Row        proto.Message
+	Account    pdid.Id
+}
+
+// Principal answers the party this frame is being served as.
+func (f *Frame) Principal() Principal {
+	return Principal{Actor: f.Actor, Tenant: f.Tenant, Name: f.Name, TenantName: f.TenantName, Row: f.Row, Account: f.Account}
+}
+
+// Frame builds a direct frame for checking this party's own permissions.
+func (p Principal) Frame(grant Grant) *Frame {
+	f := New(p.Actor, p.Tenant, grant)
+	f.Name = p.Name
+	f.TenantName = p.TenantName
+	f.Row = p.Row
+	f.Account = p.Account
+	return f
 }
 
 // New answers with the frame of a request from `actor`, held by `tenant`,

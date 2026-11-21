@@ -10,7 +10,9 @@ import (
 	"github.com/lesomnus/otx/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/lesomnus/payday/frame"
 	"github.com/lesomnus/payday/grpcx"
@@ -50,6 +52,8 @@ func InterceptorUnary(h Handler, r Resolver, public Public) grpc.UnaryServerInte
 	of := authenticate(h, r, public)
 
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		message, _ := req.(proto.Message)
+		ctx = context.WithValue(ctx, authenticationCallKey{}, authenticationCall{method: info.FullMethod, request: message})
 		// A credential's expiry needs nothing here. Every call carries one and
 		// is read again, so an expired one is refused by whatever answers
 		// [TokenStore.Lookup] -- which is where an expiry is known and where
@@ -100,12 +104,21 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 	of := authenticate(h, r, public)
 
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		ctx, id, err := of(ss.Context(), info.FullMethod)
+		ctx := context.WithValue(ss.Context(), authenticationCallKey{}, authenticationCall{method: info.FullMethod})
+		ctx, id, err := of(ctx, info.FullMethod)
 		if err != nil {
 			return err
 		}
 
-		if !id.DateExpires.IsZero() {
+		expires := id.DateExpires
+		var presenceChanged <-chan struct{}
+		if f, ok := frame.From(ctx); ok && f.Caller != nil {
+			if !f.PresenceExpires.IsZero() && (expires.IsZero() || f.PresenceExpires.Before(expires)) {
+				expires = f.PresenceExpires
+			}
+			presenceChanged = f.PresenceChanged
+		}
+		if !expires.IsZero() {
 			// Cancelled with a cause rather than given a deadline, so that a
 			// stream cut for this is told apart from one that ran out of the
 			// time its caller asked for. The two want different answers: get
@@ -114,25 +127,27 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 			ctx, cancel = context.WithCancelCause(ctx)
 			defer cancel(nil)
 
-			t := time.AfterFunc(time.Until(id.DateExpires), func() { cancel(ErrExpired) })
+			t := time.AfterFunc(time.Until(expires), func() { cancel(ErrExpired) })
 			defer t.Stop()
 		}
-		if id.Changed != nil {
-			var cancel context.CancelCauseFunc
-			ctx, cancel = context.WithCancelCause(ctx)
-			defer cancel(nil)
-			done := make(chan struct{})
-			defer close(done)
-			go func() {
-				select {
-				case <-id.Changed:
-					cancel(ErrChanged)
-				case <-ctx.Done():
-				case <-done:
-				}
-			}()
+		for _, changed := range []<-chan struct{}{id.Changed, presenceChanged} {
+			if changed != nil {
+				var cancel context.CancelCauseFunc
+				ctx, cancel = context.WithCancelCause(ctx)
+				defer cancel(nil)
+				done := make(chan struct{})
+				defer close(done)
+				watched := ctx
+				go func() {
+					select {
+					case <-changed:
+						cancel(ErrChanged)
+					case <-watched.Done():
+					case <-done:
+					}
+				}()
+			}
 		}
-
 		err = handler(srv, grpcx.StreamWithContext(ss, ctx))
 		if errors.Is(context.Cause(ctx), ErrExpired) {
 			return status.Error(codes.Unauthenticated, ErrExpired.Error())
@@ -188,7 +203,11 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// Disagreeing about who holds somebody is not an attenuation --
 				// there is no smaller answer that is still true -- and one of
 				// the two is wrong in a way that wants looking at.
-				if id.TenantId != "" && id.TenantId != f.Tenant.String() {
+				principal := f.Principal()
+				if f.Caller != nil {
+					principal = *f.Caller
+				}
+				if id.TenantId != "" && id.TenantId != principal.Tenant.String() {
 					log.From(ctx).WarnContext(ctx, "credential names the wrong tenant",
 						slog.String("auth.method", id.Method),
 						slog.String("actor.id", f.Actor.String()),
@@ -243,6 +262,9 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				if !f.Account.IsZero() {
 					attrs = append(attrs, slog.String("actor.account", f.Account.String()))
 				}
+				if f.Caller != nil {
+					attrs = append(attrs, slog.String("caller.id", f.Caller.Actor.String()), slog.String("caller.tenant", f.Caller.Tenant.String()), slog.String("presence", f.Presence))
+				}
 				log.From(ctx).InfoContext(ctx, "authenticated", attrs...)
 
 				// What the credential allows is checked here, once, and not
@@ -264,6 +286,10 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 				// nothing cannot break a good one either.
 				v := *f
 				v.Grant = id.Grant
+				md, _ := metadata.FromIncomingContext(ctx)
+				if (len(md.Get(PresenceHeader)) > 0 || len(md.Get(SubjectHeader)) > 0 || len(md.Get(RecordedHeader)) > 0) && f.Caller == nil {
+					return nil, Identity{}, status.Error(codes.Unauthenticated, "this call's presence was not verified")
+				}
 
 				return frame.Into(ctx, &v), id, nil
 			}
