@@ -2,6 +2,7 @@ edition = "2023";
 package app;
 
 import "app/payday/access.proto";
+import "orm.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -19,7 +20,7 @@ message AccessGetRequest {
 
 message AccessRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -76,8 +77,8 @@ message AccessListResponse {
 }
 
 message AccessFilter {
-  bytes actor_id = 1;
-  bytes tenant_id = 2;
-  bytes actor_tenant_id = 3;
+  bytes actor_id = 1 [(orm.field) = {type: TYPE_UUID}];
+  bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_tenant_id = 3 [(orm.field) = {type: TYPE_UUID}];
   string kind = 4;
 }

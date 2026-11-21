@@ -8,6 +8,7 @@ package app;
 import "app/job.proto";
 import "app/payday/tenant_svc.g.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -26,13 +27,17 @@ service JobService {
 }
 
 message JobAddRequest {
-	bytes id = 1;
+	bytes id = 1 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	TenantRef tenant = 2;
 	bytes robot_id = 8 [
-		features.field_presence = IMPLICIT
+		(orm.field) = {type: TYPE_UUID}
+		, features.field_presence = IMPLICIT
 	];
 	bytes issuer_id = 9 [
-		features.field_presence = IMPLICIT
+		(orm.field) = {type: TYPE_UUID}
+		, features.field_presence = IMPLICIT
 	];
 	bool completed = 10 [
 		features.field_presence = IMPLICIT
@@ -42,7 +47,9 @@ message JobAddRequest {
 
 message JobRef {
 	oneof key {
-		bytes id = 1;
+		bytes id = 1 [
+			(orm.field) = {type: TYPE_UUID}
+		];
 	}
 }
 
@@ -63,8 +70,12 @@ message JobGetRequest {
 
 message JobPatchRequest {
 	JobRef ref = 1;
-	bytes robot_id = 16;
-	bytes issuer_id = 18;
+	bytes robot_id = 16 [
+		(orm.field) = {type: TYPE_UUID}
+	];
+	bytes issuer_id = 18 [
+		(orm.field) = {type: TYPE_UUID}
+	];
 	bool completed = 20;
 	// The version this update requires the stored date_updated to be.
 	// It is a precondition, not a write: the update applies only if the row

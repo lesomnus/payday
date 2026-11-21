@@ -3,6 +3,7 @@ package app;
 
 import "app/payday/audit.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -23,20 +24,32 @@ service AuditService {
 }
 
 message AuditAddRequest {
-  bytes id = 1;
-  bytes tenant_id = 2 [features.field_presence = IMPLICIT];
-  bytes actor_id = 8 [features.field_presence = IMPLICIT];
-  bytes caller_id = 23;
-  bytes caller_tenant_id = 24;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
+  bytes tenant_id = 2 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
+  bytes actor_id = 8 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
+  bytes caller_id = 23 [(orm.field) = {type: TYPE_UUID}];
+  bytes caller_tenant_id = 24 [(orm.field) = {type: TYPE_UUID}];
   string presence = 25;
   bytes trace_id = 9 [features.field_presence = IMPLICIT];
   string action = 10 [features.field_presence = IMPLICIT];
-  bytes object_id = 11 [features.field_presence = IMPLICIT];
+  bytes object_id = 11 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
   bytes patch = 12 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
-  bytes actor_tenant_id = 16 [features.field_presence = IMPLICIT];
+  bytes actor_tenant_id = 16 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
   bytes value = 17 [features.field_presence = IMPLICIT];
-  bytes counterpart_tenant_id = 18;
+  bytes counterpart_tenant_id = 18 [(orm.field) = {type: TYPE_UUID}];
   uint32 domain = 19;
   repeated uint32 fields = 20;
   bytes digest = 21;
@@ -50,7 +63,7 @@ message AuditGetRequest {
 
 message AuditRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -77,15 +90,15 @@ message AuditSelect {
 
 message AuditPatchRequest {
   AuditRef ref = 1;
-  bytes tenant_id = 4;
-  bytes actor_id = 16;
-  bytes caller_id = 46;
+  bytes tenant_id = 4 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_id = 16 [(orm.field) = {type: TYPE_UUID}];
+  bytes caller_id = 46 [(orm.field) = {type: TYPE_UUID}];
   // Clear caller_id instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and caller_id clears.
   bool caller_id_null = 47;
-  bytes caller_tenant_id = 48;
+  bytes caller_tenant_id = 48 [(orm.field) = {type: TYPE_UUID}];
   // Clear caller_tenant_id instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
@@ -99,11 +112,11 @@ message AuditPatchRequest {
   bool presence_null = 51;
   bytes trace_id = 18;
   string action = 20;
-  bytes object_id = 22;
+  bytes object_id = 22 [(orm.field) = {type: TYPE_UUID}];
   bytes patch = 24;
-  bytes actor_tenant_id = 32;
+  bytes actor_tenant_id = 32 [(orm.field) = {type: TYPE_UUID}];
   bytes value = 34;
-  bytes counterpart_tenant_id = 36;
+  bytes counterpart_tenant_id = 36 [(orm.field) = {type: TYPE_UUID}];
   // Clear counterpart_tenant_id instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
@@ -166,9 +179,9 @@ message AuditListResponse {
 }
 
 message AuditFilter {
-  bytes object_id = 1;
-  bytes actor_id = 2;
-  bytes tenant_id = 3;
-  bytes actor_tenant_id = 4;
-  bytes counterpart_tenant_id = 5;
+  bytes object_id = 1 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_id = 2 [(orm.field) = {type: TYPE_UUID}];
+  bytes tenant_id = 3 [(orm.field) = {type: TYPE_UUID}];
+  bytes actor_tenant_id = 4 [(orm.field) = {type: TYPE_UUID}];
+  bytes counterpart_tenant_id = 5 [(orm.field) = {type: TYPE_UUID}];
 }

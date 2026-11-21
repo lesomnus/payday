@@ -7,6 +7,7 @@
 package apptest
 
 import (
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1049,12 +1050,12 @@ var File_app_payday_access_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_access_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1dapp/payday/access_svc.g.proto\x12\x03app\x1a\x17app/payday/access.proto\"_\n" +
+	"\x1dapp/payday/access_svc.g.proto\x12\x03app\x1a\x17app/payday/access.proto\x1a\torm.proto\"_\n" +
 	"\x10AccessGetRequest\x12 \n" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.AccessRefR\x03ref\x12)\n" +
-	"\x06select\x18\x02 \x01(\v2\x11.app.AccessSelectR\x06select\"$\n" +
-	"\tAccessRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x06select\x18\x02 \x01(\v2\x11.app.AccessSelectR\x06select\",\n" +
+	"\tAccessRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xf1\x02\n" +
 	"\fAccessSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12\x1b\n" +
@@ -1078,11 +1079,11 @@ const file_app_payday_access_svc_g_proto_rawDesc = "" +
 	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"R\n" +
 	"\x12AccessListResponse\x12!\n" +
 	"\x05items\x18\x01 \x03(\v2\v.app.AccessR\x05items\x12\x19\n" +
-	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\x82\x01\n" +
-	"\fAccessFilter\x12\x19\n" +
-	"\bactor_id\x18\x01 \x01(\fR\aactorId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12&\n" +
-	"\x0factor_tenant_id\x18\x03 \x01(\fR\ractorTenantId\x12\x12\n" +
+	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\x9a\x01\n" +
+	"\fAccessFilter\x12!\n" +
+	"\bactor_id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aactorId\x12#\n" +
+	"\ttenant_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12.\n" +
+	"\x0factor_tenant_id\x18\x03 \x01(\fB\x06\xea\x82\x16\x02\x10@R\ractorTenantId\x12\x12\n" +
 	"\x04kind\x18\x04 \x01(\tR\x04kind2s\n" +
 	"\rAccessService\x12)\n" +
 	"\x03Get\x12\x15.app.AccessGetRequest\x1a\v.app.Access\x127\n" +

@@ -11,6 +11,7 @@ package apptest
 
 import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -963,15 +964,15 @@ var File_app_seal_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_seal_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xb6\x01\n" +
-	"\x0eSealAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
-	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x1d\n" +
-	"\x06secret\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\x06secret\x12\x19\n" +
+	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xc4\x01\n" +
+	"\x0eSealAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12\x1b\n" +
+	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12#\n" +
+	"\x06secret\x18\b \x01(\fB\v\xea\x82\x16\x02\x10\f\xaa\x01\x02\b\x02R\x06secret\x12\x19\n" +
 	"\x04code\x18\t \x01(\tB\x05\xaa\x01\x02\b\x02R\x04code\x12=\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"\"\n" +
-	"\aSealRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"*\n" +
+	"\aSealRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xa4\x01\n" +
 	"\n" +
 	"SealSelect\x12\x10\n" +
@@ -984,11 +985,11 @@ const file_app_seal_svc_g_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"Y\n" +
 	"\x0eSealGetRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12'\n" +
-	"\x06select\x18\x02 \x01(\v2\x0f.app.SealSelectR\x06select\"t\n" +
+	"\x06select\x18\x02 \x01(\v2\x0f.app.SealSelectR\x06select\"|\n" +
 	"\x10SealPatchRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\x14\n" +
-	"\x05alias\x18\b \x01(\tR\x05alias\x12\x16\n" +
-	"\x06secret\x18\x10 \x01(\fR\x06secret\x12\x12\n" +
+	"\x05alias\x18\b \x01(\tR\x05alias\x12\x1e\n" +
+	"\x06secret\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10\fR\x06secret\x12\x12\n" +
 	"\x04code\x18\x12 \x01(\tR\x04code\"V\n" +
 	"\x10SealApplyRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\"\n" +

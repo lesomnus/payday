@@ -11,6 +11,7 @@ package apptest
 
 import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -1080,17 +1081,17 @@ var File_app_job_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_job_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x13app/job_svc.g.proto\x12\x03app\x1a\rapp/job.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xf1\x01\n" +
-	"\rJobAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
-	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12 \n" +
-	"\brobot_id\x18\b \x01(\fB\x05\xaa\x01\x02\b\x02R\arobotId\x12\"\n" +
-	"\tissuer_id\x18\t \x01(\fB\x05\xaa\x01\x02\b\x02R\bissuerId\x12#\n" +
+	"\x13app/job_svc.g.proto\x12\x03app\x1a\rapp/job.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\x85\x02\n" +
+	"\rJobAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
+	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12&\n" +
+	"\brobot_id\x18\b \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\arobotId\x12(\n" +
+	"\tissuer_id\x18\t \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\bissuerId\x12#\n" +
 	"\tcompleted\x18\n" +
 	" \x01(\bB\x05\xaa\x01\x02\b\x02R\tcompleted\x12=\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"!\n" +
-	"\x06JobRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\")\n" +
+	"\x06JobRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xe4\x01\n" +
 	"\tJobSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
@@ -1103,11 +1104,11 @@ const file_app_job_svc_g_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"V\n" +
 	"\rJobGetRequest\x12\x1d\n" +
 	"\x03ref\x18\x01 \x01(\v2\v.app.JobRefR\x03ref\x12&\n" +
-	"\x06select\x18\x02 \x01(\v2\x0e.app.JobSelectR\x06select\"\xf3\x01\n" +
+	"\x06select\x18\x02 \x01(\v2\x0e.app.JobSelectR\x06select\"\x83\x02\n" +
 	"\x0fJobPatchRequest\x12\x1d\n" +
-	"\x03ref\x18\x01 \x01(\v2\v.app.JobRefR\x03ref\x12\x19\n" +
-	"\brobot_id\x18\x10 \x01(\fR\arobotId\x12\x1b\n" +
-	"\tissuer_id\x18\x12 \x01(\fR\bissuerId\x12\x1c\n" +
+	"\x03ref\x18\x01 \x01(\v2\v.app.JobRefR\x03ref\x12!\n" +
+	"\brobot_id\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10@R\arobotId\x12#\n" +
+	"\tissuer_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bissuerId\x12\x1c\n" +
 	"\tcompleted\x18\x14 \x01(\bR\tcompleted\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"T\n" +

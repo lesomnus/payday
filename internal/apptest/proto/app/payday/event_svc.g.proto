@@ -5,6 +5,7 @@ import "app/payday/event.proto";
 import "app/payday/tenant_svc.g.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -20,16 +21,16 @@ service EventService {
 }
 
 message EventAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
   string kind = 8 [features.field_presence = IMPLICIT];
-  bytes actor_id = 9;
+  bytes actor_id = 9 [(orm.field) = {type: TYPE_UUID}];
   google.protobuf.Timestamp date_occurred = 10;
   string reason = 11 [features.field_presence = IMPLICIT];
-  bytes subject_id = 12;
+  bytes subject_id = 12 [(orm.field) = {type: TYPE_UUID}];
   google.protobuf.Timestamp date_created = 15;
   bytes trace_id = 16;
-  bytes cause_id = 18;
+  bytes cause_id = 18 [(orm.field) = {type: TYPE_UUID}];
   google.protobuf.Any value = 19;
   string said = 17 [features.field_presence = IMPLICIT];
 }
@@ -49,7 +50,7 @@ message EventGetRequest {
 
 message EventRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -107,8 +108,8 @@ message EventListResponse {
 
 message EventFilter {
   EventRef ref = 1;
-  bytes subject_id = 2;
+  bytes subject_id = 2 [(orm.field) = {type: TYPE_UUID}];
   string kind = 3;
-  bytes actor_id = 4;
-  bytes cause_id = 5;
+  bytes actor_id = 4 [(orm.field) = {type: TYPE_UUID}];
+  bytes cause_id = 5 [(orm.field) = {type: TYPE_UUID}];
 }

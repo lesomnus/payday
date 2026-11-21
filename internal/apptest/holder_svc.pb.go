@@ -9,6 +9,7 @@ package apptest
 import (
 	_ "github.com/lesomnus/payday/pdpb"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -2500,9 +2501,9 @@ var File_app_payday_holder_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\"\x86\x04\n" +
-	"\x10HolderAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\"\x96\x04\n" +
+	"\x10HolderAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x19\n" +
 	"\x04name\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04name\x12\x19\n" +
@@ -2514,16 +2515,16 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\aprofile\x18\t \x01(\v2\f.app.ProfileR\aprofile\x12#\n" +
 	"\tdirectory\x18\n" +
 	" \x01(\tB\x05\xaa\x01\x02\b\x02R\tdirectory\x12#\n" +
-	"\x05robot\x18\v \x01(\v2\r.app.RobotRefR\x05robot\x12\x18\n" +
-	"\aaccount\x18\f \x01(\fR\aaccount\x1a9\n" +
+	"\x05robot\x18\v \x01(\v2\r.app.RobotRefR\x05robot\x12 \n" +
+	"\aaccount\x18\f \x01(\fB\x06\xea\x82\x16\x02\x10@R\aaccount\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"_\n" +
 	"\x10HolderGetRequest\x12 \n" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12)\n" +
-	"\x06select\x18\x02 \x01(\v2\x11.app.HolderSelectR\x06select\"P\n" +
-	"\tHolderRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12*\n" +
+	"\x06select\x18\x02 \x01(\v2\x11.app.HolderSelectR\x06select\"X\n" +
+	"\tHolderRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02id\x12*\n" +
 	"\x04slug\x18\x04 \x01(\v2\x14.app.HolderRefBySlugH\x00R\x04slugB\x05\n" +
 	"\x03key\"O\n" +
 	"\x0fHolderRefBySlug\x12\x14\n" +
@@ -2546,7 +2547,7 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\tdirectory\x18\n" +
 	" \x01(\bR\tdirectory\x12&\n" +
 	"\x05robot\x18\v \x01(\v2\x10.app.RobotSelectR\x05robot\x12\x18\n" +
-	"\aaccount\x18\f \x01(\bR\aaccount\"\xe4\x04\n" +
+	"\aaccount\x18\f \x01(\bR\aaccount\"\xec\x04\n" +
 	"\x12HolderPatchRequest\x12 \n" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x12\n" +
@@ -2563,8 +2564,8 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\tdirectory\x18\x14 \x01(\tR\tdirectory\x12#\n" +
 	"\x05robot\x18\x16 \x01(\v2\r.app.RobotRefR\x05robot\x12\x1d\n" +
 	"\n" +
-	"robot_null\x18\x17 \x01(\bR\trobotNull\x12\x18\n" +
-	"\aaccount\x18\x18 \x01(\fR\aaccount\x12!\n" +
+	"robot_null\x18\x17 \x01(\bR\trobotNull\x12 \n" +
+	"\aaccount\x18\x18 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aaccount\x12!\n" +
 	"\faccount_null\x18\x19 \x01(\bR\vaccountNull\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

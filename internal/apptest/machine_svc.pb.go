@@ -11,6 +11,7 @@ package apptest
 
 import (
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -2158,9 +2159,9 @@ var File_app_machine_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/machine_svc.g.proto\x12\x03app\x1a\x11app/machine.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\"\xdc\x05\n" +
-	"\x11MachineAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x17app/machine_svc.g.proto\x12\x03app\x1a\x11app/machine.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xec\x05\n" +
+	"\x11MachineAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x1b\n" +
 	"\x05model\x18\b \x01(\tB\x05\xaa\x01\x02\b\x02R\x05model\x12\x1b\n" +
@@ -2169,8 +2170,8 @@ const file_app_machine_svc_g_proto_rawDesc = "" +
 	" \x01(\x01B\x05\xaa\x01\x02\b\x02R\x04load\x12\x1f\n" +
 	"\arunning\x18\v \x01(\bB\x05\xaa\x01\x02\b\x02R\arunning\x12\x1a\n" +
 	"\bfirmware\x18\f \x01(\fR\bfirmware\x12\x1d\n" +
-	"\x06cycles\x18\x10 \x01(\x04B\x05\xaa\x01\x02\b\x02R\x06cycles\x12\x19\n" +
-	"\bmaker_id\x18\x11 \x01(\fR\amakerId\x12#\n" +
+	"\x06cycles\x18\x10 \x01(\x04B\x05\xaa\x01\x02\b\x02R\x06cycles\x12!\n" +
+	"\bmaker_id\x18\x11 \x01(\fB\x06\xea\x82\x16\x02\x10@R\amakerId\x12#\n" +
 	"\x05robot\x18\x12 \x01(\v2\r.app.RobotRefR\x05robot\x12$\n" +
 	"\x04mode\x18\x13 \x01(\x0e2\t.app.ModeB\x05\xaa\x01\x02\b\x02R\x04mode\x12?\n" +
 	"\rdate_serviced\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\fdateServiced\x12%\n" +
@@ -2181,10 +2182,10 @@ const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\x1a;\n" +
 	"\rSettingsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"%\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"-\n" +
 	"\n" +
-	"MachineRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"MachineRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xb3\x04\n" +
 	"\rMachineSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
@@ -2211,7 +2212,7 @@ const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"b\n" +
 	"\x11MachineGetRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.MachineRefR\x03ref\x12*\n" +
-	"\x06select\x18\x02 \x01(\v2\x12.app.MachineSelectR\x06select\"\xcf\x06\n" +
+	"\x06select\x18\x02 \x01(\v2\x12.app.MachineSelectR\x06select\"\xd7\x06\n" +
 	"\x13MachinePatchRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.MachineRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x14\n" +
@@ -2220,8 +2221,8 @@ const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\x04load\x18\x14 \x01(\x01R\x04load\x12\x18\n" +
 	"\arunning\x18\x16 \x01(\bR\arunning\x12\x1a\n" +
 	"\bfirmware\x18\x18 \x01(\fR\bfirmware\x12\x16\n" +
-	"\x06cycles\x18  \x01(\x04R\x06cycles\x12\x19\n" +
-	"\bmaker_id\x18\" \x01(\fR\amakerId\x12\"\n" +
+	"\x06cycles\x18  \x01(\x04R\x06cycles\x12!\n" +
+	"\bmaker_id\x18\" \x01(\fB\x06\xea\x82\x16\x02\x10@R\amakerId\x12\"\n" +
 	"\rmaker_id_null\x18# \x01(\bR\vmakerIdNull\x12#\n" +
 	"\x05robot\x18$ \x01(\v2\r.app.RobotRefR\x05robot\x12\x1d\n" +
 	"\n" +

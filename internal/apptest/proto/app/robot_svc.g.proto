@@ -4,6 +4,7 @@ package app;
 import "app/payday/tenant_svc.g.proto";
 import "app/robot.proto";
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 import "patch/patch.proto";
 import "payday.proto";
 import "shared/thing_svc.g.proto";
@@ -128,7 +129,7 @@ service ReadingService {
 }
 
 message CellAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
   string alias = 4 [features.field_presence = IMPLICIT];
 }
@@ -140,7 +141,7 @@ message CellGetRequest {
 
 message CellRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -171,7 +172,7 @@ message CellEraseResponse {
 }
 
 message RobotAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
   shared.ThingRef thing = 30;
   CellRef cell = 3;
@@ -179,7 +180,7 @@ message RobotAddRequest {
   bytes secret = 8;
   google.protobuf.Timestamp date_attested = 31;
   string keeper = 32 [features.field_presence = IMPLICIT];
-  bytes owner_id = 33;
+  bytes owner_id = 33 [(orm.field) = {type: TYPE_UUID}];
   google.protobuf.Timestamp date_created = 15;
 }
 
@@ -198,7 +199,7 @@ message RobotGetRequest {
 
 message RobotRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
     RobotRefBySlug slug = 4;
   }
 }
@@ -246,7 +247,7 @@ message RobotPatchRequest {
   // outright: setting both this and date_attested clears.
   bool date_attested_null = 63;
   string keeper = 64;
-  bytes owner_id = 66;
+  bytes owner_id = 66 [(orm.field) = {type: TYPE_UUID}];
   // Clear owner_id instead of writing it.
   // It takes a field of its own because an unset value already means
   // "leave it alone", so no value could have meant NULL. It wins
@@ -400,7 +401,7 @@ message RobotMoveRequest {
 }
 
 message PairingAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   RobotRef lead = 2;
   RobotRef follow = 8;
   google.protobuf.Timestamp date_created = 15;
@@ -413,7 +414,7 @@ message PairingGetRequest {
 
 message PairingRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -443,7 +444,7 @@ message PairingEraseResponse {
 }
 
 message JointAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   RobotRef robot = 2;
   string alias = 4 [features.field_presence = IMPLICIT];
 }
@@ -455,7 +456,7 @@ message JointGetRequest {
 
 message JointRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -486,7 +487,7 @@ message JointEraseResponse {
 }
 
 message FleetAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   string alias = 4 [features.field_presence = IMPLICIT];
 }
 
@@ -497,7 +498,7 @@ message FleetGetRequest {
 
 message FleetRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
     string alias = 4;
   }
 }
@@ -528,9 +529,12 @@ message FleetEraseResponse {
 }
 
 message ReadingAddRequest {
-  bytes id = 1;
+  bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   RobotRef robot = 2;
-  bytes tenant_id = 9 [features.field_presence = IMPLICIT];
+  bytes tenant_id = 9 [
+    (orm.field) = {type: TYPE_UUID},
+    features.field_presence = IMPLICIT
+  ];
   double celsius = 8 [features.field_presence = IMPLICIT];
   google.protobuf.Timestamp date_created = 15;
 }
@@ -550,7 +554,7 @@ message ReadingGetRequest {
 
 message ReadingRef {
   oneof key {
-    bytes id = 1;
+    bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   }
 }
 
@@ -564,7 +568,7 @@ message ReadingSelect {
 
 message ReadingPatchRequest {
   ReadingRef ref = 1;
-  bytes tenant_id = 18;
+  bytes tenant_id = 18 [(orm.field) = {type: TYPE_UUID}];
   double celsius = 16;
 }
 

@@ -323,6 +323,13 @@ values keep their own JSON contract. `--in protojson` disables these shortcuts.
 $ app holder add '{"tenant":{"id":"01a0011c-5078-8018-ad01-940b1f868ded"}}'
 ```
 
+A field declared `(orm.field).type = TYPE_UUID` accepts this spelling regardless
+of its name: `subject` and `account` work as well as `subject_id`. Generated
+Add/Patch requests, reference keys and List/Watch filters retain that type.
+After updating payday, run `pd gen` to update these descriptors. Storage options
+such as `unique`, `nullable` and `default` stay on the entity. An explicitly
+`TYPE_BYTES` field remains base64 even if its name ends in `_id`.
+
 protojson reads `bytes` as base64, so without this the app would print an
 identifier one way and refuse to be told it that way. Only an exact uuid is
 converted — base64 of sixteen bytes is 24 characters ending in `==` and never
@@ -412,7 +419,7 @@ fields are shown. An empty list prints `(none)`.
 Templates use the same values as `-o json`, including UUID identifiers:
 
 ```sh
-$ app holder get @acme/bob -o 'template={{.id}} {{.name}}'
+$ app holder get -o 'template={{.id}} {{.name}}' @acme/bob
 ```
 
 A custom command can reuse a built-in printer by name:

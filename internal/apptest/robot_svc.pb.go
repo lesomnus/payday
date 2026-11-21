@@ -9,6 +9,7 @@ package apptest
 import (
 	_ "github.com/lesomnus/payday/pdpb"
 	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -6672,16 +6673,16 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"e\n" +
-	"\x0eCellAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"m\n" +
+	"\x0eCellAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"Y\n" +
 	"\x0eCellGetRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
-	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"\"\n" +
-	"\aCellRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"*\n" +
+	"\aCellRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\x80\x01\n" +
 	"\n" +
 	"CellSelect\x12\x10\n" +
@@ -6697,17 +6698,17 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"+\n" +
 	"\x11CellEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x82\x03\n" +
-	"\x0fRobotAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12&\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x92\x03\n" +
+	"\x0fRobotAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12&\n" +
 	"\x05thing\x18\x1e \x01(\v2\x10.shared.ThingRefR\x05thing\x12 \n" +
 	"\x04cell\x18\x03 \x01(\v2\f.app.CellRefR\x04cell\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x16\n" +
 	"\x06secret\x18\b \x01(\fR\x06secret\x12?\n" +
 	"\rdate_attested\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampR\fdateAttested\x12\x1d\n" +
-	"\x06keeper\x18  \x01(\tB\x05\xaa\x01\x02\b\x02R\x06keeper\x12\x19\n" +
-	"\bowner_id\x18! \x01(\fR\aownerId\x12=\n" +
+	"\x06keeper\x18  \x01(\tB\x05\xaa\x01\x02\b\x02R\x06keeper\x12!\n" +
+	"\bowner_id\x18! \x01(\fB\x06\xea\x82\x16\x02\x10@R\aownerId\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"A\n" +
 	"\x13RobotAddManyRequest\x12*\n" +
 	"\x05items\x18\x01 \x03(\v2\x14.app.RobotAddRequestR\x05items\"8\n" +
@@ -6716,9 +6717,9 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	".app.RobotR\x05items\"\\\n" +
 	"\x0fRobotGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12(\n" +
-	"\x06select\x18\x02 \x01(\v2\x10.app.RobotSelectR\x06select\"N\n" +
-	"\bRobotRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12)\n" +
+	"\x06select\x18\x02 \x01(\v2\x10.app.RobotSelectR\x06select\"V\n" +
+	"\bRobotRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02id\x12)\n" +
 	"\x04slug\x18\x04 \x01(\v2\x13.app.RobotRefBySlugH\x00R\x04slugB\x05\n" +
 	"\x03key\"N\n" +
 	"\x0eRobotRefBySlug\x12\x14\n" +
@@ -6737,7 +6738,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\fdate_updated\x18\r \x01(\bR\vdateUpdated\x12!\n" +
 	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
-	"dateErased\"\x9b\x04\n" +
+	"dateErased\"\xa3\x04\n" +
 	"\x11RobotPatchRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12&\n" +
 	"\x05thing\x18< \x01(\v2\x10.shared.ThingRefR\x05thing\x12\x1d\n" +
@@ -6749,8 +6750,8 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x06secret\x18\x10 \x01(\fR\x06secret\x12?\n" +
 	"\rdate_attested\x18> \x01(\v2\x1a.google.protobuf.TimestampR\fdateAttested\x12,\n" +
 	"\x12date_attested_null\x18? \x01(\bR\x10dateAttestedNull\x12\x16\n" +
-	"\x06keeper\x18@ \x01(\tR\x06keeper\x12\x19\n" +
-	"\bowner_id\x18B \x01(\fR\aownerId\x12\"\n" +
+	"\x06keeper\x18@ \x01(\tR\x06keeper\x12!\n" +
+	"\bowner_id\x18B \x01(\fB\x06\xea\x82\x16\x02\x10@R\aownerId\x12\"\n" +
 	"\rowner_id_null\x18C \x01(\bR\vownerIdNull\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"X\n" +
@@ -6785,18 +6786,18 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\"Q\n" +
 	"\x10RobotMoveRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\x1c\n" +
-	"\x02to\x18\x02 \x01(\v2\f.app.CellRefR\x02to\"\xac\x01\n" +
-	"\x11PairingAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12!\n" +
+	"\x02to\x18\x02 \x01(\v2\f.app.CellRefR\x02to\"\xb4\x01\n" +
+	"\x11PairingAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12!\n" +
 	"\x04lead\x18\x02 \x01(\v2\r.app.RobotRefR\x04lead\x12%\n" +
 	"\x06follow\x18\b \x01(\v2\r.app.RobotRefR\x06follow\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"b\n" +
 	"\x11PairingGetRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.PairingRefR\x03ref\x12*\n" +
-	"\x06select\x18\x02 \x01(\v2\x12.app.PairingSelectR\x06select\"%\n" +
+	"\x06select\x18\x02 \x01(\v2\x12.app.PairingSelectR\x06select\"-\n" +
 	"\n" +
-	"PairingRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"PairingRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\x94\x01\n" +
 	"\rPairingSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12$\n" +
@@ -6809,16 +6810,16 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.PairingRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\".\n" +
 	"\x14PairingEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"c\n" +
-	"\x0fJointAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12#\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"k\n" +
+	"\x0fJointAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12#\n" +
 	"\x05robot\x18\x02 \x01(\v2\r.app.RobotRefR\x05robot\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"\\\n" +
 	"\x0fJointGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.JointRefR\x03ref\x12(\n" +
-	"\x06select\x18\x02 \x01(\v2\x10.app.JointSelectR\x06select\"#\n" +
-	"\bJointRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"\x06select\x18\x02 \x01(\v2\x10.app.JointSelectR\x06select\"+\n" +
+	"\bJointRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"~\n" +
 	"\vJointSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12&\n" +
@@ -6833,15 +6834,15 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.JointRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12JointEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\">\n" +
-	"\x0fFleetAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"F\n" +
+	"\x0fFleetAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"\\\n" +
 	"\x0fFleetGetRequest\x12\x1f\n" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.FleetRefR\x03ref\x12(\n" +
-	"\x06select\x18\x02 \x01(\v2\x10.app.FleetSelectR\x06select\";\n" +
-	"\bFleetRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02id\x12\x16\n" +
+	"\x06select\x18\x02 \x01(\v2\x10.app.FleetSelectR\x06select\"C\n" +
+	"\bFleetRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02id\x12\x16\n" +
 	"\x05alias\x18\x04 \x01(\tH\x00R\x05aliasB\x05\n" +
 	"\x03key\"V\n" +
 	"\vFleetSelect\x12\x10\n" +
@@ -6856,11 +6857,11 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.FleetRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12FleetEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xcc\x01\n" +
-	"\x11ReadingAddRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\fR\x02id\x12#\n" +
-	"\x05robot\x18\x02 \x01(\v2\r.app.RobotRefR\x05robot\x12\"\n" +
-	"\ttenant_id\x18\t \x01(\fB\x05\xaa\x01\x02\b\x02R\btenantId\x12\x1f\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xda\x01\n" +
+	"\x11ReadingAddRequest\x12\x16\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12#\n" +
+	"\x05robot\x18\x02 \x01(\v2\r.app.RobotRefR\x05robot\x12(\n" +
+	"\ttenant_id\x18\t \x01(\fB\v\xea\x82\x16\x02\x10@\xaa\x01\x02\b\x02R\btenantId\x12\x1f\n" +
 	"\acelsius\x18\b \x01(\x01B\x05\xaa\x01\x02\b\x02R\acelsius\x12=\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vdateCreated\"E\n" +
 	"\x15ReadingAddManyRequest\x12,\n" +
@@ -6869,20 +6870,20 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2\f.app.ReadingR\x05items\"b\n" +
 	"\x11ReadingGetRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12*\n" +
-	"\x06select\x18\x02 \x01(\v2\x12.app.ReadingSelectR\x06select\"%\n" +
+	"\x06select\x18\x02 \x01(\v2\x12.app.ReadingSelectR\x06select\"-\n" +
 	"\n" +
-	"ReadingRef\x12\x10\n" +
-	"\x02id\x18\x01 \x01(\fH\x00R\x02idB\x05\n" +
+	"ReadingRef\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
 	"\x03key\"\xa3\x01\n" +
 	"\rReadingSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12&\n" +
 	"\x05robot\x18\x02 \x01(\v2\x10.app.RobotSelectR\x05robot\x12\x1b\n" +
 	"\ttenant_id\x18\t \x01(\bR\btenantId\x12\x18\n" +
 	"\acelsius\x18\b \x01(\bR\acelsius\x12!\n" +
-	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"o\n" +
+	"\fdate_created\x18\x0f \x01(\bR\vdateCreated\"w\n" +
 	"\x13ReadingPatchRequest\x12!\n" +
-	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12\x1b\n" +
-	"\ttenant_id\x18\x12 \x01(\fR\btenantId\x12\x18\n" +
+	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12#\n" +
+	"\ttenant_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\btenantId\x12\x18\n" +
 	"\acelsius\x18\x10 \x01(\x01R\acelsius\"\\\n" +
 	"\x13ReadingApplyRequest\x12!\n" +
 	"\x03ref\x18\x01 \x01(\v2\x0f.app.ReadingRefR\x03ref\x12\"\n" +
