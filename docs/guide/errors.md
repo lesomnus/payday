@@ -183,6 +183,43 @@ If you find yourself reaching for `Invalidf` to say one of those, the code is
 the thing carrying the meaning and changing it will break a caller that was
 acting on it correctly.
 
+## Read application reasons and preconditions
+
+The public `@lesomnus/payday/rpc` entry point exports the standard `google.rpc`
+detail schemas and their message types. Connect already decodes them with
+`findDetails`; no manual wire decoder or generated-file import is needed:
+
+```ts
+import { ConnectError } from '@connectrpc/connect'
+import {
+    ErrorInfoSchema,
+    PreconditionFailureSchema,
+} from '@lesomnus/payday/rpc'
+
+if (err instanceof ConnectError) {
+    for (const info of err.findDetails(ErrorInfoSchema)) {
+        // The application's UI maps reason/domain to its own wording.
+        showReason(info.reason, info.domain, info.metadata)
+    }
+    for (const detail of err.findDetails(PreconditionFailureSchema)) {
+        for (const violation of detail.violations) {
+            showCondition(violation.type, violation.subject, violation.description)
+        }
+    }
+}
+```
+
+`showReason` and `showCondition` are application functions. For example, a
+station screen can select instructions from an approval reason code and name
+the revision in a precondition's subject. An administrative page can retain
+the full metadata for a structured diagnostic. Multiple details and violations
+remain separate; the framework does not guess which reason belongs to which
+violation. A detail type absent from the error produces an empty array.
+
+The same entry point includes `BadRequestSchema`, `RetryInfoSchema`,
+`ResourceInfoSchema` and the other standard error-detail schemas. The existing
+`pderr` helpers remain convenient for field validation.
+
 ## Where to go next
 
 - [The page](client.md) — where a refusal ends up.
