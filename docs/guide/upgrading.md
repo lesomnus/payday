@@ -260,8 +260,7 @@ The rest of a Renovate configuration stays the app's: its schedule, its
 reviewers, and rules of its own. A rule in the app's own `packageRules` is read
 after the preset's and wins.
 
-
-## 5. Copied schema formatting changed after another dependency moved
+## 7. Copied schema formatting changed after another dependency moved
 
 `go tool pd` and the Go generators share the app's module graph. A new client
 library can raise `protocompile` or `protobuf-patch` through Go's minimum version
