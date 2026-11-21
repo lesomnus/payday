@@ -1291,6 +1291,19 @@ serves over HTTP goes, on the same mux:
 h.Handle("POST /session", sessions.Serve(login))
 ```
 
+The generated HTTP listener uses `server.tls`, including the client CA and
+`client_cert_optional`, just like the gRPC listener. A configured certificate
+means HTTPS and HTTP/2 through ALPN; an invalid TLS configuration stops startup.
+With an empty TLS block it serves plaintext, for local development or behind a
+TLS-terminating proxy. A deployment with required client certificates requires
+them on the browser port too; a cookie does not bypass the TLS handshake.
+
+Apps created before this wiring was added must update their own `serveHttp`:
+`pd gen` preserves app-owned Go files. Resolve `c.Server.Tls.Server()` before
+`net.Listen`, return its error, and set the result on `http.Server.TLSConfig`.
+Call `srv.ServeTLS(l, "", "")` when that result is non-nil, and `srv.Serve(l)`
+otherwise. The certificate is already loaded; `ServeTLS` also configures HTTP/2.
+
 A gRPC path is `/<service>/<method>`, so an ordinary route cannot collide with
 one — and `ServeMux` panics rather than shadowing if one somehow does.
 

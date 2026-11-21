@@ -287,6 +287,10 @@ curl -sX POST http://localhost:8080/app.ThingService/List \
   -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
 ```
 
+This listener uses `server.tls`, including its client certificate policy. An
+empty TLS block serves plaintext, for local use or behind a TLS-terminating
+proxy. Invalid certificates stop startup.
+
 Under TLS it carries **native gRPC** as well — HTTP/2 arrives by ALPN and a
 `grpcurl` reaches it. The two listeners are a decision about the transport gRPC
 brings, not about what is reachable where.

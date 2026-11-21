@@ -413,14 +413,29 @@ func (s *Server) serveHttp(ctx context.Context, c Config, g *grpc.Server) (func(
 	// with one -- and `ServeMux` panics rather than shadowing if one somehow
 	// does.
 
+	// Resolve before opening the port: a broken certificate must fail startup,
+	// and the browser port must enforce the same client CA as the gRPC port.
+	tlsConfig, err := c.Server.Tls.Server()
+	if err != nil {
+		return nil, err
+	}
+
 	l, err := net.Listen("tcp", c.Server.Http.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	srv := &http.Server{Handler: h}
+	srv := &http.Server{Handler: h, TLSConfig: tlsConfig}
 	go func() {
-		if err := srv.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if tlsConfig != nil {
+			// ServeTLS installs HTTP/2 ALPN as well as wrapping the listener.
+			// The pair is already loaded into TLSConfig, so no paths are needed.
+			err = srv.ServeTLS(l, "", "")
+		} else {
+			err = srv.Serve(l)
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.From(ctx).ErrorContext(ctx, "http", slog.Any("err", err))
 		}
 	}()
