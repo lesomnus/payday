@@ -195,6 +195,17 @@ export async function openDisk(entities: readonly EntityDesc[], at: At, opts: Di
 	return mirror
 }
 
+/** A device queue has its own namespace: deleting people's mirrors cannot delete unsent device work. */
+export async function openQueue(at: At): Promise<Queue & { close(): void }> {
+	const name = `payday-queue/${at.name}:${at.identity}`
+	const req = indexedDB.open(name, 1)
+	req.onupgradeneeded = (): void => { req.result.createObjectStore(WRITES, { keyPath: 'k' }) }
+	const db = await opening(req, name)
+	const mirror = new Mirror(db, Infinity)
+	db.onversionchange = (e): void => mirror.release(e.newVersion === null)
+	return { ...mirror.queue, close: () => mirror.close() }
+}
+
 /**
  * deleteDisk removes one caller's mirror entirely, for a test or a wipe.
  *

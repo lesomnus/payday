@@ -55,6 +55,7 @@
  * @module
  */
 
+import type { Presence } from './device.js'
 import type { Row } from './desc.js'
 import type { Key } from './store.js'
 
@@ -80,6 +81,10 @@ export interface Changes {
  * bytes of an older message is what protobuf is for.
  */
 export interface Queued {
+	/** The original represented person and cache; neither changes when the device changes operators. */
+	readonly presence?: Presence
+	readonly reader?: string
+
 	/** What this write is called: minted when it was made, and ordered by when. */
 	readonly id: string
 

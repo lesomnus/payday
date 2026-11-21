@@ -647,3 +647,6 @@ the same thing for a form of your own.
 | [permissions.md](permissions.md) | what the server does with these calls |
 | [errors.md](errors.md) | putting a refusal under the right form field |
 | [client.md](../client.md) | why the store is in memory, and why Connect over drpc |
+
+For a shared station or agent that represents a person, use the separate device
+queue and person cache in [Work at a shared device](representing.md).
