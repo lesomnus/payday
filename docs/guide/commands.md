@@ -414,6 +414,41 @@ optional value prints `-`; present zero and false values remain visible.
 Table padding measures terminal cells, including Hangul, other wide text,
 combining marks and joined emoji. The gap between columns stays three cells.
 
+Human-readable timestamps use UTC unless you select a zone:
+
+```sh
+app robot get --tz Asia/Seoul @acme/zone
+APP_TZ=Asia/Seoul app robot list -o table
+app robot get --tz UTC @acme/zone
+```
+
+`--tz` takes precedence over `<APP>_TZ`, then UTC. `<APP>` is the root command
+name in uppercase with punctuation replaced by underscores, so `my-app` reads
+`MY_APP_TZ`. The process `TZ` is not an implicit default. For example,
+`2026-10-31T23:30:00Z` displays as `2026-11-01T08:30:00+09:00` in Seoul.
+Named zones also apply their daylight-saving rules for the instant shown.
+Put flags before positional arguments, as with `-o`.
+
+This setting applies to pretty, table and wide timestamps. Relative age
+columns still show elapsed time. JSON, protojson, prototext and templates keep
+their existing serialization. A bad zone is rejected before the command calls
+the server, including commands that write.
+
+An application's own command can add `pdcmd.TimeZoneFlag()` and call
+`pdcmd.Location(cmd)` before doing work. Use the resulting `*time.Location` in
+its renderer, or pass it to a built-in printer:
+
+```go
+loc, err := pdcmd.Location(cmd)
+if err != nil {
+    return err
+}
+printer, err := pdcmd.PrinterNamed("pretty", pdcmd.PrintOptions{Location: loc})
+```
+
+`pdcmd.Table(wide, pdcmd.PrintOptions{Location: loc})` accepts the same option.
+Without an option, standalone printers retain UTC.
+
 A custom RPC response without entity metadata prints its scalar fields as
 columns. If it holds exactly one repeated message field, those messages become
 the rows. If it holds multiple such fields, no list is guessed: its own scalar
