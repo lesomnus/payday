@@ -69,3 +69,17 @@ outbox adds nullable `routes` and `signal` columns. Rows without metadata use
 broad delivery. No broker or outbox acknowledgement means a client consumed the
 event: reconnecting Notification clients still reconcile with Read, and entity
 Watch clients obtain a new snapshot.
+
+## NATS transport
+
+The optional [NATS adapter tutorial](guide/nats.md) covers deployment, policy
+invalidation and reconnect flows. Ordinary Core NATS pub/sub sends a copy to
+every interested replica; a shared queue group would incorrectly distribute
+clients' notifications between replicas. Native patterns combine generated
+service, key and opaque application route. Unknown dimensions have explicit
+fallback patterns. The first local listener installs each pattern and the last
+releases it. Overlapping patterns suppress copies by transport publication ID,
+never by resource ID; outbox retries remain separate publications.
+
+The implementation follows [Core NATS publish/subscribe](https://docs.nats.io/learn/core-nats/)
+and its at-most-once live semantics. It adds no durable consumer claim.

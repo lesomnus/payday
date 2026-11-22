@@ -142,6 +142,12 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	}
 
 	w := watch.New(b)
+	ready := false
+	defer func() {
+		if !ready {
+			_ = w.Close()
+		}
+	}()
 
 	// The recorders, in the order they are told. The trail is required -- a
 	// write it could not account for is undone -- and the rest say for
@@ -253,10 +259,11 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		s.Spin = append(s.Spin, trail.Sweep(pd.TrailStore(client), p))
 	}
 
+	ready = true
 	return s, nil
 }
 
-func (s *Server) Close() error { return s.Db.Close() }
+func (s *Server) Close() error { return errors.Join(s.Watch.Close(), s.Db.Close()) }
 
 // Grpc builds the server every call arrives at.
 //

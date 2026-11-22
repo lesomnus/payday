@@ -88,3 +88,26 @@ func (w *Watch) relay(b *broadcast) {
 		}
 	}
 }
+
+// Close releases local fallback subscriptions and a broker that owns external
+// resources. The built server calls it at shutdown and on failed construction.
+func (w *Watch) Close() error {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	b := w.local
+	if b != nil {
+		w.local = nil
+		close(b.done)
+		b.hub.Close()
+	}
+	w.mu.Unlock()
+	if b != nil {
+		b.stop()
+	}
+	if closer, ok := w.to.(interface{ Close() error }); ok {
+		return closer.Close()
+	}
+	return nil
+}

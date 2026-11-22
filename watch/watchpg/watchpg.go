@@ -32,7 +32,6 @@ package watchpg
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -42,7 +41,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/lesomnus/otx/log"
-	"github.com/lesomnus/payday/pdid"
 	"github.com/lesomnus/payday/watch"
 )
 
@@ -374,75 +372,6 @@ func (b *broker) wait(ctx context.Context) {
 	case <-ctx.Done():
 	case <-t.C:
 	}
-}
-
-// wire is one notification.
-//
-// JSON because a notification is a **string** and this one is read by a person
-// as often as by a program: `LISTEN payday_watch` in psql is how somebody finds
-// out whether the thing they just did published anything.
-type wire struct {
-	Actor   string   `json:"a,omitempty"`
-	Tenant  string   `json:"t,omitempty"`
-	Method  string   `json:"m"`
-	Changes []change `json:"c"`
-}
-
-type change struct {
-	Method   string        `json:"m,omitempty"`
-	Resource []byte        `json:"r,omitempty"`
-	Signal   []byte        `json:"s,omitempty"`
-	By       string        `json:"b"`
-	Key      string        `json:"k"`
-	Routes   []watch.Route `json:"q"`
-}
-
-func decode(s string) (watch.Event, error) {
-	var w wire
-	if err := json.Unmarshal([]byte(s), &w); err != nil {
-		return watch.Event{}, err
-	}
-
-	v := watch.Event{Method: w.Method, Changes: make([]watch.Change, 0, len(w.Changes))}
-	for _, c := range w.Changes {
-		k, err := pdid.Parse(c.Key)
-		// App-wide signals have no resource key. Resource mutations still
-		// require a valid identifier, even when they also carry a signal.
-		if c.Key == pdid.Nil.String() && len(c.Signal) > 0 && len(c.Resource) == 0 {
-			k, err = pdid.Nil, nil
-		}
-		if err != nil {
-			return watch.Event{}, fmt.Errorf("key %q: %w", c.Key, err)
-		}
-
-		method := c.Method
-		if method == "" {
-			method = w.Method
-		}
-		resource, err := decodeResource(c.Resource)
-		if err != nil {
-			return watch.Event{}, err
-		}
-		v.Changes = append(v.Changes, watch.Change{By: c.By, Method: method, Key: k, Resource: resource, Signal: c.Signal, Routes: c.Routes})
-	}
-
-	for _, p := range []struct {
-		s string
-		v *pdid.Id
-	}{{w.Actor, &v.Actor}, {w.Tenant, &v.Tenant}} {
-		if p.s == "" {
-			continue
-		}
-
-		k, err := pdid.Parse(p.s)
-		if err != nil {
-			return watch.Event{}, fmt.Errorf("%w", err)
-		}
-
-		*p.v = k
-	}
-
-	return v, nil
 }
 
 // Dialect refuses a database this cannot listen on, by the name a driver was

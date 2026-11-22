@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: github.com/lesomnus/payday/watch/watchnats
+cpu: AMD Ryzen 7 5825U with Radeon Graphics
+BenchmarkThreeReplicaFanout/scoped=false-4         	    1000	    164997 ns/op	    302997 cpu-ns/op	       615.0 replica-bytes/op	         3.000 replica-msg/op	    8991 B/op	     103 allocs/op
+BenchmarkThreeReplicaFanout/scoped=false-4         	    1000	    143521 ns/op	    284235 cpu-ns/op	       615.0 replica-bytes/op	         3.000 replica-msg/op	    9002 B/op	     103 allocs/op
+BenchmarkThreeReplicaFanout/scoped=false-4         	    1000	    145786 ns/op	    286881 cpu-ns/op	       615.0 replica-bytes/op	         3.000 replica-msg/op	    8994 B/op	     103 allocs/op
+BenchmarkThreeReplicaFanout/scoped=true-4          	    1000	    136649 ns/op	    249554 cpu-ns/op	       410.0 replica-bytes/op	         2.000 replica-msg/op	    6970 B/op	      84 allocs/op
+BenchmarkThreeReplicaFanout/scoped=true-4          	    1000	    438459 ns/op	    327962 cpu-ns/op	       410.0 replica-bytes/op	         2.000 replica-msg/op	    6988 B/op	      84 allocs/op
+BenchmarkThreeReplicaFanout/scoped=true-4          	    1000	    279826 ns/op	    307309 cpu-ns/op	       410.0 replica-bytes/op	         2.000 replica-msg/op	    6978 B/op	      84 allocs/op
+PASS
+ok  	github.com/lesomnus/payday/watch/watchnats	1.723s

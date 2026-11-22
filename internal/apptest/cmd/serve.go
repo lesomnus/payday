@@ -182,6 +182,12 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 	}
 
 	w := watch.New(b)
+	ready := false
+	defer func() {
+		if !ready {
+			_ = w.Close()
+		}
+	}()
 
 	// Every write is told to these, in this order, inside the transaction that
 	// makes it. The trail is required -- a write it could not account for is
@@ -354,6 +360,7 @@ func Build(ctx context.Context, c Config) (*Server, error) {
 		s.Spin = append(s.Spin, trail.Sweep(pd.TrailStore(client), p))
 	}
 
+	ready = true
 	return s, nil
 }
 
@@ -362,7 +369,7 @@ func (s *Server) Close() error {
 		s.grants.Close()
 	}
 
-	return s.Db.Close()
+	return errors.Join(s.Watch.Close(), s.Db.Close())
 }
 
 // loggedReadings is the meters' sink of an app that bills nobody: each
