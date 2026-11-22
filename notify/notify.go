@@ -235,6 +235,9 @@ type Store interface {
 	// Change extracts immutable notification scope from a committed change.
 	// Unrelated entity changes return false. Signal invalidations are decoded
 	// by Service itself and are never passed here.
+	// Change resolves metadata independently of a reader. Listen shares it
+	// across local subscribers with a bounded background context. Authorization
+	// belongs to Policy and remains per listener.
 	Change(context.Context, watch.Change) (Hint, bool, error)
 }
 

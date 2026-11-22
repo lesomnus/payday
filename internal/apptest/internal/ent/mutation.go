@@ -4608,6 +4608,40 @@ func (m *OutboxMutation) OldEvent(ctx context.Context) (v *[]byte, err error) {
 	return oldValue.Event, nil
 }
 
+// OldRoutes returns the old "routes" field's value of the Outbox entity.
+// If the Outbox object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *OutboxMutation) OldRoutes(ctx context.Context) (v *[]byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldRoutes is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldRoutes requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoutes: %w", err)
+	}
+	return oldValue.Routes, nil
+}
+
+// OldSignal returns the old "signal" field's value of the Outbox entity.
+// If the Outbox object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *OutboxMutation) OldSignal(ctx context.Context) (v *[]byte, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldSignal is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldSignal requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSignal: %w", err)
+	}
+	return oldValue.Signal, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -4629,6 +4663,10 @@ func (m *OutboxMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldDateCreated(ctx)
 	case outbox.FieldEvent:
 		return m.OldEvent(ctx)
+	case outbox.FieldRoutes:
+		return m.OldRoutes(ctx)
+	case outbox.FieldSignal:
+		return m.OldSignal(ctx)
 	}
 	return nil, fmt.Errorf("unknown Outbox field %s", name)
 }

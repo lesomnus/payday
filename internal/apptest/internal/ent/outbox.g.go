@@ -21,5 +21,11 @@ func (e *Outbox) Proto() *apptest.Outbox {
 	if e.Event != nil {
 		x.SetEvent(*e.Event)
 	}
+	if e.Routes != nil {
+		x.SetRoutes(*e.Routes)
+	}
+	if e.Signal != nil {
+		x.SetSignal(*e.Signal)
+	}
 	return x
 }

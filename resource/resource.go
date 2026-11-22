@@ -224,8 +224,13 @@ func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pd
 	if s.watch == nil || s.watch.Broker() == nil {
 		return status.Error(codes.Unavailable, "watch broker is disabled")
 	}
-	ch, stop := s.watch.Subscribe()
-	defer stop()
+	// CEL is evaluated against each caller's projected image. Until a filter
+	// can prove a narrower routing interest, it must subscribe broadly.
+	sub, err := s.watch.Open(out.Context(), watch.Interest{})
+	if err != nil {
+		return err
+	}
+	defer sub.Close()
 	if err := out.SendHeader(metadata.MD{}); err != nil {
 		return err
 	}
@@ -234,7 +239,7 @@ func (s *Server) Watch(req *pdpb.WatchRequest, out grpc.ServerStreamingServer[pd
 		select {
 		case <-ctx.Done():
 			return status.FromContextError(ctx.Err()).Err()
-		case call, ok := <-ch:
+		case call, ok := <-sub.Events:
 			if !ok {
 				return status.Error(codes.ResourceExhausted, "watch subscription fell behind or lost its broker connection; reconcile with List")
 			}

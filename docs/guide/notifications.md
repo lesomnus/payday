@@ -775,3 +775,23 @@ the broker:
 
 `TestNotifyCrossReplicaListen` requires `PDTEST_POSTGRES` and skips without it;
 the script supplies a database or uses the one that variable already names.
+
+### Reduce repeated work across live readers
+
+Keep one generated NotificationServer per application namespace and share the
+app's configured Watch. Listen supplies an opaque interest for each requested
+topic and the authenticated reader. Applications continue using resource IDs
+or arbitrary named topics; they do not construct broker subjects or enumerate
+Holders. Tenant, topic and receipt authorization remain in your policy.
+
+Generated publishers now put the notification's topic in its change metadata
+and outbox row. Each replica interprets a delivered change once for all its
+listeners. A custom Store.Change implementation must likewise interpret the
+change without using a reader's context: it runs with a separate, bounded
+context. Read decisions are still made for each stream.
+
+For a deployment with data, regenerate and run `pd migrate` before starting
+servers or drainers built with this version; its outbox has new nullable routing
+and signal columns. See [routing live changes](../watch-routing.md) for the
+adapter contract and the difference between local filtering and transport
+routing.

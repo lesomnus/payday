@@ -74,7 +74,7 @@ func emitWatch(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoIm
 	g.P("			\"this deployment publishes no changes; see WithWatch\")")
 	g.P("	}")
 	g.P("")
-	g.P("	return ", pkgWatch.Ident("Stream"), "(ctx, s.w, ", e, "Service, snapshot,")
+	g.P("	return ", pkgWatch.Ident("StreamScope"), "(ctx, s.w, ", pkgWatch.Ident("Interest"), "{Service:", e, "Service,Keys:watching}, snapshot,")
 	g.P("		func(ks map[", pkgPdid.Ident("Id"), "]string, sent ", pkgWatch.Ident("Seen"), ") error {")
 	g.P("			items := make([]*", root.Ident(e+"WatchItem"), ", 0, len(ks))")
 	g.P("			for k, action := range ks {")
@@ -223,10 +223,11 @@ func emitWatch(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoIm
 // EmitWatchRecorder writes the second recorder: the one that remembers a write
 // so that an interceptor can publish it once the call has succeeded.
 //
-// It never refuses. Every recorder is required by default -- the write fails
-// with it -- and that is right for a trail and wrong for this: an event nobody
-// could publish is not a reason to undo the thing it was about.
-func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
+// Broker availability never refuses a write. Malformed notification metadata
+// does: committing a row whose audience cannot be described would silently
+// strand interested readers. Missing optional metadata uses broad delivery.
+func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
+	emitRouting(g, s, p, root)
 
 	g.P("// WatchRecorder answers with the recorder that remembers a write for `w`.")
 	g.P("//")
@@ -245,6 +246,7 @@ func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("}")
 	g.P("")
 	g.P("var _ ", p.Bare.Ident("Recorder"), " = watchRecorder{}")
+	g.P("func (watchRecorder) Snapshots(method string) ", p.Bare.Ident("SnapshotOptions"), " {return routingSnapshots(method)}")
 	g.P("")
 	g.P("func (r watchRecorder) Record(ctx ", pkgCtx.Ident("Context"), ", _ ", p.Bare.Ident("Server"),
 		", c ", p.Bare.Ident("Change"), ") error {")
@@ -274,11 +276,13 @@ func EmitWatchRecorder(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("		}")
 	g.P("	}")
 	g.P("")
+	g.P("routes,signal,err:=changeRouting(c);if err!=nil{return err}")
 	g.P("	r.w.Note(ctx, ", pkgWatch.Ident("Change"), "{")
 	g.P("		Method: c.Method,")
 	g.P("		By:     c.By,")
 	g.P("		Key:    k,")
 	g.P("		Patch:  doc,")
+	g.P("Routes: routes,Signal:signal,")
 	g.P("	})")
 	g.P("")
 	g.P("	return nil")

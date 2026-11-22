@@ -73,6 +73,12 @@ type Change struct {
 	// It is separate from mutation patches, which may contain secrets, and is
 	// never exposed by ResourceService.Watch without a Resource envelope.
 	Signal []byte
+
+	// Routes are server-authored application interests, in addition to By and
+	// Key. Nil means an older publisher did not say: scoped subscribers must
+	// still hear the change. A non-nil empty slice says there are no application
+	// routes. Keep this distinction on the wire and in the outbox.
+	Routes []Route
 }
 
 // Event is one call that changed something.
@@ -100,6 +106,10 @@ type Event struct {
 	// tenant writes the holder that comes with it -- and only the first of them
 	// is the response.
 	Changes []Change
+
+	// One event's context-independent interpretation can be reused by its local
+	// subscribers. This is neither a durable cache nor an authorization cache.
+	shared *sync.Map
 }
 
 // Broker is where events go, and is the seam a deployment replaces.
@@ -136,47 +146,18 @@ const Backlog = 64
 func Memory() Broker { return &memory{} }
 
 type memory struct {
-	mu sync.Mutex
-	to map[chan Event]struct{}
+	hub Fanout
 }
 
 func (b *memory) Subscribe() (<-chan Event, func()) {
-	c := make(chan Event, Backlog)
-
-	b.mu.Lock()
-	if b.to == nil {
-		b.to = map[chan Event]struct{}{}
-	}
-	b.to[c] = struct{}{}
-	b.mu.Unlock()
-
-	var once sync.Once
-	return c, func() {
-		once.Do(func() {
-			b.mu.Lock()
-			defer b.mu.Unlock()
-
-			if _, ok := b.to[c]; ok {
-				delete(b.to, c)
-				close(c)
-			}
-		})
-	}
+	s, _ := b.Open(context.Background(), Interest{})
+	return s.Events, s.Close
 }
 
 func (b *memory) Publish(_ context.Context, v Event) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.hub.Publish(v)
+}
 
-	for c := range b.to {
-		select {
-		case c <- v:
-		default:
-			// Behind. Cutting it off is the only one of the three answers that
-			// is safe: waiting turns a slow consumer into a slow server, and
-			// skipping in silence leaves it believing it has seen everything.
-			delete(b.to, c)
-			close(c)
-		}
-	}
+func (b *memory) Open(ctx context.Context, interest Interest) (*Subscription, error) {
+	return b.hub.Open(ctx, interest)
 }
