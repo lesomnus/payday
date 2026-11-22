@@ -1,6 +1,6 @@
 # Three-replica NATS routing comparison
 
-Run on 2026-11-22, Linux amd64, Go 1.27.4, NATS client v1.56.0 and server
+Run on 2026-11-22, Linux amd64, Go 1.27.3, NATS client v1.56.0 and server
 v2.15.3. The server is embedded in the benchmark process and communicates over
 loopback TCP. GOMAXPROCS is 4. The same host was also running repository checks;
 these are diagnostic samples, not a production capacity estimate.
