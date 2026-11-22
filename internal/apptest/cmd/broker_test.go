@@ -33,8 +33,8 @@ func TestABrokerCanBeRegistered(t *testing.T) {
 	x := require.New(t)
 
 	t.Run("a name nothing registered is refused, and says what there is", func(t *testing.T) {
-		_, err := config.WatchConfig{Broker: "nats"}.Build(t.Context(), config.DbConfig{})
-		x.ErrorContains(err, "nats")
+		_, err := config.WatchConfig{Broker: "apptest-unregistered"}.Build(t.Context(), config.DbConfig{})
+		x.ErrorContains(err, "apptest-unregistered")
 		x.ErrorContains(err, "memory")
 		x.ErrorContains(err, "RegisterBroker")
 	})
