@@ -498,9 +498,12 @@ func TestNotifyCrossReplicaListen(t *testing.T) {
 	if os.Getenv(pdtest.Postgres) == "" {
 		t.Skip("PDTEST_POSTGRES is not set")
 	}
+	notificationCrossReplica(t, config.WatchConfig{Broker: brokerpg.Name})
+}
+
+func notificationCrossReplica(t *testing.T, broker config.WatchConfig) {
 	x := require.New(t)
 	db := dbOf(t)
-	broker := config.WatchConfig{Broker: brokerpg.Name}
 	one, _ := buildOn(t, db, broker)
 	f := notificationSetup(t, one)
 	two, _ := buildOn(t, db, broker)

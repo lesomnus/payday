@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 	"uuid"
 
-	"github.com/lesomnus/payday/pdpb"
 	"github.com/lesomnus/payday/watch"
-	"google.golang.org/protobuf/proto"
+	"github.com/lesomnus/payday/watch/internal/wire"
 )
 
 // MaxWire bounds one publication and the listener's incomplete payloads. A call
@@ -32,42 +30,9 @@ func packets(v watch.Event) ([]string, error) {
 	if len(v.Changes) == 0 {
 		return nil, nil
 	}
-	w := wire{Method: v.Method}
-	if v.Actor != [16]byte{} {
-		w.Actor = v.Actor.String()
-	}
-	if v.Tenant != [16]byte{} {
-		w.Tenant = v.Tenant.String()
-	}
-	budget := len(v.Method)
-	for _, c := range v.Changes {
-		budget += len(c.Method) + len(c.By) + 128
-		budget += (len(c.Signal)*4 + 2) / 3
-		for _, route := range c.Routes {
-			budget += len(route)*6 + 4
-		}
-		if c.Resource != nil {
-			budget += (proto.Size(c.Resource)*4 + 2) / 3
-		}
-		if budget > MaxWire {
-			return nil, errors.New("watchpg: publication exceeds payload limit")
-		}
-		item := change{By: c.By, Key: c.Key.String(), Method: c.Method, Signal: c.Signal, Routes: c.Routes}
-		if c.Resource != nil {
-			b, err := proto.Marshal(c.Resource)
-			if err != nil {
-				return nil, err
-			}
-			item.Resource = b
-		}
-		w.Changes = append(w.Changes, item)
-	}
-	data, err := json.Marshal(w)
+	data, err := wire.Encode(v)
 	if err != nil {
 		return nil, err
-	}
-	if len(data) > MaxWire {
-		return nil, errors.New("watchpg: publication exceeds payload limit")
 	}
 	if len(data) < Payload {
 		return []string{string(data)}, nil
@@ -158,13 +123,7 @@ func (r *receiver) deadline() (time.Time, bool) {
 	return deadline, !deadline.IsZero()
 }
 
-func decodeResource(b []byte) (*pdpb.WatchEvent, error) {
-	if len(b) == 0 {
-		return nil, nil
-	}
-	v := &pdpb.WatchEvent{}
-	if err := proto.Unmarshal(b, v); err != nil {
-		return nil, fmt.Errorf("watchpg: invalid resource envelope: %w", err)
-	}
-	return v, nil
-}
+type change = wire.Change
+type envelope = wire.Envelope
+
+func decode(s string) (watch.Event, error) { return wire.Decode(s) }

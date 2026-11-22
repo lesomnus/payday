@@ -795,3 +795,6 @@ servers or drainers built with this version; its outbox has new nullable routing
 and signal columns. See [routing live changes](../watch-routing.md) for the
 adapter contract and the difference between local filtering and transport
 routing.
+
+For transport-level routing across replicas, follow the [NATS deployment
+tutorial](nats.md), including Job completion, private receipts and reconnects.

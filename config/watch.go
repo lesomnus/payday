@@ -68,6 +68,11 @@ type WatchConfig struct {
 	// bus is told where it is here.
 	Dsn string `yaml:"dsn"`
 
+	// Namespace separates deployments sharing a message broker. NATS requires it;
+	// every replica of this deployment uses the same value. PostgreSQL is already
+	// separated by database and ignores it. It is not a tenant or topic name.
+	Namespace string `yaml:"namespace"`
+
 	// Outbox writes every change as a row inside the transaction that made it,
 	// for a loop to publish afterwards.
 	//

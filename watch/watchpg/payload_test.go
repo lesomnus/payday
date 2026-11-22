@@ -97,7 +97,7 @@ func TestAppWideSignalsAllowAnAbsentResourceKey(t *testing.T) {
 		{Key: "not-an-id", Signal: signal},
 		{Key: "", Signal: signal},
 	} {
-		data, err := json.Marshal(wire{Changes: []change{item}})
+		data, err := json.Marshal(envelope{Changes: []change{item}})
 		x.NoError(err)
 		_, err = decode(string(data))
 		x.ErrorContains(err, "key")
