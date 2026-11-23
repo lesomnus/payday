@@ -14,7 +14,7 @@ require (
 	github.com/lesomnus/payday v0.0.0-00010101000000-000000000000
 	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
 	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
-	github.com/lesomnus/xli/cfg v0.1.2
+	github.com/lesomnus/xli/cfg v0.1.4-0.20261123042429-3e6291b33598
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/nats-io/nats-server/v2 v2.15.3
 	github.com/ncruces/go-sqlite3 v0.35.3

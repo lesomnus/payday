@@ -39,7 +39,7 @@ require (
 	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
 	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
-	github.com/lesomnus/xli/cfg v0.1.2
+	github.com/lesomnus/xli/cfg v0.1.4-0.20261123042429-3e6291b33598
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	github.com/miekg/pkcs11 v1.1.2
 	github.com/nats-io/nats-server/v2 v2.15.3

@@ -956,6 +956,15 @@ for when nothing set it, and `$$` is a dollar sign. A field of type `cfg.Secret`
 may also be `${file:/run/secrets/db}`, which is read again when the file is
 rotated.
 
+`server.tls` is written that way too: `cert`, `key` and `client_ca` are each a
+`ref.String` (`github.com/lesomnus/xli/cfg/ref`), so `cert: ${file:/run/tls/tls.crt}`
+or the PEM itself, and the same of `ca`, `cert` and `key` in a
+`config.DialConfig`. A `ref.String` is a value and not a secret: `<app> config`
+shows a certificate, and leaves out a key by its name. Up to 1 MiB of a file is
+read, which a system's CA bundle fits in. They are read when the listener or
+the connection is built and not again, so a certificate that is replaced takes
+a restart.
+
 Environment variable names come from the struct by reflection, so `server.addr`
 is `ACME_SERVER_ADDR` for an app whose loader was made with `cfg.New("acme", …)`.
 A variable that is set and empty clears the value. `<app> config env` prints the

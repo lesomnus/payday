@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"math"
 	"slices"
 	"time"
@@ -273,7 +272,7 @@ func (c ServerConfig) Closed() func(method string) bool {
 // # Why it answers with an error
 //
 // Because of the first option it builds. Everything else here is a number that
-// was either given or not; TLS is files that have to be read, and a certificate
+// was either given or not; TLS is a certificate that has to be read, and one
 // that cannot be read is a server that must not start.
 //
 // It did not always. `ServerConfig.Tls` was a block a deployment could write and
@@ -293,9 +292,12 @@ func (c ServerConfig) GrpcOptions() ([]grpc.ServerOption, error) {
 	// nothing said anything, which is what `grpc.NewServer` does by default --
 	// so passing it always is the same server, and the branch that would have
 	// decided whether to pass it is a branch that can be wrong.
+	//
+	// Its error is not wrapped: it already names the key under `tls`, and one
+	// more "tls:" in front of that would name it twice.
 	creds, err := c.Tls.Credentials()
 	if err != nil {
-		return nil, fmt.Errorf("tls: %w", err)
+		return nil, err
 	}
 
 	opts := []grpc.ServerOption{grpc.Creds(creds)}
