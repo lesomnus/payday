@@ -24,7 +24,7 @@ type AccessClaims struct {
 	Scope             []string
 	Id                string // jti, the token identifier, not the subject
 	DateIssued        time.Time
-	DateExpires       time.Time
+	DateExpired       time.Time
 	DateAuthenticated time.Time
 }
 
@@ -101,7 +101,7 @@ func ReadAccess(t *oidc.IDToken, audience string) (AccessClaims, error) {
 	return AccessClaims{
 		Issuer: t.Issuer, Subject: t.Subject, Audience: slices.Clone(t.Audience),
 		ClientId: c.ClientId, Id: c.Id, Scope: scopes,
-		DateIssued: issued, DateExpires: expires, DateAuthenticated: date,
+		DateIssued: issued, DateExpired: expires, DateAuthenticated: date,
 	}, nil
 }
 

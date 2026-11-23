@@ -110,8 +110,8 @@ func IdentityFrom(v *pdpb.TokenIntrospectResponse) (Identity, error) {
 		}
 		id.DateAuthenticated = u.AsTime()
 	}
-	if u := v.GetDateExpires(); u != nil {
-		id.DateExpires = u.AsTime()
+	if u := v.GetDateExpired(); u != nil {
+		id.DateExpired = u.AsTime()
 	}
 
 	return id, nil
@@ -136,8 +136,8 @@ func Introspection(id Identity) (*pdpb.TokenIntrospectResponse, error) {
 			return nil, fmt.Errorf("date_authenticated: %w", err)
 		}
 	}
-	if !id.DateExpires.IsZero() {
-		res.DateExpires = timestamppb.New(id.DateExpires)
+	if !id.DateExpired.IsZero() {
+		res.DateExpired = timestamppb.New(id.DateExpired)
 	}
 
 	if s := id.Id; s != "" {

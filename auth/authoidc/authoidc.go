@@ -98,7 +98,7 @@ func Subject(_ context.Context, t *oidc.IDToken) (auth.Identity, error) {
 		// which is the direction that is safe to get wrong, since a grant only
 		// ever takes away.
 		Grant:       frame.Whole(),
-		DateExpires: t.Expiry,
+		DateExpired: t.Expiry,
 	}, nil
 }
 
@@ -250,8 +250,8 @@ func verifier(v *oidc.IDTokenVerifier, claims Claims, accessAudience string) aut
 			// the answer's to give.
 			id.Method = Method
 			id.DateAuthenticated = date
-			if id.DateExpires.IsZero() && !t.Expiry.IsZero() {
-				id.DateExpires = t.Expiry
+			if id.DateExpired.IsZero() && !t.Expiry.IsZero() {
+				id.DateExpired = t.Expiry
 			}
 
 			return id, nil

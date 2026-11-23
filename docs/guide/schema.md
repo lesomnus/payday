@@ -369,6 +369,10 @@ numbers is what lets payday add a header field later without every app having
 already spent it. Payday-owned entities use their shipped schema, which is
 checked separately.
 
+A field that holds a moment is `date_` and its event in the past tense --
+`date_created`, `date_erased`, a grant's `date_expired` -- so that its name
+does not turn wrong once the moment has passed.
+
 What `header.Of` reads a row by is the **name**, not the number — which is why a
 `name` that is not a string is refused as well. A reflective read of one finds
 nothing, a page falls back to the alias or to the identifier, and nothing

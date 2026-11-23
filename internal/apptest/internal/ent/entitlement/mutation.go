@@ -28,7 +28,7 @@ type Mutation struct {
 	date_updated     *time.Time
 	date_created     *time.Time
 	date_effective   *time.Time
-	date_expires     *time.Time
+	date_expired     *time.Time
 	clearedFields    map[string]struct{}
 	exprs            map[string]sql.Querier
 	tenant           *uuid.UUID
@@ -301,40 +301,40 @@ func (m *Mutation) ResetDateEffective() {
 	delete(m.exprs, FieldDateEffective)
 }
 
-// SetDateExpires sets the "date_expires" field.
-func (m *Mutation) SetDateExpires(t time.Time) {
-	m.date_expires = &t
-	delete(m.clearedFields, FieldDateExpires)
-	delete(m.exprs, FieldDateExpires)
+// SetDateExpired sets the "date_expired" field.
+func (m *Mutation) SetDateExpired(t time.Time) {
+	m.date_expired = &t
+	delete(m.clearedFields, FieldDateExpired)
+	delete(m.exprs, FieldDateExpired)
 }
 
-// DateExpires returns the value of the "date_expires" field in the mutation.
-func (m *Mutation) DateExpires() (r time.Time, exists bool) {
-	v := m.date_expires
+// DateExpired returns the value of the "date_expired" field in the mutation.
+func (m *Mutation) DateExpired() (r time.Time, exists bool) {
+	v := m.date_expired
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearDateExpires clears the value of the "date_expires" field.
-func (m *Mutation) ClearDateExpires() {
-	m.date_expires = nil
-	delete(m.exprs, FieldDateExpires)
-	m.clearedFields[FieldDateExpires] = struct{}{}
+// ClearDateExpired clears the value of the "date_expired" field.
+func (m *Mutation) ClearDateExpired() {
+	m.date_expired = nil
+	delete(m.exprs, FieldDateExpired)
+	m.clearedFields[FieldDateExpired] = struct{}{}
 }
 
-// DateExpiresCleared returns if the "date_expires" field was cleared in this mutation.
-func (m *Mutation) DateExpiresCleared() bool {
-	_, ok := m.clearedFields[FieldDateExpires]
+// DateExpiredCleared returns if the "date_expired" field was cleared in this mutation.
+func (m *Mutation) DateExpiredCleared() bool {
+	_, ok := m.clearedFields[FieldDateExpired]
 	return ok
 }
 
-// ResetDateExpires resets all changes to the "date_expires" field.
-func (m *Mutation) ResetDateExpires() {
-	m.date_expires = nil
-	delete(m.clearedFields, FieldDateExpires)
-	delete(m.exprs, FieldDateExpires)
+// ResetDateExpired resets all changes to the "date_expired" field.
+func (m *Mutation) ResetDateExpired() {
+	m.date_expired = nil
+	delete(m.clearedFields, FieldDateExpired)
+	delete(m.exprs, FieldDateExpired)
 }
 
 // SetTenantId sets the "tenant_id" field.
@@ -442,8 +442,8 @@ func (m *Mutation) Fields() []string {
 	if m.date_effective != nil || m.exprs[FieldDateEffective] != nil {
 		fields = append(fields, FieldDateEffective)
 	}
-	if m.date_expires != nil || m.exprs[FieldDateExpires] != nil {
-		fields = append(fields, FieldDateExpires)
+	if m.date_expired != nil || m.exprs[FieldDateExpired] != nil {
+		fields = append(fields, FieldDateExpired)
 	}
 	if m.tenant != nil {
 		fields = append(fields, FieldTenantId)
@@ -478,8 +478,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateCreated()
 	case FieldDateEffective:
 		return m.DateEffective()
-	case FieldDateExpires:
-		return m.DateExpires()
+	case FieldDateExpired:
+		return m.DateExpired()
 	case FieldTenantId:
 		return m.TenantId()
 	}
@@ -581,7 +581,7 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDateEffective(v)
 		return nil
-	case FieldDateExpires:
+	case FieldDateExpired:
 		v, ok := value.(time.Time)
 		if !ok {
 			if e, ok := value.(sql.Querier); ok {
@@ -589,7 +589,7 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 			}
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetDateExpires(v)
+		m.SetDateExpired(v)
 		return nil
 	case FieldTenantId:
 		v, ok := value.(uuid.UUID)
@@ -639,8 +639,8 @@ func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
 		return fmt.Errorf("field %s cannot be assigned an expression: it is immutable, and an expression is written only by an update", name)
 	case FieldDateEffective:
 		m.ResetDateEffective()
-	case FieldDateExpires:
-		m.ResetDateExpires()
+	case FieldDateExpired:
+		m.ResetDateExpired()
 	case FieldTenantId:
 		return fmt.Errorf("field %s cannot be assigned an expression: it holds an edge, which is set through the edge", name)
 	default:
@@ -679,8 +679,8 @@ func (m *Mutation) ExprFields() []string {
 	if _, ok := m.exprs[FieldDateEffective]; ok {
 		fields = append(fields, FieldDateEffective)
 	}
-	if _, ok := m.exprs[FieldDateExpires]; ok {
-		fields = append(fields, FieldDateExpires)
+	if _, ok := m.exprs[FieldDateExpired]; ok {
+		fields = append(fields, FieldDateExpired)
 	}
 	return fields
 }
@@ -756,8 +756,8 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateEffective) {
 		fields = append(fields, FieldDateEffective)
 	}
-	if m.FieldCleared(FieldDateExpires) {
-		fields = append(fields, FieldDateExpires)
+	if m.FieldCleared(FieldDateExpired) {
+		fields = append(fields, FieldDateExpired)
 	}
 	return fields
 }
@@ -779,8 +779,8 @@ func (m *Mutation) ClearField(name string) error {
 	case FieldDateEffective:
 		m.ClearDateEffective()
 		return nil
-	case FieldDateExpires:
-		m.ClearDateExpires()
+	case FieldDateExpired:
+		m.ClearDateExpired()
 		return nil
 	}
 	return fmt.Errorf("unknown Entitlement nullable field %s", name)
@@ -814,8 +814,8 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldDateEffective:
 		m.ResetDateEffective()
 		return nil
-	case FieldDateExpires:
-		m.ResetDateExpires()
+	case FieldDateExpired:
+		m.ResetDateExpired()
 		return nil
 	case FieldTenantId:
 		m.ResetTenantId()

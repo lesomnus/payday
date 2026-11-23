@@ -108,7 +108,7 @@ type Entitlement struct {
 	xxx_hidden_DateUpdated   *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=date_updated,json=dateUpdated"`
 	xxx_hidden_DateCreated   *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=date_created,json=dateCreated"`
 	xxx_hidden_DateEffective *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=date_effective,json=dateEffective"`
-	xxx_hidden_DateExpires   *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=date_expires,json=dateExpires"`
+	xxx_hidden_DateExpired   *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=date_expired,json=dateExpired"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -208,9 +208,9 @@ func (x *Entitlement) GetDateEffective() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Entitlement) GetDateExpires() *timestamppb.Timestamp {
+func (x *Entitlement) GetDateExpired() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_DateExpires
+		return x.xxx_hidden_DateExpired
 	}
 	return nil
 }
@@ -261,8 +261,8 @@ func (x *Entitlement) SetDateEffective(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateEffective = v
 }
 
-func (x *Entitlement) SetDateExpires(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DateExpires = v
+func (x *Entitlement) SetDateExpired(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateExpired = v
 }
 
 func (x *Entitlement) HasTenant() bool {
@@ -293,11 +293,11 @@ func (x *Entitlement) HasDateEffective() bool {
 	return x.xxx_hidden_DateEffective != nil
 }
 
-func (x *Entitlement) HasDateExpires() bool {
+func (x *Entitlement) HasDateExpired() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_DateExpires != nil
+	return x.xxx_hidden_DateExpired != nil
 }
 
 func (x *Entitlement) ClearTenant() {
@@ -316,8 +316,8 @@ func (x *Entitlement) ClearDateEffective() {
 	x.xxx_hidden_DateEffective = nil
 }
 
-func (x *Entitlement) ClearDateExpires() {
-	x.xxx_hidden_DateExpires = nil
+func (x *Entitlement) ClearDateExpired() {
+	x.xxx_hidden_DateExpired = nil
 }
 
 type Entitlement_builder struct {
@@ -340,11 +340,11 @@ type Entitlement_builder struct {
 	GrantVersion uint64
 	DateUpdated  *timestamppb.Timestamp
 	DateCreated  *timestamppb.Timestamp
-	// DateEffective and DateExpires are the grant's window: in force from the
+	// DateEffective and DateExpired are the grant's window: in force from the
 	// one, and no longer from the other. A grant may say no beginning, which is
 	// from always; every grant says when it ends.
 	DateEffective *timestamppb.Timestamp
-	DateExpires   *timestamppb.Timestamp
+	DateExpired   *timestamppb.Timestamp
 }
 
 func (b0 Entitlement_builder) Build() *Entitlement {
@@ -361,7 +361,7 @@ func (b0 Entitlement_builder) Build() *Entitlement {
 	x.xxx_hidden_DateUpdated = b.DateUpdated
 	x.xxx_hidden_DateCreated = b.DateCreated
 	x.xxx_hidden_DateEffective = b.DateEffective
-	x.xxx_hidden_DateExpires = b.DateExpires
+	x.xxx_hidden_DateExpired = b.DateExpired
 	return m0
 }
 
@@ -382,7 +382,7 @@ const file_app_payday_entitlement_proto_rawDesc = "" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
 	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated\x12I\n" +
 	"\x0edate_effective\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xea\x82\x16\x028\x01R\rdateEffective\x12F\n" +
-	"\fdate_expires\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\vdateExpires:I\xca\xfc\x155\x1a\x17\x12\x05grant\x1a\f\n" +
+	"\fdate_expired\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x82\x01\x00R\vdateExpired:I\xca\xfc\x155\x1a\x17\x12\x05grant\x1a\f\n" +
 	"\bgrant_id\x10\v0\x01\x1a\x1a\x12\x03key\x1a\n" +
 	"\n" +
 	"\x06tenant\x10\x02\x1a\a\n" +
@@ -410,7 +410,7 @@ var file_app_payday_entitlement_proto_depIdxs = []int32{
 	3, // 2: app.Entitlement.date_updated:type_name -> google.protobuf.Timestamp
 	3, // 3: app.Entitlement.date_created:type_name -> google.protobuf.Timestamp
 	3, // 4: app.Entitlement.date_effective:type_name -> google.protobuf.Timestamp
-	3, // 5: app.Entitlement.date_expires:type_name -> google.protobuf.Timestamp
+	3, // 5: app.Entitlement.date_expired:type_name -> google.protobuf.Timestamp
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name

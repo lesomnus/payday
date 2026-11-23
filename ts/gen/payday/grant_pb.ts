@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/grant.proto.
  */
 export const file_payday_grant: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvZ3JhbnQucHJvdG8SBnBheWRheSKjAgoQRW50aXRsZW1lbnRHcmFudBIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSCwoDa2V5GAMgASgJEg8KB3ZlcnNpb24YBCABKAQSDAoCb24YBSABKAhIABIPCgVsaW1pdBgGIAEoA0gAEjcKCXVubGltaXRlZBgHIAEoCzIiLnBheWRheS5FbnRpdGxlbWVudEdyYW50LlVubGltaXRlZEgAEjIKDmRhdGVfZWZmZWN0aXZlGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX2V4cGlyZXMYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGgsKCVVubGltaXRlZEIHCgV2YWx1ZSITChFHcmFudFdhdGNoUmVxdWVzdCJyChJHcmFudFdhdGNoUmVzcG9uc2USKAoFcmVhZHkYASABKAsyFy5wYXlkYXkuR3JhbnRXYXRjaFJlYWR5SAASKQoFZ3JhbnQYAiABKAsyGC5wYXlkYXkuRW50aXRsZW1lbnRHcmFudEgAQgcKBWV2ZW50IhEKD0dyYW50V2F0Y2hSZWFkeSJDChBHcmFudExpc3RSZXF1ZXN0EhEKCXRlbmFudF9pZBgBIAEoDBIMCgRzaXplGAIgASgFEg4KBmN1cnNvchgDIAEoCSJKChFHcmFudExpc3RSZXNwb25zZRInCgVpdGVtcxgBIAMoCzIYLnBheWRheS5FbnRpdGxlbWVudEdyYW50EgwKBG5leHQYAiABKAkyjQEKDEdyYW50U2VydmljZRJACgVXYXRjaBIZLnBheWRheS5HcmFudFdhdGNoUmVxdWVzdBoaLnBheWRheS5HcmFudFdhdGNoUmVzcG9uc2UwARI7CgRMaXN0EhgucGF5ZGF5LkdyYW50TGlzdFJlcXVlc3QaGS5wYXlkYXkuR3JhbnRMaXN0UmVzcG9uc2VCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp]);
+  fileDesc("ChJwYXlkYXkvZ3JhbnQucHJvdG8SBnBheWRheSKjAgoQRW50aXRsZW1lbnRHcmFudBIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSCwoDa2V5GAMgASgJEg8KB3ZlcnNpb24YBCABKAQSDAoCb24YBSABKAhIABIPCgVsaW1pdBgGIAEoA0gAEjcKCXVubGltaXRlZBgHIAEoCzIiLnBheWRheS5FbnRpdGxlbWVudEdyYW50LlVubGltaXRlZEgAEjIKDmRhdGVfZWZmZWN0aXZlGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkYXRlX2V4cGlyZWQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGgsKCVVubGltaXRlZEIHCgV2YWx1ZSITChFHcmFudFdhdGNoUmVxdWVzdCJyChJHcmFudFdhdGNoUmVzcG9uc2USKAoFcmVhZHkYASABKAsyFy5wYXlkYXkuR3JhbnRXYXRjaFJlYWR5SAASKQoFZ3JhbnQYAiABKAsyGC5wYXlkYXkuRW50aXRsZW1lbnRHcmFudEgAQgcKBWV2ZW50IhEKD0dyYW50V2F0Y2hSZWFkeSJDChBHcmFudExpc3RSZXF1ZXN0EhEKCXRlbmFudF9pZBgBIAEoDBIMCgRzaXplGAIgASgFEg4KBmN1cnNvchgDIAEoCSJKChFHcmFudExpc3RSZXNwb25zZRInCgVpdGVtcxgBIAMoCzIYLnBheWRheS5FbnRpdGxlbWVudEdyYW50EgwKBG5leHQYAiABKAkyjQEKDEdyYW50U2VydmljZRJACgVXYXRjaBIZLnBheWRheS5HcmFudFdhdGNoUmVxdWVzdBoaLnBheWRheS5HcmFudFdhdGNoUmVzcG9uc2UwARI7CgRMaXN0EhgucGF5ZGF5LkdyYW50TGlzdFJlcXVlc3QaGS5wYXlkYXkuR3JhbnRMaXN0UmVzcG9uc2VCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp]);
 
 /**
  * EntitlementGrant is one thing a source gave a tenant, for a window of time:
@@ -106,7 +106,7 @@ export type EntitlementGrant = Message<"payday.EntitlementGrant"> & {
   dateEffective?: Timestamp | undefined;
 
   /**
-   * DateExpires is when it ends, and every grant says one: a copy that stops
+   * DateExpired is when it ends, and every grant says one: a copy that stops
    * hearing from its source keeps a grant until then and not forever, and
    * that is the one bound on how stale a copy can be. A grant meant to last
    * says a horizon and is sent again before it comes -- the end of the paid
@@ -116,9 +116,9 @@ export type EntitlementGrant = Message<"payday.EntitlementGrant"> & {
    * A grant whose window is empty, ending when or before it begins, is in
    * force never: a grant taken back before it began.
    *
-   * @generated from field: google.protobuf.Timestamp date_expires = 9;
+   * @generated from field: google.protobuf.Timestamp date_expired = 9;
    */
-  dateExpires?: Timestamp | undefined;
+  dateExpired?: Timestamp | undefined;
 };
 
 /**
@@ -315,9 +315,9 @@ export const GrantListResponseSchema: GenMessage<GrantListResponse> = /*@__PURE_
  * one it hears.
  *
  * So a grant is changed by sending it again at a higher version, and taken
- * away by **ending** it: sent again with `date_expires` at the moment it ends.
+ * away by **ending** it: sent again with `date_expired` at the moment it ends.
  * A grant the source stops listing that has not ended is kept by the copy
- * until it does -- a copy never takes away on a guess, and `date_expires` is
+ * until it does -- a copy never takes away on a guess, and `date_expired` is
  * what bounds how long that is. Once a grant has ended the source may stop
  * listing it, after a while -- a day is plenty, so that a comparison begun
  * before it ended never finds it gone -- and the copy forgets it at its next

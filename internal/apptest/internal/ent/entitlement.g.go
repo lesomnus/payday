@@ -29,6 +29,6 @@ func (e *Entitlement) Proto() *apptest.Entitlement {
 	if e.DateEffective != nil {
 		x.SetDateEffective(timestamppb.New(*e.DateEffective))
 	}
-	x.SetDateExpires(timestamppb.New(e.DateExpires))
+	x.SetDateExpired(timestamppb.New(e.DateExpired))
 	return x
 }

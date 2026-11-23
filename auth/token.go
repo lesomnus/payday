@@ -217,7 +217,7 @@ func (s *MemTokenStore) Lookup(_ context.Context, token string) (Identity, error
 	// this to itself hands out streams that outlive the tokens they were opened
 	// with. See [InterceptorStream].
 	id := v.id
-	id.DateExpires = v.exp
+	id.DateExpired = v.exp
 
 	return id, nil
 }

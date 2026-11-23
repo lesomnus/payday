@@ -90,7 +90,7 @@ func TestPresenceBoundsTheStreamIndependentlyOfTheDeviceCredential(t *testing.T)
 				changed := make(chan struct{})
 				credentialChanged := make(chan struct{})
 				h := auth.HandlerFunc(func(context.Context) (auth.Identity, error) {
-					return auth.Identity{Id: device.String(), Grant: frame.Whole(), Changed: credentialChanged, DateExpires: time.Now().Add(time.Hour)}, nil
+					return auth.Identity{Id: device.String(), Grant: frame.Whole(), Changed: credentialChanged, DateExpired: time.Now().Add(time.Hour)}, nil
 				})
 				base := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) {
 					return frame.New(device, tenant, frame.Whole()), nil

@@ -85,7 +85,7 @@ message EntitlementGrant {
     Unlimited unlimited = 7; // no bound -- a value, and not none
   }
   google.protobuf.Timestamp date_effective = 8; // unset is from always
-  google.protobuf.Timestamp date_expires   = 9; // every grant says one
+  google.protobuf.Timestamp date_expired   = 9; // every grant says one
 }
 ```
 
@@ -100,7 +100,7 @@ between two grants. A grant's tenant and key are its own: a source that
 sends one under another is not believed (see [§4](#4-keeping-it-the-follower)).
 
 A grant is changed by sending it again at a higher version, and taken away by
-**ending** it: sent again with `date_expires` at the moment it ends. A grant
+**ending** it: sent again with `date_expired` at the moment it ends. A grant
 that ended may then go from the source's list -- after a day, say, so that a
 comparison begun before it ended never finds it gone -- and the copy forgets
 it the next time it compares. A grant the source stops listing **that has not
@@ -227,7 +227,7 @@ The copy goes on answering, as it was. Nothing is taken out of it for want of
 hearing from the source -- not by a stream that ended, a list that failed, or
 a list that came back short.
 
-What bounds how stale it can be is `date_expires`, which every grant says: a
+What bounds how stale it can be is `date_expired`, which every grant says: a
 copy that stops hearing keeps a grant until then and not forever. So a source
 says a horizon it renews -- the end of the paid period and a grace after it,
 say -- and a grant meant to last for good says a far one, where somebody

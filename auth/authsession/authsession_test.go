@@ -267,7 +267,7 @@ func TestAVerifyMaySetAShorterExpiry(t *testing.T) {
 //
 // A call presents its cookie every time and finds out at the next one. A Watch
 // reads it once at the handshake and would otherwise be served for as long as
-// somebody leaves the tab open. See [auth.Identity.DateExpires].
+// somebody leaves the tab open. See [auth.Identity.DateExpired].
 func TestTheExpiryIsCarriedSoAStreamEnds(t *testing.T) {
 	x := require.New(t)
 
@@ -276,7 +276,7 @@ func TestTheExpiryIsCarriedSoAStreamEnds(t *testing.T) {
 
 	id, err := s.Handler().Handle(carrying(c))
 	x.NoError(err)
-	x.False(id.DateExpires.IsZero(), "nothing would ever cut the stream")
+	x.False(id.DateExpired.IsZero(), "nothing would ever cut the stream")
 	x.False(id.Valid(time.Now().Add(2 * time.Hour)))
 	x.True(id.Valid(time.Now()))
 }
@@ -901,7 +901,7 @@ func TestNoIdleClockIsTheOldBehaviour(t *testing.T) {
 
 	id, err := s.Handler().Handle(carrying(c))
 	x.NoError(err)
-	x.Equal(v.Expires, id.DateExpires, "what a stream is cut by is not the absolute clock")
+	x.Equal(v.Expires, id.DateExpired, "what a stream is cut by is not the absolute clock")
 }
 
 // TestAStreamIsCutByWhicheverRunsOutFirst, which is the idle one in a
@@ -918,6 +918,6 @@ func TestAStreamIsCutByWhicheverRunsOutFirst(t *testing.T) {
 
 	id, err := s.Handler().Handle(carrying(c))
 	x.NoError(err)
-	x.WithinDuration(time.Now().Add(time.Minute), id.DateExpires, 5*time.Second)
+	x.WithinDuration(time.Now().Add(time.Minute), id.DateExpired, 5*time.Second)
 	x.False(id.Valid(time.Now().Add(2 * time.Minute)))
 }

@@ -110,7 +110,7 @@ func InterceptorStream(h Handler, r Resolver, public Public) grpc.StreamServerIn
 			return err
 		}
 
-		expires := id.DateExpires
+		expires := id.DateExpired
 		var presenceChanged <-chan struct{}
 		if f, ok := frame.From(ctx); ok && f.Caller != nil {
 			if !f.PresenceExpires.IsZero() && (expires.IsZero() || f.PresenceExpires.Before(expires)) {

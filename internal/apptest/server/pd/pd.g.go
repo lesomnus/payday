@@ -13588,7 +13588,7 @@ func entitlementRow(v *ent.Entitlement) entitle.Row {
 		Key:           v.Key,
 		Value:         entitlementValue(v.Value, v.Amount),
 		DateEffective: entitlementFrom(v.DateEffective),
-		DateExpires:   v.DateExpires,
+		DateExpired:   v.DateExpired,
 		Grant:         v.GrantId,
 		Version:       v.GrantVersion,
 	}
@@ -13755,7 +13755,7 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetAmount(amount).
 			SetGrantId(r.Grant).
 			SetGrantVersion(r.Version).
-			SetDateExpires(r.DateExpires).
+			SetDateExpired(r.DateExpired).
 			SetDateUpdated(now).
 			SetDateCreated(now)
 		if !r.DateEffective.IsZero() {
@@ -13769,7 +13769,7 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetValue(int32(value)).
 			SetAmount(amount).
 			SetGrantVersion(r.Version).
-			SetDateExpires(r.DateExpires).
+			SetDateExpired(r.DateExpired).
 			SetDateUpdated(now)
 		if r.DateEffective.IsZero() {
 			q.ClearDateEffective()

@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/token.proto.
  */
 export const file_payday_token: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIqcBChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EjAKDGRhdGVfZXhwaXJlcxgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAicAoFR3JhbnQSEgoKYW55X3RlbmFudBgBIAEoCBIPCgd0ZW5hbnRzGAIgAygMEg8KB2FueV9zZXQYAyABKAgSDAoEc2V0cxgEIAMoDBISCgphbnlfYWN0aW9uGAUgASgIEg8KB2FjdGlvbnMYBiADKAkyXQoMVG9rZW5TZXJ2aWNlEk0KCkludHJvc3BlY3QSHi5wYXlkYXkuVG9rZW5JbnRyb3NwZWN0UmVxdWVzdBofLnBheWRheS5Ub2tlbkludHJvc3BlY3RSZXNwb25zZUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp]);
+  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIt8BChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EjAKDGRhdGVfZXhwaXJlZBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNgoSZGF0ZV9hdXRoZW50aWNhdGVkGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJwCgVHcmFudBISCgphbnlfdGVuYW50GAEgASgIEg8KB3RlbmFudHMYAiADKAwSDwoHYW55X3NldBgDIAEoCBIMCgRzZXRzGAQgAygMEhIKCmFueV9hY3Rpb24YBSABKAgSDwoHYWN0aW9ucxgGIAMoCTJdCgxUb2tlblNlcnZpY2USTQoKSW50cm9zcGVjdBIeLnBheWRheS5Ub2tlbkludHJvc3BlY3RSZXF1ZXN0Gh8ucGF5ZGF5LlRva2VuSW50cm9zcGVjdFJlc3BvbnNlQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message payday.TokenIntrospectRequest
@@ -43,10 +43,10 @@ export const TokenIntrospectRequestSchema: GenMessage<TokenIntrospectRequest> = 
 /**
  * TokenIntrospectResponse is `auth.Identity` as it crosses.
  *
- * Every field here fills one there, and the one field of `auth.Identity` that
- * is missing is `Method`: how a caller authenticated is answered by whatever
- * read the credential, and a store that could name it would be naming the
- * wrong process's answer.
+ * Every field here fills one there. Method is deliberately absent: how a
+ * caller authenticated is answered by whatever read the credential, and a
+ * store that could name it would be naming the wrong process's answer. Local
+ * authority names and process-local change channels do not cross here either.
  *
  * @generated from message payday.TokenIntrospectResponse
  */
@@ -106,9 +106,17 @@ export type TokenIntrospectResponse = Message<"payday.TokenIntrospectResponse"> 
    * once, at the handshake, and without this would be served for as long as it
    * stays open -- which for a Watch is until somebody hangs up.
    *
-   * @generated from field: google.protobuf.Timestamp date_expires = 6;
+   * @generated from field: google.protobuf.Timestamp date_expired = 6;
    */
-  dateExpires?: Timestamp | undefined;
+  dateExpired?: Timestamp | undefined;
+
+  /**
+   * Last authentication time known by the verifier. Unset means unknown.
+   * Issuing or using a token does not establish a new authentication time.
+   *
+   * @generated from field: google.protobuf.Timestamp date_authenticated = 7;
+   */
+  dateAuthenticated?: Timestamp | undefined;
 };
 
 /**

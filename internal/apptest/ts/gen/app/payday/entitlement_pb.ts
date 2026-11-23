@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/entitlement.proto.
  */
 export const file_app_payday_entitlement: GenFile = /*@__PURE__*/
-  fileDesc("ChxhcHAvcGF5ZGF5L2VudGl0bGVtZW50LnByb3RvEgNhcHAiiQQKC0VudGl0bGVtZW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESGQoDa2V5GAggASgJQgzqghYCQAGqwRYCGAASJAoFdmFsdWUYCSABKA4yFS5hcHAuRW50aXRsZW1lbnRWYWx1ZRIOCgZhbW91bnQYCiABKAMSGgoIZ3JhbnRfaWQYCyABKAxCCOqCFgQQDEABEhUKDWdyYW50X3ZlcnNpb24YDCABKAQSOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASOgoOZGF0ZV9lZmZlY3RpdmUYECABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgbqghYCOAESOQoMZGF0ZV9leHBpcmVzGBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4IBADpJyvwVNRoXEgVncmFudBoMCghncmFudF9pZBALMAEaGhIDa2V5GgoKBnRlbmFudBACGgcKA2tleRAIirsWDAgrQgIKAEgNUgIKACqoAQoQRW50aXRsZW1lbnRWYWx1ZRIhCh1FTlRJVExFTUVOVF9WQUxVRV9VTlNQRUNJRklFRBAAEhkKFUVOVElUTEVNRU5UX1ZBTFVFX09GRhABEhgKFEVOVElUTEVNRU5UX1ZBTFVFX09OEAISGwoXRU5USVRMRU1FTlRfVkFMVUVfTElNSVQQAxIfChtFTlRJVExFTUVOVF9WQUxVRV9VTkxJTUlURUQQBEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
+  fileDesc("ChxhcHAvcGF5ZGF5L2VudGl0bGVtZW50LnByb3RvEgNhcHAiiQQKC0VudGl0bGVtZW50EhcKAmlkGAEgASgMQgvqghYHEEAoAYIBABIjCgZ0ZW5hbnQYAiABKAsyCy5hcHAuVGVuYW50QgbyghYCQAESGQoDa2V5GAggASgJQgzqghYCQAGqwRYCGAASJAoFdmFsdWUYCSABKA4yFS5hcHAuRW50aXRsZW1lbnRWYWx1ZRIOCgZhbW91bnQYCiABKAMSGgoIZ3JhbnRfaWQYCyABKAxCCOqCFgQQDEABEhUKDWdyYW50X3ZlcnNpb24YDCABKAQSOQoMZGF0ZV91cGRhdGVkGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4oBABI7CgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgnqghYFQAGCAQASOgoOZGF0ZV9lZmZlY3RpdmUYECABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgbqghYCOAESOQoMZGF0ZV9leHBpcmVkGBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIH6oIWA4IBADpJyvwVNRoXEgVncmFudBoMCghncmFudF9pZBALMAEaGhIDa2V5GgoKBnRlbmFudBACGgcKA2tleRAIirsWDAgrQgIKAEgNUgIKACqoAQoQRW50aXRsZW1lbnRWYWx1ZRIhCh1FTlRJVExFTUVOVF9WQUxVRV9VTlNQRUNJRklFRBAAEhkKFUVOVElUTEVNRU5UX1ZBTFVFX09GRhABEhgKFEVOVElUTEVNRU5UX1ZBTFVFX09OEAISGwoXRU5USVRMRU1FTlRfVkFMVUVfTElNSVQQAxIfChtFTlRJVExFTUVOVF9WQUxVRV9VTkxJTUlURUQQBEIyWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0kgMCCAJiCGVkaXRpb25zcOgH", [file_google_protobuf_timestamp, file_orm, file_payday, file_app_payday_tenant]);
 
 /**
  * Entitlement is one grant a source issued a tenant, as the app keeps a copy
@@ -101,7 +101,7 @@ export type Entitlement = Message<"app.Entitlement"> & {
   dateCreated?: Timestamp | undefined;
 
   /**
-   * DateEffective and DateExpires are the grant's window: in force from the
+   * DateEffective and DateExpired are the grant's window: in force from the
    * one, and no longer from the other. A grant may say no beginning, which is
    * from always; every grant says when it ends.
    *
@@ -110,9 +110,9 @@ export type Entitlement = Message<"app.Entitlement"> & {
   dateEffective?: Timestamp | undefined;
 
   /**
-   * @generated from field: google.protobuf.Timestamp date_expires = 17;
+   * @generated from field: google.protobuf.Timestamp date_expired = 17;
    */
-  dateExpires?: Timestamp | undefined;
+  dateExpired?: Timestamp | undefined;
 };
 
 /**

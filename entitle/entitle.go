@@ -242,9 +242,9 @@ type Row struct {
 	Key    string
 	Value  Value
 
-	// DateEffective and DateExpires are the grant's window: in force from the
+	// DateEffective and DateExpired are the grant's window: in force from the
 	// one, and no longer from the other.
-	DateEffective, DateExpires time.Time
+	DateEffective, DateExpired time.Time
 
 	// Grant and Version are the grant this copies, by the source's
 	// identifier, and the version of it.
@@ -253,11 +253,11 @@ type Row struct {
 }
 
 // In is whether the grant is in force at `at`.
-func (r Row) In(at time.Time) bool { return !at.Before(r.DateEffective) && at.Before(r.DateExpires) }
+func (r Row) In(at time.Time) bool { return !at.Before(r.DateEffective) && at.Before(r.DateExpired) }
 
 // Ended is whether the grant is over at `at`: in force no longer, and never
 // again. One that has not begun has not ended.
-func (r Row) Ended(at time.Time) bool { return !at.Before(r.DateExpires) }
+func (r Row) Ended(at time.Time) bool { return !at.Before(r.DateExpired) }
 
 // Entitlement is what a tenant has of one key at one moment: the value of the
 // grant that decides it, and that grant.

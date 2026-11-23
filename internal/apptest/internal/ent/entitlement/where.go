@@ -96,9 +96,9 @@ func DateEffective(v time.Time) predicate.Entitlement {
 	return predicate.Entitlement(sql.FieldEQ(FieldDateEffective, v))
 }
 
-// DateExpires applies equality check predicate on the "date_expires" field. It's identical to DateExpiresEQ.
-func DateExpires(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldDateExpires, v))
+// DateExpired applies equality check predicate on the "date_expired" field. It's identical to DateExpiredEQ.
+func DateExpired(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateExpired, v))
 }
 
 // TenantId applies equality check predicate on the "tenant_id" field. It's identical to TenantIdEQ.
@@ -471,54 +471,54 @@ func DateEffectiveNotNil() predicate.Entitlement {
 	return predicate.Entitlement(sql.FieldNotNull(FieldDateEffective))
 }
 
-// DateExpiresEQ applies the EQ predicate on the "date_expires" field.
-func DateExpiresEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldEQ(FieldDateExpires, v))
+// DateExpiredEQ applies the EQ predicate on the "date_expired" field.
+func DateExpiredEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldEQ(FieldDateExpired, v))
 }
 
-// DateExpiresNEQ applies the NEQ predicate on the "date_expires" field.
-func DateExpiresNEQ(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNEQ(FieldDateExpires, v))
+// DateExpiredNEQ applies the NEQ predicate on the "date_expired" field.
+func DateExpiredNEQ(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNEQ(FieldDateExpired, v))
 }
 
-// DateExpiresIn applies the In predicate on the "date_expires" field.
-func DateExpiresIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIn(FieldDateExpires, vs...))
+// DateExpiredIn applies the In predicate on the "date_expired" field.
+func DateExpiredIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIn(FieldDateExpired, vs...))
 }
 
-// DateExpiresNotIn applies the NotIn predicate on the "date_expires" field.
-func DateExpiresNotIn(vs ...time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotIn(FieldDateExpires, vs...))
+// DateExpiredNotIn applies the NotIn predicate on the "date_expired" field.
+func DateExpiredNotIn(vs ...time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotIn(FieldDateExpired, vs...))
 }
 
-// DateExpiresGT applies the GT predicate on the "date_expires" field.
-func DateExpiresGT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGT(FieldDateExpires, v))
+// DateExpiredGT applies the GT predicate on the "date_expired" field.
+func DateExpiredGT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGT(FieldDateExpired, v))
 }
 
-// DateExpiresGTE applies the GTE predicate on the "date_expires" field.
-func DateExpiresGTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldGTE(FieldDateExpires, v))
+// DateExpiredGTE applies the GTE predicate on the "date_expired" field.
+func DateExpiredGTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldGTE(FieldDateExpired, v))
 }
 
-// DateExpiresLT applies the LT predicate on the "date_expires" field.
-func DateExpiresLT(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLT(FieldDateExpires, v))
+// DateExpiredLT applies the LT predicate on the "date_expired" field.
+func DateExpiredLT(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLT(FieldDateExpired, v))
 }
 
-// DateExpiresLTE applies the LTE predicate on the "date_expires" field.
-func DateExpiresLTE(v time.Time) predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldLTE(FieldDateExpires, v))
+// DateExpiredLTE applies the LTE predicate on the "date_expired" field.
+func DateExpiredLTE(v time.Time) predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldLTE(FieldDateExpired, v))
 }
 
-// DateExpiresIsNil applies the IsNil predicate on the "date_expires" field.
-func DateExpiresIsNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldIsNull(FieldDateExpires))
+// DateExpiredIsNil applies the IsNil predicate on the "date_expired" field.
+func DateExpiredIsNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldIsNull(FieldDateExpired))
 }
 
-// DateExpiresNotNil applies the NotNil predicate on the "date_expires" field.
-func DateExpiresNotNil() predicate.Entitlement {
-	return predicate.Entitlement(sql.FieldNotNull(FieldDateExpires))
+// DateExpiredNotNil applies the NotNil predicate on the "date_expired" field.
+func DateExpiredNotNil() predicate.Entitlement {
+	return predicate.Entitlement(sql.FieldNotNull(FieldDateExpired))
 }
 
 // TenantIdEQ applies the EQ predicate on the "tenant_id" field.

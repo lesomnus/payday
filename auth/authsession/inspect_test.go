@@ -47,7 +47,7 @@ func TestRecheckingAStreamDoesNotKeepItsSessionAlive(t *testing.T) {
 			x.Equal(v, got)
 			id, err := check.Handle(ctx)
 			x.NoError(err)
-			x.Equal(v.Until(), id.DateExpires)
+			x.Equal(v.Until(), id.DateExpired)
 			x.Equal(v.Id, id.Id)
 			x.Equal(v.Grant, id.Grant)
 		}

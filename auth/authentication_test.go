@@ -68,7 +68,7 @@ func TestRepresentedPartiesKeepSeparateAuthenticationFacts(t *testing.T) {
 func TestIntrospectionPreservesAuthenticationTime(t *testing.T) {
 	date := time.Now().UTC().Add(-time.Hour)
 	for _, date := range []time.Time{date, {}} {
-		original := auth.Identity{Id: pdid.New(200).String(), Method: "apikey", DateAuthenticated: date, DateExpires: time.Now().UTC().Add(time.Hour), Grant: frame.Whole()}
+		original := auth.Identity{Id: pdid.New(200).String(), Method: "apikey", DateAuthenticated: date, DateExpired: time.Now().UTC().Add(time.Hour), Grant: frame.Whole()}
 		wire, err := auth.Introspection(original)
 		require.NoError(t, err)
 		got, err := auth.IdentityFrom(wire)

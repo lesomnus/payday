@@ -126,23 +126,23 @@ func (_u *EntitlementUpdate) ClearDateEffective() *EntitlementUpdate {
 	return _u
 }
 
-// SetDateExpires sets the "date_expires" field.
-func (_u *EntitlementUpdate) SetDateExpires(v time.Time) *EntitlementUpdate {
-	_u.mutation.SetDateExpires(v)
+// SetDateExpired sets the "date_expired" field.
+func (_u *EntitlementUpdate) SetDateExpired(v time.Time) *EntitlementUpdate {
+	_u.mutation.SetDateExpired(v)
 	return _u
 }
 
-// SetNillableDateExpires sets the "date_expires" field if the given value is not nil.
-func (_u *EntitlementUpdate) SetNillableDateExpires(v *time.Time) *EntitlementUpdate {
+// SetNillableDateExpired sets the "date_expired" field if the given value is not nil.
+func (_u *EntitlementUpdate) SetNillableDateExpired(v *time.Time) *EntitlementUpdate {
 	if v != nil {
-		_u.SetDateExpires(*v)
+		_u.SetDateExpired(*v)
 	}
 	return _u
 }
 
-// ClearDateExpires clears the value of the "date_expires" field.
-func (_u *EntitlementUpdate) ClearDateExpires() *EntitlementUpdate {
-	_u.mutation.ClearDateExpires()
+// ClearDateExpired clears the value of the "date_expired" field.
+func (_u *EntitlementUpdate) ClearDateExpired() *EntitlementUpdate {
+	_u.mutation.ClearDateExpired()
 	return _u
 }
 
@@ -249,14 +249,14 @@ func (_u *EntitlementUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if _u.mutation.DateEffectiveCleared() {
 		_spec.ClearField(entitlement.FieldDateEffective, field.TypeTime)
 	}
-	if value, ok := _u.mutation.DateExpires(); ok {
-		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, value)
+	if value, ok := _u.mutation.DateExpired(); ok {
+		_spec.SetField(entitlement.FieldDateExpired, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(entitlement.FieldDateExpires); ok {
-		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(entitlement.FieldDateExpired); ok {
+		_spec.SetField(entitlement.FieldDateExpired, field.TypeTime, e)
 	}
-	if _u.mutation.DateExpiresCleared() {
-		_spec.ClearField(entitlement.FieldDateExpires, field.TypeTime)
+	if _u.mutation.DateExpiredCleared() {
+		_spec.ClearField(entitlement.FieldDateExpired, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -377,23 +377,23 @@ func (_u *EntitlementUpdateOne) ClearDateEffective() *EntitlementUpdateOne {
 	return _u
 }
 
-// SetDateExpires sets the "date_expires" field.
-func (_u *EntitlementUpdateOne) SetDateExpires(v time.Time) *EntitlementUpdateOne {
-	_u.mutation.SetDateExpires(v)
+// SetDateExpired sets the "date_expired" field.
+func (_u *EntitlementUpdateOne) SetDateExpired(v time.Time) *EntitlementUpdateOne {
+	_u.mutation.SetDateExpired(v)
 	return _u
 }
 
-// SetNillableDateExpires sets the "date_expires" field if the given value is not nil.
-func (_u *EntitlementUpdateOne) SetNillableDateExpires(v *time.Time) *EntitlementUpdateOne {
+// SetNillableDateExpired sets the "date_expired" field if the given value is not nil.
+func (_u *EntitlementUpdateOne) SetNillableDateExpired(v *time.Time) *EntitlementUpdateOne {
 	if v != nil {
-		_u.SetDateExpires(*v)
+		_u.SetDateExpired(*v)
 	}
 	return _u
 }
 
-// ClearDateExpires clears the value of the "date_expires" field.
-func (_u *EntitlementUpdateOne) ClearDateExpires() *EntitlementUpdateOne {
-	_u.mutation.ClearDateExpires()
+// ClearDateExpired clears the value of the "date_expired" field.
+func (_u *EntitlementUpdateOne) ClearDateExpired() *EntitlementUpdateOne {
+	_u.mutation.ClearDateExpired()
 	return _u
 }
 
@@ -530,14 +530,14 @@ func (_u *EntitlementUpdateOne) sqlSave(ctx context.Context) (_node *Entitlement
 	if _u.mutation.DateEffectiveCleared() {
 		_spec.ClearField(entitlement.FieldDateEffective, field.TypeTime)
 	}
-	if value, ok := _u.mutation.DateExpires(); ok {
-		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, value)
+	if value, ok := _u.mutation.DateExpired(); ok {
+		_spec.SetField(entitlement.FieldDateExpired, field.TypeTime, value)
 	}
-	if e, ok := _u.mutation.FieldExpr(entitlement.FieldDateExpires); ok {
-		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, e)
+	if e, ok := _u.mutation.FieldExpr(entitlement.FieldDateExpired); ok {
+		_spec.SetField(entitlement.FieldDateExpired, field.TypeTime, e)
 	}
-	if _u.mutation.DateExpiresCleared() {
-		_spec.ClearField(entitlement.FieldDateExpires, field.TypeTime)
+	if _u.mutation.DateExpiredCleared() {
+		_spec.ClearField(entitlement.FieldDateExpired, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Entitlement{config: _u.config}
