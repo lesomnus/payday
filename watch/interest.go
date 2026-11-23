@@ -27,7 +27,12 @@ func RouteKey(namespace string, parts ...string) Route {
 // Interest is a conservative routing hint, never a read policy. Dimensions are
 // intersected; values within a slice are alternatives. An empty dimension is
 // unrestricted. Service is the full service prefix returned by ServiceOf.
-// Unknown publication metadata must overdeliver rather than lose a change.
+// It is matched exactly and not as a prefix, because a broker may make a native
+// subscription of it: a Service that is not one service's full prefix, such as
+// "/app." or "/app.JobService", matches no change a service wrote. A stream about
+// several services names none here and holds changes to its prefix itself, as
+// [Stream] does. Unknown publication metadata must overdeliver rather than lose
+// a change.
 type Interest struct {
 	Service string
 	Keys    []pdid.Id
