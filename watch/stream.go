@@ -56,6 +56,13 @@ type Seen map[pdid.Id]bool
 // exactly the kind of thing worth generating a caller for rather than a copy.
 //
 //   - `service` is the prefix of the Rpcs whose writes this stream is about.
+//     Where it is exactly one service's, `/pkg.Service/` as [ServiceOf] answers
+//     for a method of it, the subscription is that service's [Interest].
+//     Anything else -- a prefix several services share, a service's name
+//     without its closing `/`, nothing -- subscribes to every service, and the
+//     prefix is held to each change as it arrives. The interest is only an
+//     economy, and narrowing it to a service no write names would cost the
+//     stream every change it is about, with no error to say so.
 //   - `snapshot` sends what matches now, and may be nil for an entity that has
 //     nothing to snapshot.
 //   - `send` reads the rows the keys name and sends what it should.
@@ -69,13 +76,40 @@ func Stream(
 	snapshot func(sent Seen) error,
 	send func(ks map[pdid.Id]string, sent Seen) error,
 ) error {
-	return StreamScope(ctx, w, Interest{Service: service}, snapshot, send)
+	interest := Interest{}
+	if isService(service) {
+		interest.Service = service
+	}
+	return stream(ctx, w, interest, service, snapshot, send)
+}
+
+// isService is whether a prefix is one service's whole: a slash, a name with
+// none in it, and the slash a method's name follows. That is the only prefix
+// [Interest.Service] can match, because it is compared to [ServiceOf] of a
+// write and not read as a prefix -- a broker makes a subject of it. Comparing
+// with ServiceOf alone would take "" and "/" for services.
+func isService(prefix string) bool {
+	name, ok := strings.CutPrefix(prefix, "/")
+	if !ok {
+		return false
+	}
+	name, ok = strings.CutSuffix(name, "/")
+	return ok && name != "" && !strings.Contains(name, "/")
 }
 
 // StreamScope is Stream with a conservative set of row interests. Generated
 // watches use the IDs their filters already resolved; arbitrary predicates
 // must keep a broader interest rather than omit a row entering their result.
 func StreamScope(ctx context.Context, w *Watch, interest Interest,
+	snapshot func(Seen) error, send func(map[pdid.Id]string, Seen) error,
+) error {
+	return stream(ctx, w, interest, interest.Service, snapshot, send)
+}
+
+// stream is StreamScope with the prefix [Next] holds each change to said apart
+// from the interest, because [Stream]'s are not always the same string: a
+// prefix several services share is no Interest.Service.
+func stream(ctx context.Context, w *Watch, interest Interest, prefix string,
 	snapshot func(Seen) error, send func(map[pdid.Id]string, Seen) error,
 ) error {
 	// Before the subscription rather than after, so that a deployment with no
@@ -101,7 +135,7 @@ func StreamScope(ctx context.Context, w *Watch, interest Interest,
 	}
 
 	for {
-		ks, err := Next(ctx, sub.Events, interest.Service)
+		ks, err := Next(ctx, sub.Events, prefix)
 		if err != nil {
 			return err
 		}
