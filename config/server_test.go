@@ -167,8 +167,8 @@ func TestTlsIsActuallyServed(t *testing.T) {
 		x := require.New(t)
 
 		c := config.ServerConfig{Tls: config.TlsConfig{
-			CertFile: filepath.Join(t.TempDir(), "nowhere.pem"),
-			KeyFile:  filepath.Join(t.TempDir(), "nowhere.key"),
+			Cert: fileRef(t, filepath.Join(t.TempDir(), "nowhere.pem")),
+			Key:  fileRef(t, filepath.Join(t.TempDir(), "nowhere.key")),
 		}}
 
 		_, err := c.GrpcOptions()
@@ -183,7 +183,7 @@ func TestTlsIsActuallyServed(t *testing.T) {
 		cert, key := filepath.Join(dir, "c.pem"), filepath.Join(dir, "k.pem")
 		writeCert(t, cert, key)
 
-		c := config.ServerConfig{Tls: config.TlsConfig{CertFile: cert, KeyFile: key}}
+		c := config.ServerConfig{Tls: config.TlsConfig{Cert: fileRef(t, cert), Key: fileRef(t, key)}}
 
 		vs, err := c.GrpcOptions()
 		x.NoError(err)

@@ -3,12 +3,12 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 
-	"github.com/lesomnus/z"
+	"github.com/lesomnus/xli/cfg/ref"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,17 +19,29 @@ type TlsConfig struct {
 	// whose certificate is named somewhere else.
 	Enabled bool `yaml:"enabled"`
 
-	// CertFile is the path to the PEM-encoded server certificate.
-	CertFile string `yaml:"cert_file"`
-	// KeyFile is the path to the PEM-encoded server private key.
-	KeyFile string `yaml:"key_file"`
+	// Cert and Key are the server's certificate and its private key, as PEM.
+	//
+	// They are values, written as every other value of a configuration that is
+	// kept somewhere else: `${file:/path}`, `${env:NAME}`, or the PEM itself.
+	// They used to be paths
+	// (`cert_file`, `key_file`), which made a file say one thing two ways, and
+	// an app copying the first way for a key of its own.
+	//
+	// They are read when the listener is built, and only then: a certificate
+	// that is replaced on disk takes a restart, as it did when these were
+	// paths. A [ref.String] written `${file:}` reads its file again when it
+	// changed, so a server that asked for the certificate on every handshake
+	// would pick a rotation up without one; that is not built.
+	Cert ref.String `yaml:"cert"`
+	Key  ref.String `yaml:"key"`
 
-	// ClientCAFile is the path to a PEM-encoded CA bundle used to verify
-	// client certificates. Setting it enables mutual TLS.
-	ClientCAFile string `yaml:"client_ca_file"`
+	// ClientCA is a PEM bundle used to verify client certificates, read as
+	// Cert is, and of a file no more than 1 MiB is read -- room for a system's
+	// whole bundle. Setting it enables mutual TLS.
+	ClientCA ref.String `yaml:"client_ca"`
 
 	// ClientCertOptional lets a caller connect without a certificate. One that
-	// presents a certificate is still verified against ClientCAFile, and one
+	// presents a certificate is still verified against ClientCA, and one
 	// that presents nothing is still a connection.
 	//
 	// It is for a server that accepts more than one way of saying who is
@@ -52,7 +64,7 @@ type TlsConfig struct {
 // [TlsConfig.Credentials] refusing to build, which is a server that does not
 // start.
 func (c TlsConfig) Active() bool {
-	return c.Enabled || c.CertFile != "" || c.KeyFile != "" || c.ClientCAFile != ""
+	return c.Enabled || !c.Cert.IsZero() || !c.Key.IsZero() || !c.ClientCA.IsZero()
 }
 
 // Server is what this configuration says, as a `*tls.Config` for a server.
@@ -66,43 +78,42 @@ func (c TlsConfig) Active() bool {
 // sign-in, a port robots present certificates to -- would otherwise build the
 // same mutual-TLS setup a second time by hand, and the second one is where the
 // client CA is forgotten.
+//
+// An error names the key as the file writes it, under the `tls` every block of
+// payday's that holds one calls it, and never what the key holds: one of them
+// is a private key, and an error is something a deployment logs.
 func (c TlsConfig) Server() (*tls.Config, error) {
 	if !c.Active() {
 		return nil, nil
 	}
-	if c.CertFile == "" || c.KeyFile == "" {
-		return nil, fmt.Errorf("both cert_file and key_file must be set to enable Tls")
+	if c.Cert.IsZero() || c.Key.IsZero() {
+		return nil, errors.New("tls: both cert and key must be set")
 	}
 
-	cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+	cert, err := keyPair(c.Cert, c.Key)
 	if err != nil {
-		return nil, z.Err(err, "load key pair")
+		return nil, err
 	}
 
-	cfg := &tls.Config{
+	v := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS12,
 	}
 
 	// Enable mutual TLS when a client CA bundle is provided.
-	if c.ClientCAFile != "" {
-		pem, err := os.ReadFile(c.ClientCAFile)
+	if !c.ClientCA.IsZero() {
+		pool, err := certPool("client_ca", c.ClientCA)
 		if err != nil {
-			return nil, z.Err(err, "read client ca")
+			return nil, err
 		}
-
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("no certificates found in %q", c.ClientCAFile)
-		}
-		cfg.ClientCAs = pool
-		cfg.ClientAuth = tls.RequireAndVerifyClientCert
+		v.ClientCAs = pool
+		v.ClientAuth = tls.RequireAndVerifyClientCert
 		if c.ClientCertOptional {
-			cfg.ClientAuth = tls.VerifyClientCertIfGiven
+			v.ClientAuth = tls.VerifyClientCertIfGiven
 		}
 	}
 
-	return cfg, nil
+	return v, nil
 }
 
 // Credentials builds gRPC transport credentials from the Tls configuration.
@@ -144,14 +155,19 @@ type DialConfig struct {
 	// certificate authority needs and all it needs.
 	Enabled bool `yaml:"enabled"`
 
-	// CAFile is a PEM bundle to verify the server against, instead of the
-	// system roots. It is what a private CA needs, and naming it turns TLS on.
-	CAFile string `yaml:"ca_file"`
+	// Ca is a PEM bundle to verify the server against, instead of the system
+	// roots. It is what a private CA needs, and writing it turns TLS on. Of a
+	// file no more than 1 MiB is read, which a system's whole bundle fits in.
+	//
+	// It and Cert and Key are values, read as [TlsConfig.Cert] is and when it
+	// is: when the connection's credentials are built, so a certificate that
+	// is replaced takes a restart.
+	Ca ref.String `yaml:"ca"`
 
-	// CertFile and KeyFile are the certificate this client presents, for a
-	// server that asks. Naming them turns TLS on.
-	CertFile string `yaml:"cert_file"`
-	KeyFile  string `yaml:"key_file"`
+	// Cert and Key are the certificate this client presents, for a server
+	// that asks. Writing them turns TLS on.
+	Cert ref.String `yaml:"cert"`
+	Key  ref.String `yaml:"key"`
 
 	// ServerName is the name to verify the server's certificate against, when
 	// it is not the one in the address -- a connection made to a pod's IP, or
@@ -166,7 +182,7 @@ type DialConfig struct {
 
 // Active reports whether this connection should use Tls.
 func (c DialConfig) Active() bool {
-	return c.Enabled || c.CAFile != "" || c.CertFile != "" || c.KeyFile != ""
+	return c.Enabled || !c.Ca.IsZero() || !c.Cert.IsZero() || !c.Key.IsZero()
 }
 
 // Credentials is what to dial with, and insecure credentials when nothing was
@@ -187,38 +203,70 @@ func (c DialConfig) Credentials() (credentials.TransportCredentials, error) {
 		return insecure.NewCredentials(), nil
 	}
 
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: c.ServerName}
+	v := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: c.ServerName}
 
-	if c.CAFile != "" {
-		pem, err := os.ReadFile(c.CAFile)
+	if !c.Ca.IsZero() {
+		pool, err := certPool("ca", c.Ca)
 		if err != nil {
-			return nil, z.Err(err, "read ca")
+			return nil, err
 		}
 
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("no certificates found in %q", c.CAFile)
-		}
-
-		cfg.RootCAs = pool
+		v.RootCAs = pool
 	}
 
 	// One without the other is a configuration that cannot work, and saying so
 	// here is better than a handshake failing against a server that asked.
 	switch {
-	case c.CertFile != "" && c.KeyFile == "", c.CertFile == "" && c.KeyFile != "":
-		return nil, fmt.Errorf("both cert_file and key_file are needed to present a certificate")
+	case c.Cert.IsZero() != c.Key.IsZero():
+		return nil, errors.New("tls: both cert and key are needed to present a certificate")
 
-	case c.CertFile != "":
-		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+	case !c.Cert.IsZero():
+		cert, err := keyPair(c.Cert, c.Key)
 		if err != nil {
-			return nil, z.Err(err, "load key pair")
+			return nil, err
 		}
 
-		cfg.Certificates = []tls.Certificate{cert}
+		v.Certificates = []tls.Certificate{cert}
 	}
 
-	return credentials.NewTLS(cfg), nil
+	return credentials.NewTLS(v), nil
 }
 
 var plainDialSaid sync.Once
+
+// keyPair reads a certificate and its key. What `crypto/tls` says of a pair it
+// cannot use names no part of either, so it is passed on as it is.
+func keyPair(cert ref.String, key ref.String) (tls.Certificate, error) {
+	c, err := cert.Value()
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("tls.cert: %w", err)
+	}
+	k, err := key.Value()
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("tls.key: %w", err)
+	}
+
+	v, err := tls.X509KeyPair([]byte(c), []byte(k))
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("tls.cert and tls.key: %w", err)
+	}
+
+	return v, nil
+}
+
+// certPool reads a bundle of certificates, refused when it holds none: a pool
+// that is empty verifies nobody, which as a client CA is every caller refused
+// and as a CA is every server.
+func certPool(name string, bundle ref.String) (*x509.CertPool, error) {
+	pem, err := bundle.Value()
+	if err != nil {
+		return nil, fmt.Errorf("tls.%s: %w", name, err)
+	}
+
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM([]byte(pem)) {
+		return nil, fmt.Errorf("tls.%s: no certificate in it", name)
+	}
+
+	return pool, nil
+}

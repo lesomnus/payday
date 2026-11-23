@@ -21,6 +21,7 @@ import (
 
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/payday/config"
+	"github.com/lesomnus/xli/cfg/ref"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -38,9 +39,9 @@ func TestHTTPListenerUsesConfiguredTLS(t *testing.T) {
 		tls  config.TlsConfig
 	}{
 		{"plaintext", config.TlsConfig{}},
-		{"TLS", config.TlsConfig{CertFile: cert, KeyFile: key}},
-		{"required client", config.TlsConfig{CertFile: cert, KeyFile: key, ClientCAFile: cert}},
-		{"optional client", config.TlsConfig{CertFile: cert, KeyFile: key, ClientCAFile: cert, ClientCertOptional: true}},
+		{"TLS", config.TlsConfig{Cert: fileRef(t, cert), Key: fileRef(t, key)}},
+		{"required client", config.TlsConfig{Cert: fileRef(t, cert), Key: fileRef(t, key), ClientCA: fileRef(t, cert)}},
+		{"optional client", config.TlsConfig{Cert: fileRef(t, cert), Key: fileRef(t, key), ClientCA: fileRef(t, cert), ClientCertOptional: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			x := require.New(t)
@@ -102,7 +103,7 @@ func TestHTTPListenerUsesConfiguredTLS(t *testing.T) {
 			res.Body.Close()
 			x.Equal(http.StatusBadRequest, res.StatusCode, "plaintext must not reach the RPC")
 
-			if tc.tls.ClientCAFile == "" {
+			if tc.tls.ClientCA.IsZero() {
 				return
 			}
 			for _, identity := range []struct {
@@ -141,7 +142,7 @@ func TestHTTPListenerUsesConfiguredTLS(t *testing.T) {
 
 func TestHTTPListenerRejectsBrokenTLSBeforeListening(t *testing.T) {
 	for _, cfg := range []config.TlsConfig{
-		{Enabled: true}, {CertFile: "missing.pem", KeyFile: "missing.key"}, {ClientCAFile: "missing.pem"},
+		{Enabled: true}, {Cert: fileRef(t, "missing.pem"), Key: fileRef(t, "missing.key")}, {ClientCA: fileRef(t, "missing.pem")},
 	} {
 		g := grpc.NewServer()
 		stop, err := (&Server{}).serveHttp(t.Context(), Config{Server: config.ServerConfig{
@@ -153,6 +154,15 @@ func TestHTTPListenerRejectsBrokenTLSBeforeListening(t *testing.T) {
 		g.Stop()
 		require.Error(t, err)
 	}
+}
+
+// fileRef is path as an app's file writes a certificate, `${file:}`.
+func fileRef(t *testing.T, path string) ref.String {
+	t.Helper()
+
+	var s ref.String
+	require.NoError(t, s.SetFile(path))
+	return s
 }
 
 func httpCertificate(t *testing.T) (string, string, tls.Certificate, *x509.CertPool) {
