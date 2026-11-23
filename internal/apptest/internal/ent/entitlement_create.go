@@ -88,16 +88,16 @@ func (_c *EntitlementCreate) SetNillableDateEffective(v *time.Time) *Entitlement
 	return _c
 }
 
-// SetDateExpires sets the "date_expires" field.
-func (_c *EntitlementCreate) SetDateExpires(v time.Time) *EntitlementCreate {
-	_c.mutation.SetDateExpires(v)
+// SetDateExpired sets the "date_expired" field.
+func (_c *EntitlementCreate) SetDateExpired(v time.Time) *EntitlementCreate {
+	_c.mutation.SetDateExpired(v)
 	return _c
 }
 
-// SetNillableDateExpires sets the "date_expires" field if the given value is not nil.
-func (_c *EntitlementCreate) SetNillableDateExpires(v *time.Time) *EntitlementCreate {
+// SetNillableDateExpired sets the "date_expired" field if the given value is not nil.
+func (_c *EntitlementCreate) SetNillableDateExpired(v *time.Time) *EntitlementCreate {
 	if v != nil {
-		_c.SetDateExpires(*v)
+		_c.SetDateExpired(*v)
 	}
 	return _c
 }
@@ -263,9 +263,9 @@ func (_c *EntitlementCreate) createSpec() (*Entitlement, *sqlgraph.CreateSpec) {
 		_spec.SetField(entitlement.FieldDateEffective, field.TypeTime, value)
 		_node.DateEffective = &value
 	}
-	if value, ok := _c.mutation.DateExpires(); ok {
-		_spec.SetField(entitlement.FieldDateExpires, field.TypeTime, value)
-		_node.DateExpires = value
+	if value, ok := _c.mutation.DateExpired(); ok {
+		_spec.SetField(entitlement.FieldDateExpired, field.TypeTime, value)
+		_node.DateExpired = value
 	}
 	if nodes := _c.mutation.TenantIds(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

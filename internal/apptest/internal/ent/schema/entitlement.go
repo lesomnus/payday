@@ -35,7 +35,7 @@ func (Entitlement) Fields() []ent.Field {
 		field.Time("date_effective").
 			Nillable().
 			Optional(),
-		field.Time("date_expires").
+		field.Time("date_expired").
 			Optional(),
 		field.Uuid("tenant_id").
 			Immutable(),

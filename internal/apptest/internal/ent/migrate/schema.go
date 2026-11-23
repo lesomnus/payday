@@ -187,7 +187,7 @@ var (
 		{Name: "date_updated", Type: field.TypeTime},
 		{Name: "date_created", Type: field.TypeTime, Nullable: true},
 		{Name: "date_effective", Type: field.TypeTime, Nullable: true},
-		{Name: "date_expires", Type: field.TypeTime, Nullable: true},
+		{Name: "date_expired", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},
 	}
 	// EntitlementTable holds the schema information for the "entitlement" table.

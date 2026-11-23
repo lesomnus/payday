@@ -35,8 +35,8 @@ type Entitlement struct {
 	DateCreated time.Time `json:"date_created,omitempty"`
 	// DateEffective holds the value of the "date_effective" field.
 	DateEffective *time.Time `json:"date_effective,omitempty"`
-	// DateExpires holds the value of the "date_expires" field.
-	DateExpires time.Time `json:"date_expires,omitempty"`
+	// DateExpired holds the value of the "date_expired" field.
+	DateExpired time.Time `json:"date_expired,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -76,7 +76,7 @@ func (*Entitlement) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case entitlement.FieldKey:
 			values[i] = new(sql.NullString)
-		case entitlement.FieldDateUpdated, entitlement.FieldDateCreated, entitlement.FieldDateEffective, entitlement.FieldDateExpires:
+		case entitlement.FieldDateUpdated, entitlement.FieldDateCreated, entitlement.FieldDateEffective, entitlement.FieldDateExpired:
 			values[i] = new(sql.NullTime)
 		case entitlement.FieldId, entitlement.FieldTenantId:
 			values[i] = new(uuid.UUID)
@@ -153,11 +153,11 @@ func (_m *Entitlement) assignValues(columns []string, values []any) error {
 				_m.DateEffective = new(time.Time)
 				*_m.DateEffective = value.Time
 			}
-		case entitlement.FieldDateExpires:
+		case entitlement.FieldDateExpired:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field date_expires", values[i])
+				return fmt.Errorf("unexpected type %T for field date_expired", values[i])
 			} else if value.Valid {
-				_m.DateExpires = value.Time
+				_m.DateExpired = value.Time
 			}
 		case entitlement.FieldTenantId:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -232,8 +232,8 @@ func (_m *Entitlement) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("date_expires=")
-	builder.WriteString(_m.DateExpires.Format(time.ANSIC))
+	builder.WriteString("date_expired=")
+	builder.WriteString(_m.DateExpired.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))

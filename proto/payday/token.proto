@@ -111,7 +111,7 @@ message TokenIntrospectResponse {
   // credential every time and is refused at the next one; a stream reads it
   // once, at the handshake, and without this would be served for as long as it
   // stays open -- which for a Watch is until somebody hangs up.
-  google.protobuf.Timestamp date_expires = 6;
+  google.protobuf.Timestamp date_expired = 6;
 
   // Last authentication time known by the verifier. Unset means unknown.
   // Issuing or using a token does not establish a new authentication time.

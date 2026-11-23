@@ -139,7 +139,7 @@ func grantOf(id string, tenant pdid.Id, key string, version uint64, v entitle.Va
 		Key:           key,
 		Version:       version,
 		DateEffective: timestamppb.New(from),
-		DateExpires:   timestamppb.New(until),
+		DateExpired:   timestamppb.New(until),
 	}
 	switch v.Kind() {
 	case entitle.KindOn, entitle.KindOff:
@@ -307,7 +307,7 @@ func TestTwoWritesCannotBothPassALimitOfOne(t *testing.T) {
 	x.NoError(b.Entitlements.In(ctx, b.Tenant, func(ctx context.Context, s entitle.Store) error {
 		_, err := s.Put(ctx, entitle.Row{
 			Tenant: b.Tenant, Key: "apptest.robots", Value: entitle.Limited(1),
-			DateExpires: time.Now().Add(time.Hour), Grant: []byte("one"), Version: 1,
+			DateExpired: time.Now().Add(time.Hour), Grant: []byte("one"), Version: 1,
 		})
 		return err
 	}))
@@ -389,7 +389,7 @@ func TestAReadThatDoesNotLockLetsBothThrough(t *testing.T) {
 	x.NoError(b.Entitlements.In(ctx, b.Tenant, func(ctx context.Context, s entitle.Store) error {
 		_, err := s.Put(ctx, entitle.Row{
 			Tenant: b.Tenant, Key: "apptest.robots", Value: entitle.Limited(1),
-			DateExpires: time.Now().Add(time.Hour), Grant: []byte("one"), Version: 1,
+			DateExpired: time.Now().Add(time.Hour), Grant: []byte("one"), Version: 1,
 		})
 		return err
 	}))

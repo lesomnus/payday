@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/entity.proto.
  */
 export const file_payday_entity: GenFile = /*@__PURE__*/
-  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki9wcKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24SIwoFdHJhaWwYCiABKAsyFC5wYXlkYXkuRW50aXR5LlRyYWlsEicKCGZvcm1lcmx5GAsgAygLMhUucGF5ZGF5LkVudGl0eS5Gb3JtZXIaCAoGVGVuYW50GkUKCFRlbmFudGVkEgsKA3ZpYRgBIAEoCRINCgVmaWVsZBgCIAMoCRINCgVzdGFtcBgDIAEoCRIOCgZhZ3JlZXMYBCADKAkaigEKBVRyYWlsEjEKCHJlY29yZGVkGAEgASgLMh0ucGF5ZGF5LkVudGl0eS5UcmFpbC5SZWNvcmRlZEgAEicKA29mZhgCIAEoCzIYLnBheWRheS5FbnRpdHkuVHJhaWwuT2ZmSAAaCgoIUmVjb3JkZWQaEgoDT2ZmEgsKA3doeRgBIAEoCUIFCgNob3caJwoGRm9ybWVyEg8KB21lc3NhZ2UYASABKAkSDAoEbmFtZRgCIAEoCRoICgZHbG9iYWwaKgoFRXJhc2USIQoEaGFyZBgBIAEoCzITLnBheWRheS5FbnRpdHkuSGFyZBoGCgRIYXJkGrABCgRMaXN0EiMKBW9yZGVyGAEgAygLMhQucGF5ZGF5LkVudGl0eS5PcmRlchIWCgR3aXRoGAIgAygLMggub3JtLlJlZhIUCgJieRgDIAMoCzIILm9ybS5SZWYSDAoEc2l6ZRgEIAEoDRILCgNtYXgYBSABKA0SDwoHZmlsdGVycxgGIAEoDRIpCgZvcmRlcnMYByADKAsyGS5wYXlkYXkuRW50aXR5Lk5hbWVkT3JkZXIaPwoKTmFtZWRPcmRlchIMCgRuYW1lGAEgASgJEiMKBW9yZGVyGAIgAygLMhQucGF5ZGF5LkVudGl0eS5PcmRlchoHCgVXYXRjaBouCgVPcmRlchIXCgVmaWVsZBgBIAEoCzIILm9ybS5SZWYSDAoEZGVzYxgCIAEoCEIJCgd0ZW5hbmN5ImIKBUZpZWxkEg4KBnNlY3JldBgBIAEoCBIPCgdzdGFtcGVkGAIgASgIEhcKCHBlcnNvbmFsGAMgASgIQgWqAQIIARINCgVldmVudBgFIAEoCEoECAQQBVIKaW1wZXJzb25hbCqBAgoDT3duEhMKD09XTl9VTlNQRUNJRklFRBAAEg4KCk9XTl9URU5BTlQQARIOCgpPV05fSE9MREVSEAISDQoJT1dOX0FVRElUEAMSDgoKT1dOX09VVEJPWBAEEhAKDE9XTl9BUkNISVZFRBAFEg4KCk9XTl9BQ0NFU1MQBhIQCgxPV05fUk9XX1NFQUwQBxIMCghPV05fT1dFRBAIEg0KCU9XTl9FVkVOVBAJEgwKCE9XTl9GQUNUEAoSFAoQT1dOX05PVElGSUNBVElPThALEhwKGE9XTl9OT1RJRklDQVRJT05fUkVDRUlQVBAMEhMKD09XTl9FTlRJVExFTUVOVBANQiZaH2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L3BkcGKSAwIIAmIIZWRpdGlvbnNw6Ac", [file_orm_ref]);
+  fileDesc("ChNwYXlkYXkvZW50aXR5LnByb3RvEgZwYXlkYXki1QgKBkVudGl0eRIOCgZkb21haW4YASABKA0SDAoEbmFtZRgCIAEoCRInCgZ0ZW5hbnQYAyABKAsyFS5wYXlkYXkuRW50aXR5LlRlbmFudEgAEisKCHRlbmFudGVkGAQgASgLMhcucGF5ZGF5LkVudGl0eS5UZW5hbnRlZEgAEicKBmdsb2JhbBgFIAEoCzIVLnBheWRheS5FbnRpdHkuR2xvYmFsSAASIQoEbGlzdBgGIAEoCzITLnBheWRheS5FbnRpdHkuTGlzdBIjCgV3YXRjaBgHIAEoCzIULnBheWRheS5FbnRpdHkuV2F0Y2gSIwoFZXJhc2UYCCABKAsyFC5wYXlkYXkuRW50aXR5LkVyYXNlEhgKA293bhgJIAEoDjILLnBheWRheS5Pd24SIwoFdHJhaWwYCiABKAsyFC5wYXlkYXkuRW50aXR5LlRyYWlsEicKCGZvcm1lcmx5GAsgAygLMhUucGF5ZGF5LkVudGl0eS5Gb3JtZXISJgoHY29sdW1ucxgMIAMoCzIVLnBheWRheS5FbnRpdHkuQ29sdW1uGggKBlRlbmFudBpFCghUZW5hbnRlZBILCgN2aWEYASABKAkSDQoFZmllbGQYAiADKAkSDQoFc3RhbXAYAyABKAkSDgoGYWdyZWVzGAQgAygJGooBCgVUcmFpbBIxCghyZWNvcmRlZBgBIAEoCzIdLnBheWRheS5FbnRpdHkuVHJhaWwuUmVjb3JkZWRIABInCgNvZmYYAiABKAsyGC5wYXlkYXkuRW50aXR5LlRyYWlsLk9mZkgAGgoKCFJlY29yZGVkGhIKA09mZhILCgN3aHkYASABKAlCBQoDaG93GjQKBkNvbHVtbhINCgVmaWVsZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgR3aWRlGAMgASgIGicKBkZvcm1lchIPCgdtZXNzYWdlGAEgASgJEgwKBG5hbWUYAiABKAkaCAoGR2xvYmFsGioKBUVyYXNlEiEKBGhhcmQYASABKAsyEy5wYXlkYXkuRW50aXR5LkhhcmQaBgoESGFyZBqwAQoETGlzdBIjCgVvcmRlchgBIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXISFgoEd2l0aBgCIAMoCzIILm9ybS5SZWYSFAoCYnkYAyADKAsyCC5vcm0uUmVmEgwKBHNpemUYBCABKA0SCwoDbWF4GAUgASgNEg8KB2ZpbHRlcnMYBiABKA0SKQoGb3JkZXJzGAcgAygLMhkucGF5ZGF5LkVudGl0eS5OYW1lZE9yZGVyGj8KCk5hbWVkT3JkZXISDAoEbmFtZRgBIAEoCRIjCgVvcmRlchgCIAMoCzIULnBheWRheS5FbnRpdHkuT3JkZXIaBwoFV2F0Y2gaLgoFT3JkZXISFwoFZmllbGQYASABKAsyCC5vcm0uUmVmEgwKBGRlc2MYAiABKAhCCQoHdGVuYW5jeSJiCgVGaWVsZBIOCgZzZWNyZXQYASABKAgSDwoHc3RhbXBlZBgCIAEoCBIXCghwZXJzb25hbBgDIAEoCEIFqgECCAESDQoFZXZlbnQYBSABKAhKBAgEEAVSCmltcGVyc29uYWwqgQIKA093bhITCg9PV05fVU5TUEVDSUZJRUQQABIOCgpPV05fVEVOQU5UEAESDgoKT1dOX0hPTERFUhACEg0KCU9XTl9BVURJVBADEg4KCk9XTl9PVVRCT1gQBBIQCgxPV05fQVJDSElWRUQQBRIOCgpPV05fQUNDRVNTEAYSEAoMT1dOX1JPV19TRUFMEAcSDAoIT1dOX09XRUQQCBINCglPV05fRVZFTlQQCRIMCghPV05fRkFDVBAKEhQKEE9XTl9OT1RJRklDQVRJT04QCxIcChhPV05fTk9USUZJQ0FUSU9OX1JFQ0VJUFQQDBITCg9PV05fRU5USVRMRU1FTlQQDUImWh9naXRodWIuY29tL2xlc29tbnVzL3BheWRheS9wZHBikgMCCAJiCGVkaXRpb25zcOgH", [file_orm_ref]);
 
 /**
  * Entity is what payday has to be told about a message that `orm` already
@@ -242,6 +242,15 @@ export type Entity = Message<"payday.Entity"> & {
    * @generated from field: repeated payday.Entity.Former formerly = 11;
    */
   formerly: Entity_Former[];
+
+  /**
+   * Columns replace the CLI table defaults. Paths name scalar fields, including
+   * fields reached through singular messages. A wide column appears only in
+   * `-o wide`; at least one column must appear in the ordinary table.
+   *
+   * @generated from field: repeated payday.Entity.Column columns = 12;
+   */
+  columns: Entity_Column[];
 };
 
 /**
@@ -471,6 +480,35 @@ export const Entity_Trail_OffSchema: GenMessage<Entity_Trail_Off> = /*@__PURE__*
   messageDesc(file_payday_entity, 0, 2, 1);
 
 /**
+ * @generated from message payday.Entity.Column
+ */
+export type Entity_Column = Message<"payday.Entity.Column"> & {
+  /**
+   * @generated from field: string field = 1;
+   */
+  field: string;
+
+  /**
+   * Title defaults to the upper-case field path.
+   *
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: bool wide = 3;
+   */
+  wide: boolean;
+};
+
+/**
+ * Describes the message payday.Entity.Column.
+ * Use `create(Entity_ColumnSchema)` to create a new message.
+ */
+export const Entity_ColumnSchema: GenMessage<Entity_Column> = /*@__PURE__*/
+  messageDesc(file_payday_entity, 0, 3);
+
+/**
  * Former is a name an entity had. See [Entity.formerly].
  *
  * @generated from message payday.Entity.Former
@@ -500,7 +538,7 @@ export type Entity_Former = Message<"payday.Entity.Former"> & {
  * Use `create(Entity_FormerSchema)` to create a new message.
  */
 export const Entity_FormerSchema: GenMessage<Entity_Former> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 3);
+  messageDesc(file_payday_entity, 0, 4);
 
 /**
  * Global is an entity that is not behind the wall -- a table the whole
@@ -520,7 +558,7 @@ export type Entity_Global = Message<"payday.Entity.Global"> & {
  * Use `create(Entity_GlobalSchema)` to create a new message.
  */
 export const Entity_GlobalSchema: GenMessage<Entity_Global> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 4);
+  messageDesc(file_payday_entity, 0, 5);
 
 /**
  * Erase says the row goes. See [Entity.erase].
@@ -563,7 +601,7 @@ export type Entity_Erase = Message<"payday.Entity.Erase"> & {
  * Use `create(Entity_EraseSchema)` to create a new message.
  */
 export const Entity_EraseSchema: GenMessage<Entity_Erase> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 5);
+  messageDesc(file_payday_entity, 0, 6);
 
 /**
  * @generated from message payday.Entity.Hard
@@ -576,7 +614,7 @@ export type Entity_Hard = Message<"payday.Entity.Hard"> & {
  * Use `create(Entity_HardSchema)` to create a new message.
  */
 export const Entity_HardSchema: GenMessage<Entity_Hard> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 6);
+  messageDesc(file_payday_entity, 0, 7);
 
 /**
  * List is how this entity is read a page at a time.
@@ -690,7 +728,7 @@ export type Entity_List = Message<"payday.Entity.List"> & {
  * Use `create(Entity_ListSchema)` to create a new message.
  */
 export const Entity_ListSchema: GenMessage<Entity_List> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 7);
+  messageDesc(file_payday_entity, 0, 8);
 
 /**
  * NamedOrder is an order of a list a request names.
@@ -716,7 +754,7 @@ export type Entity_NamedOrder = Message<"payday.Entity.NamedOrder"> & {
  * Use `create(Entity_NamedOrderSchema)` to create a new message.
  */
 export const Entity_NamedOrderSchema: GenMessage<Entity_NamedOrder> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 8);
+  messageDesc(file_payday_entity, 0, 9);
 
 /**
  * Watch is how this entity is read as it changes.
@@ -738,7 +776,7 @@ export type Entity_Watch = Message<"payday.Entity.Watch"> & {
  * Use `create(Entity_WatchSchema)` to create a new message.
  */
 export const Entity_WatchSchema: GenMessage<Entity_Watch> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 9);
+  messageDesc(file_payday_entity, 0, 10);
 
 /**
  * Order is one column of a list's order.
@@ -776,7 +814,7 @@ export type Entity_Order = Message<"payday.Entity.Order"> & {
  * Use `create(Entity_OrderSchema)` to create a new message.
  */
 export const Entity_OrderSchema: GenMessage<Entity_Order> = /*@__PURE__*/
-  messageDesc(file_payday_entity, 0, 10);
+  messageDesc(file_payday_entity, 0, 11);
 
 /**
  * Field is what payday adds to one field of an entity.

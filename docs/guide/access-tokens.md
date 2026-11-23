@@ -40,7 +40,7 @@ The handler verifies the signature, issuer, audience and validity window, then
 requires protected `typ` equal to `at+jwt` or `application/at+jwt`, a nonempty
 subject, client ID and token ID, and numeric issuance and expiry dates. The
 claims mapper runs only after those checks. `ReadAccess` exposes `ClientId`,
-`Subject`, `Audience`, `Scope`, `Id` (`jti`), `DateIssued`, `DateExpires` and
+`Subject`, `Audience`, `Scope`, `Id` (`jti`), `DateIssued`, `DateExpired` and
 `DateAuthenticated`. It accepts a verified token, not an untrusted JWT string.
 `Scope` is an optional space-separated string; its meaning remains yours. An
 unrecognized scope in the example grants no operation. The holder's policy and

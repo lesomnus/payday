@@ -72,7 +72,7 @@ func TestAccessClaimsAndExternalIdentity(t *testing.T) {
 		x.Equal(time.Unix(c["auth_time"].(int64), 0).UTC(), got.DateAuthenticated)
 		x.Equal(got.DateAuthenticated, id.DateAuthenticated)
 		x.Equal(time.Unix(c["iat"].(int64), 0).UTC(), got.DateIssued)
-		x.Equal(time.Unix(c["exp"].(int64), 0).UTC(), got.DateExpires)
+		x.Equal(time.Unix(c["exp"].(int64), 0).UTC(), got.DateExpired)
 		x.True(id.Grant.IsWhole(), "scope meanings belong to the app")
 	}
 	// Authentication evidence and scope may both be absent, and aud may be a

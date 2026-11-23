@@ -28,8 +28,8 @@ const (
 	FieldDateCreated = "date_created"
 	// FieldDateEffective holds the string denoting the date_effective field in the database.
 	FieldDateEffective = "date_effective"
-	// FieldDateExpires holds the string denoting the date_expires field in the database.
-	FieldDateExpires = "date_expires"
+	// FieldDateExpired holds the string denoting the date_expired field in the database.
+	FieldDateExpired = "date_expired"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
@@ -56,7 +56,7 @@ var Columns = []string{
 	FieldDateUpdated,
 	FieldDateCreated,
 	FieldDateEffective,
-	FieldDateExpires,
+	FieldDateExpired,
 	FieldTenantId,
 }
 
@@ -113,9 +113,9 @@ func ByDateEffective(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDateEffective, opts...).ToFunc()
 }
 
-// ByDateExpires orders the results by the date_expires field.
-func ByDateExpires(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDateExpires, opts...).ToFunc()
+// ByDateExpired orders the results by the date_expired field.
+func ByDateExpired(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDateExpired, opts...).ToFunc()
 }
 
 // ByTenantId orders the results by the tenant_id field.

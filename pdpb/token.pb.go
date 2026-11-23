@@ -98,7 +98,7 @@ type TokenIntrospectResponse struct {
 	xxx_hidden_Tenant            string                 `protobuf:"bytes,3,opt,name=tenant"`
 	xxx_hidden_Alias             string                 `protobuf:"bytes,4,opt,name=alias"`
 	xxx_hidden_Grant             *Grant                 `protobuf:"bytes,5,opt,name=grant"`
-	xxx_hidden_DateExpires       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=date_expires,json=dateExpires"`
+	xxx_hidden_DateExpired       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=date_expired,json=dateExpired"`
 	xxx_hidden_DateAuthenticated *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=date_authenticated,json=dateAuthenticated"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
@@ -164,9 +164,9 @@ func (x *TokenIntrospectResponse) GetGrant() *Grant {
 	return nil
 }
 
-func (x *TokenIntrospectResponse) GetDateExpires() *timestamppb.Timestamp {
+func (x *TokenIntrospectResponse) GetDateExpired() *timestamppb.Timestamp {
 	if x != nil {
-		return x.xxx_hidden_DateExpires
+		return x.xxx_hidden_DateExpired
 	}
 	return nil
 }
@@ -204,8 +204,8 @@ func (x *TokenIntrospectResponse) SetGrant(v *Grant) {
 	x.xxx_hidden_Grant = v
 }
 
-func (x *TokenIntrospectResponse) SetDateExpires(v *timestamppb.Timestamp) {
-	x.xxx_hidden_DateExpires = v
+func (x *TokenIntrospectResponse) SetDateExpired(v *timestamppb.Timestamp) {
+	x.xxx_hidden_DateExpired = v
 }
 
 func (x *TokenIntrospectResponse) SetDateAuthenticated(v *timestamppb.Timestamp) {
@@ -219,11 +219,11 @@ func (x *TokenIntrospectResponse) HasGrant() bool {
 	return x.xxx_hidden_Grant != nil
 }
 
-func (x *TokenIntrospectResponse) HasDateExpires() bool {
+func (x *TokenIntrospectResponse) HasDateExpired() bool {
 	if x == nil {
 		return false
 	}
-	return x.xxx_hidden_DateExpires != nil
+	return x.xxx_hidden_DateExpired != nil
 }
 
 func (x *TokenIntrospectResponse) HasDateAuthenticated() bool {
@@ -237,8 +237,8 @@ func (x *TokenIntrospectResponse) ClearGrant() {
 	x.xxx_hidden_Grant = nil
 }
 
-func (x *TokenIntrospectResponse) ClearDateExpires() {
-	x.xxx_hidden_DateExpires = nil
+func (x *TokenIntrospectResponse) ClearDateExpired() {
+	x.xxx_hidden_DateExpired = nil
 }
 
 func (x *TokenIntrospectResponse) ClearDateAuthenticated() {
@@ -277,7 +277,7 @@ type TokenIntrospectResponse_builder struct {
 	// credential every time and is refused at the next one; a stream reads it
 	// once, at the handshake, and without this would be served for as long as it
 	// stays open -- which for a Watch is until somebody hangs up.
-	DateExpires *timestamppb.Timestamp
+	DateExpired *timestamppb.Timestamp
 	// Last authentication time known by the verifier. Unset means unknown.
 	// Issuing or using a token does not establish a new authentication time.
 	DateAuthenticated *timestamppb.Timestamp
@@ -292,7 +292,7 @@ func (b0 TokenIntrospectResponse_builder) Build() *TokenIntrospectResponse {
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
 	x.xxx_hidden_Grant = b.Grant
-	x.xxx_hidden_DateExpires = b.DateExpires
+	x.xxx_hidden_DateExpired = b.DateExpired
 	x.xxx_hidden_DateAuthenticated = b.DateAuthenticated
 	return m0
 }
@@ -471,7 +471,7 @@ const file_payday_token_proto_rawDesc = "" +
 	"\x06tenant\x18\x03 \x01(\tR\x06tenant\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12#\n" +
 	"\x05grant\x18\x05 \x01(\v2\r.payday.GrantR\x05grant\x12=\n" +
-	"\fdate_expires\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpires\x12I\n" +
+	"\fdate_expired\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpired\x12I\n" +
 	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\"\xa6\x01\n" +
 	"\x05Grant\x12\x1d\n" +
 	"\n" +
@@ -495,7 +495,7 @@ var file_payday_token_proto_goTypes = []any{
 }
 var file_payday_token_proto_depIdxs = []int32{
 	2, // 0: payday.TokenIntrospectResponse.grant:type_name -> payday.Grant
-	3, // 1: payday.TokenIntrospectResponse.date_expires:type_name -> google.protobuf.Timestamp
+	3, // 1: payday.TokenIntrospectResponse.date_expired:type_name -> google.protobuf.Timestamp
 	3, // 2: payday.TokenIntrospectResponse.date_authenticated:type_name -> google.protobuf.Timestamp
 	0, // 3: payday.TokenService.Introspect:input_type -> payday.TokenIntrospectRequest
 	1, // 4: payday.TokenService.Introspect:output_type -> payday.TokenIntrospectResponse

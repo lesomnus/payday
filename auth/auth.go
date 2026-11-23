@@ -190,7 +190,7 @@ type Identity struct {
 	// attenuation answers [frame.Whole]; see [frame.Grant].
 	Grant frame.Grant
 
-	// DateExpires is when this credential stops working, and the zero time is
+	// DateExpired is when this credential stops working, and the zero time is
 	// one that does not. Only a [TokenStore] fills it: a header and a
 	// certificate have nowhere to carry an expiry.
 	//
@@ -200,7 +200,7 @@ type Identity struct {
 	// without this would go on being served for as long as it stays open --
 	// which for a Watch is until somebody hangs up. See [Identity.Valid] and
 	// the note on cutting a stream in [InterceptorStream].
-	DateExpires time.Time
+	DateExpired time.Time
 }
 
 // Authentication returns the verified facts that travel with this party.
@@ -218,7 +218,7 @@ func (v Identity) Authentication() frame.Authentication {
 // finds out at the next one; a stream carries it once at the handshake and
 // would otherwise go on being served forever. See [InterceptorStream].
 func (v Identity) Valid(at time.Time) bool {
-	return v.DateExpires.IsZero() || at.Before(v.DateExpires)
+	return v.DateExpired.IsZero() || at.Before(v.DateExpired)
 }
 
 // NamesNobody reports whether this identity says who the caller is at all.

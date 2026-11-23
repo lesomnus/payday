@@ -1622,21 +1622,21 @@ func (m *EntitlementMutation) OldDateEffective(ctx context.Context) (v *time.Tim
 	return oldValue.DateEffective, nil
 }
 
-// OldDateExpires returns the old "date_expires" field's value of the Entitlement entity.
+// OldDateExpired returns the old "date_expired" field's value of the Entitlement entity.
 // If the Entitlement object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *EntitlementMutation) OldDateExpires(ctx context.Context) (v time.Time, err error) {
+func (m *EntitlementMutation) OldDateExpired(ctx context.Context) (v time.Time, err error) {
 	if !m.Op().Is(OpUpdateOne) {
-		return v, errors.New("OldDateExpires is only allowed on UpdateOne operations")
+		return v, errors.New("OldDateExpired is only allowed on UpdateOne operations")
 	}
 	if _, exists := m.Id(); !exists || m.oldValue == nil {
-		return v, errors.New("OldDateExpires requires an Id field in the mutation")
+		return v, errors.New("OldDateExpired requires an Id field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDateExpires: %w", err)
+		return v, fmt.Errorf("querying old value for OldDateExpired: %w", err)
 	}
-	return oldValue.DateExpires, nil
+	return oldValue.DateExpired, nil
 }
 
 // OldTenantId returns the old "tenant_id" field's value of the Entitlement entity.
@@ -1677,8 +1677,8 @@ func (m *EntitlementMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldDateCreated(ctx)
 	case entitlement.FieldDateEffective:
 		return m.OldDateEffective(ctx)
-	case entitlement.FieldDateExpires:
-		return m.OldDateExpires(ctx)
+	case entitlement.FieldDateExpired:
+		return m.OldDateExpired(ctx)
 	case entitlement.FieldTenantId:
 		return m.OldTenantId(ctx)
 	}

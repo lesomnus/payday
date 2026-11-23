@@ -353,7 +353,7 @@ func grant(id string, tenant pdid.Id, key string, version uint64, v entitle.Valu
 		Key:           key,
 		Version:       version,
 		DateEffective: timestamppb.New(from),
-		DateExpires:   timestamppb.New(until),
+		DateExpired:   timestamppb.New(until),
 	}
 	switch v.Kind() {
 	case entitle.KindOn:

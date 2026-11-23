@@ -661,13 +661,13 @@ func grantOf(g *pdpb.EntitlementGrant) (Row, error) {
 		return r, errors.New("gives nothing: it says none of on, limit and unlimited")
 	}
 
-	if !g.HasDateExpires() {
+	if !g.HasDateExpired() {
 		return r, errors.New("says no end, and a grant that stops being heard of would then be kept forever")
 	}
-	if err := g.GetDateExpires().CheckValid(); err != nil {
-		return r, fmt.Errorf("date_expires: %w", err)
+	if err := g.GetDateExpired().CheckValid(); err != nil {
+		return r, fmt.Errorf("date_expired: %w", err)
 	}
-	r.DateExpires = g.GetDateExpires().AsTime()
+	r.DateExpired = g.GetDateExpired().AsTime()
 	if g.HasDateEffective() {
 		if err := g.GetDateEffective().CheckValid(); err != nil {
 			return r, fmt.Errorf("date_effective: %w", err)
