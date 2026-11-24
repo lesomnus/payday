@@ -18,6 +18,15 @@ subscriptions rather than silently continuing streams with a gap.
 | Generated entity Watch | Generated service and resolved immutable IDs | Current row access and projection |
 | Notification Listen | Namespace, tenant, topic kind/value, shared audience or reader | Current tenant access, reader identity and topic policy |
 | ResourceService Watch | Broad subscription | Per-reader public projection followed by CEL |
+| Hand-written `watch.Stream` on a prefix | The service, where the prefix is exactly one service's; otherwise a broad subscription | The prefix, then whatever `send` checks |
+
+A stream an application opens itself with `watch.Stream` names the Rpcs it is
+about by a prefix. A prefix that is exactly one service's, `/pkg.Service/` as
+`watch.ServiceOf` answers for a method of it, is that service's interest. Any
+other prefix -- one several services share, a service's name without its
+closing `/`, the empty prefix -- subscribes to every service, and `watch.Next`
+holds each change to the prefix as it arrives: narrowing to a service no write
+names would drop every change the stream is about, with no error to say so.
 
 Interest dimensions intersect; values inside a dimension are alternatives.
 A named topic remains arbitrary application text, including characters a broker
