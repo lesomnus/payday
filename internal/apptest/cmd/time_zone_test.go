@@ -37,3 +37,14 @@ func TestCommandsUseTheRequestedDisplayZoneBeforeCallingTheServer(t *testing.T) 
 	require.NoError(t, err)
 	require.Equal(t, 1, n, "format validation precedes a mutating RPC")
 }
+
+// The help of --tz names the variable this app reads, as the help of every
+// flag the configuration binds names its own, and not a placeholder for it.
+func TestTheHelpOfTzNamesTheAppsOwnVariable(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	got := (xlitest.Harness{Cmd: rooted(t, conn), Ctx: b.travels(ctx)}).Run(t, "robot", "get", "--help")
+	require.NoError(t, got.Err)
+	require.Contains(t, got.Stdout, "[$APP_TZ]")
+	require.NotContains(t, got.Stdout, "<APP>")
+}

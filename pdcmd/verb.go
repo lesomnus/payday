@@ -249,7 +249,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 	return &xli.Command{
 		Brief: fmt.Sprintf("get one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def()), TimeZoneFlag(), flgInput()},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -288,7 +288,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 		Brief: fmt.Sprintf("list %s", e.Message.Name()),
 
 		Flags: flg.Flags{
-			flgOutput(r.opts.def()), TimeZoneFlag(),
+			flgOutput(r.opts.def()), flgZone(),
 			flgInput(),
 			&flg.Int{Name: "size", Alias: 'n', Brief: "how many to answer with"},
 			&flg.String{Name: "next", Brief: `carry on from the "next" of an earlier answer`},
@@ -414,7 +414,7 @@ func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 		Brief: fmt.Sprintf("watch %s", e.Message.Name()),
 
 		Flags: flg.Flags{
-			flgOutput(r.opts.def()), TimeZoneFlag(),
+			flgOutput(r.opts.def()), flgZone(),
 			flgInput(),
 			&flg.Switch{
 				Name:  "retry",
@@ -471,7 +471,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 	return &xli.Command{
 		Brief: fmt.Sprintf("add a %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def()), TimeZoneFlag(), flgInput()},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&arg.String{Name: "NAME", Optional: true}, argRaw()},
 
 		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -517,7 +517,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 	return &xli.Command{
 		Brief: fmt.Sprintf("change one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def()), TimeZoneFlag(), flgInput()},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
@@ -550,7 +550,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 	return &xli.Command{
 		Brief: fmt.Sprintf("erase one %s", e.Message.Name()),
 
-		Flags: flg.Flags{flgOutput(r.opts.def()), TimeZoneFlag(), flgInput()},
+		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
 		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {

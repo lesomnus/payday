@@ -424,7 +424,9 @@ app robot get --tz UTC @acme/zone
 
 `--tz` takes precedence over `<APP>_TZ`, then UTC. `<APP>` is the root command
 name in uppercase with punctuation replaced by underscores, so `my-app` reads
-`MY_APP_TZ`. The process `TZ` is not an implicit default. For example,
+`MY_APP_TZ`, and a generated command's help names it as it names any other
+variable a flag reads: `[$MY_APP_TZ]`. The process `TZ` is not an implicit
+default. For example,
 `2026-10-31T23:30:00Z` displays as `2026-11-01T08:30:00+09:00` in Seoul.
 Named zones also apply their daylight-saving rules for the instant shown.
 Put flags before positional arguments, as with `-o`.
@@ -435,8 +437,9 @@ their existing serialization. A bad zone is rejected before the command calls
 the server, including commands that write.
 
 An application's own command can add `pdcmd.TimeZoneFlag()` and call
-`pdcmd.Location(cmd)` before doing work. Use the resulting `*time.Location` in
-its renderer, or pass it to a built-in printer:
+`pdcmd.Location(cmd)` before doing work. Its help names no variable, since a
+flag is made before it knows which root its command is under. Use the resulting
+`*time.Location` in its renderer, or pass it to a built-in printer:
 
 ```go
 loc, err := pdcmd.Location(cmd)
