@@ -193,7 +193,7 @@ func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 				continue
 			}
 
-			c := v.build(e, md, r)
+			c := zoned(v.build(e, md, r))
 
 			// Named here, from the table, rather than by each builder: what a
 			// verb is called is one list to read, and the aliases are in it.
