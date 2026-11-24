@@ -107,7 +107,12 @@ func Decide(ctx context.Context, p Policy, method string) (context.Context, erro
 	if err != nil {
 		return nil, err
 	}
-	if f.Caller != nil {
+	// A delegated caller is not asked as a party (see [frame.Frame.Delegated]):
+	// an agent given nothing of its own would refuse every call it was
+	// delegated, or have to be granted all its people do. The policy above was
+	// still handed Caller, Subject and Presence, so it can tell this call from
+	// a direct one and from a station's.
+	if f.Caller != nil && !f.Delegated {
 		caller := f.Caller.Frame(f.Grant)
 		as := frame.Into(ctx, caller)
 		other := c

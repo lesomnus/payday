@@ -192,6 +192,15 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 					// behind it stops asking whether there is one.
 					return nil, Identity{}, status.Error(codes.Internal, "the resolver answered with neither a frame nor an error")
 				}
+				if f.Delegated && f.Caller == nil {
+					// Delegated to nobody. Served, it would be a direct call
+					// that the gate reads as one anyway -- but it is a resolver
+					// that believes it built a represented frame and did not,
+					// and the trail would then say nothing of the agent it
+					// meant. Refused as the answer above is: the resolver's
+					// mistake, not the caller's.
+					return nil, Identity{}, status.Error(codes.Internal, "the resolver answered with a delegated frame and no caller")
+				}
 
 				// A credential that said which tenant holds the actor is
 				// checked against the tenant that does, and this is the only

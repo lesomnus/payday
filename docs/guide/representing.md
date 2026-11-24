@@ -62,7 +62,8 @@ presence again. An already expired or revoked presence cannot open a call.
 
 ## Apply both parties' permissions
 
-The policy's `May` and `Where` are asked for the person and the credential holder.
+The policy's `May` and `Where` are asked for the person and the credential holder,
+unless the verifier says the caller is delegated (next section).
 On each call, `gate.Call.Actor` and its row identify the party being checked;
 `Caller`, `Subject`, and `Presence` retain the pair. Either refusal rejects the
 operation. The resulting tenant scope intersects both answers and the credential
@@ -78,6 +79,57 @@ in `caller_id`, its tenant in `caller_tenant_id`, and the reference in `presence
 The latter three are NULL on a direct call. These recorded facts do not add a
 new tenant to the trail's readers. Keep the referenced app presence record if an
 investigation needs how and when the person was verified.
+
+## Let a delegation be an agent's whole authority
+
+Some agents hold nothing of their own on purpose. A front door that signs people
+in is given no permissions, so that its key alone opens nothing; what it may do
+for a person is what that person delegated to it. Asked as a second party, such
+an agent is refused everything, or has to be granted everything its people do.
+
+For that agent, the verifier says so on the frame it returns:
+
+```go
+resolver := auth.Represent(holderResolver, func(ctx context.Context, c auth.PresenceCall) (*frame.Frame, error) {
+    delegation, err := delegations.Verify(ctx, c.Reference, c.Caller.Actor, c.Subject)
+    if err != nil {
+        return nil, err
+    }
+    // The delegation names the methods it covers. Hold this one to it here:
+    // nothing after this asks the agent.
+    if !delegation.Covers(c.Method) {
+        return nil, status.Error(codes.PermissionDenied, "not delegated")
+    }
+    person, err := holders.ResolveDelegation(ctx, delegation)
+    if err != nil {
+        return nil, err
+    }
+    person.Delegated = true
+    person.PresenceExpires = delegation.End()
+    person.PresenceChanged = delegation.Revoked()
+    return person, nil
+})
+```
+
+`delegations` and `holders` are app code. With `Delegated`, the gate asks `May`
+and `Where` of the person once, as for a direct call, and `frame.NarrowSet` uses
+the person's sets alone. The policy is still handed `Caller`, `Subject` and
+`Presence`, and `frame.From(ctx).Delegated` says which kind of call it is. The
+credential's grant still narrows the call, a `direct` method is still refused,
+`PresenceExpires` and `PresenceChanged` still bound a stream, and the trail still
+records the agent in `caller_id`, `caller_tenant_id` and `presence`. An app that
+builds the frame itself sets the field where it sets `Caller`.
+
+Use it only where the agent's authority for this person is a delegation the
+verifier checked: issued to this agent, by this person, method by method, with an
+end and a revocation. **The verifier is then the only thing between the agent and
+everything the person may do**, so it holds the method against the delegation
+before it answers. A delegation that names no methods is a copy of the person's
+credential.
+
+A station is not this. What a device may do and what the person at it is
+qualified for remain two questions, and the advice above stands for it: do not
+implement a policy that unconditionally allows one party.
 
 ## Keep device work through a shift change
 

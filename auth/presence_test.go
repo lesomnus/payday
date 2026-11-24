@@ -120,3 +120,54 @@ func TestPresenceBoundsTheStreamIndependentlyOfTheDeviceCredential(t *testing.T)
 		})
 	}
 }
+
+func TestRepresentCarriesTheVerifiersMarkOfADelegationAndDoesNotInventIt(t *testing.T) {
+	agent, person, tenant := pdid.New(200), pdid.New(200), pdid.New(200)
+	h := auth.HandlerFunc(func(context.Context) (auth.Identity, error) {
+		return auth.Identity{Id: agent.String(), Grant: frame.Whole()}, nil
+	})
+	base := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) {
+		return frame.New(agent, tenant, frame.Whole()), nil
+	})
+	call := func(md metadata.MD, r auth.Resolver) (*frame.Frame, error) {
+		var got *frame.Frame
+		_, err := auth.InterceptorUnary(h, r, nil)(metadata.NewIncomingContext(t.Context(), md), &emptypb.Empty{}, &grpc.UnaryServerInfo{FullMethod: getMethod}, func(ctx context.Context, _ any) (any, error) { got, _ = frame.From(ctx); return nil, nil })
+		return got, err
+	}
+	md := metadata.Pairs(auth.PresenceHeader, "delegation-a", auth.SubjectHeader, person.String())
+	for _, delegated := range []bool{true, false} {
+		r := auth.Represent(base, func(context.Context, auth.PresenceCall) (*frame.Frame, error) {
+			f := frame.New(person, tenant, frame.Whole())
+			f.Delegated = delegated
+			return f, nil
+		})
+		got, err := call(md, r)
+		require.NoError(t, err)
+		require.Equal(t, delegated, got.Delegated)
+		require.Equal(t, agent, got.Caller.Actor)
+		require.Equal(t, "delegation-a", got.Presence)
+	}
+
+	// A frame that says it was delegated and names nobody it was delegated
+	// to is a resolver's mistake, refused rather than served as a direct call
+	// that claims something it cannot mean.
+	marked := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) {
+		f := frame.New(agent, tenant, frame.Whole())
+		f.Delegated = true
+		return f, nil
+	})
+	got, err := call(nil, marked)
+	require.Nil(t, got)
+	require.Equal(t, codes.Internal, status.Code(err))
+	got, err = call(nil, auth.Represent(marked, nil))
+	require.Nil(t, got)
+	require.Equal(t, codes.Internal, status.Code(err))
+
+	// The mark is the verifier's to give: one on the credential holder's own
+	// frame does not reach the composed one.
+	got, err = call(md, auth.Represent(marked, func(context.Context, auth.PresenceCall) (*frame.Frame, error) {
+		return frame.New(person, tenant, frame.Whole()), nil
+	}))
+	require.NoError(t, err)
+	require.False(t, got.Delegated)
+}

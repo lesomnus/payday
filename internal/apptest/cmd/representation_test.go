@@ -65,3 +65,36 @@ func TestDirectMethodRefusesRepresentationAtTransportAndInsideTheProcess(t *test
 	_, err = b.Walled.Robot().Move(frame.Into(ctx, &direct), app.RobotMoveRequest_builder{}.Build())
 	require.NotEqual(t, codes.PermissionDenied, status.Code(err))
 }
+
+func TestDelegatedWriteRecordsTheCallerAsAnAskedOneDoes(t *testing.T) {
+	b, ctx := build(t)
+	agent := pdid.New(pd.HolderDomain)
+	for _, delegated := range []bool{true, false} {
+		f := frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant))
+		f.Caller = &frame.Principal{Actor: agent, Tenant: b.Tenant}
+		f.Presence = "delegation-a"
+		f.Delegated = delegated
+		row, err := b.Walled.Robot().Add(frame.Into(ctx, f), app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: map[bool]string{true: "delegated", false: "asked"}[delegated]}.Build())
+		require.NoError(t, err)
+		lines, err := b.Ungated.Audit().List(ctx, app.AuditListRequest_builder{Filters: []*app.AuditFilter{app.AuditFilter_builder{ObjectId: row.GetId()}.Build()}}.Build())
+		require.NoError(t, err)
+		require.Len(t, lines.GetItems(), 1)
+		line := lines.GetItems()[0]
+		require.Equal(t, b.Holder.Bytes(), line.GetActorId())
+		require.Equal(t, agent.Bytes(), line.GetCallerId())
+		require.Equal(t, b.Tenant.Bytes(), line.GetCallerTenantId())
+		require.Equal(t, "delegation-a", line.GetPresence())
+	}
+}
+
+func TestDirectMethodRefusesADelegatedCall(t *testing.T) {
+	b, ctx := build(t)
+	f := frame.New(b.Holder, b.Tenant, frame.Whole()).WithScope(frame.Only(b.Tenant))
+	f.Caller = &frame.Principal{Actor: pdid.New(pd.HolderDomain), Tenant: b.Tenant}
+	f.Delegated = true
+	ctx = frame.Into(ctx, f)
+	_, err := gate.Decide(ctx, nil, app.RobotService_Move_FullMethodName)
+	require.Equal(t, codes.PermissionDenied, status.Code(err))
+	_, err = b.Walled.Robot().Move(ctx, app.RobotMoveRequest_builder{}.Build())
+	require.Equal(t, codes.PermissionDenied, status.Code(err))
+}

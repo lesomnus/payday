@@ -44,6 +44,12 @@ type PresenceCall struct {
 // Payday imposes no default grace period and never trusts a device's assertion
 // that a person was present. Errors fail the call; use ErrUnavailable for an
 // unavailable verifier, so a temporary outage is not mistaken for sign-out.
+//
+// A verifier whose Caller acts by a delegation it has held this call to -- an
+// agent with no authority of its own -- sets [frame.Frame.Delegated] on the
+// frame it answers, and the gate and the wall then ask the person alone. It is
+// then the only check between the agent and all the person may do, so it holds
+// the method to the delegation before it answers. Left unset, both are asked.
 type Presence func(context.Context, PresenceCall) (*frame.Frame, error)
 
 type authenticationCall struct {
@@ -56,6 +62,9 @@ type authenticationCallKey struct{}
 // verification. With no presence metadata it is exactly next. With metadata,
 // the effective Actor is the verified person and Caller keeps the credential
 // holder. The credential's grant still comes from authentication, not Presence.
+// Whether the caller is delegated is the verifier's answer and nothing else's:
+// the composed frame is built from the verifier's, so a mark on the credential
+// holder's own frame is not carried onto it.
 func Represent(next Resolver, verify Presence) Resolver {
 	return ResolverFunc(func(ctx context.Context, identity Identity) (*frame.Frame, error) {
 		caller, err := next.Resolve(ctx, identity)

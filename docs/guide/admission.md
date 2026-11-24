@@ -100,7 +100,9 @@ its original request. Any refusal undoes the batch. A caller-owned transaction
 is marked refused too: ignoring a failed inner call cannot commit it.
 
 `Frame.Actor` identifies the represented person; `Frame.Caller`, when present,
-is the verified device or agent. Both have already passed authorization. See
+is the verified device or agent. Both have already passed authorization, or
+only the person has when `Frame.Delegated` says the agent acts by a delegation
+the verifier checked. See
 [Work at a shared device](representing.md) for presence verification and late
 queued writes. Admission adds the rule about this operation's row and station.
 
