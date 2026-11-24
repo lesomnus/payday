@@ -203,10 +203,12 @@ jobs:
       # For the tests that generate, which run `pd`'s buf.
       - uses: ./.github/actions/buf
 
+      # The limit scripts/test.sh gives a package, and for its reason: go
+      # test's own ten minutes is what internal/pdcli nearly takes alone.
       - name: payday
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -timeout 25m
       - name: the app it is tried against
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -timeout 25m
         working-directory: internal/apptest
 
   # The keys in devices (#52), each against an emulator of its device.
