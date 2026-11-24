@@ -272,7 +272,10 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 					attrs = append(attrs, slog.String("actor.account", f.Account.String()))
 				}
 				if f.Caller != nil {
-					attrs = append(attrs, slog.String("caller.id", f.Caller.Actor.String()), slog.String("caller.tenant", f.Caller.Tenant.String()), slog.String("presence", f.Presence))
+					// And whether the caller acts by a delegation (#285): then
+					// the person alone was asked, and the line is where that
+					// is read afterwards.
+					attrs = append(attrs, slog.String("caller.id", f.Caller.Actor.String()), slog.String("caller.tenant", f.Caller.Tenant.String()), slog.String("presence", f.Presence), slog.Bool("delegated", f.Delegated))
 				}
 				log.From(ctx).InfoContext(ctx, "authenticated", attrs...)
 
