@@ -232,8 +232,11 @@ func (g Gen) copyEntity(ctx context.Context, v string, dst string, edit func([]b
 			defer os.Remove(at)
 		}
 
-		b, err = g.run(ctx, "go", "tool", "protobuf-merge", at, ext)
+		merged, err := g.run(ctx, "go", "tool", "protobuf-merge", at, ext)
 		if err != nil {
+			return err
+		}
+		if b, err = keepOverlayReserved(merged, ext); err != nil {
 			return err
 		}
 	}
@@ -530,9 +533,12 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 				return err
 			}
 
-			b, err = r.run(ctx, "go", "tool", "protobuf-merge", tmp, overlay)
+			merged, err := r.run(ctx, "go", "tool", "protobuf-merge", tmp, overlay)
 			os.Remove(tmp)
 			if err != nil {
+				return err
+			}
+			if b, err = keepOverlayReserved(merged, overlay); err != nil {
 				return err
 			}
 		}
