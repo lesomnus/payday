@@ -231,6 +231,46 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 	})
 }
 
+// TestAnOverlayOfPaydaysEntityKeepsWhatItReserves.
+//
+// protobuf-merge keeps the base's `reserved` in a message both sides declare
+// and drops the overlay's, so a number an app took out of Holder was merged
+// into the copy without it and nothing stopped it being spent again -- where
+// the same line in a message only a service overlay declares reached the
+// contract. The copy says what the overlay reserves now, and the generation
+// compiling it is the proof that it is said in a way protoc takes.
+func TestAnOverlayOfPaydaysEntityKeepsWhatItReserves(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	at := filepath.Join(l.Path(pdcli.DirExt), "payday", "holder.ext.proto")
+	b, err := os.ReadFile(at)
+	x.NoError(err)
+	src := string(b)
+	x.Contains(src, "message Holder {\n")
+	src = strings.Replace(src, "message Holder {\n", `message Holder {
+  // A string once, at 16; a number does not change its type.
+  reserved 16, 30 to 32;
+  reserved nickname;
+
+`, 1)
+	x.NoError(os.WriteFile(at, []byte(src), 0o644))
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+
+	b, err = os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder.proto"))
+	x.NoError(err)
+	merged := string(b)
+	x.Contains(merged, "  // A string once, at 16; a number does not change its type.\n  reserved 16, 30 to 32;\n")
+	x.Contains(merged, "  reserved nickname;\n")
+
+	// And a second generation over the copy says them once still.
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+	b, err = os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder.proto"))
+	x.NoError(err)
+	x.Equal(merged, string(b))
+}
+
 // TestAnOverlayNothingMergesIsRefused.
 //
 // The merge walks the **contracts** and looks up an overlay beside each one, so
