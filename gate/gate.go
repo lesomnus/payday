@@ -139,7 +139,10 @@ type Call struct {
 
 	// Caller and Subject identify both verified parties of a represented call.
 	// May and Where are asked once for each, with Actor/Row naming the party
-	// being checked. Nil on direct calls. Presence is the app-verified reference.
+	// being checked -- or of Subject alone when the frame says the caller is
+	// delegated ([frame.Frame.Delegated]), which the policy reads off the
+	// frame in its context. Nil on direct calls. Presence is the app-verified
+	// reference.
 	Caller   *frame.Principal
 	Subject  *frame.Principal
 	Presence string

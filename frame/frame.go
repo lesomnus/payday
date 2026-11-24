@@ -104,6 +104,30 @@ type Frame struct {
 	// a person is not proof that the caller may represent them.
 	Caller *Principal
 
+	// Delegated says Caller acts by a delegation the app's verifier held this
+	// call to, rather than as a party with authority of its own: the gate and
+	// the wall ask Actor alone. Caller is still who made the call, and the
+	// trail says so. Unset, both are asked.
+	//
+	// Both parties are asked by default because a station is two questions --
+	// what the device may do and what the person at it is qualified for -- and
+	// neither answer stands in for the other. An agent holding a delegation
+	// is one: it acts for the person within what the delegation names, and is
+	// deliberately given nothing of its own, so that its key alone opens
+	// nothing. Asked as a party, it would have to be bound everything its
+	// people do through it, which is the authority the design kept from it.
+	// What bounds it instead is the verifier, which held the method to the
+	// delegation before it answered; this is a claim about that verifier, so
+	// only it, or whatever builds the frame in its place, sets this.
+	//
+	// The credential's grant still narrows a delegated call, and a method
+	// marked direct is still refused to it: neither is a question asked of
+	// the caller as a party.
+	//
+	// It means nothing without a Caller, and a resolver that answers with one
+	// set and no Caller is refused where its answer is first read (`auth`).
+	Delegated bool
+
 	// Presence names the app-verified presence or delegation under which the
 	// call was made. It is a reference, never a bearer token or other secret.
 	// Queued calls keep their original reference across an operator change.

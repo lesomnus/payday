@@ -167,6 +167,10 @@ type Sets func(ctx context.Context) (vs []uuid.UUID, all bool, err error)
 //	of says all        every set, narrowed by the credential
 //	the grant is whole what `of` said, unnarrowed
 //
+// On a represented call `of` is asked of the person and of the caller, and
+// what both may see is met -- except when the caller is delegated
+// ([Frame.Delegated]), when it is the person's alone.
+//
 // # Why generated code calls this rather than `of` directly
 //
 // Because the attenuation would otherwise be the app's to remember. `of` is
@@ -199,7 +203,9 @@ func NarrowSet(ctx context.Context, of Sets) (vs []uuid.UUID, all bool, err erro
 		if given, all, err = of(ctx); err != nil {
 			return nil, false, err
 		}
-		if f.Caller != nil {
+		// The person's sets alone when the caller is delegated, for the reason
+		// `gate.Decide` asks the person alone; see [Frame.Delegated].
+		if f.Caller != nil && !f.Delegated {
 			other, every, err := of(Into(ctx, f.Caller.Frame(f.Grant).WithScope(f.Scope)))
 			if err != nil {
 				return nil, false, err

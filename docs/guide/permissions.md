@@ -622,8 +622,10 @@ Before a deployment is reachable by anyone:
 | [schema.md](../schema.md) | what the schema owns, field 3, identifiers, slugs |
 | [runtime.md](../runtime.md) | every package, and how each rule is enforced |
 
-For verified device/person or agent/person calls, both parties are checked. See
-[Work at a shared device](representing.md) for verification and direct-only RPCs.
+For verified device/person or agent/person calls, both parties are checked,
+unless the verifier marks the caller as acting by a delegation it held the call
+to; then only the person is. See [Work at a shared device](representing.md) for
+verification, delegated agents and direct-only RPCs.
 
 For refusals that depend on the write request and previous row, use
 [Admission](admission.md) after the gate and wall. It can also consult both
