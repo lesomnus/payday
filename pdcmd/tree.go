@@ -81,6 +81,17 @@ func (o Options) def() string {
 //	t.Replace("robot/erase", myOwnErase)
 //	t.Drop("audit/add")
 //
+// Or kept, with one more thing said once it has made its call, where what this
+// app means by a verb is the verb and a line after it -- a note on stderr about
+// what a write did. Replacing the command to say the line would be writing the
+// command again:
+//
+//	t.After("robot/add", noteTheCell)
+//
+// That is for a command that makes one call and is the tree's -- a verb it
+// built, or one [Tree.Unary] made -- and nothing else; see [Tree.After]. A
+// command the app wrote says what it likes after its own call.
+//
 // A replacement is an `*xli.Command`, and so is everything built here, so there
 // is no tier a hand-written command drops into. That is deliberate, and it is
 // the lesson of `kubectl describe`: its typed describers are in-tree and a
@@ -139,6 +150,10 @@ type Tree struct {
 	// mounted is where [Tree.Mount] put the tree. Nothing changes it after
 	// that; see Mount.
 	mounted *xli.Command
+
+	// made is every command the tree built, the groups and the verbs and what
+	// [Tree.Unary] made, and nothing the app wrote; see [Tree.After].
+	made map[*xli.Command]*made
 }
 
 // New builds the tree for the one payday app in this process.
@@ -193,7 +208,13 @@ func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 				continue
 			}
 
-			c := zoned(v.build(e, md, r))
+			a := &after{}
+			c := zoned(v.build(e, md, r, a))
+			if v.stream {
+				t.record(c, &made{stream: true})
+			} else {
+				t.unary(c, a)
+			}
 
 			// Named here, from the table, rather than by each builder: what a
 			// verb is called is one list to read, and the aliases are in it.
@@ -211,12 +232,14 @@ func NewIn(to Connector, pkg protoreflect.FullName, opts ...Options) *Tree {
 
 		// Unique without checking: `pd gen` refuses two entities written the
 		// same, since that is also the `#word` of a slug.
-		t.top = append(t.top, &xli.Command{
+		g := &xli.Command{
 			Name:     e.Name,
 			Brief:    fmt.Sprintf("manage %s", e.Message.Name()),
 			Commands: vs,
 			Handler:  xli.RequireSubcommand(),
-		})
+		}
+		t.record(g, &made{group: true})
+		t.top = append(t.top, g)
 	}
 
 	return t
@@ -273,6 +296,9 @@ func (t *Tree) Command(path string) *xli.Command {
 //
 // The replacement takes the place as it was: its name, its aliases, and
 // whether it is hidden.
+//
+// A command [Tree.After] was said of is not replaced: the function would go
+// with it and never be called.
 func (t *Tree) Replace(path string, c *xli.Command) error {
 	if err := t.mayChange(path); err != nil {
 		return err
@@ -281,6 +307,12 @@ func (t *Tree) Replace(path string, c *xli.Command) error {
 	group, old := t.find(path)
 	if old == nil {
 		return fmt.Errorf("pdcmd: %s: nothing to replace", path)
+	}
+	if m, ok := t.made[old]; ok && m.after != nil && m.after.f != nil {
+		// Refused rather than let go of: what [Tree.After] was given goes with
+		// the command it was said of, and a replacement would be that function
+		// silently never called -- the mistake this method refuses a typo for.
+		return fmt.Errorf("pdcmd: %s: has a function to call after it, which the replacement would never call", path)
 	}
 
 	level := t.level(group)

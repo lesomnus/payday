@@ -637,6 +637,7 @@ t.Add("robot/transfer", mine)    // yours, beside the rest
 t.Drop("audit")                  // the whole group, verbs included
 t.Alias("tenant", "ws")          // another word that runs it
 t.Hide("fact")                   // there, and not in the help
+t.After("robot/add", note)       // kept, and one more thing said after its call
 ```
 
 A path reads the way the command line does, by name or by alias at each step:
@@ -652,6 +653,54 @@ That everything is one type is deliberate, and it is the lesson of
 back to a generic one whose output is noticeably worse, and so the fallback
 exists and nobody wants it. `kubectl get` avoided it by letting the resource
 declare its own columns.
+
+### A line after the call
+
+Sometimes what your app means by a verb is the verb, and a line after it: once a
+role is written, a note that it hands over more than its name reads as. That is
+not a reason to replace the command — the replacement would be the same command
+written again, with one line more. `After` is the line:
+
+```go
+err := t.After("role/add", func(ctx context.Context, c pdcmd.Call) {
+	if wide(c.Answered.(*app.Role)) {
+		fmt.Fprintln(os.Stderr, "note: this role hands over more than it reads as")
+	}
+})
+```
+
+The function is called once the command has made its call, the call succeeded,
+and its answer was printed. It is handed the connection the call was made on,
+still open, and the command's context, so a second question it asks is asked of
+the same server as the same caller; the method, as `/app.RoleService/Add`; and
+the request as it was sent and what came back. It reads those two and does not
+change them.
+
+It returns nothing, on purpose. The call was made, and a note that could not be
+written is not the write failing: a write that was made and then reported as
+failed is one somebody makes twice. So the command exits as it would have. The
+note goes to stderr, where it does not join an answer somebody is piping into
+something else.
+
+It is not called when nothing was sent — a flag that is none, an `-o` that is
+no format, a `--help` — nor when the server refused the call.
+
+The path reads as every other does, by name or by alias, and `Alias` and `Hide`
+keep what was said of it. It is for a command that makes one call and is the
+tree's: a verb it built, or one `Unary` made, wherever you added it. Refused,
+naming the path, where it is said:
+
+- **A path that is none**: `pdcmd: robot/addd: nothing to run after`.
+- **A stream**, `watch`, which has no one answer to be after.
+- **A group**.
+- **A command of your own**, put there with `Add` or `Replace`: it is yours,
+  and says what it likes after its own call.
+- **A second `After` on one command.** One function, and when two things are
+  to be done it does both.
+
+Like `Alias`, it is said before `Mount`. And a command it was said of is not
+replaced: `Replace` refuses it, since the function would go with the command and
+never be called.
 
 ---
 
