@@ -42,6 +42,11 @@ Both answer `InvalidArgument` with the violations attached as details. Nothing
 about the transport changes: `grpcurl` shows them, and a Go client that knows
 nothing about payday still gets a sensible `status.Error`.
 
+An error that is not a status is not a refusal, and is not the caller's to
+read: the server answers it `Internal`, or `Unavailable` where it was the store
+not being reached, in words of its own, and logs it
+([what a handler's error becomes](server.md#what-a-handlers-error-becomes)).
+
 ## 2. Building a path up
 
 A field path is relative to the request, and a request is a tree. When you
