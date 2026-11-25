@@ -3,6 +3,7 @@ edition = "2023";
 package payday;
 
 import "google/protobuf/timestamp.proto";
+import "orm.proto";
 
 option features.field_presence = IMPLICIT;
 option go_package = "github.com/lesomnus/payday/pdpb";
@@ -141,13 +142,13 @@ message Grant {
   // Whether the tenants are narrowed at all; when false, `tenants` is the whole
   // of what is allowed.
   bool any_tenant = 1;
-  repeated bytes tenants = 2;
+  repeated bytes tenants = 2 [(orm.field) = {type: TYPE_UUID}];
 
   // The second axis, whatever the app declared at field 3 -- a site, a cell, a
   // region. An app that declared none has nothing to say here and answers
   // `any_set`.
   bool any_set = 3;
-  repeated bytes sets = 4;
+  repeated bytes sets = 4 [(orm.field) = {type: TYPE_UUID}];
 
   // The methods, by the name gRPC knows them by: "/app.RobotService/Get".
   //
