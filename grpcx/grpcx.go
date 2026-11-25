@@ -46,7 +46,8 @@ func WithPolled(methods ...string) Option {
 // ServerOptions returns the options the app is served with. Every call is
 // traced, measured, recorded, given a deadline if it brought none and, if it
 // panics, reported as an error rather than taken as a reason to end the
-// process.
+// process; an error it ends with that is no status is answered as one, and
+// logged (see [answered]).
 //
 // Nothing here checks a request. What a request must be is the servers' to say,
 // in Go, next to the rule it is part of; see the README, "What a request must
@@ -74,9 +75,11 @@ func Serving(ctx context.Context, opts ...Option) Chain {
 	c := Chain{
 		// Otel before Log so that a record carries the ids of the span it
 		// happened inside.
-		Stats:  []stats.Handler{otxgrpc.NewServerHandler(otx.From(ctx)), logHandler(ctx, o.polled...)},
-		Unary:  []grpc.UnaryServerInterceptor{RecoverUnary()},
-		Stream: []grpc.StreamServerInterceptor{RecoverStream()},
+		Stats: []stats.Handler{otxgrpc.NewServerHandler(otx.From(ctx)), logHandler(ctx, o.polled...)},
+		// What a call is answered with that is not a status is answered as
+		// one, outside everything, a panic recovered included. See [answered].
+		Unary:  []grpc.UnaryServerInterceptor{answerUnary(), RecoverUnary()},
+		Stream: []grpc.StreamServerInterceptor{answerStream(), RecoverStream()},
 	}
 	if o.deadline > 0 {
 		c.Unary = append(c.Unary, DeadlineUnary(o.deadline))

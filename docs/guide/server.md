@@ -810,13 +810,40 @@ Who is calling comes first, because everything after it reads the frame.
 
 | | What it does |
 | --- | --- |
-| `grpcx.Serving` | logging, tracing, panic recovery, and a deadline for a call that named none |
+| `grpcx.Serving` | logging, tracing, panic recovery, a deadline for a call that named none, and a status for an error that has none (below) |
 | `auth.Interceptor*` | reads the credential, resolves it, puts a `frame` in the context |
 | `grpcx.LimitUnary` | how often one caller may ask; `gate.ByTenant()` is the key, and `pd.Cost` is what each call counts as (an AddMany is one for each item) |
 | `access.Config.Interceptor` | the access record: whose personal data the call carried, from where, and how it ended. Before the gate, so a refusal is a row too |
 | `gate.Interceptor` | what this caller may do, as against what they may see |
 | `Watch.Interceptor` | publishes what the call changed, **after** it answered without error |
 | `grpcx.ClosedUnary` | what is closed to callers entirely — `Patch` and `Apply` by default |
+
+### What a handler's error becomes
+
+A handler, a layer or an interceptor that returns a gRPC status has said what
+the caller is told, and it reaches the caller as it is, wrapped or not. Return
+one for anything a caller is meant to act on: `pderr` builds the refusals
+([refusals](errors.md)).
+
+An error that is **not** a status is answered by the outermost step of the
+chain `grpcx.Serving` begins, unary and stream alike, and nothing of its own
+text reaches the caller:
+
+| the error | the caller is told |
+| --- | --- |
+| the store, or anything else the server leans on, not reached or not taking more: a connection refused, reset or lost, a name not resolved, PostgreSQL's connection errors (SQLSTATE class `08`), too many clients or no room (class `53`), a server shutting down or starting (`57P01`–`57P03`) | `Unavailable`: *the server could not reach what it stores in; try again* |
+| a context's own, `context.Canceled` or `context.DeadlineExceeded` | `Canceled` or `DeadlineExceeded`, in the context's words |
+| anything else | `Internal`: *the server failed to answer this; it is on its log* |
+
+Without it gRPC answers such an error `Unknown`, in the error's words, and a
+store's words name its database, its user and its address. Over HTTP the codes
+are the statuses every code is: 503, 499 or 504, and 500.
+
+The error itself is logged once, at `ERROR`, as `answered an error that
+carries no status`, with `grpc.method`, the code it was answered with
+(`rpc.grpc.status_code`, `rpc.grpc.status`), the peer and the error under
+`err`, beside the service and method the logger of the call carries. The
+record of the call that follows it (`gRPC out`) says what the caller was told.
 
 ### The access record
 
