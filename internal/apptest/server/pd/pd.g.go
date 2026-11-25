@@ -1210,6 +1210,20 @@ func filterAccess(f *apptest.AccessFilter) (predicate.Access, error) {
 	return entAccess.And(ps...), nil
 }
 
+// Get answers with the Access as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkAccess) Get(ctx context.Context, req *apptest.AccessGetRequest) (*apptest.Access, error) {
+	v, err := s.AccessServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkAudit struct {
 	apptest.AuditServiceServer
 	store  bare.Store
@@ -1443,6 +1457,20 @@ func filterAudit(f *apptest.AuditFilter) (predicate.Audit, error) {
 	return entAudit.And(ps...), nil
 }
 
+// Get answers with the Audit as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*apptest.Audit, error) {
+	v, err := s.AuditServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkCell struct {
 	apptest.CellServiceServer
 	store  bare.Store
@@ -1528,6 +1556,20 @@ func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*ap
 	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
 
 	return s.CellServiceServer.Apply(ctx, req)
+}
+
+// Get answers with the Cell as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*apptest.Cell, error) {
+	v, err := s.CellServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkEvent struct {
@@ -1728,6 +1770,20 @@ func filterEvent(f *apptest.EventFilter) (predicate.Event, error) {
 	}
 
 	return entEvent.And(ps...), nil
+}
+
+// Get answers with the Event as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkEvent) Get(ctx context.Context, req *apptest.EventGetRequest) (*apptest.Event, error) {
+	v, err := s.EventServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkFact struct {
@@ -1932,6 +1988,20 @@ func filterFact(f *apptest.FactFilter) (predicate.Fact, error) {
 	return entFact.And(ps...), nil
 }
 
+// Get answers with the Fact as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*apptest.Fact, error) {
+	v, err := s.FactServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkFleet struct {
 	apptest.FleetServiceServer
 	store  bare.Store
@@ -2041,6 +2111,20 @@ func (s sinkFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.F
 	seen.Forget(s.store.Db.Driver(), "Fleet", req)
 
 	return s.FleetServiceServer.Erase(ctx, req)
+}
+
+// Get answers with the Fleet as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (*apptest.Fleet, error) {
+	v, err := s.FleetServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkHolder struct {
@@ -2549,6 +2633,20 @@ func (s sinkHolder) watchHolderKeys(
 	return ks, nil
 }
 
+// Get answers with the Holder as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+	v, err := s.HolderServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkJob struct {
 	apptest.JobServiceServer
 	store  bare.Store
@@ -2578,6 +2676,20 @@ func (s sinkJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*appt
 	seen.Forget(s.store.Db.Driver(), "Job", req.GetRef())
 
 	return s.JobServiceServer.Patch(ctx, req)
+}
+
+// Get answers with the Job as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkJob) Get(ctx context.Context, req *apptest.JobGetRequest) (*apptest.Job, error) {
+	v, err := s.JobServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkJoint struct {
@@ -2691,6 +2803,20 @@ func (s sinkJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.J
 	return s.JointServiceServer.Erase(ctx, req)
 }
 
+// Get answers with the Joint as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
+	v, err := s.JointServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkMachine struct {
 	apptest.MachineServiceServer
 	store  bare.Store
@@ -2800,6 +2926,20 @@ func (s sinkMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*appte
 	seen.Forget(s.store.Db.Driver(), "Machine", req)
 
 	return s.MachineServiceServer.Erase(ctx, req)
+}
+
+// Get answers with the Machine as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+	v, err := s.MachineServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkPairing struct {
@@ -2936,6 +3076,20 @@ func (s sinkPairing) tenancy(ctx context.Context, req *apptest.PairingAddRequest
 	return nil
 }
 
+// Get answers with the Pairing as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+	v, err := s.PairingServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkReading struct {
 	apptest.ReadingServiceServer
 	store  bare.Store
@@ -3031,6 +3185,20 @@ func (s sinkReading) tenancy(ctx context.Context, req *apptest.ReadingAddRequest
 	req.SetTenantId(want)
 
 	return nil
+}
+
+// Get answers with the Reading as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+	v, err := s.ReadingServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkRobot struct {
@@ -3631,6 +3799,20 @@ func (s sinkRobot) watchRobotKeys(
 	return ks, nil
 }
 
+// Get answers with the Robot as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkRobot) Get(ctx context.Context, req *apptest.RobotGetRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkSeal struct {
 	apptest.SealServiceServer
 	store  bare.Store
@@ -3742,6 +3924,20 @@ func (s sinkSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.Sea
 	return s.SealServiceServer.Erase(ctx, req)
 }
 
+// Get answers with the Seal as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkStint struct {
 	apptest.StintServiceServer
 	store  bare.Store
@@ -3771,6 +3967,20 @@ func (s sinkStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*
 	seen.Forget(s.store.Db.Driver(), "Stint", req.GetRef())
 
 	return s.StintServiceServer.Patch(ctx, req)
+}
+
+// Get answers with the Stint as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkStint) Get(ctx context.Context, req *apptest.StintGetRequest) (*apptest.Stint, error) {
+	v, err := s.StintServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
 }
 
 type sinkTenant struct {
@@ -4054,6 +4264,20 @@ func filterTenant(f *apptest.TenantFilter) (predicate.Tenant, error) {
 	return entTenant.And(ps...), nil
 }
 
+// Get answers with the Tenant as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkTenant) Get(ctx context.Context, req *apptest.TenantGetRequest) (*apptest.Tenant, error) {
+	v, err := s.TenantServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 type sinkThing struct {
 	apptest.ThingServiceServer
 	store  bare.Store
@@ -4335,6 +4559,20 @@ func filterThing(f *apptest.ThingFilter) (predicate.Thing, error) {
 	return entThing.And(ps...), nil
 }
 
+// Get answers with the Thing as the generated one reads it, and without
+// what its select did not ask for; see [pdUnselect].
+func (s sinkThing) Get(ctx context.Context, req *apptest.ThingGetRequest) (*apptest.Thing, error) {
+	v, err := s.ThingServiceServer.Get(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if m := req.GetSelect(); m != nil {
+		pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+	}
+
+	return v, nil
+}
+
 // pdAfter reads a cursor into the values it carries, refusing one of another
 // order, or of this one read the other way.
 func pdAfter(v string, tag string, into ...any) error {
@@ -4370,6 +4608,52 @@ func pdReverse(by []sqlpage.Order) []sqlpage.Order {
 	}
 
 	return out
+}
+
+// pdUnselect clears from `v` each field `m`, its select, did not ask for:
+// a column whose switch is off, unless `all` is on; and in an edge `m`
+// selected, what the edge's own select did not ask for. The identifier, an
+// edge nobody selected -- answered as its reference -- and a field the
+// select has no word for are left as they are.
+func pdUnselect(v, m protoreflect.Message) {
+	if !v.IsValid() || !m.IsValid() {
+		return
+	}
+
+	sel := m.Descriptor().Fields()
+	all := false
+	if fd := sel.ByName("all"); fd != nil && fd.Kind() == protoreflect.BoolKind {
+		all = m.Get(fd).Bool()
+	}
+
+	fs := v.Descriptor().Fields()
+	for i := range fs.Len() {
+		fd := fs.Get(i)
+		sd := sel.ByName(fd.Name())
+		if sd == nil || fd.Name() == "id" || sd.Name() == "all" {
+			continue
+		}
+
+		switch {
+		case sd.Kind() == protoreflect.BoolKind && !sd.IsList():
+			if !all && !m.Get(sd).Bool() {
+				v.Clear(fd)
+			}
+
+		case sd.Kind() == protoreflect.MessageKind && !sd.IsList() && fd.Kind() == protoreflect.MessageKind:
+			if !m.Has(sd) || !v.Has(fd) {
+				continue
+			}
+			if fd.IsList() {
+				l := v.Get(fd).List()
+				for j := range l.Len() {
+					pdUnselect(l.Get(j).Message(), m.Get(sd).Message())
+				}
+				continue
+			}
+			pdUnselect(v.Mutable(fd).Message(), m.Get(sd).Message())
+		}
+	}
 }
 
 // Gate is the layer that says what a caller may do with a request.
