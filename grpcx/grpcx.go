@@ -80,6 +80,7 @@ func Serving(ctx context.Context, opts ...Option) Chain {
 		// one, outside everything, a panic recovered included. See [answered].
 		Unary:  []grpc.UnaryServerInterceptor{answerUnary(), RecoverUnary()},
 		Stream: []grpc.StreamServerInterceptor{answerStream(), RecoverStream()},
+		parsed: true,
 	}
 	if o.deadline > 0 {
 		c.Unary = append(c.Unary, DeadlineUnary(o.deadline))
