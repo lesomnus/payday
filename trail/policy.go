@@ -2058,7 +2058,7 @@ var Profiles = map[string]Profile{
 	"hipaa": {
 		Retain:  90 * day,
 		Destroy: 6 * year,
-		Why:     "HIpAA 45 CFR 164.316(b)(2)(i): documentation retained six years",
+		Why:     "HIPAA 45 CFR 164.316(b)(2)(i): documentation retained six years",
 	},
 	"sox": {
 		Retain:  90 * day,

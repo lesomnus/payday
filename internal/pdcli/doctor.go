@@ -241,7 +241,7 @@ func doctorSandbox(ctx context.Context, l Layout) []Finding {
 
 		if !bytes.Contains(b, []byte("@lesomnus/grpc-dgram")) {
 			vs = append(vs, Finding{
-				What: fmt.Sprintf("%s lets @lesomnus/grpc-dgram be pre-bundled, and the worker Url it builds resolves into .vite/deps/ where there is nothing",
+				What: fmt.Sprintf("%s lets @lesomnus/grpc-dgram be pre-bundled, and the worker URL it builds resolves into .vite/deps/ where there is nothing",
 					l.Rel("ts", "vite.config.ts")),
 				Fix: `optimizeDeps: { exclude: ['@lesomnus/grpc-dgram'] },`,
 			})

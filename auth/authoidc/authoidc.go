@@ -15,7 +15,7 @@
 // # What it does not do
 //
 // Anything about logging in. Whoever issued the token asked for a password, ran
-// an OIdC dance, checked a second factor, and decided the answer -- and none of
+// an OIDC dance, checked a second factor, and decided the answer -- and none of
 // that has a right answer a framework can pick. What arrives here is the
 // conclusion, signed.
 //
@@ -74,7 +74,7 @@ const Method = "oidc"
 type Claims func(ctx context.Context, t *oidc.IDToken) (auth.Identity, error)
 
 // Subject is the [Claims] that reads `sub` as the actor's identifier, which is
-// what an IdP holding the app's own user Ids looks like.
+// what an IdP holding the app's own user IDs looks like.
 //
 //	{"sub": "0199c3f4-2a10-8002-...", "exp": 1893456000}
 //

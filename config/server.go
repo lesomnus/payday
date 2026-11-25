@@ -58,7 +58,7 @@ type ServerConfig struct {
 	// it by having forgotten to say no.
 	AllowReflection bool `yaml:"allow_reflection"`
 
-	// AllowGeneralWrites serves `Patch` and `Apply`, the two Rpcs every
+	// AllowGeneralWrites serves `Patch` and `Apply`, the two RPCs every
 	// generated service has that can write anything the schema holds. It is
 	// **off** unless it is turned on, and turning it on is a decision about the
 	// API rather than about a deployment: what a caller may change, and under
@@ -92,9 +92,9 @@ type HttpConfig struct {
 	//
 	// An address with neither of the switches below turned on is **not** an
 	// error, and that is a deliberate reversal: this listener is also where an
-	// app puts whatever it serves over HTTP -- a login endpoint, an OIdC
+	// app puts whatever it serves over HTTP -- a login endpoint, an OIDC
 	// callback -- and payday has no way to know it has routes. A deployment
-	// that serves those and no browser Rpcs is a real one. What that costs is
+	// that serves those and no browser RPCs is a real one. What that costs is
 	// that an address with genuinely nothing behind it answers 404 instead of
 	// being refused at startup.
 	Addr string `yaml:"addr"`

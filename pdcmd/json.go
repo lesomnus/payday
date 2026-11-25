@@ -19,7 +19,7 @@ import (
 
 // Json is protojson with the identifiers written the way a person writes them.
 //
-// # Why there are two Jsons
+// # Why there are two JSONs
 //
 // protojson encodes `bytes` as base64, and every payday identifier is a `bytes`
 // field, so [ProtoJson] answers:

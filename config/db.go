@@ -197,7 +197,7 @@ func DriverFor(dialect string) (string, bool) {
 	return "", false
 }
 
-// Speaks answers which Sql this database speaks: [DbConfig.Dialect] when it was
+// Speaks answers which SQL this database speaks: [DbConfig.Dialect] when it was
 // given, and otherwise what the driver was registered as speaking.
 //
 // Exported because a broker that rides the app's database is handed this config

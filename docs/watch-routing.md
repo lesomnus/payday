@@ -20,7 +20,7 @@ subscriptions rather than silently continuing streams with a gap.
 | ResourceService Watch | Broad subscription | Per-reader public projection followed by CEL |
 | Hand-written `watch.Stream` on a prefix | The service, where the prefix is exactly one service's; otherwise a broad subscription | The prefix, then whatever `send` checks |
 
-A stream an application opens itself with `watch.Stream` names the Rpcs it is
+A stream an application opens itself with `watch.Stream` names the RPCs it is
 about by a prefix. A prefix that is exactly one service's, `/pkg.Service/` as
 `watch.ServiceOf` answers for a method of it, is that service's interest. Any
 other prefix -- one several services share, a service's name without its

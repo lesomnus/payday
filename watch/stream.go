@@ -55,7 +55,7 @@ type Seen map[pdid.Id]bool
 // easier to write correctly three times and then wrongly the fourth -- which is
 // exactly the kind of thing worth generating a caller for rather than a copy.
 //
-//   - `service` is the prefix of the Rpcs whose writes this stream is about.
+//   - `service` is the prefix of the RPCs whose writes this stream is about.
 //     Where it is exactly one service's, `/pkg.Service/` as [ServiceOf] answers
 //     for a method of it, the subscription is that service's [Interest].
 //     Anything else -- a prefix several services share, a service's name
@@ -206,7 +206,7 @@ func Next(ctx context.Context, events <-chan Event, service string) (map[pdid.Id
 	}
 }
 
-// ServiceOf is the prefix of every Rpc of one service, taken from the name of
+// ServiceOf is the prefix of every RPC of one service, taken from the name of
 // one of them.
 //
 // A change says which RPC made it, and a service is named for the entity it is
