@@ -824,7 +824,11 @@ func builtinAs(name string, header bool, opts ...PrintOptions) (Printer, error) 
 	case name == "wide":
 		return table(true, header, opts...), nil
 	case strings.HasPrefix(name, "template="):
-		return Template(strings.TrimPrefix(name, "template="))
+		p, err := Template(strings.TrimPrefix(name, "template="))
+		if err != nil {
+			return nil, fmt.Errorf("-o %s: %w", name, err)
+		}
+		return p, nil
 	}
 
 	return nil, fmt.Errorf("-o %s: not a format; one of pretty, json, prototext, protojson, name, table, wide, template=...", name)

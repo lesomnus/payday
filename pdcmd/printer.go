@@ -3,8 +3,10 @@ package pdcmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 
@@ -177,10 +179,20 @@ var Name Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 // `{{.Alias}}` or a `protoreflect` call. A person writing a template has the
 // JSON in front of them, and a template that does not agree with it would be a
 // second naming to learn.
+//
+// A text that does not parse is refused with what is wrong with it and where,
+// `line 1: unclosed action`, and nothing else: whoever says it to a person
+// says which flag and value it is about, as the command line's refusal does --
+// `-o template={{: line 1: unclosed action`. text/template's own words start
+// `template: :1:`, and wrapped once more they said `template:` twice and named
+// no flag.
 func Template(text string) (Printer, error) {
 	t, err := template.New("").Parse(text)
 	if err != nil {
-		return nil, fmt.Errorf("template: %w", err)
+		if rest, ok := strings.CutPrefix(err.Error(), "template: :"); ok {
+			return nil, errors.New("line " + rest)
+		}
+		return nil, err
 	}
 
 	return PrinterFunc(func(w io.Writer, m proto.Message) error {
