@@ -56,7 +56,7 @@ message Seal {
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 14
     global: {}

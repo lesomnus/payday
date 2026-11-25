@@ -210,7 +210,7 @@ var File_app_seal_proto protoreflect.FileDescriptor
 
 const file_app_seal_proto_rawDesc = "" +
 	"\n" +
-	"\x0eapp/seal.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x9d\x02\n" +
+	"\x0eapp/seal.proto\x12\x03app\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xa7\x02\n" +
 	"\x04Seal\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12\x14\n" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12$\n" +
@@ -218,7 +218,7 @@ const file_app_seal_proto_rawDesc = "" +
 	"\x04code\x18\t \x01(\tB\x06\xaa\xc1\x16\x02\b\x01R\x04code\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x10\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x04\b\x0e*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1a\xca\xfc\x15\x0e\x12\f\x82\x01\x00\x8a\x01\x00\x92\x01\x00\x9a\x01\x00\x8a\xbb\x16\x04\b\x0e*\x00B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_seal_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_app_seal_proto_goTypes = []any{

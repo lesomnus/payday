@@ -16,7 +16,7 @@ func TestTheGuideSaysWhatTheGeneratorSays(t *testing.T) {
 		"no option",
 		`message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 }`,
 		"every entity has to say what its identifiers",
 	}, {
@@ -28,7 +28,7 @@ func TestTheGuideSaysWhatTheGeneratorSays(t *testing.T) {
 		tenant + `
 message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, global: {}};
 }`,
 		"nothing says what `Erase` does to a row",

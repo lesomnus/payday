@@ -11,7 +11,7 @@ func headerEntity(body string) string {
 message Binding {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 ` + body + `
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }
 `

@@ -55,7 +55,7 @@ message Robot {
 
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message)   = {rpc: {crud: true}};
+  option (orm.message)   = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7};
 }
 ```

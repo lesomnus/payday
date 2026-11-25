@@ -175,7 +175,7 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 
 	const option = `message Holder {
   option (orm.message) = {
-    rpc: {crud: false}
+    rpc: {get: {}}
     indexes: [
       {name: "idp", refs: [{name: "idp_subject", number: 8}, {name: "tenant", number: 2}], unique: true}
     ]
@@ -191,7 +191,7 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 	x.Contains(src, "message Holder {\n")
 	if i := strings.Index(src, "  option (orm.message) = {\n"); i >= 0 {
 		head, rest := src[:i], src[i:]
-		rest = strings.Replace(rest, "  option (orm.message) = {\n", "  option (orm.message) = {\n    rpc: {crud: false}\n", 1)
+		rest = strings.Replace(rest, "  option (orm.message) = {\n", "  option (orm.message) = {\n    rpc: {get: {}}\n", 1)
 		x.Contains(rest, "    indexes: [\n")
 		rest = strings.Replace(rest, "    indexes: [\n", "    indexes: [\n      "+idp+"\n", 1)
 		src = head + rest
@@ -206,8 +206,11 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 	merged := string(b)
 	x.Contains(merged, `name: "slug"`, "payday's index went")
 	x.Contains(merged, `name: "idp"`, "the overlay's index was dropped")
-	x.Contains(merged, "crud: true", "the overlay overrode payday's value")
-	x.NotContains(merged, "crud: false")
+	// A verb both sides name is named once: the overlay says payday's `get` again,
+	// which adds nothing, and the merged option still has each of payday's four.
+	for _, verb := range []string{"add: {}", "get: {}", "patch: {}", "erase: {}"} {
+		x.Equal(1, strings.Count(merged, verb), "%s is not in the merged option once", verb)
+	}
 
 	b, err = os.ReadFile(filepath.Join(l.Path(pdcli.DirEnt), "schema", "holder.go"))
 	x.NoError(err)

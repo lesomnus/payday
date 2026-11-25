@@ -39,7 +39,7 @@ message Robot {
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [
       {name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]},
       {name: "slug", refs: [{name: "alias", number: 4}, {name: "tenant", number: 2}], unique: true}
@@ -65,7 +65,7 @@ from [protobuf-orm](https://github.com/protobuf-orm/protobuf-orm). It says which
 RPCs exist and what the table is indexed by.
 
 One of those RPCs is worth knowing about before a schema has many rows to
-write: `rpc: {crud: true, add: {many: {}}}` adds an `AddMany` beside the `Add`,
+write: `add: {many: {}}` in place of `add: {}` adds an `AddMany` beside the `Add`,
 which takes up to a thousand `Add` requests (`many: {max: N}` for another
 bound) and writes them in one transaction, a statement for every few hundred
 rows. Each item is the row an `Add` of it would be, and payday asks of each
@@ -269,7 +269,7 @@ becomes possible, which a path of two has nothing to name.
 bytes tenant_id = 9 [(orm.field) = {type: TYPE_UUID}];
 
 option (orm.message) = {
-  rpc: {crud: true}
+  rpc: {add: {}, get: {}, patch: {}, erase: {}}
   indexes: [{name: "wall", refs: [{name: "tenant_id"}, {name: "date_created"}]}]
 };
 option (payday.entity) = {

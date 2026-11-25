@@ -90,7 +90,7 @@ message Machine {
   }];
 
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [
       // What a meter of one tenant's machines reads by (payday#186): without
       // it, measuring each tenant is a scan of every tenant's machines, and

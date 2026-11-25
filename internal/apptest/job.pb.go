@@ -308,7 +308,7 @@ var File_app_job_proto protoreflect.FileDescriptor
 
 const file_app_job_proto_rawDesc = "" +
 	"\n" +
-	"\rapp/job.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xdb\x02\n" +
+	"\rapp/job.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xe5\x02\n" +
 	"\x03Job\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12!\n" +
@@ -317,7 +317,7 @@ const file_app_job_proto_rawDesc = "" +
 	"\tcompleted\x18\n" +
 	" \x01(\bR\tcompleted\x12F\n" +
 	"\fdate_updated\x18\r \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x8a\x01\x00R\vdateUpdated\x12H\n" +
-	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x12\xca\xfc\x15\x04\x12\x02\x10\x01\x8a\xbb\x16\x06\b*B\x02\n" +
+	"\fdate_created\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampB\t\xea\x82\x16\x05@\x01\x82\x01\x00R\vdateCreated:\x1c\xca\xfc\x15\x0e\x12\f\x82\x01\x00\x8a\x01\x00\x92\x01\x00\x9a\x01\x00\x8a\xbb\x16\x06\b*B\x02\n" +
 	"\x00\"Y\n" +
 	"\aJobDone\x12\x10\n" +
 	"\x03job\x18\x01 \x01(\fR\x03job\x12\x14\n" +

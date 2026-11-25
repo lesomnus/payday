@@ -760,14 +760,14 @@ message Person {
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4 [(payday.field) = {personal: false}];
   string name = 5 [(payday.field) = {personal: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 8, erase: {hard: {}}};
 }
 
 message Lock {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 10, erase: {hard: {}}};
 }
 `))
@@ -810,7 +810,7 @@ const tenantedRobot = `
 message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, erase: {hard: {}}};
 }
 `
