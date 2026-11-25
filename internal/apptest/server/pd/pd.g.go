@@ -2351,6 +2351,15 @@ func (s sinkHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest
 	return s.HolderServiceServer.Erase(ctx, req)
 }
 
+// Apply forgets what the transaction was told about the row, before it is
+// written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
 // orderHolder is how Holders come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -4281,16 +4290,6 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 	return s.TenantServiceServer.Patch(ctx, req)
 }
 
-// Erase forgets what the transaction was told about the row, before it is
-// erased: whether a frame may see it, and where a walk from it arrives.
-// Neither is true of a row that is gone, nor of another put under its
-// key. See [seen.Forget].
-func (s sinkTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	seen.Forget(s.store.Db.Driver(), "Tenant", req)
-
-	return s.TenantServiceServer.Erase(ctx, req)
-}
-
 // orderTenant is how Tenants come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -5022,12 +5021,6 @@ func (s gateTenant) admit(ctx context.Context, req *apptest.TenantAddRequest) (*
 	return nil, gate.ErrDeployment("put up")
 }
 
-// Erase is not served either, and it would take everything in the tenant
-// with it.
-func (s gateTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	return nil, gate.ErrDeployment("taken down")
-}
-
 type gateHolder struct {
 	Gate
 	apptest.HolderServiceServer
@@ -5138,6 +5131,60 @@ func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 
 	return s.HolderServiceServer.Patch(ctx, req)
 }
+
+// Apply refuses a document that moves an edge onto a row this caller cannot
+// see, as Patch refuses a request that does.
+//
+// A document names the row an edge points at by its key, and the server
+// behind writes that key into the column as it is -- compiling a document
+// reads nothing. So the read Patch is asked is asked here of the key the
+// document lands in the column, compiled the way the server behind will.
+func (s gateHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if !req.HasPatch() {
+		// Nothing written, and the server behind refuses it in its own words.
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(gateHolderEntity, req.GetPatch())
+	if err != nil {
+		// Refused here rather than passed on, in the codes the server behind
+		// gives the same document: one this layer cannot read is one it can
+		// say nothing about.
+		if errors.Is(err, ormpatch.ErrUnsupported) {
+			return nil, status.Errorf(codes.Unimplemented, "%s", err)
+		}
+
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
+	}
+
+	if _, ok := plan.WriteTo(12); ok {
+		return nil, pderr.Invalidf("account", "is the account this membership is of, and is written by the deployment through the server it holds, never by a request")
+	}
+
+	if w, ok := plan.WriteTo(11); ok {
+		if k, ok := w.Op.(ormpatch.SetEdge); ok {
+			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
+			if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
+				_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
+					Ref: ref,
+				}.Build())
+				return err
+			}); err != nil {
+				if status.Code(err) == codes.NotFound {
+					return nil, gate.ErrNotFound("Robot")
+				}
+
+				return nil, err
+			}
+		}
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
+// gateHolderEntity is what a Holder document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var gateHolderEntity = ormpatch.MustEntityOf((*apptest.Holder)(nil).ProtoReflect().Descriptor().ParentFile(), "Holder")
 
 type gateCell struct {
 	Gate
@@ -5829,17 +5876,6 @@ func (s guardedTenant) Patch(ctx context.Context, req *apptest.TenantPatchReques
 	}
 
 	return s.TenantServiceServer.Patch(ctx, req)
-}
-
-func (s guardedTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	if err := gate.Direct(ctx, apptest.TenantService_Erase_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.TenantService_Erase_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.TenantServiceServer.Erase(ctx, req)
 }
 
 func (s guardedTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
@@ -6580,6 +6616,17 @@ func (s guardedHolder) Patch(ctx context.Context, req *apptest.HolderPatchReques
 	}
 
 	return s.HolderServiceServer.Patch(ctx, req)
+}
+
+func (s guardedHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if err := gate.Direct(ctx, apptest.HolderService_Apply_FullMethodName); err != nil {
+		return nil, err
+	}
+	if err := gate.AsAccount(ctx, apptest.HolderService_Apply_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 func (s guardedHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
@@ -10470,11 +10517,6 @@ func (s interceptTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequ
 		apptest.TenantService_Patch_FullMethodName, req, s.TenantServiceServer.Patch)
 }
 
-func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
-		apptest.TenantService_Erase_FullMethodName, req, s.TenantServiceServer.Erase)
-}
-
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
@@ -10909,6 +10951,11 @@ func (s interceptHolder) Get(ctx context.Context, req *apptest.HolderGetRequest)
 func (s interceptHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
 		apptest.HolderService_Patch_FullMethodName, req, s.HolderServiceServer.Patch)
+}
+
+func (s interceptHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
+		apptest.HolderService_Apply_FullMethodName, req, s.HolderServiceServer.Apply)
 }
 
 func (s interceptHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
@@ -14516,6 +14563,7 @@ func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 		apptest.EventService_AddMany_FullMethodName,
 		apptest.HolderService_Add_FullMethodName,
 		apptest.HolderService_Patch_FullMethodName,
+		apptest.HolderService_Apply_FullMethodName,
 		apptest.MachineService_Add_FullMethodName,
 		apptest.MachineService_Patch_FullMethodName,
 		apptest.RobotService_Add_FullMethodName,
@@ -15396,6 +15444,8 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.HolderService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
+	case apptest.HolderService_Apply_FullMethodName:
+		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.HolderService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.JobService_Add_FullMethodName:
@@ -15458,8 +15508,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.TenantService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.TenantService_Erase_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.ThingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.ThingService_Patch_FullMethodName:

@@ -477,6 +477,16 @@ var holderOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_holder_proto
 var holderPatchColumns = entpatch.Columns{
 	1: holder.FieldId, 2: holder.TenantColumn, 4: holder.FieldAlias, 5: holder.FieldName, 6: holder.FieldDesc, 7: holder.FieldLabels, 13: holder.FieldDateUpdated, 14: holder.FieldDateErased, 15: holder.FieldDateCreated, 8: holder.FieldIdpSubject, 9: holder.FieldProfile, 10: holder.FieldDirectory, 11: holder.RobotColumn, 12: holder.FieldAccount}
 
+func (s HolderServiceServer) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	if s.admission != nil {
+		ctx = request(ctx, req)
+	}
+	if !req.HasPatch() {
+		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
+	}
+	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.HolderService_Apply_FullMethodName)
+}
+
 func (s HolderServiceServer) apply(ctx context.Context, ref *apptest.HolderRef, doc *patchpb.Patch, by string) (*apptest.Holder, error) {
 	plan := &ormpatch.Plan{Entity: holderOrmEntity}
 	if doc != nil {

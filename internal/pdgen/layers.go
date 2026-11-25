@@ -157,13 +157,17 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	return nil, ", pkgGate.Ident("ErrDeployment"), "(\"put up\")")
 	g.P("}")
 	g.P("")
-	g.P("// Erase is not served either, and it would take everything in the tenant")
-	g.P("// with it.")
-	g.P("func (s gateTenant) Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("TenantRef"),
-		") (*", root.Ident("TenantEraseResponse"), ", error) {")
-	g.P("	return nil, ", pkgGate.Ident("ErrDeployment"), "(\"taken down\")")
-	g.P("}")
-	g.P("")
+	// Only where there is one: an app's overlay may switch it off, and then
+	// there is no request to name ([CheckOverlay]).
+	if t := s.Own(pdpb.Own_OWN_TENANT); t != nil && t.Rpcs().HasErase() {
+		g.P("// Erase is not served either, and it would take everything in the tenant")
+		g.P("// with it.")
+		g.P("func (s gateTenant) Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("TenantRef"),
+			") (*", root.Ident("TenantEraseResponse"), ", error) {")
+		g.P("	return nil, ", pkgGate.Ident("ErrDeployment"), "(\"taken down\")")
+		g.P("}")
+		g.P("")
+	}
 
 	// Holder: the one rule about a holder that is not a predicate.
 	g.P("type gateHolder struct {")

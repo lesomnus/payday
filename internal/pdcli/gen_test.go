@@ -191,7 +191,13 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 	x.Contains(src, "message Holder {\n")
 	if i := strings.Index(src, "  option (orm.message) = {\n"); i >= 0 {
 		head, rest := src[:i], src[i:]
-		rest = strings.Replace(rest, "  option (orm.message) = {\n", "  option (orm.message) = {\n    rpc: {get: {}}\n", 1)
+		// And into its `rpc` when it says one: the reference app's asks for
+		// an Apply there.
+		if strings.Contains(rest, "    rpc: {") {
+			rest = strings.Replace(rest, "    rpc: {", "    rpc: {get: {}, ", 1)
+		} else {
+			rest = strings.Replace(rest, "  option (orm.message) = {\n", "  option (orm.message) = {\n    rpc: {get: {}}\n", 1)
+		}
 		x.Contains(rest, "    indexes: [\n")
 		rest = strings.Replace(rest, "    indexes: [\n", "    indexes: [\n      "+idp+"\n", 1)
 		src = head + rest

@@ -189,8 +189,10 @@ func TestTenantIsNotPutUpFromInsideOne(t *testing.T) {
 	_, err := b.Walled.Tenant().Add(b.as(ctx), app.TenantAddRequest_builder{Alias: "other"}.Build())
 	x.Equal(codes.Unimplemented, status.Code(err))
 
-	_, err = b.Walled.Tenant().Erase(b.as(ctx), app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build())
-	x.Equal(codes.Unimplemented, status.Code(err))
+	// Taking one down is not even there: this app's overlay switches payday's
+	// Tenant's Erase off (`proto/ext/payday/tenant.ext.proto`), and the gate
+	// writes no refusal of a verb there is not. See
+	// TestAVerbAnOverlaySwitchedIsWhatEveryoneSees.
 
 	// And the deployment's own path is not a privilege anybody satisfies; it
 	// is a different server.
@@ -1595,5 +1597,34 @@ func TestAnEdgeAnOverlayGivesTheHolderIsARead(t *testing.T) {
 		}.Build())
 		x.Equal(codes.NotFound, status.Code(err),
 			"a holder's edge was moved onto a robot in a tenant this caller cannot see")
+	})
+
+	t.Run("and when a document moves it", func(t *testing.T) {
+		x := require.New(t)
+
+		ref := app.HolderRef_builder{Id: v.GetId()}.Build()
+		_, err := b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("robot", theirs.GetId()),
+		}.Build())
+		x.Equal(codes.NotFound, status.Code(err),
+			"a document moved a holder's edge onto a robot in a tenant this caller cannot see")
+
+		got, err := b.Ungated.Holder().Get(ctx, app.HolderGetRequest_builder{Ref: ref}.Build())
+		x.NoError(err)
+		x.Equal(mine.GetId(), got.GetRobot().GetId(), "the holder was moved all the same")
+
+		other, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+			Alias:  "also-mine",
+		}.Build())
+		x.NoError(err)
+
+		got, err = b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
+			Ref:   ref,
+			Patch: moving("robot", other.GetId()),
+		}.Build())
+		x.NoError(err, "the check refuses what it should allow")
+		x.Equal(other.GetId(), got.GetRobot().GetId())
 	})
 }

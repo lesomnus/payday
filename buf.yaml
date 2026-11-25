@@ -44,8 +44,9 @@ breaking:
   # And, once: payday's own entities name the verbs something calls or an app
   # serves (lesomnus/roster#531), so the contracts generated for them lose
   # what nothing called: the trail's Patch, Apply and Erase and their messages,
-  # and the Apply of the holder, the tenant and the past's fact. Out with the
-  # first change after this reaches main.
+  # and the Apply of the holder, the tenant and the past's fact; and the test
+  # app's overlay switches its tenant's Erase off. Out with the first change
+  # after this reaches main.
   ignore_only:
     RPC_NO_DELETE:
       - internal/apptest/proto/app/payday/audit_svc.g.proto

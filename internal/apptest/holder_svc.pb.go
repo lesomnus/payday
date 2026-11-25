@@ -8,6 +8,7 @@ package apptest
 
 import (
 	_ "github.com/lesomnus/payday/pdpb"
+	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1640,6 +1641,99 @@ func (b0 HolderPatchRequest_builder) Build() *HolderPatchRequest {
 	return m0
 }
 
+type HolderApplyRequest struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref   *HolderRef             `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *HolderApplyRequest) Reset() {
+	*x = HolderApplyRequest{}
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HolderApplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HolderApplyRequest) ProtoMessage() {}
+
+func (x *HolderApplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HolderApplyRequest) GetRef() *HolderRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *HolderApplyRequest) GetPatch() *patchpb.Patch {
+	if x != nil {
+		return x.xxx_hidden_Patch
+	}
+	return nil
+}
+
+func (x *HolderApplyRequest) SetRef(v *HolderRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *HolderApplyRequest) SetPatch(v *patchpb.Patch) {
+	x.xxx_hidden_Patch = v
+}
+
+func (x *HolderApplyRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *HolderApplyRequest) HasPatch() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Patch != nil
+}
+
+func (x *HolderApplyRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *HolderApplyRequest) ClearPatch() {
+	x.xxx_hidden_Patch = nil
+}
+
+type HolderApplyRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref   *HolderRef
+	Patch *patchpb.Patch
+}
+
+func (b0 HolderApplyRequest_builder) Build() *HolderApplyRequest {
+	m0 := &HolderApplyRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Patch = b.Patch
+	return m0
+}
+
 type HolderEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -1651,7 +1745,7 @@ type HolderEraseResponse struct {
 
 func (x *HolderEraseResponse) Reset() {
 	*x = HolderEraseResponse{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1663,7 +1757,7 @@ func (x *HolderEraseResponse) String() string {
 func (*HolderEraseResponse) ProtoMessage() {}
 
 func (x *HolderEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1733,7 +1827,7 @@ type HolderListRequest struct {
 
 func (x *HolderListRequest) Reset() {
 	*x = HolderListRequest{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1745,7 +1839,7 @@ func (x *HolderListRequest) String() string {
 func (*HolderListRequest) ProtoMessage() {}
 
 func (x *HolderListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1877,7 +1971,7 @@ type HolderListResponse struct {
 
 func (x *HolderListResponse) Reset() {
 	*x = HolderListResponse{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1889,7 +1983,7 @@ func (x *HolderListResponse) String() string {
 func (*HolderListResponse) ProtoMessage() {}
 
 func (x *HolderListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1958,7 +2052,7 @@ type HolderFilter struct {
 
 func (x *HolderFilter) Reset() {
 	*x = HolderFilter{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1970,7 +2064,7 @@ func (x *HolderFilter) String() string {
 func (*HolderFilter) ProtoMessage() {}
 
 func (x *HolderFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2158,7 @@ type HolderWatchRequest struct {
 
 func (x *HolderWatchRequest) Reset() {
 	*x = HolderWatchRequest{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[10]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2076,7 +2170,7 @@ func (x *HolderWatchRequest) String() string {
 func (*HolderWatchRequest) ProtoMessage() {}
 
 func (x *HolderWatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[10]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2150,7 +2244,7 @@ type HolderWatchResponse struct {
 
 func (x *HolderWatchResponse) Reset() {
 	*x = HolderWatchResponse{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[11]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2162,7 +2256,7 @@ func (x *HolderWatchResponse) String() string {
 func (*HolderWatchResponse) ProtoMessage() {}
 
 func (x *HolderWatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[11]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2214,7 +2308,7 @@ type HolderWatchItem struct {
 
 func (x *HolderWatchItem) Reset() {
 	*x = HolderWatchItem{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[12]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2226,7 +2320,7 @@ func (x *HolderWatchItem) String() string {
 func (*HolderWatchItem) ProtoMessage() {}
 
 func (x *HolderWatchItem) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[12]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2344,7 +2438,7 @@ type HolderMembershipsRequest struct {
 
 func (x *HolderMembershipsRequest) Reset() {
 	*x = HolderMembershipsRequest{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[13]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2356,7 +2450,7 @@ func (x *HolderMembershipsRequest) String() string {
 func (*HolderMembershipsRequest) ProtoMessage() {}
 
 func (x *HolderMembershipsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[13]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2388,7 +2482,7 @@ type HolderMembershipsResponse struct {
 
 func (x *HolderMembershipsResponse) Reset() {
 	*x = HolderMembershipsResponse{}
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2400,7 +2494,7 @@ func (x *HolderMembershipsResponse) String() string {
 func (*HolderMembershipsResponse) ProtoMessage() {}
 
 func (x *HolderMembershipsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_holder_svc_g_proto_msgTypes[14]
+	mi := &file_app_payday_holder_svc_g_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2443,7 +2537,7 @@ var File_app_payday_holder_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\x96\x04\n" +
+	"\x1dapp/payday/holder_svc.g.proto\x12\x03app\x1a\x17app/payday/holder.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x11app/profile.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\"\x96\x04\n" +
 	"\x10HolderAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -2511,7 +2605,10 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\faccount_null\x18\x19 \x01(\bR\vaccountNull\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"-\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +
+	"\x12HolderApplyRequest\x12 \n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\"\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"-\n" +
 	"\x13HolderEraseResponse\x12\x16\n" +
 	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc4\x01\n" +
 	"\x11HolderListRequest\x12+\n" +
@@ -2541,18 +2638,19 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x06action\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x06action\"\x1a\n" +
 	"\x18HolderMembershipsRequest\">\n" +
 	"\x19HolderMembershipsResponse\x12!\n" +
-	"\x05items\x18\x01 \x03(\v2\v.app.HolderR\x05items2\x94\x03\n" +
+	"\x05items\x18\x01 \x03(\v2\v.app.HolderR\x05items2\xc3\x03\n" +
 	"\rHolderService\x12)\n" +
 	"\x03Add\x12\x15.app.HolderAddRequest\x1a\v.app.Holder\x12)\n" +
 	"\x03Get\x12\x15.app.HolderGetRequest\x1a\v.app.Holder\x12-\n" +
-	"\x05Patch\x12\x17.app.HolderPatchRequest\x1a\v.app.Holder\x121\n" +
+	"\x05Patch\x12\x17.app.HolderPatchRequest\x1a\v.app.Holder\x12-\n" +
+	"\x05Apply\x12\x17.app.HolderApplyRequest\x1a\v.app.Holder\x121\n" +
 	"\x05Erase\x12\x0e.app.HolderRef\x1a\x18.app.HolderEraseResponse\x127\n" +
 	"\x04List\x12\x16.app.HolderListRequest\x1a\x17.app.HolderListResponse\x12<\n" +
 	"\x05Watch\x12\x17.app.HolderWatchRequest\x1a\x18.app.HolderWatchResponse0\x01\x12T\n" +
 	"\vMemberships\x12\x1d.app.HolderMembershipsRequest\x1a\x1e.app.HolderMembershipsResponse\"\x06\xea\xcd\x16\x02\n" +
 	"\x00B-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_payday_holder_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_app_payday_holder_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_app_payday_holder_svc_g_proto_goTypes = []any{
 	(*HolderAddRequest)(nil),          // 0: app.HolderAddRequest
 	(*HolderGetRequest)(nil),          // 1: app.HolderGetRequest
@@ -2560,72 +2658,78 @@ var file_app_payday_holder_svc_g_proto_goTypes = []any{
 	(*HolderRefBySlug)(nil),           // 3: app.HolderRefBySlug
 	(*HolderSelect)(nil),              // 4: app.HolderSelect
 	(*HolderPatchRequest)(nil),        // 5: app.HolderPatchRequest
-	(*HolderEraseResponse)(nil),       // 6: app.HolderEraseResponse
-	(*HolderListRequest)(nil),         // 7: app.HolderListRequest
-	(*HolderListResponse)(nil),        // 8: app.HolderListResponse
-	(*HolderFilter)(nil),              // 9: app.HolderFilter
-	(*HolderWatchRequest)(nil),        // 10: app.HolderWatchRequest
-	(*HolderWatchResponse)(nil),       // 11: app.HolderWatchResponse
-	(*HolderWatchItem)(nil),           // 12: app.HolderWatchItem
-	(*HolderMembershipsRequest)(nil),  // 13: app.HolderMembershipsRequest
-	(*HolderMembershipsResponse)(nil), // 14: app.HolderMembershipsResponse
-	nil,                               // 15: app.HolderAddRequest.LabelsEntry
-	nil,                               // 16: app.HolderPatchRequest.LabelsEntry
-	nil,                               // 17: app.HolderFilter.LabelsEntry
-	(*TenantRef)(nil),                 // 18: app.TenantRef
-	(*timestamppb.Timestamp)(nil),     // 19: google.protobuf.Timestamp
-	(*Profile)(nil),                   // 20: app.Profile
-	(*RobotRef)(nil),                  // 21: app.RobotRef
-	(*TenantSelect)(nil),              // 22: app.TenantSelect
-	(*RobotSelect)(nil),               // 23: app.RobotSelect
-	(*Holder)(nil),                    // 24: app.Holder
+	(*HolderApplyRequest)(nil),        // 6: app.HolderApplyRequest
+	(*HolderEraseResponse)(nil),       // 7: app.HolderEraseResponse
+	(*HolderListRequest)(nil),         // 8: app.HolderListRequest
+	(*HolderListResponse)(nil),        // 9: app.HolderListResponse
+	(*HolderFilter)(nil),              // 10: app.HolderFilter
+	(*HolderWatchRequest)(nil),        // 11: app.HolderWatchRequest
+	(*HolderWatchResponse)(nil),       // 12: app.HolderWatchResponse
+	(*HolderWatchItem)(nil),           // 13: app.HolderWatchItem
+	(*HolderMembershipsRequest)(nil),  // 14: app.HolderMembershipsRequest
+	(*HolderMembershipsResponse)(nil), // 15: app.HolderMembershipsResponse
+	nil,                               // 16: app.HolderAddRequest.LabelsEntry
+	nil,                               // 17: app.HolderPatchRequest.LabelsEntry
+	nil,                               // 18: app.HolderFilter.LabelsEntry
+	(*TenantRef)(nil),                 // 19: app.TenantRef
+	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
+	(*Profile)(nil),                   // 21: app.Profile
+	(*RobotRef)(nil),                  // 22: app.RobotRef
+	(*TenantSelect)(nil),              // 23: app.TenantSelect
+	(*RobotSelect)(nil),               // 24: app.RobotSelect
+	(*patchpb.Patch)(nil),             // 25: patch.Patch
+	(*Holder)(nil),                    // 26: app.Holder
 }
 var file_app_payday_holder_svc_g_proto_depIdxs = []int32{
-	18, // 0: app.HolderAddRequest.tenant:type_name -> app.TenantRef
-	15, // 1: app.HolderAddRequest.labels:type_name -> app.HolderAddRequest.LabelsEntry
-	19, // 2: app.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	20, // 3: app.HolderAddRequest.profile:type_name -> app.Profile
-	21, // 4: app.HolderAddRequest.robot:type_name -> app.RobotRef
+	19, // 0: app.HolderAddRequest.tenant:type_name -> app.TenantRef
+	16, // 1: app.HolderAddRequest.labels:type_name -> app.HolderAddRequest.LabelsEntry
+	20, // 2: app.HolderAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	21, // 3: app.HolderAddRequest.profile:type_name -> app.Profile
+	22, // 4: app.HolderAddRequest.robot:type_name -> app.RobotRef
 	2,  // 5: app.HolderGetRequest.ref:type_name -> app.HolderRef
 	4,  // 6: app.HolderGetRequest.select:type_name -> app.HolderSelect
 	3,  // 7: app.HolderRef.slug:type_name -> app.HolderRefBySlug
-	18, // 8: app.HolderRefBySlug.tenant:type_name -> app.TenantRef
-	22, // 9: app.HolderSelect.tenant:type_name -> app.TenantSelect
-	23, // 10: app.HolderSelect.robot:type_name -> app.RobotSelect
+	19, // 8: app.HolderRefBySlug.tenant:type_name -> app.TenantRef
+	23, // 9: app.HolderSelect.tenant:type_name -> app.TenantSelect
+	24, // 10: app.HolderSelect.robot:type_name -> app.RobotSelect
 	2,  // 11: app.HolderPatchRequest.ref:type_name -> app.HolderRef
-	16, // 12: app.HolderPatchRequest.labels:type_name -> app.HolderPatchRequest.LabelsEntry
-	19, // 13: app.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	20, // 14: app.HolderPatchRequest.profile:type_name -> app.Profile
-	21, // 15: app.HolderPatchRequest.robot:type_name -> app.RobotRef
-	9,  // 16: app.HolderListRequest.filters:type_name -> app.HolderFilter
-	4,  // 17: app.HolderListRequest.select:type_name -> app.HolderSelect
-	24, // 18: app.HolderListResponse.items:type_name -> app.Holder
-	2,  // 19: app.HolderFilter.ref:type_name -> app.HolderRef
-	18, // 20: app.HolderFilter.tenant:type_name -> app.TenantRef
-	17, // 21: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
-	9,  // 22: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
-	12, // 23: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
-	24, // 24: app.HolderWatchItem.value:type_name -> app.Holder
-	24, // 25: app.HolderMembershipsResponse.items:type_name -> app.Holder
-	0,  // 26: app.HolderService.Add:input_type -> app.HolderAddRequest
-	1,  // 27: app.HolderService.Get:input_type -> app.HolderGetRequest
-	5,  // 28: app.HolderService.Patch:input_type -> app.HolderPatchRequest
-	2,  // 29: app.HolderService.Erase:input_type -> app.HolderRef
-	7,  // 30: app.HolderService.List:input_type -> app.HolderListRequest
-	10, // 31: app.HolderService.Watch:input_type -> app.HolderWatchRequest
-	13, // 32: app.HolderService.Memberships:input_type -> app.HolderMembershipsRequest
-	24, // 33: app.HolderService.Add:output_type -> app.Holder
-	24, // 34: app.HolderService.Get:output_type -> app.Holder
-	24, // 35: app.HolderService.Patch:output_type -> app.Holder
-	6,  // 36: app.HolderService.Erase:output_type -> app.HolderEraseResponse
-	8,  // 37: app.HolderService.List:output_type -> app.HolderListResponse
-	11, // 38: app.HolderService.Watch:output_type -> app.HolderWatchResponse
-	14, // 39: app.HolderService.Memberships:output_type -> app.HolderMembershipsResponse
-	33, // [33:40] is the sub-list for method output_type
-	26, // [26:33] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	17, // 12: app.HolderPatchRequest.labels:type_name -> app.HolderPatchRequest.LabelsEntry
+	20, // 13: app.HolderPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	21, // 14: app.HolderPatchRequest.profile:type_name -> app.Profile
+	22, // 15: app.HolderPatchRequest.robot:type_name -> app.RobotRef
+	2,  // 16: app.HolderApplyRequest.ref:type_name -> app.HolderRef
+	25, // 17: app.HolderApplyRequest.patch:type_name -> patch.Patch
+	10, // 18: app.HolderListRequest.filters:type_name -> app.HolderFilter
+	4,  // 19: app.HolderListRequest.select:type_name -> app.HolderSelect
+	26, // 20: app.HolderListResponse.items:type_name -> app.Holder
+	2,  // 21: app.HolderFilter.ref:type_name -> app.HolderRef
+	19, // 22: app.HolderFilter.tenant:type_name -> app.TenantRef
+	18, // 23: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
+	10, // 24: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
+	13, // 25: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
+	26, // 26: app.HolderWatchItem.value:type_name -> app.Holder
+	26, // 27: app.HolderMembershipsResponse.items:type_name -> app.Holder
+	0,  // 28: app.HolderService.Add:input_type -> app.HolderAddRequest
+	1,  // 29: app.HolderService.Get:input_type -> app.HolderGetRequest
+	5,  // 30: app.HolderService.Patch:input_type -> app.HolderPatchRequest
+	6,  // 31: app.HolderService.Apply:input_type -> app.HolderApplyRequest
+	2,  // 32: app.HolderService.Erase:input_type -> app.HolderRef
+	8,  // 33: app.HolderService.List:input_type -> app.HolderListRequest
+	11, // 34: app.HolderService.Watch:input_type -> app.HolderWatchRequest
+	14, // 35: app.HolderService.Memberships:input_type -> app.HolderMembershipsRequest
+	26, // 36: app.HolderService.Add:output_type -> app.Holder
+	26, // 37: app.HolderService.Get:output_type -> app.Holder
+	26, // 38: app.HolderService.Patch:output_type -> app.Holder
+	26, // 39: app.HolderService.Apply:output_type -> app.Holder
+	7,  // 40: app.HolderService.Erase:output_type -> app.HolderEraseResponse
+	9,  // 41: app.HolderService.List:output_type -> app.HolderListResponse
+	12, // 42: app.HolderService.Watch:output_type -> app.HolderWatchResponse
+	15, // 43: app.HolderService.Memberships:output_type -> app.HolderMembershipsResponse
+	36, // [36:44] is the sub-list for method output_type
+	28, // [28:36] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_holder_svc_g_proto_init() }
@@ -2647,7 +2751,7 @@ func file_app_payday_holder_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_holder_svc_g_proto_rawDesc), len(file_app_payday_holder_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

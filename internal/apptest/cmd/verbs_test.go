@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/lesomnus/protobuf-patch/patch"
@@ -15,6 +16,7 @@ import (
 	"github.com/lesomnus/payday/admission"
 	app "github.com/lesomnus/payday/internal/apptest"
 	entaudit "github.com/lesomnus/payday/internal/apptest/internal/ent/audit"
+	"github.com/lesomnus/payday/pdcmd"
 )
 
 // TestAVerbIsThereWhenItIsAskedFor: `orm` names each verb on its own now, and
@@ -146,4 +148,58 @@ func TestAVerbIsThereWhenItIsAskedFor(t *testing.T) {
 		x.Contains(by, app.CellService_Apply_FullMethodName)
 		x.Contains(by, app.JointService_Patch_FullMethodName)
 	})
+}
+
+// TestAVerbAnOverlaySwitchedIsWhatEveryoneSees: this app's overlays switch
+// payday's Tenant's Erase off and its Holder's Apply on, and the merged entity
+// is what every generator reads. So there is no `TenantService/Erase` in the
+// contract, on the server's interface, in the client or in the command tree,
+// and a caller over the wire is told there is no such method; and there is a
+// `HolderService/Apply` everywhere, through the same layers payday's own verbs
+// go through.
+func TestAVerbAnOverlaySwitchedIsWhatEveryoneSees(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	d, err := protoregistry.GlobalFiles.FindDescriptorByName("app.TenantService")
+	x.NoError(err)
+	x.Nil(d.(protoreflect.ServiceDescriptor).Methods().ByName("Erase"), "in the contract")
+	d, err = protoregistry.GlobalFiles.FindDescriptorByName("app.HolderService")
+	x.NoError(err)
+	x.NotNil(d.(protoreflect.ServiceDescriptor).Methods().ByName("Apply"), "in the contract")
+
+	_, ok := reflect.TypeFor[app.TenantServiceServer]().MethodByName("Erase")
+	x.False(ok, "on the server")
+	_, ok = reflect.TypeFor[app.TenantServiceClient]().MethodByName("Erase")
+	x.False(ok, "in the client")
+	_, ok = reflect.TypeFor[app.HolderServiceServer]().MethodByName("Apply")
+	x.True(ok, "on the server")
+	_, ok = reflect.TypeFor[app.HolderServiceClient]().MethodByName("Apply")
+	x.True(ok, "in the client")
+
+	conn := b.dialed(t, ctx)
+	tree, err := pdcmd.New(pdcmd.Static(conn))
+	x.NoError(err)
+	x.NotNil(tree.Command("tenant/patch"))
+	x.Nil(tree.Command("tenant/erase"), "in the command tree")
+
+	as := b.travels(ctx)
+	err = conn.Invoke(as, "/app.TenantService/Erase", &emptypb.Empty{}, &emptypb.Empty{})
+	x.Equal(codes.Unimplemented, status.Code(err), "over the wire")
+
+	v, err := app.NewHolderServiceClient(conn).Apply(as, app.HolderApplyRequest_builder{
+		Ref:   app.HolderRef_builder{Id: b.Holder.Bytes()}.Build(),
+		Patch: patch.MustNewUntyped(patch.Target(patch.Name("name")).Assign(patch.Str("Ada"))),
+	}.Build())
+	x.NoError(err)
+	x.Equal("Ada", v.GetName())
+	x.True(recordedAs(t, b, b.Holder.Bytes(), app.HolderService_Apply_FullMethodName), "on the trail by its method")
+}
+
+// recordedAs is whether the trail has a line of `method` about the row `id`.
+func recordedAs(t *testing.T, b *built, id []byte, method string) bool {
+	t.Helper()
+	n, err := b.Ent.Audit.Query().Where(entaudit.ObjectIdEQ(mustId(require.New(t), id).Uuid()), entaudit.ActionEQ(method)).Count(t.Context())
+	require.NoError(t, err)
+	return n >= 1
 }

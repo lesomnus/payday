@@ -97,8 +97,8 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	// `Tenant` is the one that says `watch` is read off the schema rather than
 	// added to everything that can be listed: it has a `List` and no `Watch`,
 	// because `watch:` is declared separately and it did not.
-	x.Equal([]string{"get", "list", "add", "patch", "erase"}, verbs("tenant"),
-		"tenant declared list: and no watch:")
+	x.Equal([]string{"get", "list", "add", "patch"}, verbs("tenant"),
+		"tenant declared list: and no watch:, and this app's overlay switches its erase off")
 
 	x.Nil(tree.Command("cell/list"))
 	x.NotNil(tree.Command("robot/list"))

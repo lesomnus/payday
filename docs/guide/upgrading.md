@@ -323,9 +323,16 @@ What an app does when it moves onto this payday:
    calls or an app serves, and no more: the trail (`Audit`) has `Add`, which
    its recorder calls, and `Get`, and no `Patch`, `Apply` or `Erase`, which
    its layer refused to everybody. `Holder` and `Tenant` have `Add`, `Get`,
-   `Patch` and `Erase`, and no `Apply`; a past's `Fact` keeps the `Patch` that
+   `Patch` and `Erase`, and no `Apply` unless the app asks for one (below); a past's `Fact` keeps the `Patch` that
    supersedes one, and no `Apply`. Their RPCs, clients' methods and commands
    are gone with them.
+
+5. **Switch what it does not serve, and ask for the Apply it calls.** An
+   overlay of payday's `Holder` or `Tenant` may now say
+   `rpc: {patch: {disabled: true}}` or `rpc: {erase: {disabled: true}}`, and
+   `rpc: {apply: {}}` for an app that writes either with a patch document; see
+   [switching a verb](schema.md#switching-a-verb-of-paydays-holder-and-tenant).
+   `add` and `get` are payday's, and refused.
 
 Nothing is kept for the old spelling: a schema that says `crud` is refused
 until it names its verbs.
