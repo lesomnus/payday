@@ -840,12 +840,34 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("	}")
 	g.P("")
 
-	for _, w := range l.With {
-		g.P("	q.With", pascal(w), "()")
-	}
+	// What each row is answered with: the select's, as a Get reads it, or
+	// what the list declared to answer with when there is none.
+	g.P("	if sel := req.GetSelect(); sel != nil {")
+	g.P("		// As a Get with it reads one row, each edge through the narrowing of")
+	g.P("		// the entity it reaches; one query for the rows and one for each")
+	g.P("		// edge, whatever the size of the page.")
+	g.P("		if err := ", p.Bare.Ident(e+"Select"), "(ctx, s.store.Scope, q, sel); err != nil {")
+	g.P("			return nil, err")
+	g.P("		}")
+	g.P("		if !sel.GetAll() {")
+	g.P("			// And the columns the order walks, which the cursor is made of,")
+	g.P("			// whether or not the select asked for them.")
+	g.P("			have := ", p.Bare.Ident(e+"SelectedFields"), "(sel)")
+	g.P("			for _, o := range by {")
+	g.P("				if !", pkgSlices.Ident("Contains"), "(have, o.Column) {")
+	g.P("					q.Select(o.Column)")
+	g.P("					have = append(have, o.Column)")
+	g.P("				}")
+	g.P("			}")
+	g.P("		}")
 	if len(l.With) > 0 {
-		g.P("")
+		g.P("	} else {")
+		for _, w := range l.With {
+			g.P("		q.With", pascal(w), "()")
+		}
 	}
+	g.P("	}")
+	g.P("")
 
 	g.P("	// One row more than the page, which is how \"is there another\" is answered")
 	g.P("	// without a second query and without a count. The extra is dropped before")
@@ -876,6 +898,15 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("		}")
 	g.P("")
 	g.P("		res.SetNext(v)")
+	g.P("	}")
+	g.P("")
+	g.P("	// And without what the select did not ask for, as a Get answers, now")
+	g.P("	// that the cursor -- which may be made of a column it did not ask")
+	g.P("	// for -- is made.")
+	g.P("	if m := req.GetSelect(); m != nil {")
+	g.P("		for _, v := range items {")
+	g.P("			pdUnselect(v.ProtoReflect(), m.ProtoReflect())")
+	g.P("		}")
 	g.P("	}")
 	g.P("")
 	g.P("	return res, nil")

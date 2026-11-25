@@ -455,9 +455,9 @@ function useNames(entities: readonly EntityDesc[], transport: Transport): Names 
 /**
  * Names is what a reference is called, for a table that would rather show that.
  *
- * A `List` answers references and not rows: the neighbour arrives with its
- * identifier set and nothing else, because the request has no `select` to ask
- * for more. So the name has to be fetched, and this is the cache that makes
+ * A `List` the panel makes answers references and not rows: the neighbour
+ * arrives with its identifier set and nothing else, since the panel lists with
+ * no `select`. So the name has to be fetched, and this is the cache that makes
  * that one call per distinct row rather than one per cell -- fifty robots in
  * one tenant is one `Get`.
  */
@@ -472,9 +472,9 @@ interface Names {
 /** Step is one row followed into, and the screen it was followed from. *//**
  * Names is what a reference is called, for a table that would rather show that.
  *
- * A `List` answers references and not rows: the neighbour arrives with its
- * identifier set and nothing else, because the request has no `select` to ask
- * for more. So the name has to be fetched, and this is the cache that makes
+ * A `List` the panel makes answers references and not rows: the neighbour
+ * arrives with its identifier set and nothing else, since the panel lists with
+ * no `select`. So the name has to be fetched, and this is the cache that makes
  * that one call per distinct row rather than one per cell -- fifty robots in
  * one tenant is one `Get`.
  */

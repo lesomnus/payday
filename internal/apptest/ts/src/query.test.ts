@@ -415,6 +415,56 @@ describe('a list a Watch does not take is not watched', () => {
 	})
 })
 
+describe('a list takes a select', () => {
+	it('and the store passes it through, keeping each edge it filled', { timeout: 30_000 }, async () => {
+		const made = await add(named('sel'))
+		const req = {
+			filters: [{ ref: { key: { case: 'id' as const, value: made.id } } }],
+			select: { alias: true, tenant: { alias: true } },
+		}
+		const e = queries.get(RobotService.method.list, req, { watch: false })
+		await new Promise<void>((ok) => queries.subscribe(e.key, () => ok()))
+		const items = queries.get(RobotService.method.list, req, { watch: false }).data?.items
+		expect(items).toHaveLength(1)
+
+		// A row's edge is its reference in the store, as for a Get; what the
+		// select filled is the edge's own row, under its own entity, from the
+		// one call.
+		const tenant = items?.[0]?.tenant?.id
+		expect(tenant).toBeDefined()
+		expect((store.get(Tenant.typeName, tenant!) as unknown as { alias?: string } | undefined)?.alias).toBe('acme')
+	})
+})
+
+describe('a select a query sends for the store', () => {
+	it('asks for the version of what it reads, so the store can order it', { timeout: 30_000 }, async () => {
+		const made = await add(named('ver'))
+
+		// The page asked for the alias and nothing else, its tenant's alias
+		// too. What the store holds of each has the stamp it orders by: a row
+		// with none reads as older than any and would replace nothing.
+		const req = {
+			filters: [{ ref: { key: { case: 'id' as const, value: made.id } } }],
+			select: { alias: true, tenant: { alias: true } },
+		}
+		const e = queries.get(RobotService.method.list, req, { watch: false })
+		await new Promise<void>((ok) => queries.subscribe(e.key, () => ok()))
+
+		const seconds = (v: unknown) => Number((v as { dateUpdated?: { seconds?: bigint } } | undefined)?.dateUpdated?.seconds ?? 0)
+		const robot = store.get(Robot.typeName, made.id)
+		expect(seconds(robot)).toBeGreaterThan(0)
+		expect(seconds(store.get(Tenant.typeName, await tenantId()))).toBeGreaterThan(0)
+
+		// And a Get the same.
+		const one = queries.get(RobotService.method.get, {
+			ref: { key: { case: 'id', value: made.id } },
+			select: { alias: true },
+		})
+		await new Promise<void>((ok) => queries.subscribe(one.key, () => ok()))
+		expect(seconds(store.get(Robot.typeName, made.id))).toBeGreaterThan(0)
+	})
+})
+
 describe('a query nobody is drawing rests', () => {
 	it('is not revalidated at rest, and is read once when drawn again', { timeout: 30_000 }, async () => {
 		let lists = 0

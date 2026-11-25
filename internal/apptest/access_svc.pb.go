@@ -681,6 +681,7 @@ type AccessListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *AccessSelect          `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -740,6 +741,13 @@ func (x *AccessListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *AccessListRequest) GetSelect() *AccessSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *AccessListRequest) SetFilters(v []*AccessFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -754,6 +762,21 @@ func (x *AccessListRequest) SetAfter(v string) {
 
 func (x *AccessListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *AccessListRequest) SetSelect(v *AccessSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *AccessListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *AccessListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type AccessListRequest_builder struct {
@@ -776,6 +799,15 @@ type AccessListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *AccessSelect
 }
 
 func (b0 AccessListRequest_builder) Build() *AccessListRequest {
@@ -786,6 +818,7 @@ func (b0 AccessListRequest_builder) Build() *AccessListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -1071,12 +1104,13 @@ const file_app_payday_access_svc_g_proto_rawDesc = "" +
 	"\x05value\x18\x11 \x01(\bR\x05value\x12\x16\n" +
 	"\x06domain\x18\x13 \x01(\bR\x06domain\x12\x1a\n" +
 	"\bsubjects\x18\x14 \x01(\bR\bsubjects\x12#\n" +
-	"\rsubject_count\x18\x15 \x01(\bR\fsubjectCount\"\x99\x01\n" +
+	"\rsubject_count\x18\x15 \x01(\bR\fsubjectCount\"\xc4\x01\n" +
 	"\x11AccessListRequest\x12+\n" +
 	"\afilters\x18\x01 \x03(\v2\x11.app.AccessFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"R\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12)\n" +
+	"\x06select\x18\x06 \x01(\v2\x11.app.AccessSelectR\x06select\"R\n" +
 	"\x12AccessListResponse\x12!\n" +
 	"\x05items\x18\x01 \x03(\v2\v.app.AccessR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\x9a\x01\n" +
@@ -1103,16 +1137,17 @@ var file_app_payday_access_svc_g_proto_depIdxs = []int32{
 	1, // 0: app.AccessGetRequest.ref:type_name -> app.AccessRef
 	2, // 1: app.AccessGetRequest.select:type_name -> app.AccessSelect
 	5, // 2: app.AccessListRequest.filters:type_name -> app.AccessFilter
-	6, // 3: app.AccessListResponse.items:type_name -> app.Access
-	0, // 4: app.AccessService.Get:input_type -> app.AccessGetRequest
-	3, // 5: app.AccessService.List:input_type -> app.AccessListRequest
-	6, // 6: app.AccessService.Get:output_type -> app.Access
-	4, // 7: app.AccessService.List:output_type -> app.AccessListResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 3: app.AccessListRequest.select:type_name -> app.AccessSelect
+	6, // 4: app.AccessListResponse.items:type_name -> app.Access
+	0, // 5: app.AccessService.Get:input_type -> app.AccessGetRequest
+	3, // 6: app.AccessService.List:input_type -> app.AccessListRequest
+	6, // 7: app.AccessService.Get:output_type -> app.Access
+	4, // 8: app.AccessService.List:output_type -> app.AccessListResponse
+	7, // [7:9] is the sub-list for method output_type
+	5, // [5:7] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_access_svc_g_proto_init() }

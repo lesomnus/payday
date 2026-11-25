@@ -1148,6 +1148,7 @@ type EventListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *EventSelect           `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1207,6 +1208,13 @@ func (x *EventListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *EventListRequest) GetSelect() *EventSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *EventListRequest) SetFilters(v []*EventFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -1221,6 +1229,21 @@ func (x *EventListRequest) SetAfter(v string) {
 
 func (x *EventListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *EventListRequest) SetSelect(v *EventSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *EventListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *EventListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type EventListRequest_builder struct {
@@ -1243,6 +1266,15 @@ type EventListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *EventSelect
 }
 
 func (b0 EventListRequest_builder) Build() *EventListRequest {
@@ -1253,6 +1285,7 @@ func (b0 EventListRequest_builder) Build() *EventListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -1584,12 +1617,13 @@ const file_app_payday_event_svc_g_proto_rawDesc = "" +
 	"\btrace_id\x18\x10 \x01(\bR\atraceId\x12\x19\n" +
 	"\bcause_id\x18\x12 \x01(\bR\acauseId\x12\x14\n" +
 	"\x05value\x18\x13 \x01(\bR\x05value\x12\x12\n" +
-	"\x04said\x18\x11 \x01(\bR\x04said\"\x97\x01\n" +
+	"\x04said\x18\x11 \x01(\bR\x04said\"\xc1\x01\n" +
 	"\x10EventListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.EventFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"P\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12(\n" +
+	"\x06select\x18\x06 \x01(\v2\x10.app.EventSelectR\x06select\"P\n" +
 	"\x11EventListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.EventR\x05items\x12\x19\n" +
@@ -1637,21 +1671,22 @@ var file_app_payday_event_svc_g_proto_depIdxs = []int32{
 	5,  // 7: app.EventGetRequest.select:type_name -> app.EventSelect
 	13, // 8: app.EventSelect.tenant:type_name -> app.TenantSelect
 	8,  // 9: app.EventListRequest.filters:type_name -> app.EventFilter
-	12, // 10: app.EventListResponse.items:type_name -> app.Event
-	4,  // 11: app.EventFilter.ref:type_name -> app.EventRef
-	0,  // 12: app.EventService.Add:input_type -> app.EventAddRequest
-	1,  // 13: app.EventService.AddMany:input_type -> app.EventAddManyRequest
-	3,  // 14: app.EventService.Get:input_type -> app.EventGetRequest
-	6,  // 15: app.EventService.List:input_type -> app.EventListRequest
-	12, // 16: app.EventService.Add:output_type -> app.Event
-	2,  // 17: app.EventService.AddMany:output_type -> app.EventAddManyResponse
-	12, // 18: app.EventService.Get:output_type -> app.Event
-	7,  // 19: app.EventService.List:output_type -> app.EventListResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	5,  // 10: app.EventListRequest.select:type_name -> app.EventSelect
+	12, // 11: app.EventListResponse.items:type_name -> app.Event
+	4,  // 12: app.EventFilter.ref:type_name -> app.EventRef
+	0,  // 13: app.EventService.Add:input_type -> app.EventAddRequest
+	1,  // 14: app.EventService.AddMany:input_type -> app.EventAddManyRequest
+	3,  // 15: app.EventService.Get:input_type -> app.EventGetRequest
+	6,  // 16: app.EventService.List:input_type -> app.EventListRequest
+	12, // 17: app.EventService.Add:output_type -> app.Event
+	2,  // 18: app.EventService.AddMany:output_type -> app.EventAddManyResponse
+	12, // 19: app.EventService.Get:output_type -> app.Event
+	7,  // 20: app.EventService.List:output_type -> app.EventListResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_event_svc_g_proto_init() }

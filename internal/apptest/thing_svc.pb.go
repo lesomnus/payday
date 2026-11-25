@@ -902,6 +902,7 @@ type ThingListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *ThingSelect           `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -961,6 +962,13 @@ func (x *ThingListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *ThingListRequest) GetSelect() *ThingSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *ThingListRequest) SetFilters(v []*ThingFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -975,6 +983,21 @@ func (x *ThingListRequest) SetAfter(v string) {
 
 func (x *ThingListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *ThingListRequest) SetSelect(v *ThingSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *ThingListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *ThingListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type ThingListRequest_builder struct {
@@ -997,6 +1020,15 @@ type ThingListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *ThingSelect
 }
 
 func (b0 ThingListRequest_builder) Build() *ThingListRequest {
@@ -1007,6 +1039,7 @@ func (b0 ThingListRequest_builder) Build() *ThingListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -1189,12 +1222,13 @@ const file_shared_thing_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\x10.shared.ThingRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12ThingEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x9a\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc7\x01\n" +
 	"\x10ThingListRequest\x12-\n" +
 	"\afilters\x18\x01 \x03(\v2\x13.shared.ThingFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"S\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12+\n" +
+	"\x06select\x18\x06 \x01(\v2\x13.shared.ThingSelectR\x06select\"S\n" +
 	"\x11ThingListResponse\x12#\n" +
 	"\x05items\x18\x01 \x03(\v2\r.shared.ThingR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"1\n" +
@@ -1232,25 +1266,26 @@ var file_shared_thing_svc_g_proto_depIdxs = []int32{
 	2,  // 4: shared.ThingApplyRequest.ref:type_name -> shared.ThingRef
 	11, // 5: shared.ThingApplyRequest.patch:type_name -> patch.Patch
 	9,  // 6: shared.ThingListRequest.filters:type_name -> shared.ThingFilter
-	12, // 7: shared.ThingListResponse.items:type_name -> shared.Thing
-	2,  // 8: shared.ThingFilter.ref:type_name -> shared.ThingRef
-	0,  // 9: shared.ThingService.Add:input_type -> shared.ThingAddRequest
-	1,  // 10: shared.ThingService.Get:input_type -> shared.ThingGetRequest
-	4,  // 11: shared.ThingService.Patch:input_type -> shared.ThingPatchRequest
-	5,  // 12: shared.ThingService.Apply:input_type -> shared.ThingApplyRequest
-	2,  // 13: shared.ThingService.Erase:input_type -> shared.ThingRef
-	7,  // 14: shared.ThingService.List:input_type -> shared.ThingListRequest
-	12, // 15: shared.ThingService.Add:output_type -> shared.Thing
-	12, // 16: shared.ThingService.Get:output_type -> shared.Thing
-	12, // 17: shared.ThingService.Patch:output_type -> shared.Thing
-	12, // 18: shared.ThingService.Apply:output_type -> shared.Thing
-	6,  // 19: shared.ThingService.Erase:output_type -> shared.ThingEraseResponse
-	8,  // 20: shared.ThingService.List:output_type -> shared.ThingListResponse
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	3,  // 7: shared.ThingListRequest.select:type_name -> shared.ThingSelect
+	12, // 8: shared.ThingListResponse.items:type_name -> shared.Thing
+	2,  // 9: shared.ThingFilter.ref:type_name -> shared.ThingRef
+	0,  // 10: shared.ThingService.Add:input_type -> shared.ThingAddRequest
+	1,  // 11: shared.ThingService.Get:input_type -> shared.ThingGetRequest
+	4,  // 12: shared.ThingService.Patch:input_type -> shared.ThingPatchRequest
+	5,  // 13: shared.ThingService.Apply:input_type -> shared.ThingApplyRequest
+	2,  // 14: shared.ThingService.Erase:input_type -> shared.ThingRef
+	7,  // 15: shared.ThingService.List:input_type -> shared.ThingListRequest
+	12, // 16: shared.ThingService.Add:output_type -> shared.Thing
+	12, // 17: shared.ThingService.Get:output_type -> shared.Thing
+	12, // 18: shared.ThingService.Patch:output_type -> shared.Thing
+	12, // 19: shared.ThingService.Apply:output_type -> shared.Thing
+	6,  // 20: shared.ThingService.Erase:output_type -> shared.ThingEraseResponse
+	8,  // 21: shared.ThingService.List:output_type -> shared.ThingListResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_shared_thing_svc_g_proto_init() }

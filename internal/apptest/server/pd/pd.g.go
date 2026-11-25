@@ -1137,6 +1137,26 @@ func (s sinkAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.AccessSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.AccessSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -1166,6 +1186,15 @@ func (s sinkAccess) List(ctx context.Context, req *apptest.AccessListRequest) (*
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -1371,6 +1400,26 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.AuditSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.AuditSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -1400,6 +1449,15 @@ func (s sinkAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*ap
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -1691,6 +1749,26 @@ func (s sinkEvent) List(ctx context.Context, req *apptest.EventListRequest) (*ap
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.EventSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.EventSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -1720,6 +1798,15 @@ func (s sinkEvent) List(ctx context.Context, req *apptest.EventListRequest) (*ap
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -1923,6 +2010,26 @@ func (s sinkFact) List(ctx context.Context, req *apptest.FactListRequest) (*appt
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.FactSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.FactSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -1952,6 +2059,15 @@ func (s sinkFact) List(ctx context.Context, req *apptest.FactListRequest) (*appt
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -2354,6 +2470,26 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.HolderSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.HolderSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -2383,6 +2519,15 @@ func (s sinkHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -3509,7 +3654,27 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 		q.Where(p)
 	}
 
-	q.WithTenant()
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.RobotSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.RobotSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	} else {
+		q.WithTenant()
+	}
 
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
@@ -3540,6 +3705,15 @@ func (s sinkRobot) List(ctx context.Context, req *apptest.RobotListRequest) (*ap
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -4210,6 +4384,26 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.TenantSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.TenantSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -4239,6 +4433,15 @@ func (s sinkTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
@@ -4505,6 +4708,26 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 		q.Where(p)
 	}
 
+	if sel := req.GetSelect(); sel != nil {
+		// As a Get with it reads one row, each edge through the narrowing of
+		// the entity it reaches; one query for the rows and one for each
+		// edge, whatever the size of the page.
+		if err := bare.ThingSelect(ctx, s.store.Scope, q, sel); err != nil {
+			return nil, err
+		}
+		if !sel.GetAll() {
+			// And the columns the order walks, which the cursor is made of,
+			// whether or not the select asked for them.
+			have := bare.ThingSelectedFields(sel)
+			for _, o := range by {
+				if !slices.Contains(have, o.Column) {
+					q.Select(o.Column)
+					have = append(have, o.Column)
+				}
+			}
+		}
+	}
+
 	// One row more than the page, which is how "is there another" is answered
 	// without a second query and without a count. The extra is dropped before
 	// the answer is built; it was only ever asked for to see whether it was
@@ -4534,6 +4757,15 @@ func (s sinkThing) List(ctx context.Context, req *apptest.ThingListRequest) (*ap
 		}
 
 		res.SetNext(v)
+	}
+
+	// And without what the select did not ask for, as a Get answers, now
+	// that the cursor -- which may be made of a column it did not ask
+	// for -- is made.
+	if m := req.GetSelect(); m != nil {
+		for _, v := range items {
+			pdUnselect(v.ProtoReflect(), m.ProtoReflect())
+		}
 	}
 
 	return res, nil
