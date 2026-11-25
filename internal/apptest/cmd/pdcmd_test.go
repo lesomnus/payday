@@ -388,6 +388,69 @@ func TestAnEmptyListIsAList(t *testing.T) {
 	})
 }
 
+// TestAFormatThatIsNoneIsRefusedBeforeTheCall: a `-o` that names nothing, a
+// template that does not parse and a --tz that names no zone are the command
+// line's mistake, answered as an unknown flag is -- an xli.UsageError, which a
+// caller tells a mistyped command from a failed call by -- and nothing is sent,
+// by every generated command, read or write, a watch among them.
+// TestNothingIsToldOfACallThatWasNotMade holds that a wrong -o sends no add.
+func TestAFormatThatIsNoneIsRefusedBeforeTheCall(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	run := func(t *testing.T, args ...string) xlitest.Result {
+		t.Helper()
+		return xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, args...)
+	}
+	refused := func(t *testing.T, got xlitest.Result, says string) {
+		t.Helper()
+		x := require.New(t)
+
+		x.Error(got.Err)
+		var usage *xli.UsageError
+		x.ErrorAs(got.Err, &usage, "the status a wrong flag has")
+		x.Contains(got.Err.Error(), says)
+		x.Empty(got.Stdout)
+	}
+
+	for _, c := range []struct {
+		flag, value, says string
+	}{
+		{"-o", "yaml", "not a format"},
+		{"-o", "template={{", "template"},
+		{"--tz", "Nowhere/At_All", "--tz"},
+	} {
+		t.Run(c.flag+" "+c.value, func(t *testing.T) {
+			refused(t, run(t, "holder", "add", c.flag, c.value, "@acme/zed"), c.says)
+
+			// Nothing was sent: the row the command would have added is not
+			// there.
+			x := require.New(t)
+			after := run(t, "holder", "get", "-o", "name", "@acme/zed")
+			x.Error(after.Err)
+			x.Contains(after.Err.Error(), "NotFound")
+		})
+	}
+
+	t.Run("a read, a change, an erase and a watch alike", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"holder", "get", "-o", "yaml", "@acme/admin"},
+			{"holder", "list", "-o", "yaml"},
+			{"holder", "patch", "-o", "yaml", "@acme/admin", `{"name":"Not Admin"}`},
+			{"holder", "erase", "-o", "yaml", "@acme/admin"},
+			{"robot", "watch", "-o", "yaml", "@acme/arm"},
+		} {
+			refused(t, run(t, args...), "not a format")
+		}
+
+		x := require.New(t)
+		got := run(t, "holder", "get", "-o", "json", "@acme/admin")
+		x.NoError(got.Err, "neither the change nor the erase was made")
+		x.NotContains(got.Stdout, "Not Admin")
+	})
+}
+
 // TestListPagesWithNext is the round trip the two paging flags exist for: the
 // "next" of one answer, handed back, is the page after it.
 //
@@ -722,6 +785,23 @@ func TestAnRpcThisAppWroteGetsACommandToo(t *testing.T) {
 		c, err := tree.Unary("app.RobotService.Move")
 		x.NoError(err)
 		x.NoError(tree.Add("robot/move", c))
+
+		// A format that is none is refused before the call here too, so the
+		// robot is where it was. On a tree of its own, since a command keeps
+		// the values parsed into it.
+		other, err := pdcmd.New(pdcmd.Static(conn))
+		x.NoError(err)
+		oc, err := other.Unary("app.RobotService.Move")
+		x.NoError(err)
+		x.NoError(other.Add("robot/move", oc))
+		wrong := xlitest.Harness{Cmd: &xli.Command{Name: "app", Commands: other.Commands()}, Ctx: as}.Run(t,
+			"robot", "move", "-o", "yaml", "@acme/arm-07",
+			fmt.Sprintf(`{"to":{"id":"%s"}}`, mustId(x, cell.GetId())))
+		var usage *xli.UsageError
+		x.ErrorAs(wrong.Err, &usage)
+		still := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, "robot", "get", "-o", "json", "@acme/arm-07")
+		x.NoError(still.Err)
+		x.NotContains(still.Stdout, mustId(x, cell.GetId()).String(), "the move was not made")
 
 		root := &xli.Command{Name: "app", Commands: tree.Commands()}
 		got := xlitest.Harness{Cmd: root, Ctx: as}.Run(t,
