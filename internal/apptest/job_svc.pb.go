@@ -10,7 +10,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -904,99 +903,6 @@ func (b0 JobPatchRequest_builder) Build() *JobPatchRequest {
 	return m0
 }
 
-type JobApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *JobRef                `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *JobApplyRequest) Reset() {
-	*x = JobApplyRequest{}
-	mi := &file_app_job_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *JobApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*JobApplyRequest) ProtoMessage() {}
-
-func (x *JobApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_job_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *JobApplyRequest) GetRef() *JobRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *JobApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *JobApplyRequest) SetRef(v *JobRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *JobApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *JobApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *JobApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *JobApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *JobApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type JobApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *JobRef
-	Patch *patchpb.Patch
-}
-
-func (b0 JobApplyRequest_builder) Build() *JobApplyRequest {
-	m0 := &JobApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type JobEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -1008,7 +914,7 @@ type JobEraseResponse struct {
 
 func (x *JobEraseResponse) Reset() {
 	*x = JobEraseResponse{}
-	mi := &file_app_job_svc_g_proto_msgTypes[6]
+	mi := &file_app_job_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1020,7 +926,7 @@ func (x *JobEraseResponse) String() string {
 func (*JobEraseResponse) ProtoMessage() {}
 
 func (x *JobEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_job_svc_g_proto_msgTypes[6]
+	mi := &file_app_job_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1081,7 +987,7 @@ var File_app_job_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_job_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x13app/job_svc.g.proto\x12\x03app\x1a\rapp/job.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\x85\x02\n" +
+	"\x13app/job_svc.g.proto\x12\x03app\x1a\rapp/job.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\x85\x02\n" +
 	"\rJobAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12&\n" +
@@ -1111,60 +1017,50 @@ const file_app_job_svc_g_proto_rawDesc = "" +
 	"\tissuer_id\x18\x12 \x01(\fB\x06\xea\x82\x16\x02\x10@R\bissuerId\x12\x1c\n" +
 	"\tcompleted\x18\x14 \x01(\bR\tcompleted\x12=\n" +
 	"\fdate_updated\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\vdateUpdated\x12,\n" +
-	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"T\n" +
-	"\x0fJobApplyRequest\x12\x1d\n" +
-	"\x03ref\x18\x01 \x01(\v2\v.app.JobRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"*\n" +
+	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\"*\n" +
 	"\x10JobEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased2\xd5\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased2\xac\x01\n" +
 	"\n" +
 	"JobService\x12#\n" +
 	"\x03Add\x12\x12.app.JobAddRequest\x1a\b.app.Job\x12#\n" +
 	"\x03Get\x12\x12.app.JobGetRequest\x1a\b.app.Job\x12'\n" +
-	"\x05Patch\x12\x14.app.JobPatchRequest\x1a\b.app.Job\x12'\n" +
-	"\x05Apply\x12\x14.app.JobApplyRequest\x1a\b.app.Job\x12+\n" +
+	"\x05Patch\x12\x14.app.JobPatchRequest\x1a\b.app.Job\x12+\n" +
 	"\x05Erase\x12\v.app.JobRef\x1a\x15.app.JobEraseResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_job_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_app_job_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_app_job_svc_g_proto_goTypes = []any{
 	(*JobAddRequest)(nil),         // 0: app.JobAddRequest
 	(*JobRef)(nil),                // 1: app.JobRef
 	(*JobSelect)(nil),             // 2: app.JobSelect
 	(*JobGetRequest)(nil),         // 3: app.JobGetRequest
 	(*JobPatchRequest)(nil),       // 4: app.JobPatchRequest
-	(*JobApplyRequest)(nil),       // 5: app.JobApplyRequest
-	(*JobEraseResponse)(nil),      // 6: app.JobEraseResponse
-	(*TenantRef)(nil),             // 7: app.TenantRef
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*TenantSelect)(nil),          // 9: app.TenantSelect
-	(*patchpb.Patch)(nil),         // 10: patch.Patch
-	(*Job)(nil),                   // 11: app.Job
+	(*JobEraseResponse)(nil),      // 5: app.JobEraseResponse
+	(*TenantRef)(nil),             // 6: app.TenantRef
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*TenantSelect)(nil),          // 8: app.TenantSelect
+	(*Job)(nil),                   // 9: app.Job
 }
 var file_app_job_svc_g_proto_depIdxs = []int32{
-	7,  // 0: app.JobAddRequest.tenant:type_name -> app.TenantRef
-	8,  // 1: app.JobAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	9,  // 2: app.JobSelect.tenant:type_name -> app.TenantSelect
+	6,  // 0: app.JobAddRequest.tenant:type_name -> app.TenantRef
+	7,  // 1: app.JobAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 2: app.JobSelect.tenant:type_name -> app.TenantSelect
 	1,  // 3: app.JobGetRequest.ref:type_name -> app.JobRef
 	2,  // 4: app.JobGetRequest.select:type_name -> app.JobSelect
 	1,  // 5: app.JobPatchRequest.ref:type_name -> app.JobRef
-	8,  // 6: app.JobPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	1,  // 7: app.JobApplyRequest.ref:type_name -> app.JobRef
-	10, // 8: app.JobApplyRequest.patch:type_name -> patch.Patch
-	0,  // 9: app.JobService.Add:input_type -> app.JobAddRequest
-	3,  // 10: app.JobService.Get:input_type -> app.JobGetRequest
-	4,  // 11: app.JobService.Patch:input_type -> app.JobPatchRequest
-	5,  // 12: app.JobService.Apply:input_type -> app.JobApplyRequest
-	1,  // 13: app.JobService.Erase:input_type -> app.JobRef
-	11, // 14: app.JobService.Add:output_type -> app.Job
-	11, // 15: app.JobService.Get:output_type -> app.Job
-	11, // 16: app.JobService.Patch:output_type -> app.Job
-	11, // 17: app.JobService.Apply:output_type -> app.Job
-	6,  // 18: app.JobService.Erase:output_type -> app.JobEraseResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	7,  // 6: app.JobPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	0,  // 7: app.JobService.Add:input_type -> app.JobAddRequest
+	3,  // 8: app.JobService.Get:input_type -> app.JobGetRequest
+	4,  // 9: app.JobService.Patch:input_type -> app.JobPatchRequest
+	1,  // 10: app.JobService.Erase:input_type -> app.JobRef
+	9,  // 11: app.JobService.Add:output_type -> app.Job
+	9,  // 12: app.JobService.Get:output_type -> app.Job
+	9,  // 13: app.JobService.Patch:output_type -> app.Job
+	5,  // 14: app.JobService.Erase:output_type -> app.JobEraseResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_app_job_svc_g_proto_init() }
@@ -1183,7 +1079,7 @@ func file_app_job_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_job_svc_g_proto_rawDesc), len(file_app_job_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

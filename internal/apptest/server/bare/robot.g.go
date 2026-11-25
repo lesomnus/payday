@@ -331,27 +331,6 @@ func CellSelectInit(ctx context.Context, scope Scope, q *ent.CellQuery, m *appte
 	return nil
 }
 
-func (s CellServiceServer) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	doc, err := ormpatch.FromPatchRequest(cellOrmEntity, req.ProtoReflect(), nil)
-	if err != nil {
-		if _, ok := status.FromError(err); ok {
-			return nil, err
-		}
-		if errors.Is(err, ormpatch.ErrRequestLayout) {
-			return nil, status.Errorf(codes.Internal, "%s", err)
-		}
-		if errors.Is(err, ormpatch.ErrUnsupported) {
-			return nil, status.Errorf(codes.Unimplemented, "%s", err)
-		}
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	return s.apply(ctx, req.GetRef(), doc, apptest.CellService_Patch_FullMethodName)
-}
-
 func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid.UUID, error) {
 	var z uuid.UUID
 	if ref.HasId() {
@@ -1881,16 +1860,6 @@ var pairingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Pair
 var pairingPatchColumns = entpatch.Columns{
 	1: pairing.FieldId, 2: pairing.LeadColumn, 8: pairing.FollowColumn, 15: pairing.FieldDateCreated}
 
-func (s PairingServiceServer) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.PairingService_Apply_FullMethodName)
-}
-
 func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef, doc *patchpb.Patch, by string) (*apptest.Pairing, error) {
 	plan := &ormpatch.Plan{Entity: pairingOrmEntity}
 	if doc != nil {
@@ -2066,6 +2035,9 @@ func (s PairingServiceServer) Erase(ctx context.Context, req *apptest.PairingRef
 	tx.Writing()
 	n, err := st.Db.Pairing.Delete().Where(p).Exec(ctx)
 	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
+			return nil, status.Error(codes.FailedPrecondition, "Pairing is still named by another row and cannot be erased")
+		}
 		return nil, err
 	}
 	if n > 0 {
@@ -2456,16 +2428,6 @@ var jointOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Joint"
 
 var jointPatchColumns = entpatch.Columns{
 	1: joint.FieldId, 2: joint.RobotColumn, 4: joint.FieldAlias, 14: joint.FieldDateErased}
-
-func (s JointServiceServer) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.JointService_Apply_FullMethodName)
-}
 
 func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, doc *patchpb.Patch, by string) (*apptest.Joint, error) {
 	plan := &ormpatch.Plan{Entity: jointOrmEntity}
@@ -3012,16 +2974,6 @@ var fleetOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Fleet"
 
 var fleetPatchColumns = entpatch.Columns{
 	1: fleet.FieldId, 4: fleet.FieldAlias, 14: fleet.FieldDateErased}
-
-func (s FleetServiceServer) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.FleetService_Apply_FullMethodName)
-}
 
 func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, doc *patchpb.Patch, by string) (*apptest.Fleet, error) {
 	plan := &ormpatch.Plan{Entity: fleetOrmEntity}
@@ -3746,16 +3698,6 @@ var readingOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Read
 var readingPatchColumns = entpatch.Columns{
 	1: reading.FieldId, 2: reading.RobotColumn, 9: reading.FieldTenantId, 8: reading.FieldCelsius, 15: reading.FieldDateCreated}
 
-func (s ReadingServiceServer) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.ReadingService_Apply_FullMethodName)
-}
-
 func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef, doc *patchpb.Patch, by string) (*apptest.Reading, error) {
 	plan := &ormpatch.Plan{Entity: readingOrmEntity}
 	if doc != nil {
@@ -3931,6 +3873,9 @@ func (s ReadingServiceServer) Erase(ctx context.Context, req *apptest.ReadingRef
 	tx.Writing()
 	n, err := st.Db.Reading.Delete().Where(p).Exec(ctx)
 	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
+			return nil, status.Error(codes.FailedPrecondition, "Reading is still named by another row and cannot be erased")
+		}
 		return nil, err
 	}
 	if n > 0 {

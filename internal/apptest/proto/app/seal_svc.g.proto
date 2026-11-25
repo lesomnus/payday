@@ -8,7 +8,6 @@ package app;
 import "app/seal.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -19,8 +18,6 @@ service SealService {
 	rpc Get(SealGetRequest) returns (Seal);
 	// Patch updates an existing Seal
 	rpc Patch(SealPatchRequest) returns (Seal);
-	// Apply applies a patch document to an existing Seal
-	rpc Apply(SealApplyRequest) returns (Seal);
 	// Erase deletes a Seal
 	rpc Erase(SealRef) returns (SealEraseResponse);
 }
@@ -71,11 +68,6 @@ message SealPatchRequest {
 		(orm.field) = {type: TYPE_BYTES}
 	];
 	string code = 18;
-}
-
-message SealApplyRequest {
-	SealRef ref = 1;
-	patch.Patch patch = 2;
 }
 
 message SealEraseResponse {

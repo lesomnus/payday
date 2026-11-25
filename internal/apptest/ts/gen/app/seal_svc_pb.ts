@@ -12,15 +12,13 @@ import { file_app_seal } from "./seal_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../orm_pb.js";
-import type { Patch } from "../patch/patch_pb.js";
-import { file_patch_patch } from "../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/seal_svc.g.proto.
  */
 export const file_app_seal_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChRhcHAvc2VhbF9zdmMuZy5wcm90bxIDYXBwIp4BCg5TZWFsQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEhQKBWFsaWFzGAQgASgJQgWqAQIIAhIbCgZzZWNyZXQYCCABKAxCC6oBAggC6oIWAhAMEhMKBGNvZGUYCSABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJgoHU2VhbFJlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5InEKClNlYWxTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEg4KBnNlY3JldBgIIAEoCBIMCgRjb2RlGAkgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJMCg5TZWFsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuU2VhbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuU2VhbFNlbGVjdCJiChBTZWFsUGF0Y2hSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5TZWFsUmVmEg0KBWFsaWFzGAggASgJEhYKBnNlY3JldBgQIAEoDEIG6oIWAhAMEgwKBGNvZGUYEiABKAkiSgoQU2VhbEFwcGx5UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuU2VhbFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiMKEVNlYWxFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCDLgAQoLU2VhbFNlcnZpY2USJQoDQWRkEhMuYXBwLlNlYWxBZGRSZXF1ZXN0GgkuYXBwLlNlYWwSJQoDR2V0EhMuYXBwLlNlYWxHZXRSZXF1ZXN0GgkuYXBwLlNlYWwSKQoFUGF0Y2gSFS5hcHAuU2VhbFBhdGNoUmVxdWVzdBoJLmFwcC5TZWFsEikKBUFwcGx5EhUuYXBwLlNlYWxBcHBseVJlcXVlc3QaCS5hcHAuU2VhbBItCgVFcmFzZRIMLmFwcC5TZWFsUmVmGhYuYXBwLlNlYWxFcmFzZVJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_seal, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("ChRhcHAvc2VhbF9zdmMuZy5wcm90bxIDYXBwIp4BCg5TZWFsQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEhQKBWFsaWFzGAQgASgJQgWqAQIIAhIbCgZzZWNyZXQYCCABKAxCC6oBAggC6oIWAhAMEhMKBGNvZGUYCSABKAlCBaoBAggCEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJgoHU2VhbFJlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5InEKClNlYWxTZWxlY3QSCwoDYWxsGAEgASgIEg0KBWFsaWFzGAQgASgIEg4KBnNlY3JldBgIIAEoCBIMCgRjb2RlGAkgASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJMCg5TZWFsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuU2VhbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuU2VhbFNlbGVjdCJiChBTZWFsUGF0Y2hSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5TZWFsUmVmEg0KBWFsaWFzGAggASgJEhYKBnNlY3JldBgQIAEoDEIG6oIWAhAMEgwKBGNvZGUYEiABKAkiIwoRU2VhbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIMrUBCgtTZWFsU2VydmljZRIlCgNBZGQSEy5hcHAuU2VhbEFkZFJlcXVlc3QaCS5hcHAuU2VhbBIlCgNHZXQSEy5hcHAuU2VhbEdldFJlcXVlc3QaCS5hcHAuU2VhbBIpCgVQYXRjaBIVLmFwcC5TZWFsUGF0Y2hSZXF1ZXN0GgkuYXBwLlNlYWwSLQoFRXJhc2USDC5hcHAuU2VhbFJlZhoWLmFwcC5TZWFsRXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_seal, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.SealAddRequest
@@ -179,28 +177,6 @@ export const SealPatchRequestSchema: GenMessage<SealPatchRequest> = /*@__PURE__*
   messageDesc(file_app_seal_svc_g, 4);
 
 /**
- * @generated from message app.SealApplyRequest
- */
-export type SealApplyRequest = Message<"app.SealApplyRequest"> & {
-  /**
-   * @generated from field: app.SealRef ref = 1;
-   */
-  ref?: SealRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.SealApplyRequest.
- * Use `create(SealApplyRequestSchema)` to create a new message.
- */
-export const SealApplyRequestSchema: GenMessage<SealApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_seal_svc_g, 5);
-
-/**
  * @generated from message app.SealEraseResponse
  */
 export type SealEraseResponse = Message<"app.SealEraseResponse"> & {
@@ -221,7 +197,7 @@ export type SealEraseResponse = Message<"app.SealEraseResponse"> & {
  * Use `create(SealEraseResponseSchema)` to create a new message.
  */
 export const SealEraseResponseSchema: GenMessage<SealEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_seal_svc_g, 6);
+  messageDesc(file_app_seal_svc_g, 5);
 
 /**
  * @generated from service app.SealService
@@ -255,16 +231,6 @@ export const SealService: GenService<{
   patch: {
     methodKind: "unary";
     input: typeof SealPatchRequestSchema;
-    output: typeof SealSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Seal
-   *
-   * @generated from rpc app.SealService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof SealApplyRequestSchema;
     output: typeof SealSchema;
   },
   /**

@@ -21,7 +21,6 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	CellService_Add_FullMethodName   = "/app.CellService/Add"
 	CellService_Get_FullMethodName   = "/app.CellService/Get"
-	CellService_Patch_FullMethodName = "/app.CellService/Patch"
 	CellService_Apply_FullMethodName = "/app.CellService/Apply"
 	CellService_Erase_FullMethodName = "/app.CellService/Erase"
 )
@@ -34,8 +33,6 @@ type CellServiceClient interface {
 	Add(ctx context.Context, in *CellAddRequest, opts ...grpc.CallOption) (*Cell, error)
 	// Get retrieves a Cell
 	Get(ctx context.Context, in *CellGetRequest, opts ...grpc.CallOption) (*Cell, error)
-	// Patch updates an existing Cell
-	Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error)
 	// Apply applies a patch document to an existing Cell
 	Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error)
 	// Erase deletes a Cell
@@ -70,16 +67,6 @@ func (c *cellServiceClient) Get(ctx context.Context, in *CellGetRequest, opts ..
 	return out, nil
 }
 
-func (c *cellServiceClient) Patch(ctx context.Context, in *CellPatchRequest, opts ...grpc.CallOption) (*Cell, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Cell)
-	err := c.cc.Invoke(ctx, CellService_Patch_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *cellServiceClient) Apply(ctx context.Context, in *CellApplyRequest, opts ...grpc.CallOption) (*Cell, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Cell)
@@ -108,8 +95,6 @@ type CellServiceServer interface {
 	Add(context.Context, *CellAddRequest) (*Cell, error)
 	// Get retrieves a Cell
 	Get(context.Context, *CellGetRequest) (*Cell, error)
-	// Patch updates an existing Cell
-	Patch(context.Context, *CellPatchRequest) (*Cell, error)
 	// Apply applies a patch document to an existing Cell
 	Apply(context.Context, *CellApplyRequest) (*Cell, error)
 	// Erase deletes a Cell
@@ -129,9 +114,6 @@ func (UnimplementedCellServiceServer) Add(context.Context, *CellAddRequest) (*Ce
 }
 func (UnimplementedCellServiceServer) Get(context.Context, *CellGetRequest) (*Cell, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
-}
-func (UnimplementedCellServiceServer) Patch(context.Context, *CellPatchRequest) (*Cell, error) {
-	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
 }
 func (UnimplementedCellServiceServer) Apply(context.Context, *CellApplyRequest) (*Cell, error) {
 	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
@@ -196,24 +178,6 @@ func _CellService_Get_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CellService_Patch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CellPatchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CellServiceServer).Patch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CellService_Patch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CellServiceServer).Patch(ctx, req.(*CellPatchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _CellService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CellApplyRequest)
 	if err := dec(in); err != nil {
@@ -264,10 +228,6 @@ var CellService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _CellService_Get_Handler,
-		},
-		{
-			MethodName: "Patch",
-			Handler:    _CellService_Patch_Handler,
 		},
 		{
 			MethodName: "Apply",
@@ -766,7 +726,6 @@ const (
 	PairingService_Add_FullMethodName   = "/app.PairingService/Add"
 	PairingService_Get_FullMethodName   = "/app.PairingService/Get"
 	PairingService_Patch_FullMethodName = "/app.PairingService/Patch"
-	PairingService_Apply_FullMethodName = "/app.PairingService/Apply"
 	PairingService_Erase_FullMethodName = "/app.PairingService/Erase"
 )
 
@@ -780,8 +739,6 @@ type PairingServiceClient interface {
 	Get(ctx context.Context, in *PairingGetRequest, opts ...grpc.CallOption) (*Pairing, error)
 	// Patch updates an existing Pairing
 	Patch(ctx context.Context, in *PairingPatchRequest, opts ...grpc.CallOption) (*Pairing, error)
-	// Apply applies a patch document to an existing Pairing
-	Apply(ctx context.Context, in *PairingApplyRequest, opts ...grpc.CallOption) (*Pairing, error)
 	// Erase deletes a Pairing
 	Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*PairingEraseResponse, error)
 }
@@ -824,16 +781,6 @@ func (c *pairingServiceClient) Patch(ctx context.Context, in *PairingPatchReques
 	return out, nil
 }
 
-func (c *pairingServiceClient) Apply(ctx context.Context, in *PairingApplyRequest, opts ...grpc.CallOption) (*Pairing, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Pairing)
-	err := c.cc.Invoke(ctx, PairingService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *pairingServiceClient) Erase(ctx context.Context, in *PairingRef, opts ...grpc.CallOption) (*PairingEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PairingEraseResponse)
@@ -854,8 +801,6 @@ type PairingServiceServer interface {
 	Get(context.Context, *PairingGetRequest) (*Pairing, error)
 	// Patch updates an existing Pairing
 	Patch(context.Context, *PairingPatchRequest) (*Pairing, error)
-	// Apply applies a patch document to an existing Pairing
-	Apply(context.Context, *PairingApplyRequest) (*Pairing, error)
 	// Erase deletes a Pairing
 	Erase(context.Context, *PairingRef) (*PairingEraseResponse, error)
 	mustEmbedUnimplementedPairingServiceServer()
@@ -876,9 +821,6 @@ func (UnimplementedPairingServiceServer) Get(context.Context, *PairingGetRequest
 }
 func (UnimplementedPairingServiceServer) Patch(context.Context, *PairingPatchRequest) (*Pairing, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedPairingServiceServer) Apply(context.Context, *PairingApplyRequest) (*Pairing, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedPairingServiceServer) Erase(context.Context, *PairingRef) (*PairingEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -958,24 +900,6 @@ func _PairingService_Patch_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PairingService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PairingApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PairingServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PairingService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PairingServiceServer).Apply(ctx, req.(*PairingApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _PairingService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PairingRef)
 	if err := dec(in); err != nil {
@@ -1014,10 +938,6 @@ var PairingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PairingService_Patch_Handler,
 		},
 		{
-			MethodName: "Apply",
-			Handler:    _PairingService_Apply_Handler,
-		},
-		{
 			MethodName: "Erase",
 			Handler:    _PairingService_Erase_Handler,
 		},
@@ -1030,7 +950,6 @@ const (
 	JointService_Add_FullMethodName   = "/app.JointService/Add"
 	JointService_Get_FullMethodName   = "/app.JointService/Get"
 	JointService_Patch_FullMethodName = "/app.JointService/Patch"
-	JointService_Apply_FullMethodName = "/app.JointService/Apply"
 	JointService_Erase_FullMethodName = "/app.JointService/Erase"
 )
 
@@ -1044,8 +963,6 @@ type JointServiceClient interface {
 	Get(ctx context.Context, in *JointGetRequest, opts ...grpc.CallOption) (*Joint, error)
 	// Patch updates an existing Joint
 	Patch(ctx context.Context, in *JointPatchRequest, opts ...grpc.CallOption) (*Joint, error)
-	// Apply applies a patch document to an existing Joint
-	Apply(ctx context.Context, in *JointApplyRequest, opts ...grpc.CallOption) (*Joint, error)
 	// Erase deletes a Joint
 	Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*JointEraseResponse, error)
 }
@@ -1088,16 +1005,6 @@ func (c *jointServiceClient) Patch(ctx context.Context, in *JointPatchRequest, o
 	return out, nil
 }
 
-func (c *jointServiceClient) Apply(ctx context.Context, in *JointApplyRequest, opts ...grpc.CallOption) (*Joint, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Joint)
-	err := c.cc.Invoke(ctx, JointService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *jointServiceClient) Erase(ctx context.Context, in *JointRef, opts ...grpc.CallOption) (*JointEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(JointEraseResponse)
@@ -1118,8 +1025,6 @@ type JointServiceServer interface {
 	Get(context.Context, *JointGetRequest) (*Joint, error)
 	// Patch updates an existing Joint
 	Patch(context.Context, *JointPatchRequest) (*Joint, error)
-	// Apply applies a patch document to an existing Joint
-	Apply(context.Context, *JointApplyRequest) (*Joint, error)
 	// Erase deletes a Joint
 	Erase(context.Context, *JointRef) (*JointEraseResponse, error)
 	mustEmbedUnimplementedJointServiceServer()
@@ -1140,9 +1045,6 @@ func (UnimplementedJointServiceServer) Get(context.Context, *JointGetRequest) (*
 }
 func (UnimplementedJointServiceServer) Patch(context.Context, *JointPatchRequest) (*Joint, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedJointServiceServer) Apply(context.Context, *JointApplyRequest) (*Joint, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedJointServiceServer) Erase(context.Context, *JointRef) (*JointEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -1222,24 +1124,6 @@ func _JointService_Patch_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JointService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JointApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JointServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: JointService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JointServiceServer).Apply(ctx, req.(*JointApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _JointService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JointRef)
 	if err := dec(in); err != nil {
@@ -1278,10 +1162,6 @@ var JointService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _JointService_Patch_Handler,
 		},
 		{
-			MethodName: "Apply",
-			Handler:    _JointService_Apply_Handler,
-		},
-		{
 			MethodName: "Erase",
 			Handler:    _JointService_Erase_Handler,
 		},
@@ -1294,7 +1174,6 @@ const (
 	FleetService_Add_FullMethodName   = "/app.FleetService/Add"
 	FleetService_Get_FullMethodName   = "/app.FleetService/Get"
 	FleetService_Patch_FullMethodName = "/app.FleetService/Patch"
-	FleetService_Apply_FullMethodName = "/app.FleetService/Apply"
 	FleetService_Erase_FullMethodName = "/app.FleetService/Erase"
 )
 
@@ -1308,8 +1187,6 @@ type FleetServiceClient interface {
 	Get(ctx context.Context, in *FleetGetRequest, opts ...grpc.CallOption) (*Fleet, error)
 	// Patch updates an existing Fleet
 	Patch(ctx context.Context, in *FleetPatchRequest, opts ...grpc.CallOption) (*Fleet, error)
-	// Apply applies a patch document to an existing Fleet
-	Apply(ctx context.Context, in *FleetApplyRequest, opts ...grpc.CallOption) (*Fleet, error)
 	// Erase deletes a Fleet
 	Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*FleetEraseResponse, error)
 }
@@ -1352,16 +1229,6 @@ func (c *fleetServiceClient) Patch(ctx context.Context, in *FleetPatchRequest, o
 	return out, nil
 }
 
-func (c *fleetServiceClient) Apply(ctx context.Context, in *FleetApplyRequest, opts ...grpc.CallOption) (*Fleet, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Fleet)
-	err := c.cc.Invoke(ctx, FleetService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *fleetServiceClient) Erase(ctx context.Context, in *FleetRef, opts ...grpc.CallOption) (*FleetEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FleetEraseResponse)
@@ -1382,8 +1249,6 @@ type FleetServiceServer interface {
 	Get(context.Context, *FleetGetRequest) (*Fleet, error)
 	// Patch updates an existing Fleet
 	Patch(context.Context, *FleetPatchRequest) (*Fleet, error)
-	// Apply applies a patch document to an existing Fleet
-	Apply(context.Context, *FleetApplyRequest) (*Fleet, error)
 	// Erase deletes a Fleet
 	Erase(context.Context, *FleetRef) (*FleetEraseResponse, error)
 	mustEmbedUnimplementedFleetServiceServer()
@@ -1404,9 +1269,6 @@ func (UnimplementedFleetServiceServer) Get(context.Context, *FleetGetRequest) (*
 }
 func (UnimplementedFleetServiceServer) Patch(context.Context, *FleetPatchRequest) (*Fleet, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedFleetServiceServer) Apply(context.Context, *FleetApplyRequest) (*Fleet, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedFleetServiceServer) Erase(context.Context, *FleetRef) (*FleetEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -1486,24 +1348,6 @@ func _FleetService_Patch_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FleetService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FleetApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FleetServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FleetService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FleetServiceServer).Apply(ctx, req.(*FleetApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _FleetService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FleetRef)
 	if err := dec(in); err != nil {
@@ -1542,10 +1386,6 @@ var FleetService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _FleetService_Patch_Handler,
 		},
 		{
-			MethodName: "Apply",
-			Handler:    _FleetService_Apply_Handler,
-		},
-		{
 			MethodName: "Erase",
 			Handler:    _FleetService_Erase_Handler,
 		},
@@ -1559,7 +1399,6 @@ const (
 	ReadingService_AddMany_FullMethodName = "/app.ReadingService/AddMany"
 	ReadingService_Get_FullMethodName     = "/app.ReadingService/Get"
 	ReadingService_Patch_FullMethodName   = "/app.ReadingService/Patch"
-	ReadingService_Apply_FullMethodName   = "/app.ReadingService/Apply"
 	ReadingService_Erase_FullMethodName   = "/app.ReadingService/Erase"
 )
 
@@ -1575,8 +1414,6 @@ type ReadingServiceClient interface {
 	Get(ctx context.Context, in *ReadingGetRequest, opts ...grpc.CallOption) (*Reading, error)
 	// Patch updates an existing Reading
 	Patch(ctx context.Context, in *ReadingPatchRequest, opts ...grpc.CallOption) (*Reading, error)
-	// Apply applies a patch document to an existing Reading
-	Apply(ctx context.Context, in *ReadingApplyRequest, opts ...grpc.CallOption) (*Reading, error)
 	// Erase deletes a Reading
 	Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*ReadingEraseResponse, error)
 }
@@ -1629,16 +1466,6 @@ func (c *readingServiceClient) Patch(ctx context.Context, in *ReadingPatchReques
 	return out, nil
 }
 
-func (c *readingServiceClient) Apply(ctx context.Context, in *ReadingApplyRequest, opts ...grpc.CallOption) (*Reading, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Reading)
-	err := c.cc.Invoke(ctx, ReadingService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *readingServiceClient) Erase(ctx context.Context, in *ReadingRef, opts ...grpc.CallOption) (*ReadingEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReadingEraseResponse)
@@ -1661,8 +1488,6 @@ type ReadingServiceServer interface {
 	Get(context.Context, *ReadingGetRequest) (*Reading, error)
 	// Patch updates an existing Reading
 	Patch(context.Context, *ReadingPatchRequest) (*Reading, error)
-	// Apply applies a patch document to an existing Reading
-	Apply(context.Context, *ReadingApplyRequest) (*Reading, error)
 	// Erase deletes a Reading
 	Erase(context.Context, *ReadingRef) (*ReadingEraseResponse, error)
 	mustEmbedUnimplementedReadingServiceServer()
@@ -1686,9 +1511,6 @@ func (UnimplementedReadingServiceServer) Get(context.Context, *ReadingGetRequest
 }
 func (UnimplementedReadingServiceServer) Patch(context.Context, *ReadingPatchRequest) (*Reading, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedReadingServiceServer) Apply(context.Context, *ReadingApplyRequest) (*Reading, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedReadingServiceServer) Erase(context.Context, *ReadingRef) (*ReadingEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -1786,24 +1608,6 @@ func _ReadingService_Patch_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReadingService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadingApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ReadingServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ReadingService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReadingServiceServer).Apply(ctx, req.(*ReadingApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ReadingService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReadingRef)
 	if err := dec(in); err != nil {
@@ -1844,10 +1648,6 @@ var ReadingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _ReadingService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _ReadingService_Apply_Handler,
 		},
 		{
 			MethodName: "Erase",

@@ -16,8 +16,6 @@ service CellService {
   rpc Add(CellAddRequest) returns (Cell);
   // Get retrieves a Cell
   rpc Get(CellGetRequest) returns (Cell);
-  // Patch updates an existing Cell
-  rpc Patch(CellPatchRequest) returns (Cell);
   // Apply applies a patch document to an existing Cell
   rpc Apply(CellApplyRequest) returns (Cell);
   // Erase deletes a Cell
@@ -81,8 +79,6 @@ service PairingService {
   rpc Get(PairingGetRequest) returns (Pairing);
   // Patch updates an existing Pairing
   rpc Patch(PairingPatchRequest) returns (Pairing);
-  // Apply applies a patch document to an existing Pairing
-  rpc Apply(PairingApplyRequest) returns (Pairing);
   // Erase deletes a Pairing
   rpc Erase(PairingRef) returns (PairingEraseResponse);
 }
@@ -94,8 +90,6 @@ service JointService {
   rpc Get(JointGetRequest) returns (Joint);
   // Patch updates an existing Joint
   rpc Patch(JointPatchRequest) returns (Joint);
-  // Apply applies a patch document to an existing Joint
-  rpc Apply(JointApplyRequest) returns (Joint);
   // Erase deletes a Joint
   rpc Erase(JointRef) returns (JointEraseResponse);
 }
@@ -107,8 +101,6 @@ service FleetService {
   rpc Get(FleetGetRequest) returns (Fleet);
   // Patch updates an existing Fleet
   rpc Patch(FleetPatchRequest) returns (Fleet);
-  // Apply applies a patch document to an existing Fleet
-  rpc Apply(FleetApplyRequest) returns (Fleet);
   // Erase deletes a Fleet
   rpc Erase(FleetRef) returns (FleetEraseResponse);
 }
@@ -122,8 +114,6 @@ service ReadingService {
   rpc Get(ReadingGetRequest) returns (Reading);
   // Patch updates an existing Reading
   rpc Patch(ReadingPatchRequest) returns (Reading);
-  // Apply applies a patch document to an existing Reading
-  rpc Apply(ReadingApplyRequest) returns (Reading);
   // Erase deletes a Reading
   rpc Erase(ReadingRef) returns (ReadingEraseResponse);
 }
@@ -150,11 +140,6 @@ message CellSelect {
   TenantSelect tenant = 2;
   bool alias = 4;
   bool date_erased = 14;
-}
-
-message CellPatchRequest {
-  CellRef ref = 1;
-  string alias = 8;
 }
 
 message CellApplyRequest {
@@ -429,11 +414,6 @@ message PairingPatchRequest {
   PairingRef ref = 1;
 }
 
-message PairingApplyRequest {
-  PairingRef ref = 1;
-  patch.Patch patch = 2;
-}
-
 message PairingEraseResponse {
   // Erased is whether this call is the one that erased the row.
   //
@@ -472,11 +452,6 @@ message JointPatchRequest {
   string alias = 8;
 }
 
-message JointApplyRequest {
-  JointRef ref = 1;
-  patch.Patch patch = 2;
-}
-
 message JointEraseResponse {
   // Erased is whether this call is the one that erased the row.
   //
@@ -512,11 +487,6 @@ message FleetSelect {
 message FleetPatchRequest {
   FleetRef ref = 1;
   string alias = 8;
-}
-
-message FleetApplyRequest {
-  FleetRef ref = 1;
-  patch.Patch patch = 2;
 }
 
 message FleetEraseResponse {
@@ -570,11 +540,6 @@ message ReadingPatchRequest {
   ReadingRef ref = 1;
   bytes tenant_id = 18 [(orm.field) = {type: TYPE_UUID}];
   double celsius = 16;
-}
-
-message ReadingApplyRequest {
-  ReadingRef ref = 1;
-  patch.Patch patch = 2;
 }
 
 message ReadingEraseResponse {

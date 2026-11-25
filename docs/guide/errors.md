@@ -183,6 +183,13 @@ developer prose onto a page — which is what happens when a UI shows
 - **A version conflict.** A patch whose `date_updated` no longer matches answers
   `FailedPrecondition` — *"a test in the patch did not hold"* — and what a page
   does about it is re-read and show the difference, not draw a red line.
+- **A row something still names.** An `Erase` the database refuses because
+  another row's foreign key still points at the row answers
+  `FailedPrecondition` — *"<Entity> is still named by another row and cannot be
+  erased"* — and says neither which row nor which table. A required edge
+  refuses it, and so does one that says `on_delete: ON_DELETE_RESTRICT`. What a
+  page does is say the row is in use; what an app does is erase or move what
+  names it first, or say on the edge what an erase does to it (`on_delete`).
 
 If you find yourself reaching for `Invalidf` to say one of those, the code is
 the thing carrying the meaning and changing it will break a caller that was

@@ -470,9 +470,10 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 // of another tenant and read back through the caller's own. See
 // [emitAdmitApply].
 func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protogen.GoImportPath) {
-	// Nothing to override on a server that has no general write. `Apply`
-	// rides on `patch` in the ORM, so one is there exactly when the other is.
-	if !v.Rpcs().HasPatch() {
+	// Nothing to override on a server that has no general write. Each is
+	// asked for on its own (`rpc.patch`, `rpc.apply`), so either may be there
+	// without the other, and each is overridden where it is.
+	if !v.Rpcs().HasPatch() && !v.Rpcs().HasApply() {
 		return
 	}
 
@@ -497,6 +498,16 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 		return
 	}
 
+	if v.Rpcs().HasPatch() {
+		emitAdmitPatchOf(g, v, s, moves, root, refuse)
+	}
+	if v.Rpcs().HasApply() {
+		emitAdmitApply(g, v, s, moves, root, refuse)
+	}
+}
+
+// emitAdmitPatchOf is [emitAdmitPatch]'s `Patch`.
+func emitAdmitPatchOf(g *protogen.GeneratedFile, v *Entity, s *Schema, moves []move, root protogen.GoImportPath, refuse bool) {
 	name := v.GoName()
 
 	g.P("// Patch refuses an edge moved onto a row this caller cannot see.")
@@ -522,8 +533,6 @@ func emitAdmitPatch(g *protogen.GeneratedFile, v *Entity, s *Schema, root protog
 	g.P("	return s.", name, "ServiceServer.Patch(ctx, req)")
 	g.P("}")
 	g.P("")
-
-	emitAdmitApply(g, v, s, moves, root, refuse)
 }
 
 // move is an edge a write can point somewhere else, and what it points at.
@@ -834,22 +843,32 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("}")
 	g.P("")
 
-	for _, rpc := range []struct{ name, in, out string }{
-		{"Add", "AuditAddRequest", "Audit"},
-		{"Patch", "AuditPatchRequest", "Audit"},
-		{"Apply", "AuditApplyRequest", "Audit"},
+	// Every verb that writes, of the ones payday's trail declares: read off it
+	// rather than listed, so that a verb the trail stops declaring is not
+	// written here against a request that no longer exists, and one it comes
+	// to declare is refused with the rest rather than left open beside them.
+	audit := s.Own(pdpb.Own_OWN_AUDIT)
+	r := audit.Rpcs()
+	name := audit.GoName()
+	for _, rpc := range []struct {
+		name, in, out string
+		has           bool
+	}{
+		{"Add", name + "AddRequest", name, r.HasAdd()},
+		{"AddMany", name + "AddManyRequest", name + "AddManyResponse", r.HasAddMany()},
+		{"Patch", name + "PatchRequest", name, r.HasPatch()},
+		{"Apply", name + "ApplyRequest", name, r.HasApply()},
+		{"Erase", name + "Ref", name + "EraseResponse", r.HasErase()},
 	} {
+		if !rpc.has {
+			continue
+		}
 		g.P("func (s auditService) ", rpc.name, "(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(rpc.in),
 			") (*", root.Ident(rpc.out), ", error) {")
 		g.P("	return nil, errTrail()")
 		g.P("}")
 		g.P("")
 	}
-	g.P("func (s auditService) Erase(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident("AuditRef"),
-		") (*", root.Ident("AuditEraseResponse"), ", error) {")
-	g.P("	return nil, errTrail()")
-	g.P("}")
-	g.P("")
 	g.P("// errTrail is Unimplemented and not PermissionDenied, and to everybody: it")
 	g.P("// is not about who is asking, and no credential changes it.")
 	g.P("func errTrail() error {")
@@ -1899,7 +1918,7 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 		{"Add", name + "AddRequest", e.Rpcs().HasAdd()},
 		{"Get", name + "GetRequest", e.Rpcs().HasGet()},
 		{"Patch", name + "PatchRequest", e.Rpcs().HasPatch()},
-		{"Apply", name + "ApplyRequest", e.Rpcs().HasPatch()},
+		{"Apply", name + "ApplyRequest", e.Rpcs().HasApply()},
 	} {
 		if !m.has {
 			continue

@@ -44,7 +44,9 @@ message Thing {
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 
   option (orm.message) = {
-    rpc: {add: {}, get: {}, patch: {}, erase: {}}
+    // Apply too, which the page's queue is asked to keep a patch document to
+    // (`writes.test.ts`).
+    rpc: {add: {}, get: {}, patch: {}, apply: {}, erase: {}}
     // The order its list reads in. Outside the wall, so nothing comes before it.
     indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
   };

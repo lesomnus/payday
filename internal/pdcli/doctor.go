@@ -123,6 +123,7 @@ func Doctor(ctx context.Context, l Layout) []Finding {
 	}
 
 	vs = append(vs, doctorBuf(l)...)
+	vs = append(vs, doctorCrud(l)...)
 	vs = append(vs, doctorSchema(l)...)
 
 	// The app's own entities, read the way the generator reads them. Last of

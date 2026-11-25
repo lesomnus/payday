@@ -31,7 +31,6 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/lesomnus/payday/internal/pdcolumn"
 	"github.com/lesomnus/payday/pdid"
@@ -47,13 +46,6 @@ type Entity struct {
 	// Opts is the `payday.entity` option, and is never nil by the time
 	// anything reads it: [Read] refuses an entity that has none.
 	Opts *pdpb.Entity
-
-	// Written is the message's options as the schema wrote them, which is not
-	// quite what its descriptor holds by the time anything here runs: the graph
-	// fills `crud: true` out into the RPCs it stands for, on the descriptor's
-	// own copy. What an overlay added is a question about what was written; see
-	// [CheckOverlay].
-	Written *descriptorpb.MessageOptions
 
 	// SecretNumbers are the same fields by number, which is what a patch
 	// document names them by -- see the recorder's `hidden`. Kept beside the
@@ -349,7 +341,6 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", m.Desc.FullName(), err)
 			}
-			v.Written = written(f, m)
 
 			s.Entities = append(s.Entities, v)
 		}
@@ -487,19 +478,6 @@ func mapped(e graph.Entity, fd protoreflect.FieldDescriptor) bool {
 	}
 
 	return false
-}
-
-// written is a top-level message's options as the file declares them: the
-// request's own copy, which a descriptor is built from by cloning, and which
-// nothing after that writes to.
-func written(f *protogen.File, m *protogen.Message) *descriptorpb.MessageOptions {
-	for _, v := range f.Proto.GetMessageType() {
-		if v.GetName() == string(m.Desc.Name()) {
-			return v.GetOptions()
-		}
-	}
-
-	return nil
 }
 
 func read(e graph.Entity, m *protogen.Message) (*Entity, error) {
@@ -1190,7 +1168,7 @@ func (e *Entity) GoName() string { return string(e.FullName().Name()) }
 // on the trail is another question; see [Entity.Checked].
 func (e *Entity) Serves() bool {
 	r := e.Rpcs()
-	return r.HasAdd() || r.HasAddMany() || r.HasGet() || r.HasPatch() || r.HasErase() || e.List != nil || e.Watch
+	return r.HasAdd() || r.HasAddMany() || r.HasGet() || r.HasPatch() || r.HasApply() || r.HasErase() || e.List != nil || e.Watch
 }
 
 // Records answers whether the entity is one of payday's own records of what
@@ -1215,11 +1193,11 @@ func (e *Entity) Sealed() bool {
 	return e.Checked() && len(e.PersonalNumbers) > 0
 }
 
-// Writes answers whether a server writes the entity: an Add, an AddMany or a
-// Patch, each of which the recorder puts on the trail.
+// Writes answers whether a server writes the entity: an Add, an AddMany, a
+// Patch or an Apply, each of which the recorder puts on the trail.
 func (e *Entity) Writes() bool {
 	r := e.Rpcs()
-	return r.HasAdd() || r.HasAddMany() || r.HasPatch()
+	return r.HasAdd() || r.HasAddMany() || r.HasPatch() || r.HasApply()
 }
 
 // Checked answers whether a check of the rows against the trail reads the
@@ -1980,7 +1958,7 @@ func setName(s *Schema, to *Entity) protoreflect.FullName {
 // and a record it says of writes that are on the trail already (payday#108;
 // see `payday.Entity.trail`).
 //
-// An entity no server writes -- no Add, AddMany or Patch -- is written by the
+// An entity no server writes -- no Add, AddMany, Patch or Apply -- is written by the
 // app's own code, and a check of the rows reads every kind but one kept off
 // the trail. So such an entity says which it is: its writes recorded as acts,
 // or kept off with a reason. Left unsaid it would be a row nothing on the
@@ -2000,12 +1978,12 @@ func (s *Schema) checkTrail() error {
 		switch {
 		case v.Writes() && v.Opts.HasTrail():
 			return fmt.Errorf(
-				"%s: trail: a server writes it -- it has an Add, an AddMany or a Patch -- and the recorder puts every such write "+
+				"%s: trail: a server writes it -- it has an Add, an AddMany, a Patch or an Apply -- and the recorder puts every such write "+
 					"on the trail already; `trail` says how the writes of an entity no server writes reach it", v.FullName())
 
 		case !v.Writes() && !v.Opts.HasTrail():
 			return fmt.Errorf(
-				"%s: no server writes it -- it has no Add, AddMany or Patch -- so its writes are the app's own, and the schema "+
+				"%s: no server writes it -- it has no Add, AddMany, Patch or Apply -- so its writes are the app's own, and the schema "+
 					"says how they reach the trail. Each recorded as the act it is, with `pd.Record`:\n\n"+
 					"    option (payday.entity) = {... trail: {recorded: {}}};\n\n"+
 					"or kept off it, which a check of the rows then does not read:\n\n"+

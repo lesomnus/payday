@@ -354,16 +354,6 @@ var sealOrmEntity = ormpatch.MustEntityOf(apptest.File_app_seal_proto, "Seal")
 var sealPatchColumns = entpatch.Columns{
 	1: seal.FieldId, 4: seal.FieldAlias, 8: seal.FieldSecret, 9: seal.FieldCode, 14: seal.FieldDateErased, 15: seal.FieldDateCreated}
 
-func (s SealServiceServer) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.SealService_Apply_FullMethodName)
-}
-
 func (s SealServiceServer) apply(ctx context.Context, ref *apptest.SealRef, doc *patchpb.Patch, by string) (*apptest.Seal, error) {
 	plan := &ormpatch.Plan{Entity: sealOrmEntity}
 	if doc != nil {

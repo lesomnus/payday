@@ -14,15 +14,13 @@ import { file_app_payday_tenant_svc_g } from "./payday/tenant_svc_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../orm_pb.js";
-import type { Patch } from "../patch/patch_pb.js";
-import { file_patch_patch } from "../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/job_svc.g.proto.
  */
 export const file_app_job_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChNhcHAvam9iX3N2Yy5nLnByb3RvEgNhcHAizgEKDUpvYkFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh0KCHJvYm90X2lkGAggASgMQguqAQIIAuqCFgIQQBIeCglpc3N1ZXJfaWQYCSABKAxCC6oBAggC6oIWAhBAEhgKCWNvbXBsZXRlZBgKIAEoCEIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIlCgZKb2JSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSKfAQoJSm9iU2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EhAKCHJvYm90X2lkGAggASgIEhEKCWlzc3Vlcl9pZBgJIAEoCBIRCgljb21wbGV0ZWQYCiABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJJCg1Kb2JHZXRSZXF1ZXN0EhgKA3JlZhgBIAEoCzILLmFwcC5Kb2JSZWYSHgoGc2VsZWN0GAIgASgLMg4uYXBwLkpvYlNlbGVjdCLBAQoPSm9iUGF0Y2hSZXF1ZXN0EhgKA3JlZhgBIAEoCzILLmFwcC5Kb2JSZWYSGAoIcm9ib3RfaWQYECABKAxCBuqCFgIQQBIZCglpc3N1ZXJfaWQYEiABKAxCBuqCFgIQQBIRCgljb21wbGV0ZWQYFCABKAgSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgiSAoPSm9iQXBwbHlSZXF1ZXN0EhgKA3JlZhgBIAEoCzILLmFwcC5Kb2JSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIiChBKb2JFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCDLVAQoKSm9iU2VydmljZRIjCgNBZGQSEi5hcHAuSm9iQWRkUmVxdWVzdBoILmFwcC5Kb2ISIwoDR2V0EhIuYXBwLkpvYkdldFJlcXVlc3QaCC5hcHAuSm9iEicKBVBhdGNoEhQuYXBwLkpvYlBhdGNoUmVxdWVzdBoILmFwcC5Kb2ISJwoFQXBwbHkSFC5hcHAuSm9iQXBwbHlSZXF1ZXN0GgguYXBwLkpvYhIrCgVFcmFzZRILLmFwcC5Kb2JSZWYaFS5hcHAuSm9iRXJhc2VSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_job, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("ChNhcHAvam9iX3N2Yy5nLnByb3RvEgNhcHAizgEKDUpvYkFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh0KCHJvYm90X2lkGAggASgMQguqAQIIAuqCFgIQQBIeCglpc3N1ZXJfaWQYCSABKAxCC6oBAggC6oIWAhBAEhgKCWNvbXBsZXRlZBgKIAEoCEIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIlCgZKb2JSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSKfAQoJSm9iU2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EhAKCHJvYm90X2lkGAggASgIEhEKCWlzc3Vlcl9pZBgJIAEoCBIRCgljb21wbGV0ZWQYCiABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJJCg1Kb2JHZXRSZXF1ZXN0EhgKA3JlZhgBIAEoCzILLmFwcC5Kb2JSZWYSHgoGc2VsZWN0GAIgASgLMg4uYXBwLkpvYlNlbGVjdCLBAQoPSm9iUGF0Y2hSZXF1ZXN0EhgKA3JlZhgBIAEoCzILLmFwcC5Kb2JSZWYSGAoIcm9ib3RfaWQYECABKAxCBuqCFgIQQBIZCglpc3N1ZXJfaWQYEiABKAxCBuqCFgIQQBIRCgljb21wbGV0ZWQYFCABKAgSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgiIgoQSm9iRXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgyrAEKCkpvYlNlcnZpY2USIwoDQWRkEhIuYXBwLkpvYkFkZFJlcXVlc3QaCC5hcHAuSm9iEiMKA0dldBISLmFwcC5Kb2JHZXRSZXF1ZXN0GgguYXBwLkpvYhInCgVQYXRjaBIULmFwcC5Kb2JQYXRjaFJlcXVlc3QaCC5hcHAuSm9iEisKBUVyYXNlEgsuYXBwLkpvYlJlZhoVLmFwcC5Kb2JFcmFzZVJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_job, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.JobAddRequest
@@ -215,28 +213,6 @@ export const JobPatchRequestSchema: GenMessage<JobPatchRequest> = /*@__PURE__*/
   messageDesc(file_app_job_svc_g, 4);
 
 /**
- * @generated from message app.JobApplyRequest
- */
-export type JobApplyRequest = Message<"app.JobApplyRequest"> & {
-  /**
-   * @generated from field: app.JobRef ref = 1;
-   */
-  ref?: JobRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.JobApplyRequest.
- * Use `create(JobApplyRequestSchema)` to create a new message.
- */
-export const JobApplyRequestSchema: GenMessage<JobApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_job_svc_g, 5);
-
-/**
  * @generated from message app.JobEraseResponse
  */
 export type JobEraseResponse = Message<"app.JobEraseResponse"> & {
@@ -257,7 +233,7 @@ export type JobEraseResponse = Message<"app.JobEraseResponse"> & {
  * Use `create(JobEraseResponseSchema)` to create a new message.
  */
 export const JobEraseResponseSchema: GenMessage<JobEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_job_svc_g, 6);
+  messageDesc(file_app_job_svc_g, 5);
 
 /**
  * @generated from service app.JobService
@@ -291,16 +267,6 @@ export const JobService: GenService<{
   patch: {
     methodKind: "unary";
     input: typeof JobPatchRequestSchema;
-    output: typeof JobSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Job
-   *
-   * @generated from rpc app.JobService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof JobApplyRequestSchema;
     output: typeof JobSchema;
   },
   /**

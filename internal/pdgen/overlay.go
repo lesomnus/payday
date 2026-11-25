@@ -223,7 +223,7 @@ func CheckOverlay(s *Schema) error {
 		}
 
 		d := declared[v.Own]
-		e, _ := proto.GetExtension(v.Written, pdpb.E_Entity).(*pdpb.Entity)
+		e, _ := proto.GetExtension(v.Descriptor().Options(), pdpb.E_Entity).(*pdpb.Entity)
 		shipped := d.Entity
 		if opted[v.Own] || numbered(v.Own) {
 			shipped = proto.Clone(shipped).(*pdpb.Entity)
@@ -239,7 +239,7 @@ func CheckOverlay(s *Schema) error {
 				v.FullName(), p))
 		}
 
-		m, _ := proto.GetExtension(v.Written, ormpb.E_Message).(*ormpb.MessageOptions)
+		m, _ := proto.GetExtension(v.Descriptor().Options(), ormpb.E_Message).(*ormpb.MessageOptions)
 		for _, p := range added(withoutIndexes(m), withoutIndexes(d.Message), "") {
 			errs = append(errs, fmt.Sprintf(
 				"%s: (orm.message) %s is not payday's; an overlay may add an index there and nothing else",

@@ -159,7 +159,11 @@ message Cell {
   // trail can still say what it held.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
+  // An Apply and no Patch: a verb is there when it is asked for, and none
+  // brings another. Its writes go through every layer a Patch's would -- the
+  // wall, the Sink, the trail, admission -- and there is no `CellService/Patch`
+  // for anything to be written for. Joint is the other way round.
+  option (orm.message) = {rpc: {add: {}, get: {}, apply: {}, erase: {}}};
   option (payday.entity) = {
     domain: 10
   };
@@ -267,10 +271,13 @@ message Robot {
   option (orm.message) = {
     // And AddMany, which is here to be asked what an Add is: every item
     // through the gate and the Sink, each answer through the Secret layer.
+    // And Apply beside Patch, the other general write, which is asked for on
+    // its own: the tests write a robot through both doors.
     rpc: {
       add: {many: {}}
       get: {}
       patch: {}
+      apply: {}
       erase: {}
     }
     indexes: [
@@ -447,6 +454,8 @@ message Joint {
   // trail can still say what it held.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
+  // A Patch and no Apply, which is what an entity is by default now: Apply
+  // comes only where it is asked for. Cell is the other way round.
   option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 8

@@ -10,7 +10,6 @@ import "app/payday/tenant_svc.g.proto";
 import "app/robot_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -21,8 +20,6 @@ service MachineService {
 	rpc Get(MachineGetRequest) returns (Machine);
 	// Patch updates an existing Machine
 	rpc Patch(MachinePatchRequest) returns (Machine);
-	// Apply applies a patch document to an existing Machine
-	rpc Apply(MachineApplyRequest) returns (Machine);
 	// Erase deletes a Machine
 	rpc Erase(MachineRef) returns (MachineEraseResponse);
 }
@@ -157,11 +154,6 @@ message MachinePatchRequest {
 	// refused rather than assumed, because an unset field cannot be told
 	// apart from a caller who never considered locking at all.
 	bool date_updated_force = 27;
-}
-
-message MachineApplyRequest {
-	MachineRef ref = 1;
-	patch.Patch patch = 2;
 }
 
 message MachineEraseResponse {

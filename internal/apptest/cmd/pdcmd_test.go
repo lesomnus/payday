@@ -89,8 +89,8 @@ func TestTheTreeIsWhatTheSchemaDeclared(t *testing.T) {
 	// has one.
 	x.Equal([]string{"get", "list", "watch", "add", "patch", "erase"}, verbs("robot"),
 		"robot declared list: and watch:, so it has both")
-	x.Equal([]string{"get", "add", "patch", "erase"}, verbs("cell"),
-		"cell declared no list:, so there is no list to call")
+	x.Equal([]string{"get", "add", "erase"}, verbs("cell"),
+		"cell declared no list:, so there is no list to call; and it asks for an Apply and no Patch, so there is no patch either")
 
 	// `Tenant` is the one that says `watch` is read off the schema rather than
 	// added to everything that can be listed: it has a `List` and no `Watch`,

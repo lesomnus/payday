@@ -9,7 +9,6 @@ import "app/payday/tenant_svc.g.proto";
 import "app/stint.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -20,8 +19,6 @@ service StintService {
 	rpc Get(StintGetRequest) returns (Stint);
 	// Patch updates an existing Stint
 	rpc Patch(StintPatchRequest) returns (Stint);
-	// Apply applies a patch document to an existing Stint
-	rpc Apply(StintApplyRequest) returns (Stint);
 	// Erase deletes a Stint
 	rpc Erase(StintRef) returns (StintEraseResponse);
 }
@@ -82,11 +79,6 @@ message StintPatchRequest {
 	bytes event_id = 22 [
 		(orm.field) = {type: TYPE_UUID}
 	];
-}
-
-message StintApplyRequest {
-	StintRef ref = 1;
-	patch.Patch patch = 2;
 }
 
 message StintEraseResponse {

@@ -25,7 +25,6 @@ const (
 	SealService_Add_FullMethodName   = "/app.SealService/Add"
 	SealService_Get_FullMethodName   = "/app.SealService/Get"
 	SealService_Patch_FullMethodName = "/app.SealService/Patch"
-	SealService_Apply_FullMethodName = "/app.SealService/Apply"
 	SealService_Erase_FullMethodName = "/app.SealService/Erase"
 )
 
@@ -39,8 +38,6 @@ type SealServiceClient interface {
 	Get(ctx context.Context, in *SealGetRequest, opts ...grpc.CallOption) (*Seal, error)
 	// Patch updates an existing Seal
 	Patch(ctx context.Context, in *SealPatchRequest, opts ...grpc.CallOption) (*Seal, error)
-	// Apply applies a patch document to an existing Seal
-	Apply(ctx context.Context, in *SealApplyRequest, opts ...grpc.CallOption) (*Seal, error)
 	// Erase deletes a Seal
 	Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*SealEraseResponse, error)
 }
@@ -83,16 +80,6 @@ func (c *sealServiceClient) Patch(ctx context.Context, in *SealPatchRequest, opt
 	return out, nil
 }
 
-func (c *sealServiceClient) Apply(ctx context.Context, in *SealApplyRequest, opts ...grpc.CallOption) (*Seal, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Seal)
-	err := c.cc.Invoke(ctx, SealService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *sealServiceClient) Erase(ctx context.Context, in *SealRef, opts ...grpc.CallOption) (*SealEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SealEraseResponse)
@@ -113,8 +100,6 @@ type SealServiceServer interface {
 	Get(context.Context, *SealGetRequest) (*Seal, error)
 	// Patch updates an existing Seal
 	Patch(context.Context, *SealPatchRequest) (*Seal, error)
-	// Apply applies a patch document to an existing Seal
-	Apply(context.Context, *SealApplyRequest) (*Seal, error)
 	// Erase deletes a Seal
 	Erase(context.Context, *SealRef) (*SealEraseResponse, error)
 	mustEmbedUnimplementedSealServiceServer()
@@ -135,9 +120,6 @@ func (UnimplementedSealServiceServer) Get(context.Context, *SealGetRequest) (*Se
 }
 func (UnimplementedSealServiceServer) Patch(context.Context, *SealPatchRequest) (*Seal, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedSealServiceServer) Apply(context.Context, *SealApplyRequest) (*Seal, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedSealServiceServer) Erase(context.Context, *SealRef) (*SealEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -217,24 +199,6 @@ func _SealService_Patch_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SealService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SealApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SealServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SealService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SealServiceServer).Apply(ctx, req.(*SealApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _SealService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SealRef)
 	if err := dec(in); err != nil {
@@ -271,10 +235,6 @@ var SealService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _SealService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _SealService_Apply_Handler,
 		},
 		{
 			MethodName: "Erase",

@@ -338,6 +338,7 @@ message Audit {
       add: {}
       get: {}
       patch: {}
+      apply: {}
       erase: {}
     }
     indexes: [

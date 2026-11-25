@@ -10,7 +10,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1982,99 +1981,6 @@ func (b0 MachinePatchRequest_builder) Build() *MachinePatchRequest {
 	return m0
 }
 
-type MachineApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *MachineRef            `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *MachineApplyRequest) Reset() {
-	*x = MachineApplyRequest{}
-	mi := &file_app_machine_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MachineApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MachineApplyRequest) ProtoMessage() {}
-
-func (x *MachineApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_machine_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *MachineApplyRequest) GetRef() *MachineRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *MachineApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *MachineApplyRequest) SetRef(v *MachineRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *MachineApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *MachineApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *MachineApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *MachineApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *MachineApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type MachineApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *MachineRef
-	Patch *patchpb.Patch
-}
-
-func (b0 MachineApplyRequest_builder) Build() *MachineApplyRequest {
-	m0 := &MachineApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type MachineEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -2086,7 +1992,7 @@ type MachineEraseResponse struct {
 
 func (x *MachineEraseResponse) Reset() {
 	*x = MachineEraseResponse{}
-	mi := &file_app_machine_svc_g_proto_msgTypes[6]
+	mi := &file_app_machine_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2098,7 +2004,7 @@ func (x *MachineEraseResponse) String() string {
 func (*MachineEraseResponse) ProtoMessage() {}
 
 func (x *MachineEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_machine_svc_g_proto_msgTypes[6]
+	mi := &file_app_machine_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2159,7 +2065,7 @@ var File_app_machine_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x17app/machine_svc.g.proto\x12\x03app\x1a\x11app/machine.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xec\x05\n" +
+	"\x17app/machine_svc.g.proto\x12\x03app\x1a\x11app/machine.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x15app/robot_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xec\x05\n" +
 	"\x11MachineAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -2239,76 +2145,66 @@ const file_app_machine_svc_g_proto_rawDesc = "" +
 	"\x12date_updated_force\x18\x1b \x01(\bR\x10dateUpdatedForce\x1a;\n" +
 	"\rSettingsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\\\n" +
-	"\x13MachineApplyRequest\x12!\n" +
-	"\x03ref\x18\x01 \x01(\v2\x0f.app.MachineRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\".\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\".\n" +
 	"\x14MachineEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased2\x81\x02\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased2\xd0\x01\n" +
 	"\x0eMachineService\x12+\n" +
 	"\x03Add\x12\x16.app.MachineAddRequest\x1a\f.app.Machine\x12+\n" +
 	"\x03Get\x12\x16.app.MachineGetRequest\x1a\f.app.Machine\x12/\n" +
-	"\x05Patch\x12\x18.app.MachinePatchRequest\x1a\f.app.Machine\x12/\n" +
-	"\x05Apply\x12\x18.app.MachineApplyRequest\x1a\f.app.Machine\x123\n" +
+	"\x05Patch\x12\x18.app.MachinePatchRequest\x1a\f.app.Machine\x123\n" +
 	"\x05Erase\x12\x0f.app.MachineRef\x1a\x19.app.MachineEraseResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_machine_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_app_machine_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_app_machine_svc_g_proto_goTypes = []any{
 	(*MachineAddRequest)(nil),     // 0: app.MachineAddRequest
 	(*MachineRef)(nil),            // 1: app.MachineRef
 	(*MachineSelect)(nil),         // 2: app.MachineSelect
 	(*MachineGetRequest)(nil),     // 3: app.MachineGetRequest
 	(*MachinePatchRequest)(nil),   // 4: app.MachinePatchRequest
-	(*MachineApplyRequest)(nil),   // 5: app.MachineApplyRequest
-	(*MachineEraseResponse)(nil),  // 6: app.MachineEraseResponse
-	nil,                           // 7: app.MachineAddRequest.SettingsEntry
-	nil,                           // 8: app.MachinePatchRequest.SettingsEntry
-	(*TenantRef)(nil),             // 9: app.TenantRef
-	(*RobotRef)(nil),              // 10: app.RobotRef
-	(Mode)(0),                     // 11: app.Mode
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
-	(*Machine_Spec)(nil),          // 13: app.Machine.Spec
-	(*TenantSelect)(nil),          // 14: app.TenantSelect
-	(*RobotSelect)(nil),           // 15: app.RobotSelect
-	(*patchpb.Patch)(nil),         // 16: patch.Patch
-	(*Machine)(nil),               // 17: app.Machine
+	(*MachineEraseResponse)(nil),  // 5: app.MachineEraseResponse
+	nil,                           // 6: app.MachineAddRequest.SettingsEntry
+	nil,                           // 7: app.MachinePatchRequest.SettingsEntry
+	(*TenantRef)(nil),             // 8: app.TenantRef
+	(*RobotRef)(nil),              // 9: app.RobotRef
+	(Mode)(0),                     // 10: app.Mode
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*Machine_Spec)(nil),          // 12: app.Machine.Spec
+	(*TenantSelect)(nil),          // 13: app.TenantSelect
+	(*RobotSelect)(nil),           // 14: app.RobotSelect
+	(*Machine)(nil),               // 15: app.Machine
 }
 var file_app_machine_svc_g_proto_depIdxs = []int32{
-	9,  // 0: app.MachineAddRequest.tenant:type_name -> app.TenantRef
-	10, // 1: app.MachineAddRequest.robot:type_name -> app.RobotRef
-	11, // 2: app.MachineAddRequest.mode:type_name -> app.Mode
-	12, // 3: app.MachineAddRequest.date_serviced:type_name -> google.protobuf.Timestamp
-	13, // 4: app.MachineAddRequest.spec:type_name -> app.Machine.Spec
-	7,  // 5: app.MachineAddRequest.settings:type_name -> app.MachineAddRequest.SettingsEntry
-	12, // 6: app.MachineAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	14, // 7: app.MachineSelect.tenant:type_name -> app.TenantSelect
-	15, // 8: app.MachineSelect.robot:type_name -> app.RobotSelect
+	8,  // 0: app.MachineAddRequest.tenant:type_name -> app.TenantRef
+	9,  // 1: app.MachineAddRequest.robot:type_name -> app.RobotRef
+	10, // 2: app.MachineAddRequest.mode:type_name -> app.Mode
+	11, // 3: app.MachineAddRequest.date_serviced:type_name -> google.protobuf.Timestamp
+	12, // 4: app.MachineAddRequest.spec:type_name -> app.Machine.Spec
+	6,  // 5: app.MachineAddRequest.settings:type_name -> app.MachineAddRequest.SettingsEntry
+	11, // 6: app.MachineAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	13, // 7: app.MachineSelect.tenant:type_name -> app.TenantSelect
+	14, // 8: app.MachineSelect.robot:type_name -> app.RobotSelect
 	1,  // 9: app.MachineGetRequest.ref:type_name -> app.MachineRef
 	2,  // 10: app.MachineGetRequest.select:type_name -> app.MachineSelect
 	1,  // 11: app.MachinePatchRequest.ref:type_name -> app.MachineRef
-	10, // 12: app.MachinePatchRequest.robot:type_name -> app.RobotRef
-	11, // 13: app.MachinePatchRequest.mode:type_name -> app.Mode
-	12, // 14: app.MachinePatchRequest.date_serviced:type_name -> google.protobuf.Timestamp
-	13, // 15: app.MachinePatchRequest.spec:type_name -> app.Machine.Spec
-	8,  // 16: app.MachinePatchRequest.settings:type_name -> app.MachinePatchRequest.SettingsEntry
-	12, // 17: app.MachinePatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	1,  // 18: app.MachineApplyRequest.ref:type_name -> app.MachineRef
-	16, // 19: app.MachineApplyRequest.patch:type_name -> patch.Patch
-	0,  // 20: app.MachineService.Add:input_type -> app.MachineAddRequest
-	3,  // 21: app.MachineService.Get:input_type -> app.MachineGetRequest
-	4,  // 22: app.MachineService.Patch:input_type -> app.MachinePatchRequest
-	5,  // 23: app.MachineService.Apply:input_type -> app.MachineApplyRequest
-	1,  // 24: app.MachineService.Erase:input_type -> app.MachineRef
-	17, // 25: app.MachineService.Add:output_type -> app.Machine
-	17, // 26: app.MachineService.Get:output_type -> app.Machine
-	17, // 27: app.MachineService.Patch:output_type -> app.Machine
-	17, // 28: app.MachineService.Apply:output_type -> app.Machine
-	6,  // 29: app.MachineService.Erase:output_type -> app.MachineEraseResponse
-	25, // [25:30] is the sub-list for method output_type
-	20, // [20:25] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	9,  // 12: app.MachinePatchRequest.robot:type_name -> app.RobotRef
+	10, // 13: app.MachinePatchRequest.mode:type_name -> app.Mode
+	11, // 14: app.MachinePatchRequest.date_serviced:type_name -> google.protobuf.Timestamp
+	12, // 15: app.MachinePatchRequest.spec:type_name -> app.Machine.Spec
+	7,  // 16: app.MachinePatchRequest.settings:type_name -> app.MachinePatchRequest.SettingsEntry
+	11, // 17: app.MachinePatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	0,  // 18: app.MachineService.Add:input_type -> app.MachineAddRequest
+	3,  // 19: app.MachineService.Get:input_type -> app.MachineGetRequest
+	4,  // 20: app.MachineService.Patch:input_type -> app.MachinePatchRequest
+	1,  // 21: app.MachineService.Erase:input_type -> app.MachineRef
+	15, // 22: app.MachineService.Add:output_type -> app.Machine
+	15, // 23: app.MachineService.Get:output_type -> app.Machine
+	15, // 24: app.MachineService.Patch:output_type -> app.Machine
+	5,  // 25: app.MachineService.Erase:output_type -> app.MachineEraseResponse
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_app_machine_svc_g_proto_init() }
@@ -2328,7 +2224,7 @@ func file_app_machine_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_machine_svc_g_proto_rawDesc), len(file_app_machine_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
