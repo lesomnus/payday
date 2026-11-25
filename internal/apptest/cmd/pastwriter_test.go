@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lesomnus/protobuf-patch/patch"
 	"github.com/lesomnus/z"
 	"github.com/protobuf-orm/ent/dialect"
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
@@ -46,8 +45,9 @@ type byHand struct {
 // handWritten is every write a caller could ask of the past's two servers, of
 // rows of the caller's own tenant, each a row that would be written: an event
 // naming somebody else as who did it, two at once, a fact of a machine, two at
-// once, and a patch and an apply of a fact the past wrote, which would change
-// what it said. And that fact, as the past wrote it.
+// once, and a patch of a fact the past wrote, which would change what it
+// said. There is no Apply of a fact: the past supersedes one with a Patch,
+// and nothing calls the other. And that fact, as the past wrote it.
 func (b *built) handWritten(t *testing.T, ctx context.Context) ([]byHand, pdid.Id) {
 	t.Helper()
 	as := b.as(ctx)
@@ -101,10 +101,6 @@ func (b *built) handWritten(t *testing.T, ctx context.Context) ([]byHand, pdid.I
 		{app.FactService_Add_FullMethodName, said(`"X-9"`), &app.Fact{}},
 		{app.FactService_AddMany_FullMethodName, app.FactAddManyRequest_builder{Items: []*app.FactAddRequest{said(`"X-8"`), said(`"X-9"`)}}.Build(), &app.FactAddManyResponse{}},
 		{app.FactService_Patch_FullMethodName, app.FactPatchRequest_builder{Ref: ref, DateUpdatedForce: z.Ptr(true), Value: z.Ptr(`"X-9"`)}.Build(), &app.Fact{}},
-		{app.FactService_Apply_FullMethodName, app.FactApplyRequest_builder{
-			Ref:   ref,
-			Patch: patch.MustNewUntyped(patch.Target(patch.Name("value")).Assign(patch.Str(`"X-9"`))),
-		}.Build(), &app.Fact{}},
 	}, fact
 }
 
@@ -122,8 +118,6 @@ func (w byHand) through(ctx context.Context, s app.Server) error {
 		_, err = s.Fact().AddMany(ctx, r)
 	case *app.FactPatchRequest:
 		_, err = s.Fact().Patch(ctx, r)
-	case *app.FactApplyRequest:
-		_, err = s.Fact().Apply(ctx, r)
 	default:
 		panic(fmt.Sprintf("%T is no write of the past", r))
 	}

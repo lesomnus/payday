@@ -11,15 +11,13 @@ import { file_app_payday_tenant_svc_g } from "./tenant_svc_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
-import type { Patch } from "../../patch/patch_pb.js";
-import { file_patch_patch } from "../../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/payday/fact_svc.g.proto.
  */
 export const file_app_payday_fact_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChthcHAvcGF5ZGF5L2ZhY3Rfc3ZjLmcucHJvdG8SA2FwcCKYAwoORmFjdEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KCnN1YmplY3RfaWQYCCABKAxCC6oBAggC6oIWAhBAEhIKA2tleRgJIAEoCUIFqgECCAISFAoFdmFsdWUYCiABKAlCBaoBAggCEhsKDGZpZWxkX251bWJlchgMIAEoDUIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCgZkb21haW4YECABKA1CBaoBAggCEi4KCmRhdGVfc3RhcnQYESABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KCGV2ZW50X2lkGBMgASgMQguqAQIIAuqCFgIQQBIzCg9kYXRlX3N1cGVyc2VkZWQYFCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KDXN1cGVyc2VkZWRfYnkYFSABKAxCBuqCFgIQQCI4ChJGYWN0QWRkTWFueVJlcXVlc3QSIgoFaXRlbXMYASADKAsyEy5hcHAuRmFjdEFkZFJlcXVlc3QiLwoTRmFjdEFkZE1hbnlSZXNwb25zZRIYCgVpdGVtcxgBIAMoCzIJLmFwcC5GYWN0IkwKDkZhY3RHZXRSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5GYWN0UmVmEh8KBnNlbGVjdBgCIAEoCzIPLmFwcC5GYWN0U2VsZWN0IiYKB0ZhY3RSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSKUAgoKRmFjdFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBISCgpzdWJqZWN0X2lkGAggASgIEgsKA2tleRgJIAEoCBINCgV2YWx1ZRgKIAEoCBIUCgxmaWVsZF9udW1iZXIYDCABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIOCgZkb21haW4YECABKAgSEgoKZGF0ZV9zdGFydBgRIAEoCBIQCghldmVudF9pZBgTIAEoCBIXCg9kYXRlX3N1cGVyc2VkZWQYFCABKAgSFQoNc3VwZXJzZWRlZF9ieRgVIAEoCCKxAwoQRmFjdFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhIaCgpzdWJqZWN0X2lkGBAgASgMQgbqghYCEEASCwoDa2V5GBIgASgJEg0KBXZhbHVlGBQgASgJEhQKDGZpZWxkX251bWJlchgYIAEoDRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCBIOCgZkb21haW4YICABKA0SLgoKZGF0ZV9zdGFydBgiIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoIZXZlbnRfaWQYJiABKAxCBuqCFgIQQBIzCg9kYXRlX3N1cGVyc2VkZWQYKCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhwKFGRhdGVfc3VwZXJzZWRlZF9udWxsGCkgASgIEh0KDXN1cGVyc2VkZWRfYnkYKiABKAxCBuqCFgIQQBIaChJzdXBlcnNlZGVkX2J5X251bGwYKyABKAgiSgoQRmFjdEFwcGx5UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIpcBCg9GYWN0TGlzdFJlcXVlc3QSIAoHZmlsdGVycxgBIAMoCzIPLmFwcC5GYWN0RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAhIWCgdyZXZlcnNlGAQgASgIQgWqAQIIAhIfCgZzZWxlY3QYBiABKAsyDy5hcHAuRmFjdFNlbGVjdCJBChBGYWN0TGlzdFJlc3BvbnNlEhgKBWl0ZW1zGAEgAygLMgkuYXBwLkZhY3QSEwoEbmV4dBgCIAEoCUIFqgECCAIiWQoKRmFjdEZpbHRlchIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhIaCgpzdWJqZWN0X2lkGAIgASgMQgbqghYCEEASFAoMZmllbGRfbnVtYmVyGAMgASgNMqQCCgtGYWN0U2VydmljZRIlCgNBZGQSEy5hcHAuRmFjdEFkZFJlcXVlc3QaCS5hcHAuRmFjdBI8CgdBZGRNYW55EhcuYXBwLkZhY3RBZGRNYW55UmVxdWVzdBoYLmFwcC5GYWN0QWRkTWFueVJlc3BvbnNlEiUKA0dldBITLmFwcC5GYWN0R2V0UmVxdWVzdBoJLmFwcC5GYWN0EikKBVBhdGNoEhUuYXBwLkZhY3RQYXRjaFJlcXVlc3QaCS5hcHAuRmFjdBIpCgVBcHBseRIVLmFwcC5GYWN0QXBwbHlSZXF1ZXN0GgkuYXBwLkZhY3QSMwoETGlzdBIULmFwcC5GYWN0TGlzdFJlcXVlc3QaFS5hcHAuRmFjdExpc3RSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_fact, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("ChthcHAvcGF5ZGF5L2ZhY3Rfc3ZjLmcucHJvdG8SA2FwcCKYAwoORmFjdEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KCnN1YmplY3RfaWQYCCABKAxCC6oBAggC6oIWAhBAEhIKA2tleRgJIAEoCUIFqgECCAISFAoFdmFsdWUYCiABKAlCBaoBAggCEhsKDGZpZWxkX251bWJlchgMIAEoDUIFqgECCAISMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCgZkb21haW4YECABKA1CBaoBAggCEi4KCmRhdGVfc3RhcnQYESABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KCGV2ZW50X2lkGBMgASgMQguqAQIIAuqCFgIQQBIzCg9kYXRlX3N1cGVyc2VkZWQYFCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KDXN1cGVyc2VkZWRfYnkYFSABKAxCBuqCFgIQQCI4ChJGYWN0QWRkTWFueVJlcXVlc3QSIgoFaXRlbXMYASADKAsyEy5hcHAuRmFjdEFkZFJlcXVlc3QiLwoTRmFjdEFkZE1hbnlSZXNwb25zZRIYCgVpdGVtcxgBIAMoCzIJLmFwcC5GYWN0IkwKDkZhY3RHZXRSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5GYWN0UmVmEh8KBnNlbGVjdBgCIAEoCzIPLmFwcC5GYWN0U2VsZWN0IiYKB0ZhY3RSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSKUAgoKRmFjdFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBISCgpzdWJqZWN0X2lkGAggASgIEgsKA2tleRgJIAEoCBINCgV2YWx1ZRgKIAEoCBIUCgxmaWVsZF9udW1iZXIYDCABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIOCgZkb21haW4YECABKAgSEgoKZGF0ZV9zdGFydBgRIAEoCBIQCghldmVudF9pZBgTIAEoCBIXCg9kYXRlX3N1cGVyc2VkZWQYFCABKAgSFQoNc3VwZXJzZWRlZF9ieRgVIAEoCCKxAwoQRmFjdFBhdGNoUmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuRmFjdFJlZhIaCgpzdWJqZWN0X2lkGBAgASgMQgbqghYCEEASCwoDa2V5GBIgASgJEg0KBXZhbHVlGBQgASgJEhQKDGZpZWxkX251bWJlchgYIAEoDRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCBIOCgZkb21haW4YICABKA0SLgoKZGF0ZV9zdGFydBgiIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoIZXZlbnRfaWQYJiABKAxCBuqCFgIQQBIzCg9kYXRlX3N1cGVyc2VkZWQYKCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhwKFGRhdGVfc3VwZXJzZWRlZF9udWxsGCkgASgIEh0KDXN1cGVyc2VkZWRfYnkYKiABKAxCBuqCFgIQQBIaChJzdXBlcnNlZGVkX2J5X251bGwYKyABKAgilwEKD0ZhY3RMaXN0UmVxdWVzdBIgCgdmaWx0ZXJzGAEgAygLMg8uYXBwLkZhY3RGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCEh8KBnNlbGVjdBgGIAEoCzIPLmFwcC5GYWN0U2VsZWN0IkEKEEZhY3RMaXN0UmVzcG9uc2USGAoFaXRlbXMYASADKAsyCS5hcHAuRmFjdBITCgRuZXh0GAIgASgJQgWqAQIIAiJZCgpGYWN0RmlsdGVyEhkKA3JlZhgBIAEoCzIMLmFwcC5GYWN0UmVmEhoKCnN1YmplY3RfaWQYAiABKAxCBuqCFgIQQBIUCgxmaWVsZF9udW1iZXIYAyABKA0y+QEKC0ZhY3RTZXJ2aWNlEiUKA0FkZBITLmFwcC5GYWN0QWRkUmVxdWVzdBoJLmFwcC5GYWN0EjwKB0FkZE1hbnkSFy5hcHAuRmFjdEFkZE1hbnlSZXF1ZXN0GhguYXBwLkZhY3RBZGRNYW55UmVzcG9uc2USJQoDR2V0EhMuYXBwLkZhY3RHZXRSZXF1ZXN0GgkuYXBwLkZhY3QSKQoFUGF0Y2gSFS5hcHAuRmFjdFBhdGNoUmVxdWVzdBoJLmFwcC5GYWN0EjMKBExpc3QSFC5hcHAuRmFjdExpc3RSZXF1ZXN0GhUuYXBwLkZhY3RMaXN0UmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_fact, file_app_payday_tenant_svc_g, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.FactAddRequest
@@ -356,28 +354,6 @@ export const FactPatchRequestSchema: GenMessage<FactPatchRequest> = /*@__PURE__*
   messageDesc(file_app_payday_fact_svc_g, 6);
 
 /**
- * @generated from message app.FactApplyRequest
- */
-export type FactApplyRequest = Message<"app.FactApplyRequest"> & {
-  /**
-   * @generated from field: app.FactRef ref = 1;
-   */
-  ref?: FactRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.FactApplyRequest.
- * Use `create(FactApplyRequestSchema)` to create a new message.
- */
-export const FactApplyRequestSchema: GenMessage<FactApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_fact_svc_g, 7);
-
-/**
  * @generated from message app.FactListRequest
  */
 export type FactListRequest = Message<"app.FactListRequest"> & {
@@ -438,7 +414,7 @@ export type FactListRequest = Message<"app.FactListRequest"> & {
  * Use `create(FactListRequestSchema)` to create a new message.
  */
 export const FactListRequestSchema: GenMessage<FactListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_fact_svc_g, 8);
+  messageDesc(file_app_payday_fact_svc_g, 7);
 
 /**
  * @generated from message app.FactListResponse
@@ -468,7 +444,7 @@ export type FactListResponse = Message<"app.FactListResponse"> & {
  * Use `create(FactListResponseSchema)` to create a new message.
  */
 export const FactListResponseSchema: GenMessage<FactListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_fact_svc_g, 9);
+  messageDesc(file_app_payday_fact_svc_g, 8);
 
 /**
  * @generated from message app.FactFilter
@@ -495,7 +471,7 @@ export type FactFilter = Message<"app.FactFilter"> & {
  * Use `create(FactFilterSchema)` to create a new message.
  */
 export const FactFilterSchema: GenMessage<FactFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_fact_svc_g, 10);
+  messageDesc(file_app_payday_fact_svc_g, 9);
 
 /**
  * @generated from service app.FactService
@@ -539,16 +515,6 @@ export const FactService: GenService<{
   patch: {
     methodKind: "unary";
     input: typeof FactPatchRequestSchema;
-    output: typeof FactSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Fact
-   *
-   * @generated from rpc app.FactService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof FactApplyRequestSchema;
     output: typeof FactSchema;
   },
   /**

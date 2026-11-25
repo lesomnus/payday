@@ -427,10 +427,11 @@ func adds(v *Entity) bool {
 
 // names is whether the Sink keeps the name of a row of `v` what the rules
 // allow ([emitAlias]): it has an alias, and a server that writes one -- an
-// Add, an AddMany or a Patch. An alias that is only read is the app's to
-// write, and already one.
+// Add, an AddMany, a Patch or an Apply. An alias that is only read is the
+// app's to write, and already one.
 func names(v *Entity) bool {
-	return v.Alias && (adds(v) || v.Rpcs().HasPatch())
+	r := v.Rpcs()
+	return v.Alias && (adds(v) || r.HasPatch() || r.HasApply())
 }
 
 // emitSinkAdmit writes what the Sink says about a row an Add would write: its
@@ -553,6 +554,9 @@ func emitAlias(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath)
 	}
 	if v.Rpcs().HasPatch() {
 		emitAliasPatch(g, v, root)
+	}
+	if v.Rpcs().HasApply() {
+		emitAliasApply(g, v, root)
 	}
 }
 
@@ -681,6 +685,77 @@ func emitAliasPatch(g *protogen.GeneratedFile, v *Entity, root protogen.GoImport
 	g.P("")
 }
 
+// emitAliasApply is [emitAlias] for an Apply: the same alias is kept whichever
+// of a Patch and an Apply wrote it.
+//
+// A Patch's alias is a field of its request, which the Sink folds in place. A
+// document's is not: it may name the column by its name, its JSON name or its
+// number, assign it inside a whole message, or test it before or after, and
+// the server behind compiles all of that into one write. Folding it here
+// would be rewriting the document -- taking it apart as the compiler does,
+// and putting it back so that every other entry still means what it meant --
+// which is a second compiler in the Sink. So the document is compiled here, as
+// the gate compiles it, and asked what it writes to the alias: one not already
+// in the form it is kept in is refused, saying that form, and the caller sends
+// it folded. What is stored is then what a Patch of the same name stores.
+//
+// A document this cannot compile is passed on, and the server behind refuses
+// it in its own words, as the gate does. One that clears the alias is refused
+// as one that empties it: an alias is never empty, and the namer is not asked
+// for the reason it is not asked on a Patch.
+func emitAliasApply(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+	entity := "sink" + e + "Entity"
+	number := v.Descriptor().Fields().ByName("alias").Number()
+
+	g.P("// Apply refuses a document that writes an alias in any form but the one it")
+	g.P("// is kept in, which is what a Patch folds the alias it is given into: so the")
+	g.P("// alias kept is the same whichever wrote it.")
+	if forgets(v) {
+		g.P("//")
+		g.P("// And it forgets what the transaction was told about the row, before it")
+		g.P("// is written: a document may move it to a set the caller cannot see. See")
+		g.P("// [seen.Forget].")
+	}
+	g.P("func (s sink", e, ") Apply(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"ApplyRequest"),
+		") (*", root.Ident(e), ", error) {")
+	if forgets(v) {
+		g.P("	", pkgSeen.Ident("Forget"), "(s.store.Db.Driver(), ", strconv.Quote(e), ", req.GetRef())")
+		g.P("")
+	}
+	g.P("	if !req.HasPatch() {")
+	g.P("		return s.", e, "ServiceServer.Apply(ctx, req)")
+	g.P("	}")
+	g.P("")
+	g.P("	plan, err := ", pkgOrmpatch.Ident("Compile"), "(", entity, ", req.GetPatch())")
+	g.P("	if err != nil {")
+	g.P("		// The server behind refuses it, in its own words.")
+	g.P("		return s.", e, "ServiceServer.Apply(ctx, req)")
+	g.P("	}")
+	g.P("	if w, ok := plan.WriteTo(", number, "); ok {")
+	g.P("		given := \"\"")
+	g.P("		if c, ok := w.Op.(", pkgOrmpatch.Ident("SetColumn"), "); ok {")
+	g.P("			given = c.Value.String()")
+	g.P("		}")
+	g.P("		v, err := ", pkgSlug.Ident("ParseAlias"), "(given)")
+	g.P("		if err != nil {")
+	g.P("			return nil, ", pkgPderr.Ident("At"), "(\"alias\", err)")
+	g.P("		}")
+	g.P("		if v != given {")
+	g.P("			return nil, ", pkgPderr.Ident("Invalidf"), "(\"alias\", \"is kept as %q; a document writes it in that form, folded and without surrounding spaces\", v)")
+	g.P("		}")
+	g.P("	}")
+	g.P("")
+	g.P("	return s.", e, "ServiceServer.Apply(ctx, req)")
+	g.P("}")
+	g.P("")
+	g.P("// ", entity, " is what a ", e, " document is compiled against: the entity")
+	g.P("// parsed from the file that declares it, as the server behind parses it.")
+	g.P("var ", entity, " = ", pkgOrmpatch.Ident("MustEntityOf"), "((*", root.Ident(e), ")(nil).ProtoReflect().Descriptor().ParentFile(), ",
+		strconv.Quote(string(v.Descriptor().Name())), ")")
+	g.P("")
+}
+
 // forgets is whether a write to a row of `v` makes what a transaction was told
 // about that row stale: a row named by key, which is the only kind `payday/seen`
 // remembers, with a Patch, an Apply or an Erase to write it with.
@@ -722,7 +797,9 @@ func emitForget(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath
 		g.P("}")
 		g.P("")
 	}
-	if v.Rpcs().HasApply() {
+	// The Apply of an entity whose name the Sink keeps is the one that asks
+	// about the alias, and forgets there; see [emitAliasApply].
+	if v.Rpcs().HasApply() && !names(v) {
 		g.P("// Apply forgets what the transaction was told about the row, before it is")
 		g.P("// written: a document may move it to a set the caller cannot see. See")
 		g.P("// [seen.Forget].")

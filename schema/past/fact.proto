@@ -109,7 +109,6 @@ message Fact {
       add: {many: {}}
       get: {}
       patch: {}
-      apply: {}
     }
     indexes: [
       // The order its list reads in, the tenant first: every read is narrowed

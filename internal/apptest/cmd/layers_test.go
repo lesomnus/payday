@@ -16,6 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lesomnus/payday/audit"
@@ -187,8 +189,10 @@ func TestTenantIsNotPutUpFromInsideOne(t *testing.T) {
 	_, err := b.Walled.Tenant().Add(b.as(ctx), app.TenantAddRequest_builder{Alias: "other"}.Build())
 	x.Equal(codes.Unimplemented, status.Code(err))
 
-	_, err = b.Walled.Tenant().Erase(b.as(ctx), app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build())
-	x.Equal(codes.Unimplemented, status.Code(err))
+	// Taking one down is not even there: this app's overlay switches payday's
+	// Tenant's Erase off (`proto/ext/payday/tenant.ext.proto`), and the gate
+	// writes no refusal of a verb there is not. See
+	// TestAVerbAnOverlaySwitchedIsWhatEveryoneSees.
 
 	// And the deployment's own path is not a privilege anybody satisfies; it
 	// is a different server.
@@ -606,8 +610,14 @@ func TestTheTrailIsNotWrittenByHand(t *testing.T) {
 	}.Build())
 	x.Equal(codes.Unimplemented, status.Code(err))
 
-	_, err = b.Walled.Audit().Erase(b.as(ctx), app.AuditRef_builder{Id: b.Holder.Bytes()}.Build())
-	x.Equal(codes.Unimplemented, status.Code(err))
+	// And nothing else of it writes, because there is nothing else: payday's
+	// trail declares the Add its recorder calls and its reads, and no Patch,
+	// Apply or Erase for this layer to refuse to everybody.
+	d, err := protoregistry.GlobalFiles.FindDescriptorByName("app.AuditService")
+	x.NoError(err)
+	for _, m := range []protoreflect.Name{"Patch", "Apply", "Erase"} {
+		x.Nil(d.(protoreflect.ServiceDescriptor).Methods().ByName(m), m)
+	}
 }
 
 // TestEveryWriteIsOnTheTrail is the half the layer does not do.

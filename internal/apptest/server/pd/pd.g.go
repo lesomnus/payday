@@ -1272,34 +1272,6 @@ func (s Sink) Audit() apptest.AuditServiceServer {
 	return sinkAudit{s.Server.Audit(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
-// Erase forgets what the transaction was told about the row, before it is
-// erased: whether a frame may see it, and where a walk from it arrives.
-// Neither is true of a row that is gone, nor of another put under its
-// key. See [seen.Forget].
-func (s sinkAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req)
-
-	return s.AuditServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
-
-	return s.AuditServiceServer.Apply(ctx, req)
-}
-
-// Patch forgets what the transaction was told about the row, before it is
-// written: a request may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
-
-	return s.AuditServiceServer.Patch(ctx, req)
-}
-
 // orderAudit is how Audits come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -1611,6 +1583,46 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 	}
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.CellServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkCellEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.CellServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.CellServiceServer.Apply(ctx, req)
+}
+
+// sinkCellEntity is what a Cell document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkCellEntity = ormpatch.MustEntityOf((*apptest.Cell)(nil).ProtoReflect().Descriptor().ParentFile(), "Cell")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -1619,15 +1631,6 @@ func (s sinkCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.Cel
 	seen.Forget(s.store.Db.Driver(), "Cell", req)
 
 	return s.CellServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
-	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
-
-	return s.CellServiceServer.Apply(ctx, req)
 }
 
 // Get answers with the Cell as the generated one reads it, and without
@@ -1907,15 +1910,6 @@ type sinkFact struct {
 
 func (s Sink) Fact() apptest.FactServiceServer {
 	return sinkFact{s.Server.Fact(), s.Server.Store, s.w, s.namer, s.joined}
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	seen.Forget(s.store.Db.Driver(), "Fact", req.GetRef())
-
-	return s.FactServiceServer.Apply(ctx, req)
 }
 
 // Patch forgets what the transaction was told about the row, before it is
@@ -2378,6 +2372,46 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 	return s.HolderServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkHolderEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
+// sinkHolderEntity is what a Holder document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkHolderEntity = ormpatch.MustEntityOf((*apptest.Holder)(nil).ProtoReflect().Descriptor().ParentFile(), "Holder")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -2386,15 +2420,6 @@ func (s sinkHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest
 	seen.Forget(s.store.Db.Driver(), "Holder", req)
 
 	return s.HolderServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
-
-	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 // orderHolder is how Holders come back.
@@ -3531,6 +3556,46 @@ func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 	return s.RobotServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.RobotServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkRobotEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.RobotServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.RobotServiceServer.Apply(ctx, req)
+}
+
+// sinkRobotEntity is what a Robot document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkRobotEntity = ormpatch.MustEntityOf((*apptest.Robot)(nil).ProtoReflect().Descriptor().ParentFile(), "Robot")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -3539,15 +3604,6 @@ func (s sinkRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.R
 	seen.Forget(s.store.Db.Driver(), "Robot", req)
 
 	return s.RobotServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
-	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
-
-	return s.RobotServiceServer.Apply(ctx, req)
 }
 
 // orderRobot is how Robots come back.
@@ -4327,25 +4383,6 @@ func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) 
 	return s.TenantServiceServer.Patch(ctx, req)
 }
 
-// Erase forgets what the transaction was told about the row, before it is
-// erased: whether a frame may see it, and where a walk from it arrives.
-// Neither is true of a row that is gone, nor of another put under its
-// key. See [seen.Forget].
-func (s sinkTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	seen.Forget(s.store.Db.Driver(), "Tenant", req)
-
-	return s.TenantServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	seen.Forget(s.store.Db.Driver(), "Tenant", req.GetRef())
-
-	return s.TenantServiceServer.Apply(ctx, req)
-}
-
 // orderTenant is how Tenants come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -4658,6 +4695,46 @@ func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*
 	return s.ThingServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.ThingServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkThingEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.ThingServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.ThingServiceServer.Apply(ctx, req)
+}
+
+// sinkThingEntity is what a Thing document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkThingEntity = ormpatch.MustEntityOf((*apptest.Thing)(nil).ProtoReflect().Descriptor().ParentFile(), "Thing")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -4666,15 +4743,6 @@ func (s sinkThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.T
 	seen.Forget(s.store.Db.Driver(), "Thing", req)
 
 	return s.ThingServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
-	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
-
-	return s.ThingServiceServer.Apply(ctx, req)
 }
 
 // orderThing is how Things come back.
@@ -5075,12 +5143,6 @@ func (s Gate) Tenant() apptest.TenantServiceServer {
 // deployment, through a server this layer is not in front of.
 func (s gateTenant) admit(ctx context.Context, req *apptest.TenantAddRequest) (*apptest.TenantAddRequest, error) {
 	return nil, gate.ErrDeployment("put up")
-}
-
-// Erase is not served either, and it would take everything in the tenant
-// with it.
-func (s gateTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	return nil, gate.ErrDeployment("taken down")
 }
 
 type gateHolder struct {
@@ -5940,28 +6002,6 @@ func (s guardedTenant) Patch(ctx context.Context, req *apptest.TenantPatchReques
 	return s.TenantServiceServer.Patch(ctx, req)
 }
 
-func (s guardedTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	if err := gate.Direct(ctx, apptest.TenantService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.TenantService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.TenantServiceServer.Apply(ctx, req)
-}
-
-func (s guardedTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	if err := gate.Direct(ctx, apptest.TenantService_Erase_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.TenantService_Erase_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.TenantServiceServer.Erase(ctx, req)
-}
-
 func (s guardedTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	if err := gate.Direct(ctx, apptest.TenantService_List_FullMethodName); err != nil {
 		return nil, err
@@ -6550,39 +6590,6 @@ func (s guardedAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*a
 	return s.AuditServiceServer.Get(ctx, req)
 }
 
-func (s guardedAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Patch_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Patch_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Patch(ctx, req)
-}
-
-func (s guardedAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Apply(ctx, req)
-}
-
-func (s guardedAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Erase_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Erase_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Erase(ctx, req)
-}
-
 func (s guardedAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
 	if err := gate.Direct(ctx, apptest.AuditService_List_FullMethodName); err != nil {
 		return nil, err
@@ -6686,17 +6693,6 @@ func (s guardedFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (
 	}
 
 	return s.FactServiceServer.Patch(ctx, req)
-}
-
-func (s guardedFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	if err := gate.Direct(ctx, apptest.FactService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.FactService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.FactServiceServer.Apply(ctx, req)
 }
 
 func (s guardedFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
@@ -6982,18 +6978,6 @@ func (s auditService) Add(ctx context.Context, req *apptest.AuditAddRequest) (*a
 	return nil, errTrail()
 }
 
-func (s auditService) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	return nil, errTrail()
-}
-
-func (s auditService) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	return nil, errTrail()
-}
-
-func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	return nil, errTrail()
-}
-
 // errTrail is Unimplemented and not PermissionDenied, and to everybody: it
 // is not about who is asking, and no credential changes it.
 func errTrail() error {
@@ -7061,14 +7045,6 @@ func (s auditFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*a
 	}
 
 	return s.FactServiceServer.Patch(ctx, req)
-}
-
-func (s auditFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	if !isPastWrite(ctx) {
-		return nil, errPast()
-	}
-
-	return s.FactServiceServer.Apply(ctx, req)
 }
 
 // pastWrite marks a context the past's store hands the servers (`Past`):
@@ -10665,16 +10641,6 @@ func (s interceptTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequ
 		apptest.TenantService_Patch_FullMethodName, req, s.TenantServiceServer.Patch)
 }
 
-func (s interceptTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
-		apptest.TenantService_Apply_FullMethodName, req, s.TenantServiceServer.Apply)
-}
-
-func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
-		apptest.TenantService_Erase_FullMethodName, req, s.TenantServiceServer.Erase)
-}
-
 func (s interceptTenant) List(ctx context.Context, req *apptest.TenantListRequest) (*apptest.TenantListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_List_FullMethodName, req, s.TenantServiceServer.List)
@@ -11019,21 +10985,6 @@ func (s interceptAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (
 		apptest.AuditService_Get_FullMethodName, req, s.AuditServiceServer.Get)
 }
 
-func (s interceptAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Patch_FullMethodName, req, s.AuditServiceServer.Patch)
-}
-
-func (s interceptAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Apply_FullMethodName, req, s.AuditServiceServer.Apply)
-}
-
-func (s interceptAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Erase_FullMethodName, req, s.AuditServiceServer.Erase)
-}
-
 func (s interceptAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
 		apptest.AuditService_List_FullMethodName, req, s.AuditServiceServer.List)
@@ -11095,11 +11046,6 @@ func (s interceptFact) Get(ctx context.Context, req *apptest.FactGetRequest) (*a
 func (s interceptFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
 		apptest.FactService_Patch_FullMethodName, req, s.FactServiceServer.Patch)
-}
-
-func (s interceptFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Apply_FullMethodName, req, s.FactServiceServer.Apply)
 }
 
 func (s interceptFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
@@ -15596,12 +15542,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	switch method {
 	case apptest.AuditService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
-	case apptest.AuditService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.AuditService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.AuditService_Erase_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.CellService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.CellService_Apply_FullMethodName:
@@ -15617,8 +15557,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.FactService_AddMany_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.FactService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.FactService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.FleetService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
@@ -15694,10 +15632,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.TenantService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.TenantService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.TenantService_Erase_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.ThingService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.ThingService_Patch_FullMethodName:
@@ -15812,7 +15746,6 @@ func Admission(policy admission.Policy, options admission.Options) bare.Option {
 			{Row: &apptest.Audit{}, Requests: []proto.Message{
 				&apptest.AuditRef{},
 				&apptest.AuditAddRequest{},
-				&apptest.AuditPatchRequest{},
 			}},
 			{Row: &apptest.Cell{}, Requests: []proto.Message{
 				&apptest.CellRef{},

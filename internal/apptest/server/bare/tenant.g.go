@@ -361,16 +361,6 @@ var tenantOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_tenant_proto
 var tenantPatchColumns = entpatch.Columns{
 	1: tenant.FieldId, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated, 8: tenant.FieldRegion}
 
-func (s TenantServiceServer) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.TenantService_Apply_FullMethodName)
-}
-
 func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, doc *patchpb.Patch, by string) (*apptest.Tenant, error) {
 	plan := &ormpatch.Plan{Entity: tenantOrmEntity}
 	if doc != nil {
@@ -497,80 +487,6 @@ func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, 
 		return nil, err
 	}
 	return out, nil
-}
-
-func (s TenantServiceServer) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	p, err := TenantPick(req)
-	if err != nil {
-		return nil, err
-	}
-	p, err = s.narrow(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := join(ctx, s.Db, s.Rec != nil || s.admission != nil, s.admission != nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Close()
-
-	st := s
-	st.Db = tx.Db
-
-	var k any
-	var previous *apptest.Tenant
-	if s.Rec != nil || s.admission != nil {
-		images := s.images(apptest.TenantService_Erase_FullMethodName)
-		var v *ent.Tenant
-		var err error
-		if images.Previous {
-			v, err = st.snapshot(ctx, p, true)
-		} else {
-			v, err = st.Db.Tenant.Query().Where(p).Select(tenant.FieldId).Only(ctx)
-		}
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return &apptest.TenantEraseResponse{}, nil
-			}
-			return nil, err
-		}
-
-		k = v.Id
-		if images.Previous {
-			previous = s.image(v.Proto())
-		}
-		p = tenant.And(p, tenant.IdEQ(v.Id))
-	}
-
-	tx.Writing()
-	n, err := st.Db.Tenant.Delete().Where(p).Exec(ctx)
-	if err != nil {
-		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
-			return nil, status.Error(codes.FailedPrecondition, "Tenant is still named by another row and cannot be erased")
-		}
-		return nil, err
-	}
-	if n > 0 {
-		if err := record(ctx, s.Rec, s.admission, st.Db, Change{
-			Entity:   "app.Tenant",
-			By:       apptest.TenantService_Erase_FullMethodName,
-			Key:      k,
-			Previous: previous,
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	res := &apptest.TenantEraseResponse{}
-	res.SetErased(n > 0)
-
-	return res, nil
 }
 
 func TenantPick(req *apptest.TenantRef) (predicate.Tenant, error) {

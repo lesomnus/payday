@@ -9,15 +9,13 @@ import { file_app_payday_tenant } from "./tenant_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
-import type { Patch } from "../../patch/patch_pb.js";
-import { file_patch_patch } from "../../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/payday/tenant_svc.g.proto.
  */
 export const file_app_payday_tenant_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("Ch1hcHAvcGF5ZGF5L3RlbmFudF9zdmMuZy5wcm90bxIDYXBwIpECChBUZW5hbnRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASFAoFYWxpYXMYBCABKAlCBaoBAggCEhMKBG5hbWUYBSABKAlCBaoBAggCEhMKBGRlc2MYBiABKAlCBaoBAggCEjEKBmxhYmVscxgHIAMoCzIhLmFwcC5UZW5hbnRBZGRSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoGcmVnaW9uGAggASgJQgWqAQIIAhotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIlIKEFRlbmFudEdldFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLlRlbmFudFJlZhIhCgZzZWxlY3QYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0IjkKCVRlbmFudFJlZhIUCgJpZBgBIAEoDEIG6oIWAhBASAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkikgEKDFRlbmFudFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSDAoEbmFtZRgFIAEoCBIMCgRkZXNjGAYgASgIEg4KBmxhYmVscxgHIAEoCBIUCgxkYXRlX3VwZGF0ZWQYDSABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEg4KBnJlZ2lvbhgIIAEoCCKeAgoSVGVuYW50UGF0Y2hSZXF1ZXN0EhsKA3JlZhgBIAEoCzIOLmFwcC5UZW5hbnRSZWYSDQoFYWxpYXMYCCABKAkSDAoEbmFtZRgKIAEoCRIMCgRkZXNjGAwgASgJEjMKBmxhYmVscxgOIAMoCzIjLmFwcC5UZW5hbnRQYXRjaFJlcXVlc3QuTGFiZWxzRW50cnkSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgSDgoGcmVnaW9uGBAgASgJGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiTgoSVGVuYW50QXBwbHlSZXF1ZXN0EhsKA3JlZhgBIAEoCzIOLmFwcC5UZW5hbnRSZWYSGwoFcGF0Y2gYAiABKAsyDC5wYXRjaC5QYXRjaCIlChNUZW5hbnRFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCKdAQoRVGVuYW50TGlzdFJlcXVlc3QSIgoHZmlsdGVycxgBIAMoCzIRLmFwcC5UZW5hbnRGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCEiEKBnNlbGVjdBgGIAEoCzIRLmFwcC5UZW5hbnRTZWxlY3QiRQoSVGVuYW50TGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLlRlbmFudBITCgRuZXh0GAIgASgJQgWqAQIIAiIrCgxUZW5hbnRGaWx0ZXISGwoDcmVmGAEgASgLMg4uYXBwLlRlbmFudFJlZjKvAgoNVGVuYW50U2VydmljZRIpCgNBZGQSFS5hcHAuVGVuYW50QWRkUmVxdWVzdBoLLmFwcC5UZW5hbnQSKQoDR2V0EhUuYXBwLlRlbmFudEdldFJlcXVlc3QaCy5hcHAuVGVuYW50Ei0KBVBhdGNoEhcuYXBwLlRlbmFudFBhdGNoUmVxdWVzdBoLLmFwcC5UZW5hbnQSLQoFQXBwbHkSFy5hcHAuVGVuYW50QXBwbHlSZXF1ZXN0GgsuYXBwLlRlbmFudBIxCgVFcmFzZRIOLmFwcC5UZW5hbnRSZWYaGC5hcHAuVGVuYW50RXJhc2VSZXNwb25zZRI3CgRMaXN0EhYuYXBwLlRlbmFudExpc3RSZXF1ZXN0GhcuYXBwLlRlbmFudExpc3RSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("Ch1hcHAvcGF5ZGF5L3RlbmFudF9zdmMuZy5wcm90bxIDYXBwIpECChBUZW5hbnRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASFAoFYWxpYXMYBCABKAlCBaoBAggCEhMKBG5hbWUYBSABKAlCBaoBAggCEhMKBGRlc2MYBiABKAlCBaoBAggCEjEKBmxhYmVscxgHIAMoCzIhLmFwcC5UZW5hbnRBZGRSZXF1ZXN0LkxhYmVsc0VudHJ5EjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoGcmVnaW9uGAggASgJQgWqAQIIAhotCgtMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIlIKEFRlbmFudEdldFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLlRlbmFudFJlZhIhCgZzZWxlY3QYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0IjkKCVRlbmFudFJlZhIUCgJpZBgBIAEoDEIG6oIWAhBASAASDwoFYWxpYXMYBCABKAlIAEIFCgNrZXkikgEKDFRlbmFudFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSDAoEbmFtZRgFIAEoCBIMCgRkZXNjGAYgASgIEg4KBmxhYmVscxgHIAEoCBIUCgxkYXRlX3VwZGF0ZWQYDSABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEg4KBnJlZ2lvbhgIIAEoCCKeAgoSVGVuYW50UGF0Y2hSZXF1ZXN0EhsKA3JlZhgBIAEoCzIOLmFwcC5UZW5hbnRSZWYSDQoFYWxpYXMYCCABKAkSDAoEbmFtZRgKIAEoCRIMCgRkZXNjGAwgASgJEjMKBmxhYmVscxgOIAMoCzIjLmFwcC5UZW5hbnRQYXRjaFJlcXVlc3QuTGFiZWxzRW50cnkSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgSDgoGcmVnaW9uGBAgASgJGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEinQEKEVRlbmFudExpc3RSZXF1ZXN0EiIKB2ZpbHRlcnMYASADKAsyES5hcHAuVGVuYW50RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAhIWCgdyZXZlcnNlGAQgASgIQgWqAQIIAhIhCgZzZWxlY3QYBiABKAsyES5hcHAuVGVuYW50U2VsZWN0IkUKElRlbmFudExpc3RSZXNwb25zZRIaCgVpdGVtcxgBIAMoCzILLmFwcC5UZW5hbnQSEwoEbmV4dBgCIAEoCUIFqgECCAIiKwoMVGVuYW50RmlsdGVyEhsKA3JlZhgBIAEoCzIOLmFwcC5UZW5hbnRSZWYyzQEKDVRlbmFudFNlcnZpY2USKQoDQWRkEhUuYXBwLlRlbmFudEFkZFJlcXVlc3QaCy5hcHAuVGVuYW50EikKA0dldBIVLmFwcC5UZW5hbnRHZXRSZXF1ZXN0GgsuYXBwLlRlbmFudBItCgVQYXRjaBIXLmFwcC5UZW5hbnRQYXRjaFJlcXVlc3QaCy5hcHAuVGVuYW50EjcKBExpc3QSFi5hcHAuVGVuYW50TGlzdFJlcXVlc3QaFy5hcHAuVGVuYW50TGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_tenant, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.TenantAddRequest
@@ -236,51 +234,6 @@ export const TenantPatchRequestSchema: GenMessage<TenantPatchRequest> = /*@__PUR
   messageDesc(file_app_payday_tenant_svc_g, 4);
 
 /**
- * @generated from message app.TenantApplyRequest
- */
-export type TenantApplyRequest = Message<"app.TenantApplyRequest"> & {
-  /**
-   * @generated from field: app.TenantRef ref = 1;
-   */
-  ref?: TenantRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.TenantApplyRequest.
- * Use `create(TenantApplyRequestSchema)` to create a new message.
- */
-export const TenantApplyRequestSchema: GenMessage<TenantApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_tenant_svc_g, 5);
-
-/**
- * @generated from message app.TenantEraseResponse
- */
-export type TenantEraseResponse = Message<"app.TenantEraseResponse"> & {
-  /**
-   * Erased is whether this call is the one that erased the row.
-   *
-   * False for a row that was already gone, was never there, or is out
-   * of this caller's reach -- which are one answer on purpose, and the
-   * reason the RPC does not fail instead.
-   *
-   * @generated from field: bool erased = 1;
-   */
-  erased: boolean;
-};
-
-/**
- * Describes the message app.TenantEraseResponse.
- * Use `create(TenantEraseResponseSchema)` to create a new message.
- */
-export const TenantEraseResponseSchema: GenMessage<TenantEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_tenant_svc_g, 6);
-
-/**
  * @generated from message app.TenantListRequest
  */
 export type TenantListRequest = Message<"app.TenantListRequest"> & {
@@ -341,7 +294,7 @@ export type TenantListRequest = Message<"app.TenantListRequest"> & {
  * Use `create(TenantListRequestSchema)` to create a new message.
  */
 export const TenantListRequestSchema: GenMessage<TenantListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_tenant_svc_g, 7);
+  messageDesc(file_app_payday_tenant_svc_g, 5);
 
 /**
  * @generated from message app.TenantListResponse
@@ -371,7 +324,7 @@ export type TenantListResponse = Message<"app.TenantListResponse"> & {
  * Use `create(TenantListResponseSchema)` to create a new message.
  */
 export const TenantListResponseSchema: GenMessage<TenantListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_tenant_svc_g, 8);
+  messageDesc(file_app_payday_tenant_svc_g, 6);
 
 /**
  * @generated from message app.TenantFilter
@@ -388,7 +341,7 @@ export type TenantFilter = Message<"app.TenantFilter"> & {
  * Use `create(TenantFilterSchema)` to create a new message.
  */
 export const TenantFilterSchema: GenMessage<TenantFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_tenant_svc_g, 9);
+  messageDesc(file_app_payday_tenant_svc_g, 7);
 
 /**
  * @generated from service app.TenantService
@@ -423,26 +376,6 @@ export const TenantService: GenService<{
     methodKind: "unary";
     input: typeof TenantPatchRequestSchema;
     output: typeof TenantSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Tenant
-   *
-   * @generated from rpc app.TenantService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof TenantApplyRequestSchema;
-    output: typeof TenantSchema;
-  },
-  /**
-   * Erase deletes a Tenant
-   *
-   * @generated from rpc app.TenantService.Erase
-   */
-  erase: {
-    methodKind: "unary";
-    input: typeof TenantRefSchema;
-    output: typeof TenantEraseResponseSchema;
   },
   /**
    * List reads Tenants a page at a time.

@@ -71,8 +71,7 @@ message Tenant {
       add: {}
       get: {}
       patch: {}
-      apply: {}
-      erase: {}
+      erase: {disabled: true}
     }
     indexes: [
       // The order its list reads in. Small next to anything a tenant holds,

@@ -8,4 +8,12 @@ message Tenant {
   // Where the deployment keeps this tenant's rows. The deployment's to say,
   // and never a request's.
   string region = 8 [(payday.field) = {stamped: true}];
+
+  // This app never takes a tenant down through a server -- the deployment
+  // would, with its database -- so it has no `TenantService/Erase` for every
+  // client to carry and every port to refuse. An overlay may switch off a verb
+  // of payday's that payday itself does not call (lesomnus/roster#531).
+  option (orm.message) = {
+    rpc: {erase: {disabled: true}}
+  };
 }

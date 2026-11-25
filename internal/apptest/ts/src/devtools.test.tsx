@@ -767,20 +767,25 @@ describe('bytes that are not an identifier', () => {
 })
 
 describe('a hex dump', () => {
-	/** long is a value with more than one line in it. */
+	/**
+	 * long is a value with more than one line in it, of an entity a Patch
+	 * writes: what is edited here is saved through one. It was a row of the
+	 * trail, which has no Patch since payday's trail declares only what payday
+	 * calls of it (lesomnus/roster#531).
+	 */
 	function long(): void {
 		store.put(
-			Audit.typeName,
-			create(AuditSchema, {
-				id: pdid.newId(AuditDomain).bytes,
-				patch: new Uint8Array(20).map((_, i) => i),
+			Robot.typeName,
+			create(RobotSchema, {
+				id: pdid.newId(RobotDomain).bytes,
+				secret: new Uint8Array(20).map((_, i) => i),
 			}),
 		)
 	}
 
 	async function open(what: string): Promise<void> {
 		await mount()
-		await pick(Audit.typeName)
+		await pick(Robot.typeName)
 		await tab('store')
 		await act(async () => void fireEvent.click(screen.getByText(what)))
 	}

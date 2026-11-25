@@ -9,15 +9,13 @@ import { file_app_payday_audit } from "./audit_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
-import type { Patch } from "../../patch/patch_pb.js";
-import { file_patch_patch } from "../../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/payday/audit_svc.g.proto.
  */
 export const file_app_payday_audit_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("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dBgGIAEoCzIQLmFwcC5BdWRpdFNlbGVjdCJDChFBdWRpdExpc3RSZXNwb25zZRIZCgVpdGVtcxgBIAMoCzIKLmFwcC5BdWRpdBITCgRuZXh0GAIgASgJQgWqAQIIAiKlAQoLQXVkaXRGaWx0ZXISGQoJb2JqZWN0X2lkGAEgASgMQgbqghYCEEASGAoIYWN0b3JfaWQYAiABKAxCBuqCFgIQQBIZCgl0ZW5hbnRfaWQYAyABKAxCBuqCFgIQQBIfCg9hY3Rvcl90ZW5hbnRfaWQYBCABKAxCBuqCFgIQQBIlChVjb3VudGVycGFydF90ZW5hbnRfaWQYBSABKAxCBuqCFgIQQDKiAgoMQXVkaXRTZXJ2aWNlEicKA0FkZBIULmFwcC5BdWRpdEFkZFJlcXVlc3QaCi5hcHAuQXVkaXQSJwoDR2V0EhQuYXBwLkF1ZGl0R2V0UmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVQYXRjaBIWLmFwcC5BdWRpdFBhdGNoUmVxdWVzdBoKLmFwcC5BdWRpdBIrCgVBcHBseRIWLmFwcC5BdWRpdEFwcGx5UmVxdWVzdBoKLmFwcC5BdWRpdBIvCgVFcmFzZRINLmFwcC5BdWRpdFJlZhoXLmFwcC5BdWRpdEVyYXNlUmVzcG9uc2USNQoETGlzdBIVLmFwcC5BdWRpdExpc3RSZXF1ZXN0GhYuYXBwLkF1ZGl0TGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_audit, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("ChxhcHAvcGF5ZGF5L2F1ZGl0X3N2Yy5nLnByb3RvEgNhcHAi9QMKD0F1ZGl0QWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEh4KCXRlbmFudF9pZBgCIAEoDEILqgECCALqghYCEEASHQoIYWN0b3JfaWQYCCABKAxCC6oBAggC6oIWAhBAEhkKCWNhbGxlcl9pZBgXIAEoDEIG6oIWAhBAEiAKEGNhbGxlcl90ZW5hbnRfaWQYGCABKAxCBuqCFgIQQBIQCghwcmVzZW5jZRgZIAEoCRIXCgh0cmFjZV9pZBgJIAEoDEIFqgECCAISFQoGYWN0aW9uGAogASgJQgWqAQIIAhIeCglvYmplY3RfaWQYCyABKAxCC6oBAggC6oIWAhBAEhQKBXBhdGNoGAwgASgMQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiQKD2FjdG9yX3RlbmFudF9pZBgQIAEoDEILqgECCALqghYCEEASFAoFdmFsdWUYESABKAxCBaoBAggCEiUKFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgSIAEoDEIG6oIWAhBAEg4KBmRvbWFpbhgTIAEoDRIOCgZmaWVsZHMYFCADKA0SDgoGZGlnZXN0GBUgASgMEhUKDWRpZ2VzdF9maWVsZHMYFiADKA0iTwoPQXVkaXRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5BdWRpdFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuQXVkaXRTZWxlY3QiJwoIQXVkaXRSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSLmAgoLQXVkaXRTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIRCgljYWxsZXJfaWQYFyABKAgSGAoQY2FsbGVyX3RlbmFudF9pZBgYIAEoCBIQCghwcmVzZW5jZRgZIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSEQoJb2JqZWN0X2lkGAsgASgIEg0KBXBhdGNoGAwgASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBIXCg9hY3Rvcl90ZW5hbnRfaWQYECABKAgSDQoFdmFsdWUYESABKAgSHQoVY291bnRlcnBhcnRfdGVuYW50X2lkGBIgASgIEg4KBmRvbWFpbhgTIAEoCBIOCgZmaWVsZHMYFCABKAgSDgoGZGlnZXN0GBUgASgIEhUKDWRpZ2VzdF9maWVsZHMYFiABKAgimgEKEEF1ZGl0TGlzdFJlcXVlc3QSIQoHZmlsdGVycxgBIAMoCzIQLmFwcC5BdWRpdEZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAISIAoGc2VsZWN0GAYgASgLMhAuYXBwLkF1ZGl0U2VsZWN0IkMKEUF1ZGl0TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLkF1ZGl0EhMKBG5leHQYAiABKAlCBaoBAggCIqUBCgtBdWRpdEZpbHRlchIZCglvYmplY3RfaWQYASABKAxCBuqCFgIQQBIYCghhY3Rvcl9pZBgCIAEoDEIG6oIWAhBAEhkKCXRlbmFudF9pZBgDIAEoDEIG6oIWAhBAEh8KD2FjdG9yX3RlbmFudF9pZBgEIAEoDEIG6oIWAhBAEiUKFWNvdW50ZXJwYXJ0X3RlbmFudF9pZBgFIAEoDEIG6oIWAhBAMpcBCgxBdWRpdFNlcnZpY2USJwoDQWRkEhQuYXBwLkF1ZGl0QWRkUmVxdWVzdBoKLmFwcC5BdWRpdBInCgNHZXQSFC5hcHAuQXVkaXRHZXRSZXF1ZXN0GgouYXBwLkF1ZGl0EjUKBExpc3QSFS5hcHAuQXVkaXRMaXN0UmVxdWVzdBoWLmFwcC5BdWRpdExpc3RSZXNwb25zZUItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_audit, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.AuditAddRequest
@@ -269,188 +267,6 @@ export const AuditSelectSchema: GenMessage<AuditSelect> = /*@__PURE__*/
   messageDesc(file_app_payday_audit_svc_g, 3);
 
 /**
- * @generated from message app.AuditPatchRequest
- */
-export type AuditPatchRequest = Message<"app.AuditPatchRequest"> & {
-  /**
-   * @generated from field: app.AuditRef ref = 1;
-   */
-  ref?: AuditRef | undefined;
-
-  /**
-   * @generated from field: bytes tenant_id = 4;
-   */
-  tenantId: Uint8Array;
-
-  /**
-   * @generated from field: bytes actor_id = 16;
-   */
-  actorId: Uint8Array;
-
-  /**
-   * @generated from field: bytes caller_id = 46;
-   */
-  callerId: Uint8Array;
-
-  /**
-   * Clear caller_id instead of writing it.
-   * It takes a field of its own because an unset value already means
-   * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and caller_id clears.
-   *
-   * @generated from field: bool caller_id_null = 47;
-   */
-  callerIdNull: boolean;
-
-  /**
-   * @generated from field: bytes caller_tenant_id = 48;
-   */
-  callerTenantId: Uint8Array;
-
-  /**
-   * Clear caller_tenant_id instead of writing it.
-   * It takes a field of its own because an unset value already means
-   * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and caller_tenant_id clears.
-   *
-   * @generated from field: bool caller_tenant_id_null = 49;
-   */
-  callerTenantIdNull: boolean;
-
-  /**
-   * @generated from field: string presence = 50;
-   */
-  presence: string;
-
-  /**
-   * Clear presence instead of writing it.
-   * It takes a field of its own because an unset value already means
-   * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and presence clears.
-   *
-   * @generated from field: bool presence_null = 51;
-   */
-  presenceNull: boolean;
-
-  /**
-   * @generated from field: bytes trace_id = 18;
-   */
-  traceId: Uint8Array;
-
-  /**
-   * @generated from field: string action = 20;
-   */
-  action: string;
-
-  /**
-   * @generated from field: bytes object_id = 22;
-   */
-  objectId: Uint8Array;
-
-  /**
-   * @generated from field: bytes patch = 24;
-   */
-  patch: Uint8Array;
-
-  /**
-   * @generated from field: bytes actor_tenant_id = 32;
-   */
-  actorTenantId: Uint8Array;
-
-  /**
-   * @generated from field: bytes value = 34;
-   */
-  value: Uint8Array;
-
-  /**
-   * @generated from field: bytes counterpart_tenant_id = 36;
-   */
-  counterpartTenantId: Uint8Array;
-
-  /**
-   * Clear counterpart_tenant_id instead of writing it.
-   * It takes a field of its own because an unset value already means
-   * "leave it alone", so no value could have meant NULL. It wins
-   * outright: setting both this and counterpart_tenant_id clears.
-   *
-   * @generated from field: bool counterpart_tenant_id_null = 37;
-   */
-  counterpartTenantIdNull: boolean;
-
-  /**
-   * @generated from field: uint32 domain = 38;
-   */
-  domain: number;
-
-  /**
-   * @generated from field: repeated uint32 fields = 40;
-   */
-  fields: number[];
-
-  /**
-   * @generated from field: bytes digest = 42;
-   */
-  digest: Uint8Array;
-
-  /**
-   * @generated from field: repeated uint32 digest_fields = 44;
-   */
-  digestFields: number[];
-};
-
-/**
- * Describes the message app.AuditPatchRequest.
- * Use `create(AuditPatchRequestSchema)` to create a new message.
- */
-export const AuditPatchRequestSchema: GenMessage<AuditPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 4);
-
-/**
- * @generated from message app.AuditApplyRequest
- */
-export type AuditApplyRequest = Message<"app.AuditApplyRequest"> & {
-  /**
-   * @generated from field: app.AuditRef ref = 1;
-   */
-  ref?: AuditRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.AuditApplyRequest.
- * Use `create(AuditApplyRequestSchema)` to create a new message.
- */
-export const AuditApplyRequestSchema: GenMessage<AuditApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 5);
-
-/**
- * @generated from message app.AuditEraseResponse
- */
-export type AuditEraseResponse = Message<"app.AuditEraseResponse"> & {
-  /**
-   * Erased is whether this call is the one that erased the row.
-   *
-   * False for a row that was already gone, was never there, or is out
-   * of this caller's reach -- which are one answer on purpose, and the
-   * reason the RPC does not fail instead.
-   *
-   * @generated from field: bool erased = 1;
-   */
-  erased: boolean;
-};
-
-/**
- * Describes the message app.AuditEraseResponse.
- * Use `create(AuditEraseResponseSchema)` to create a new message.
- */
-export const AuditEraseResponseSchema: GenMessage<AuditEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 6);
-
-/**
  * @generated from message app.AuditListRequest
  */
 export type AuditListRequest = Message<"app.AuditListRequest"> & {
@@ -511,7 +327,7 @@ export type AuditListRequest = Message<"app.AuditListRequest"> & {
  * Use `create(AuditListRequestSchema)` to create a new message.
  */
 export const AuditListRequestSchema: GenMessage<AuditListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 7);
+  messageDesc(file_app_payday_audit_svc_g, 4);
 
 /**
  * @generated from message app.AuditListResponse
@@ -541,7 +357,7 @@ export type AuditListResponse = Message<"app.AuditListResponse"> & {
  * Use `create(AuditListResponseSchema)` to create a new message.
  */
 export const AuditListResponseSchema: GenMessage<AuditListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 8);
+  messageDesc(file_app_payday_audit_svc_g, 5);
 
 /**
  * @generated from message app.AuditFilter
@@ -578,7 +394,7 @@ export type AuditFilter = Message<"app.AuditFilter"> & {
  * Use `create(AuditFilterSchema)` to create a new message.
  */
 export const AuditFilterSchema: GenMessage<AuditFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_audit_svc_g, 9);
+  messageDesc(file_app_payday_audit_svc_g, 6);
 
 /**
  * @generated from service app.AuditService
@@ -603,36 +419,6 @@ export const AuditService: GenService<{
     methodKind: "unary";
     input: typeof AuditGetRequestSchema;
     output: typeof AuditSchema;
-  },
-  /**
-   * Patch updates an existing Audit
-   *
-   * @generated from rpc app.AuditService.Patch
-   */
-  patch: {
-    methodKind: "unary";
-    input: typeof AuditPatchRequestSchema;
-    output: typeof AuditSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Audit
-   *
-   * @generated from rpc app.AuditService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof AuditApplyRequestSchema;
-    output: typeof AuditSchema;
-  },
-  /**
-   * Erase deletes a Audit
-   *
-   * @generated from rpc app.AuditService.Erase
-   */
-  erase: {
-    methodKind: "unary";
-    input: typeof AuditRefSchema;
-    output: typeof AuditEraseResponseSchema;
   },
   /**
    * List reads Audits a page at a time.

@@ -492,7 +492,7 @@ What does **not** work:
 payday's own Event and Fact, in an app that keeps a past (payday#151), are
 the exception: which of their verbs are internal is not left to you. The
 generated `Audit` layer refuses every write of either that the `past`
-package did not make -- `Add` and `AddMany` of both, `Patch` and `Apply` of a
+package did not make -- `Add` and `AddMany` of both, and the `Patch` of a
 fact -- from a caller over the wire, through `Ungated`, or from your own
 code through the stack, with `PermissionDenied`:
 

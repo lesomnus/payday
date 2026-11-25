@@ -566,7 +566,10 @@ string alias = 4;
 
 Declaring it turns on rather a lot. Every write of it is folded and checked on
 the way in, so `"  Arm-01 "` and `"arm-01"` are one row and `"Not A Name"` is
-refused with the field it was in. The row becomes reachable by
+refused with the field it was in. An `Apply`'s document is held to the same
+alias rather than rewritten: one that writes `"  Arm-01 "` is refused, saying
+it is kept as `"arm-01"`, and is sent in that form -- so what is stored is the
+same whichever of the two wrote it. The row becomes reachable by
 **slug** — `@acme/arm-01` — wherever a reference is taken, and the generated
 `RobotRefBySlug` is what carries it.
 
@@ -842,7 +845,9 @@ You may add at any number payday does not use; changing one it does is refused:
 an overlay may add to one of payday's entities and may not change it.
 payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.
 Of its optional records, payday keeps every number they declare, and an app's own go at any other.
-Of its options, an overlay may add an index to (orm.message), and nothing else.
+Of its options, an overlay may add an index to (orm.message), and of Holder and Tenant switch a verb
+off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`;
+nothing else.
 
   app.Holder: 4 is payday's "alias" (string) and was redeclared as "handle" (string)
 ```
@@ -875,7 +880,46 @@ payday's declaration, so an overlay that adds anything to it is refused.
 `(payday.entity) = {tenanted: {via: "tenant"}}` on Holder is refused even though
 it restates the default, because saying nothing **is** Holder's declaration.
 Anything in `(orm.message)` other than an index is refused the same way, and
-where both sides set the same value, payday's is the one kept.
+where both sides set the same value, payday's is the one kept -- but for the
+verbs of `Holder` and `Tenant`.
+
+### Switching a verb of payday's `Holder` and `Tenant`
+
+They are the two of payday's an app serves as its own, its people and its
+customers, and an app that never erases a tenant through a server should not
+have `TenantService/Erase` in every client and refuse it at every port. So an
+overlay of either may switch a verb:
+
+- **Off**, `rpc: {erase: {disabled: true}}`, for one payday's entity has and
+  payday's own code does not call. Of both, that is `patch` and `erase`. `add`
+  and `get` are payday's: `init` puts up the first tenant and its first holder
+  through `Add`, the gate reads the tenant a row is put into through `Get`, and
+  signing in reads the holder a credential names. Switching one of those off is
+  refused, naming the entity, the verb and what calls it:
+
+  ```
+    app.Tenant: (orm.message) rpc.get.disabled: payday calls this Tenant's Get -- the gate reads, through it, the tenant a row is put into or an edge is moved onto, and a page made by `pd new` reads its tenant -- so it is not an overlay's to switch off
+  ```
+
+- **On**, `rpc: {apply: {}}`: payday's declare no `Apply`, and an app that
+  writes one of them with a patch document asks for it. Every layer payday
+  writes for an `Apply` is written for it, as for an app's own entity.
+
+Nothing else is switched on -- not an `AddMany`, which payday's own never have,
+and no verb of any other entity of payday's: the trail, the access record, the
+past, the outbox and the rest are written by payday as a consequence of
+something else, and declare what payday calls of them.
+
+```proto
+message Tenant {
+  option (orm.message) = {
+    rpc: {erase: {disabled: true}}
+  };
+}
+```
+
+The merged entity is what every generator reads, so a verb switched off is gone
+from the contract, the server, the clients and the command tree.
 
 What the gate asks of your own entities it asks of what an overlay adds to
 these. A field the overlay stamps (`(payday.field) = {stamped: true}`) is refused

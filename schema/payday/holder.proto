@@ -76,7 +76,6 @@ message Holder {
       add: {}
       get: {}
       patch: {}
-      apply: {}
       erase: {}
     }
     indexes: [

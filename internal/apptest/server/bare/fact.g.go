@@ -562,16 +562,6 @@ var factOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_fact_proto, "F
 var factPatchColumns = entpatch.Columns{
 	1: fact.FieldId, 2: fact.TenantColumn, 8: fact.FieldSubjectId, 9: fact.FieldKey, 10: fact.FieldValue, 12: fact.FieldFieldNumber, 13: fact.FieldDateUpdated, 15: fact.FieldDateCreated, 16: fact.FieldDomain, 17: fact.FieldDateStart, 19: fact.FieldEventId, 20: fact.FieldDateSuperseded, 21: fact.FieldSupersededBy}
 
-func (s FactServiceServer) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.FactService_Apply_FullMethodName)
-}
-
 func (s FactServiceServer) apply(ctx context.Context, ref *apptest.FactRef, doc *patchpb.Patch, by string) (*apptest.Fact, error) {
 	plan := &ormpatch.Plan{Entity: factOrmEntity}
 	if doc != nil {

@@ -5,7 +5,6 @@ import "app/payday/fact.proto";
 import "app/payday/tenant_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -18,8 +17,6 @@ service FactService {
   rpc Get(FactGetRequest) returns (Fact);
   // Patch updates an existing Fact
   rpc Patch(FactPatchRequest) returns (Fact);
-  // Apply applies a patch document to an existing Fact
-  rpc Apply(FactApplyRequest) returns (Fact);
   // List reads Facts a page at a time.
   rpc List(FactListRequest) returns (FactListResponse);
 }
@@ -115,11 +112,6 @@ message FactPatchRequest {
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and superseded_by clears.
   bool superseded_by_null = 43;
-}
-
-message FactApplyRequest {
-  FactRef ref = 1;
-  patch.Patch patch = 2;
 }
 
 message FactListRequest {

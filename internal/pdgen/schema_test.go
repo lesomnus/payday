@@ -664,10 +664,12 @@ message Site {
 		is:   `option (payday.entity) = {domain: 2, own: OWN_HOLDER, tenanted: {via: "tenant"}};`,
 		says: "(payday.entity) tenanted is not payday's",
 	}, {
-		what: "turning one of payday's rpcs off",
+		// The one verb of payday's Holder an overlay may not switch off is
+		// one payday calls; see TestAnOverlayMaySwitchAVerbOfPaydaysWithinWhatPaydayNeeds.
+		what: "turning off an rpc payday calls",
 		was:  `option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};`,
 		is:   `option (orm.message) = {rpc: {add: {disabled: true}, get: {}, patch: {}, erase: {}}};`,
-		says: "(orm.message) rpc.add.disabled is not payday's",
+		says: "(orm.message) rpc.add.disabled: payday calls this Holder's Add",
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			if !strings.Contains(holder(""), tt.was) {

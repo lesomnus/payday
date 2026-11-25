@@ -240,9 +240,19 @@ func CheckOverlay(s *Schema) error {
 		}
 
 		m, _ := proto.GetExtension(v.Descriptor().Options(), ormpb.E_Message).(*ormpb.MessageOptions)
+		m, refused := switched(v, m, d.Message)
+		errs = append(errs, refused...)
 		for _, p := range added(withoutIndexes(m), withoutIndexes(d.Message), "") {
+			if switchable(v.Own) {
+				errs = append(errs, fmt.Sprintf(
+					"%s: (orm.message) %s is not payday's; an overlay may add an index there, switch off a verb payday "+
+						"does not call (`rpc: {erase: {disabled: true}}`) or ask for an Apply (`rpc: {apply: {}}`), and nothing else",
+					v.FullName(), p))
+				continue
+			}
 			errs = append(errs, fmt.Sprintf(
-				"%s: (orm.message) %s is not payday's; an overlay may add an index there and nothing else",
+				"%s: (orm.message) %s is not payday's; an overlay may add an index there and nothing else -- "+
+					"a verb is switched only on payday's Holder and Tenant",
 				v.FullName(), p))
 		}
 	}
@@ -255,8 +265,80 @@ func CheckOverlay(s *Schema) error {
 		"an overlay may add to one of payday's entities and may not change it.\n"+
 			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n"+
 			"Of its optional records, payday keeps every number they declare, and an app's own go at any other.\n"+
-			"Of its options, an overlay may add an index to (orm.message), and nothing else.\n\n  %s",
+			"Of its options, an overlay may add an index to (orm.message), and of Holder and Tenant switch a verb\n"+
+			"off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`;\n"+
+			"nothing else.\n\n  %s",
 		strings.Join(errs, "\n  "))
+}
+
+// verbs are the verbs of `orm.RpcOptions` an overlay may switch on payday's
+// Holder and Tenant, by their names there. `add.many` is not one: it is inside
+// `add`, and payday's own have no AddMany ([TestPaydaysOwnHaveNoAddMany]).
+var verbs = []protoreflect.Name{"add", "get", "patch", "apply", "erase"}
+
+// switched is `got` with the verbs an overlay may switch taken back to what
+// payday ships, so that what is left is compared as before, and a refusal for
+// each verb switched off that payday's own code calls (see [paydayCalls]).
+//
+// Of payday's Holder and Tenant, and of no other entity of payday's: those two
+// are the ones an app serves as its own -- its customers and its people -- and
+// an app that never erases a tenant should not have `TenantService/Erase` in
+// every client and refuse it at every port. Every other entity of payday's is
+// a record payday writes as a consequence of something else, or one an
+// optional feature writes and reads, and its verbs are the ones that feature
+// calls.
+//
+// Off is a verb payday's entity has, said `disabled: true`. On is an Apply,
+// where payday's has none, said as `apply: {}`; nothing else is switched on --
+// not `add.many`, which is refused as before, and not a verb payday's entity
+// leaves out for a reason of its own.
+func switched(v *Entity, got, shipped *ormpb.MessageOptions) (*ormpb.MessageOptions, []string) {
+	if got == nil || !switchable(v.Own) || !got.HasRpc() {
+		return got, nil
+	}
+
+	got = proto.Clone(got).(*ormpb.MessageOptions)
+	rpc := got.GetRpc().ProtoReflect()
+	was := shipped.GetRpc().ProtoReflect()
+	fields := rpc.Descriptor().Fields()
+
+	refused := []string{}
+	for _, name := range verbs {
+		f := fields.ByName(name)
+		if f == nil || !rpc.Has(f) {
+			continue
+		}
+
+		verb := rpc.Get(f).Message()
+		disabled := verb.Descriptor().Fields().ByName("disabled")
+		off := verb.Get(disabled).Bool()
+		switch {
+		case was.Has(f) && off && !was.Get(f).Message().Get(disabled).Bool():
+			if by, ok := paydayCalls[v.Own][string(name)]; ok {
+				refused = append(refused, fmt.Sprintf(
+					"%s: (orm.message) rpc.%s.disabled: payday calls this %s's %s -- %s -- so it is not an overlay's to switch off",
+					v.FullName(), name, v.GoName(), pascal(string(name)), by))
+			}
+			rpc.Set(f, was.Get(f))
+
+		case !was.Has(f) && name == "apply" && isEmptyVerb(verb):
+			rpc.Clear(f)
+		}
+	}
+
+	return got, refused
+}
+
+// isEmptyVerb is whether a verb's option says nothing but that it is there:
+// `apply: {}`.
+func isEmptyVerb(v protoreflect.Message) bool {
+	empty := true
+	v.Range(func(protoreflect.FieldDescriptor, protoreflect.Value) bool {
+		empty = false
+		return false
+	})
+
+	return empty && len(v.GetUnknown()) == 0
 }
 
 // added answers with what `got` sets that `want` does not, by path: a field

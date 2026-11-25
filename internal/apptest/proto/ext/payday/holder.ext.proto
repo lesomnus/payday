@@ -50,7 +50,11 @@ message Holder {
 
   // By account, since every call an account makes is resolved by it: without
   // the index each one reads every holder there is (`pd gen` warns).
+  // An Apply, which payday's Holder does not declare and this app's tests
+  // write a holder through: the gate's question about what a document moves,
+  // and its refusal of one that moves the account, are asked of it.
   option (orm.message) = {
+    rpc: {apply: {}}
     indexes: [
       {
         name: "by_account"
