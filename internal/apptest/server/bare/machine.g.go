@@ -509,16 +509,6 @@ var machineOrmEntity = ormpatch.MustEntityOf(apptest.File_app_machine_proto, "Ma
 var machinePatchColumns = entpatch.Columns{
 	1: machine.FieldId, 2: machine.TenantColumn, 4: machine.FieldAlias, 8: machine.FieldModel, 9: machine.FieldHours, 10: machine.FieldLoad, 11: machine.FieldRunning, 12: machine.FieldFirmware, 16: machine.FieldCycles, 17: machine.FieldMakerId, 18: machine.RobotColumn, 19: machine.FieldMode, 20: machine.FieldDateServiced, 21: machine.FieldSpec, 22: machine.FieldTags, 23: machine.FieldSettings, 24: machine.FieldOperator, 13: machine.FieldDateUpdated, 14: machine.FieldDateErased, 15: machine.FieldDateCreated}
 
-func (s MachineServiceServer) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.MachineService_Apply_FullMethodName)
-}
-
 func (s MachineServiceServer) apply(ctx context.Context, ref *apptest.MachineRef, doc *patchpb.Patch, by string) (*apptest.Machine, error) {
 	plan := &ormpatch.Plan{Entity: machineOrmEntity}
 	if doc != nil {

@@ -404,16 +404,6 @@ var stintOrmEntity = ormpatch.MustEntityOf(apptest.File_app_stint_proto, "Stint"
 var stintPatchColumns = entpatch.Columns{
 	1: stint.FieldId, 2: stint.TenantColumn, 8: stint.FieldRobotId, 9: stint.FieldDateStart, 10: stint.FieldDateEnd, 11: stint.FieldEventId, 15: stint.FieldDateCreated}
 
-func (s StintServiceServer) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.StintService_Apply_FullMethodName)
-}
-
 func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, doc *patchpb.Patch, by string) (*apptest.Stint, error) {
 	plan := &ormpatch.Plan{Entity: stintOrmEntity}
 	if doc != nil {
@@ -589,6 +579,9 @@ func (s StintServiceServer) Erase(ctx context.Context, req *apptest.StintRef) (*
 	tx.Writing()
 	n, err := st.Db.Stint.Delete().Where(p).Exec(ctx)
 	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
+			return nil, status.Error(codes.FailedPrecondition, "Stint is still named by another row and cannot be erased")
+		}
 		return nil, err
 	}
 	if n > 0 {

@@ -19,8 +19,8 @@ require (
 	github.com/nats-io/nats-server/v2 v2.15.3
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/ent v0.0.0-20261024205432-0dd7dadc81bc
-	github.com/protobuf-orm/protobuf-orm v0.0.0-20261017212716-3430237a8656
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20260906232518-fa1777a2628d
+	github.com/protobuf-orm/protobuf-orm v0.0.0-20261125011452-a062a5dd25fc
+	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20261125034236-6d3766bf5cdb
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/otel/trace v1.47.0
 	golang.org/x/sync v0.25.0
@@ -76,7 +76,7 @@ require (
 	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35304 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261010065542-f9ac5b66df3e // indirect
+	github.com/protobuf-orm/protoc-gen-orm-go v0.0.0-20261125034134-c681581d9964 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
 	github.com/zclconf/go-cty v1.19.0 // indirect

@@ -9,7 +9,6 @@ import "app/job.proto";
 import "app/payday/tenant_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -20,8 +19,6 @@ service JobService {
 	rpc Get(JobGetRequest) returns (Job);
 	// Patch updates an existing Job
 	rpc Patch(JobPatchRequest) returns (Job);
-	// Apply applies a patch document to an existing Job
-	rpc Apply(JobApplyRequest) returns (Job);
 	// Erase deletes a Job
 	rpc Erase(JobRef) returns (JobEraseResponse);
 }
@@ -91,11 +88,6 @@ message JobPatchRequest {
 	// refused rather than assumed, because an unset field cannot be told
 	// apart from a caller who never considered locking at all.
 	bool date_updated_force = 27;
-}
-
-message JobApplyRequest {
-	JobRef ref = 1;
-	patch.Patch patch = 2;
 }
 
 message JobEraseResponse {

@@ -10,7 +10,7 @@ import (
 const pkgAdmission = protogen.GoImportPath("github.com/lesomnus/payday/admission")
 
 // EmitAdmission binds the process policy to the native write seam. Installation
-// belongs on the sink, so neither layer order nor Patch's inner Apply bypass it.
+// belongs on the sink, so no layer order bypasses it.
 func EmitAdmission(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	g.P("// Admission protects the entities options names, including direct ent mutations.")
 	g.P("// Install once on the serving sink. Payday's recording tables are excluded;")
@@ -28,7 +28,7 @@ func EmitAdmission(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	for _, e := range s.Sorted() {
 		name := e.GoName()
 		g.P("{Row:&", root.Ident(name), "{},Requests:[]", pkgProto.Ident("Message"), "{")
-		if e.Rpcs().HasGet() || e.Rpcs().HasPatch() || e.Rpcs().HasErase() {
+		if e.Rpcs().HasGet() || e.Rpcs().HasPatch() || e.Rpcs().HasApply() || e.Rpcs().HasErase() {
 			g.P("&", root.Ident(name+"Ref"), "{},")
 		}
 		if e.Rpcs().HasAdd() || e.Rpcs().HasAddMany() {

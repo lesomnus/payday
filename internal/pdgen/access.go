@@ -424,7 +424,7 @@ func emitAccessRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root prot
 			{"Add", v.Rpcs().HasAdd()},
 			{"AddMany", v.Rpcs().HasAddMany()},
 			{"Patch", v.Rpcs().HasPatch()},
-			{"Apply", v.Rpcs().HasPatch()},
+			{"Apply", v.Rpcs().HasApply()},
 		} {
 			if op.enabled {
 				left = append(left, root.Ident(v.GoName()+"Service_"+op.name+"_FullMethodName"))

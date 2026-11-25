@@ -64,6 +64,14 @@ Two options, and they answer different questions.
 from [protobuf-orm](https://github.com/protobuf-orm/protobuf-orm). It says which
 RPCs exist and what the table is indexed by.
 
+Each verb is named on its own -- `add`, `get`, `patch`, `apply`, `erase` -- and
+is there when it is named and not disabled. None brings another: `patch` is the
+`Patch` that takes a field per property, and `apply`, the `Apply` that takes a
+patch document, is a second door onto the same columns that an entity asks for
+only when something calls it. A schema that still says `crud`, which stood for
+the first four and brought an `Apply` with every `Patch`, is refused by `pd gen`
+and `pd doctor` with the file and the line.
+
 One of those RPCs is worth knowing about before a schema has many rows to
 write: `add: {many: {}}` in place of `add: {}` adds an `AddMany` beside the `Add`,
 which takes up to a thousand `Add` requests (`many: {max: N}` for another

@@ -10,7 +10,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -927,99 +926,6 @@ func (b0 StintPatchRequest_builder) Build() *StintPatchRequest {
 	return m0
 }
 
-type StintApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *StintRef              `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *StintApplyRequest) Reset() {
-	*x = StintApplyRequest{}
-	mi := &file_app_stint_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StintApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StintApplyRequest) ProtoMessage() {}
-
-func (x *StintApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_stint_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *StintApplyRequest) GetRef() *StintRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *StintApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *StintApplyRequest) SetRef(v *StintRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *StintApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *StintApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *StintApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *StintApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *StintApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type StintApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *StintRef
-	Patch *patchpb.Patch
-}
-
-func (b0 StintApplyRequest_builder) Build() *StintApplyRequest {
-	m0 := &StintApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type StintEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -1031,7 +937,7 @@ type StintEraseResponse struct {
 
 func (x *StintEraseResponse) Reset() {
 	*x = StintEraseResponse{}
-	mi := &file_app_stint_svc_g_proto_msgTypes[6]
+	mi := &file_app_stint_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1043,7 +949,7 @@ func (x *StintEraseResponse) String() string {
 func (*StintEraseResponse) ProtoMessage() {}
 
 func (x *StintEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_stint_svc_g_proto_msgTypes[6]
+	mi := &file_app_stint_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1104,7 +1010,7 @@ var File_app_stint_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_stint_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/stint_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/stint.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xd2\x02\n" +
+	"\x15app/stint_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/stint.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xd2\x02\n" +
 	"\x0fStintAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12&\n" +
@@ -1138,66 +1044,55 @@ const file_app_stint_svc_g_proto_rawDesc = "" +
 	"date_start\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tdateStart\x125\n" +
 	"\bdate_end\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\adateEnd\x12\"\n" +
 	"\rdate_end_null\x18\x15 \x01(\bR\vdateEndNull\x12!\n" +
-	"\bevent_id\x18\x16 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aeventId\"X\n" +
-	"\x11StintApplyRequest\x12\x1f\n" +
-	"\x03ref\x18\x01 \x01(\v2\r.app.StintRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
+	"\bevent_id\x18\x16 \x01(\fB\x06\xea\x82\x16\x02\x10@R\aeventId\",\n" +
 	"\x12StintEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased2\xeb\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased2\xbe\x01\n" +
 	"\fStintService\x12'\n" +
 	"\x03Add\x12\x14.app.StintAddRequest\x1a\n" +
 	".app.Stint\x12'\n" +
 	"\x03Get\x12\x14.app.StintGetRequest\x1a\n" +
 	".app.Stint\x12+\n" +
 	"\x05Patch\x12\x16.app.StintPatchRequest\x1a\n" +
-	".app.Stint\x12+\n" +
-	"\x05Apply\x12\x16.app.StintApplyRequest\x1a\n" +
 	".app.Stint\x12/\n" +
 	"\x05Erase\x12\r.app.StintRef\x1a\x17.app.StintEraseResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_stint_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_app_stint_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_app_stint_svc_g_proto_goTypes = []any{
 	(*StintAddRequest)(nil),       // 0: app.StintAddRequest
 	(*StintRef)(nil),              // 1: app.StintRef
 	(*StintSelect)(nil),           // 2: app.StintSelect
 	(*StintGetRequest)(nil),       // 3: app.StintGetRequest
 	(*StintPatchRequest)(nil),     // 4: app.StintPatchRequest
-	(*StintApplyRequest)(nil),     // 5: app.StintApplyRequest
-	(*StintEraseResponse)(nil),    // 6: app.StintEraseResponse
-	(*TenantRef)(nil),             // 7: app.TenantRef
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*TenantSelect)(nil),          // 9: app.TenantSelect
-	(*patchpb.Patch)(nil),         // 10: patch.Patch
-	(*Stint)(nil),                 // 11: app.Stint
+	(*StintEraseResponse)(nil),    // 5: app.StintEraseResponse
+	(*TenantRef)(nil),             // 6: app.TenantRef
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*TenantSelect)(nil),          // 8: app.TenantSelect
+	(*Stint)(nil),                 // 9: app.Stint
 }
 var file_app_stint_svc_g_proto_depIdxs = []int32{
-	7,  // 0: app.StintAddRequest.tenant:type_name -> app.TenantRef
-	8,  // 1: app.StintAddRequest.date_start:type_name -> google.protobuf.Timestamp
-	8,  // 2: app.StintAddRequest.date_end:type_name -> google.protobuf.Timestamp
-	8,  // 3: app.StintAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	9,  // 4: app.StintSelect.tenant:type_name -> app.TenantSelect
+	6,  // 0: app.StintAddRequest.tenant:type_name -> app.TenantRef
+	7,  // 1: app.StintAddRequest.date_start:type_name -> google.protobuf.Timestamp
+	7,  // 2: app.StintAddRequest.date_end:type_name -> google.protobuf.Timestamp
+	7,  // 3: app.StintAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 4: app.StintSelect.tenant:type_name -> app.TenantSelect
 	1,  // 5: app.StintGetRequest.ref:type_name -> app.StintRef
 	2,  // 6: app.StintGetRequest.select:type_name -> app.StintSelect
 	1,  // 7: app.StintPatchRequest.ref:type_name -> app.StintRef
-	8,  // 8: app.StintPatchRequest.date_start:type_name -> google.protobuf.Timestamp
-	8,  // 9: app.StintPatchRequest.date_end:type_name -> google.protobuf.Timestamp
-	1,  // 10: app.StintApplyRequest.ref:type_name -> app.StintRef
-	10, // 11: app.StintApplyRequest.patch:type_name -> patch.Patch
-	0,  // 12: app.StintService.Add:input_type -> app.StintAddRequest
-	3,  // 13: app.StintService.Get:input_type -> app.StintGetRequest
-	4,  // 14: app.StintService.Patch:input_type -> app.StintPatchRequest
-	5,  // 15: app.StintService.Apply:input_type -> app.StintApplyRequest
-	1,  // 16: app.StintService.Erase:input_type -> app.StintRef
-	11, // 17: app.StintService.Add:output_type -> app.Stint
-	11, // 18: app.StintService.Get:output_type -> app.Stint
-	11, // 19: app.StintService.Patch:output_type -> app.Stint
-	11, // 20: app.StintService.Apply:output_type -> app.Stint
-	6,  // 21: app.StintService.Erase:output_type -> app.StintEraseResponse
-	17, // [17:22] is the sub-list for method output_type
-	12, // [12:17] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	7,  // 8: app.StintPatchRequest.date_start:type_name -> google.protobuf.Timestamp
+	7,  // 9: app.StintPatchRequest.date_end:type_name -> google.protobuf.Timestamp
+	0,  // 10: app.StintService.Add:input_type -> app.StintAddRequest
+	3,  // 11: app.StintService.Get:input_type -> app.StintGetRequest
+	4,  // 12: app.StintService.Patch:input_type -> app.StintPatchRequest
+	1,  // 13: app.StintService.Erase:input_type -> app.StintRef
+	9,  // 14: app.StintService.Add:output_type -> app.Stint
+	9,  // 15: app.StintService.Get:output_type -> app.Stint
+	9,  // 16: app.StintService.Patch:output_type -> app.Stint
+	5,  // 17: app.StintService.Erase:output_type -> app.StintEraseResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_app_stint_svc_g_proto_init() }
@@ -1216,7 +1111,7 @@ func file_app_stint_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_stint_svc_g_proto_rawDesc), len(file_app_stint_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -291,3 +291,33 @@ Omit `--ts` for an app without a page. Do not edit the copied payday schema by
 hand or add a forced downgrade without checking the client that required the
 newer printer. This diagnostic makes the cause visible; it does not isolate the
 generator from Go's module selection or pin all output to the payday version.
+
+## 8. Onto the payday where each verb is named
+
+`orm` no longer has `crud`, and an `Apply` no longer comes with every `Patch`
+(protobuf-orm/protobuf-orm#4): each verb is there when the entity names it,
+`apply` among them. The generators an app is built with follow it, and so does
+everything payday writes for a general write -- the gate, the Sink, the Secret
+layer, the trail, admission, the resource and access records -- which is
+written for the verbs the entity has and for no other.
+
+What an app does when it moves onto this payday:
+
+1. **Name the verbs where it says `crud`.** `pd gen` and `pd doctor` find each
+   `crud` in an `(orm.message)`'s `rpc`, in the app's own files and its
+   overlays, and refuse with the file and the line before buf is run.
+   `rpc: {crud: true}` was `rpc: {add: {}, get: {}, patch: {}, erase: {}}`.
+2. **Ask for `apply: {}` where something calls an `Apply`.** Every entity that
+   had a `Patch` had an `Apply`, and after `pd gen` it has none unless it says
+   `apply: {}`: its `ApplyRequest`, the RPC, the client's method and the
+   command are gone. Search the app's code, its page and its tests for
+   `Apply(`, `ApplyRequest` and `.method.apply`, and give `apply: {}` to the
+   entities they name. An entity whose writes are all through `Patch` loses
+   nothing it used. An `Apply` and no `Patch` is a shape of its own now:
+   `rpc: {add: {}, get: {}, apply: {}}`.
+3. **Read what an `Erase` answers.** One the database refuses because another
+   row still names the row was `Unknown`, in the driver's words. It is
+   `FailedPrecondition` now (see [refusals](errors.md#5-what-this-is-not-for)).
+
+Nothing is kept for the old spelling: a schema that says `crud` is refused
+until it names its verbs.

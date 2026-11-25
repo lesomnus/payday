@@ -478,8 +478,9 @@ func emitAliasPatch(g *protogen.GeneratedFile, v *Entity, root protogen.GoImport
 	}
 	if forgets(v) {
 		g.P("//")
-		g.P("// And it forgets what the transaction was told about the row; see")
-		g.P("// [sink", e, ".Apply].")
+		g.P("// And it forgets what the transaction was told about the row, before it")
+		g.P("// is written: a request may move it to a set the caller cannot see. See")
+		g.P("// [seen.Forget].")
 	}
 	g.P("func (s sink", e, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"PatchRequest"),
 		") (*", root.Ident(e), ", error) {")
@@ -506,10 +507,10 @@ func emitAliasPatch(g *protogen.GeneratedFile, v *Entity, root protogen.GoImport
 
 // forgets is whether a write to a row of `v` makes what a transaction was told
 // about that row stale: a row named by key, which is the only kind `payday/seen`
-// remembers, with a Patch or an Erase to write it with.
+// remembers, with a Patch, an Apply or an Erase to write it with.
 func forgets(v *Entity) bool {
 	r := v.Rpcs()
-	return byKey(v) && (r.HasPatch() || r.HasErase())
+	return byKey(v) && (r.HasPatch() || r.HasApply() || r.HasErase())
 }
 
 // emitForget writes the Sink's Erase, and its Patch and Apply, of an entity
@@ -545,27 +546,26 @@ func emitForget(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath
 		g.P("}")
 		g.P("")
 	}
-	if !v.Rpcs().HasPatch() {
-		return
+	if v.Rpcs().HasApply() {
+		g.P("// Apply forgets what the transaction was told about the row, before it is")
+		g.P("// written: a document may move it to a set the caller cannot see. See")
+		g.P("// [seen.Forget].")
+		g.P("func (s sink", e, ") Apply(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"ApplyRequest"),
+			") (*", root.Ident(e), ", error) {")
+		forget("req.GetRef()")
+		g.P("	return s.", e, "ServiceServer.Apply(ctx, req)")
+		g.P("}")
+		g.P("")
 	}
-
-	g.P("// Apply forgets what the transaction was told about the row, before it is")
-	g.P("// written: a document may move it to a set the caller cannot see. See")
-	g.P("// [seen.Forget].")
-	g.P("func (s sink", e, ") Apply(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"ApplyRequest"),
-		") (*", root.Ident(e), ", error) {")
-	forget("req.GetRef()")
-	g.P("	return s.", e, "ServiceServer.Apply(ctx, req)")
-	g.P("}")
-	g.P("")
 
 	// The Patch of an entity with an alias is the one that folds it, and
 	// forgets there; see [emitAlias].
-	if v.Alias {
+	if !v.Rpcs().HasPatch() || v.Alias {
 		return
 	}
 	g.P("// Patch forgets what the transaction was told about the row, before it is")
-	g.P("// written; see [sink", e, ".Apply].")
+	g.P("// written: a request may move it to a set the caller cannot see. See")
+	g.P("// [seen.Forget].")
 	g.P("func (s sink", e, ") Patch(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"PatchRequest"),
 		") (*", root.Ident(e), ", error) {")
 	forget("req.GetRef()")

@@ -763,7 +763,7 @@ func emitAuditPast(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportP
 			{"Add", name + "AddRequest", name, r.HasAdd()},
 			{"AddMany", name + "AddManyRequest", name + "AddManyResponse", r.HasAddMany()},
 			{"Patch", name + "PatchRequest", name, r.HasPatch()},
-			{"Apply", name + "ApplyRequest", name, r.HasPatch()},
+			{"Apply", name + "ApplyRequest", name, r.HasApply()},
 			{"Erase", name + "Ref", name + "EraseResponse", r.HasErase()},
 		} {
 			if !m.has {

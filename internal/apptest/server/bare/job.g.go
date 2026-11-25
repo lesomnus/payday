@@ -398,16 +398,6 @@ var jobOrmEntity = ormpatch.MustEntityOf(apptest.File_app_job_proto, "Job")
 var jobPatchColumns = entpatch.Columns{
 	1: job.FieldId, 2: job.TenantColumn, 8: job.FieldRobotId, 9: job.FieldIssuerId, 10: job.FieldCompleted, 13: job.FieldDateUpdated, 15: job.FieldDateCreated}
 
-func (s JobServiceServer) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.JobService_Apply_FullMethodName)
-}
-
 func (s JobServiceServer) apply(ctx context.Context, ref *apptest.JobRef, doc *patchpb.Patch, by string) (*apptest.Job, error) {
 	plan := &ormpatch.Plan{Entity: jobOrmEntity}
 	if doc != nil {
@@ -586,6 +576,9 @@ func (s JobServiceServer) Erase(ctx context.Context, req *apptest.JobRef) (*appt
 	tx.Writing()
 	n, err := st.Db.Job.Delete().Where(p).Exec(ctx)
 	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
+			return nil, status.Error(codes.FailedPrecondition, "Job is still named by another row and cannot be erased")
+		}
 		return nil, err
 	}
 	if n > 0 {

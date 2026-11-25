@@ -156,6 +156,9 @@ func (g Gen) entities(ctx context.Context) error {
 	}
 
 	// Before anything is written, so that a refusal leaves the tree as it was.
+	if err := checkCrud(g.Layout); err != nil {
+		return err
+	}
 	if err := checkPastNames(g.Layout); err != nil {
 		return err
 	}

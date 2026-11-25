@@ -1242,7 +1242,8 @@ func (s sinkAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*
 }
 
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkAudit.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
 	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
 
@@ -1510,38 +1511,6 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 	}
 }
 
-// Patch folds a name it was given, and says nothing about one it was not.
-//
-// The presence is the whole of the difference from [sinkCell.Add]: a patch
-// that does not mention the alias is not a patch setting it to the empty
-// string, and refusing one would make every patch of any other field carry
-// the name along.
-//
-// The namer is **not** asked here, and that is the second difference. It
-// decides the name of a row being made; a patch that cleared the alias is
-// a caller asking for something invalid, and answering that with an
-// invented name would hand them a row they did not ask for.
-//
-// And it forgets what the transaction was told about the row; see
-// [sinkCell.Apply].
-func (s sinkCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
-
-	if !req.HasAlias() {
-		return s.CellServiceServer.Patch(ctx, req)
-	}
-
-	v, err := slug.ParseAlias(req.GetAlias())
-	if err != nil {
-		return nil, pderr.At("alias", err)
-	}
-
-	req = proto.CloneOf(req)
-	req.SetAlias(v)
-
-	return s.CellServiceServer.Patch(ctx, req)
-}
-
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -1783,7 +1752,8 @@ func (s sinkFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*ap
 }
 
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkFact.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*apptest.Fact, error) {
 	seen.Forget(s.store.Db.Driver(), "Fact", req.GetRef())
 
@@ -2042,8 +2012,9 @@ func (s sinkFleet) Add(ctx context.Context, req *apptest.FleetAddRequest) (*appt
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkFleet.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
 	seen.Forget(s.store.Db.Driver(), "Fleet", req.GetRef())
 
@@ -2070,15 +2041,6 @@ func (s sinkFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.F
 	seen.Forget(s.store.Db.Driver(), "Fleet", req)
 
 	return s.FleetServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
-	seen.Forget(s.store.Db.Driver(), "Fleet", req.GetRef())
-
-	return s.FleetServiceServer.Apply(ctx, req)
 }
 
 type sinkHolder struct {
@@ -2161,8 +2123,9 @@ func (s sinkHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*ap
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkHolder.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
 
@@ -2606,17 +2569,9 @@ func (s sinkJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEr
 	return s.JobServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	seen.Forget(s.store.Db.Driver(), "Job", req.GetRef())
-
-	return s.JobServiceServer.Apply(ctx, req)
-}
-
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkJob.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*apptest.Job, error) {
 	seen.Forget(s.store.Db.Driver(), "Job", req.GetRef())
 
@@ -2703,8 +2658,9 @@ func (s sinkJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*appt
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkJoint.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
 	seen.Forget(s.store.Db.Driver(), "Joint", req.GetRef())
 
@@ -2731,15 +2687,6 @@ func (s sinkJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.J
 	seen.Forget(s.store.Db.Driver(), "Joint", req)
 
 	return s.JointServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
-	seen.Forget(s.store.Db.Driver(), "Joint", req.GetRef())
-
-	return s.JointServiceServer.Apply(ctx, req)
 }
 
 type sinkMachine struct {
@@ -2822,8 +2769,9 @@ func (s sinkMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkMachine.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
 	seen.Forget(s.store.Db.Driver(), "Machine", req.GetRef())
 
@@ -2850,15 +2798,6 @@ func (s sinkMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*appte
 	seen.Forget(s.store.Db.Driver(), "Machine", req)
 
 	return s.MachineServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
-	seen.Forget(s.store.Db.Driver(), "Machine", req.GetRef())
-
-	return s.MachineServiceServer.Apply(ctx, req)
 }
 
 type sinkPairing struct {
@@ -2903,17 +2842,9 @@ func (s sinkPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*appte
 	return s.PairingServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
-	seen.Forget(s.store.Db.Driver(), "Pairing", req.GetRef())
-
-	return s.PairingServiceServer.Apply(ctx, req)
-}
-
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkPairing.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
 	seen.Forget(s.store.Db.Driver(), "Pairing", req.GetRef())
 
@@ -3045,17 +2976,9 @@ func (s sinkReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*appte
 	return s.ReadingServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
-	seen.Forget(s.store.Db.Driver(), "Reading", req.GetRef())
-
-	return s.ReadingServiceServer.Apply(ctx, req)
-}
-
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkReading.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
 	seen.Forget(s.store.Db.Driver(), "Reading", req.GetRef())
 
@@ -3216,8 +3139,9 @@ func (s sinkRobot) AddMany(ctx context.Context, req *apptest.RobotAddManyRequest
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkRobot.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*apptest.Robot, error) {
 	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
 
@@ -3783,8 +3707,9 @@ func (s sinkSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptes
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkSeal.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
 	seen.Forget(s.store.Db.Driver(), "Seal", req.GetRef())
 
@@ -3813,15 +3738,6 @@ func (s sinkSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.Sea
 	return s.SealServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	seen.Forget(s.store.Db.Driver(), "Seal", req.GetRef())
-
-	return s.SealServiceServer.Apply(ctx, req)
-}
-
 type sinkStint struct {
 	apptest.StintServiceServer
 	store  bare.Store
@@ -3844,17 +3760,9 @@ func (s sinkStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.S
 	return s.StintServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
-	seen.Forget(s.store.Db.Driver(), "Stint", req.GetRef())
-
-	return s.StintServiceServer.Apply(ctx, req)
-}
-
 // Patch forgets what the transaction was told about the row, before it is
-// written; see [sinkStint.Apply].
+// written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
 	seen.Forget(s.store.Db.Driver(), "Stint", req.GetRef())
 
@@ -3941,8 +3849,9 @@ func (s sinkTenant) Add(ctx context.Context, req *apptest.TenantAddRequest) (*ap
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkTenant.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequest) (*apptest.Tenant, error) {
 	seen.Forget(s.store.Db.Driver(), "Tenant", req.GetRef())
 
@@ -4221,8 +4130,9 @@ func (s sinkThing) Add(ctx context.Context, req *apptest.ThingAddRequest) (*appt
 // a caller asking for something invalid, and answering that with an
 // invented name would hand them a row they did not ask for.
 //
-// And it forgets what the transaction was told about the row; see
-// [sinkThing.Apply].
+// And it forgets what the transaction was told about the row, before it
+// is written: a request may move it to a set the caller cannot see. See
+// [seen.Forget].
 func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*apptest.Thing, error) {
 	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
 
@@ -5006,55 +4916,6 @@ func (s gateMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest
 	return s.MachineServiceServer.Patch(ctx, req)
 }
 
-// Apply refuses a document that moves an edge onto a row this caller cannot
-// see, as Patch refuses a request that does.
-//
-// A document names the row an edge points at by its key, and the server
-// behind writes that key into the column as it is -- compiling a document
-// reads nothing. So the read Patch is asked is asked here of the key the
-// document lands in the column, compiled the way the server behind will.
-func (s gateMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
-	if !req.HasPatch() {
-		// Nothing written, and the server behind refuses it in its own words.
-		return s.MachineServiceServer.Apply(ctx, req)
-	}
-
-	plan, err := ormpatch.Compile(gateMachineEntity, req.GetPatch())
-	if err != nil {
-		// Refused here rather than passed on, in the codes the server behind
-		// gives the same document: one this layer cannot read is one it can
-		// say nothing about.
-		if errors.Is(err, ormpatch.ErrUnsupported) {
-			return nil, status.Errorf(codes.Unimplemented, "%s", err)
-		}
-
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-	if w, ok := plan.WriteTo(18); ok {
-		if k, ok := w.Op.(ormpatch.SetEdge); ok {
-			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
-			if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
-				_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-					Ref: ref,
-				}.Build())
-				return err
-			}); err != nil {
-				if status.Code(err) == codes.NotFound {
-					return nil, gate.ErrNotFound("Robot")
-				}
-
-				return nil, err
-			}
-		}
-	}
-
-	return s.MachineServiceServer.Apply(ctx, req)
-}
-
-// gateMachineEntity is what a Machine document is compiled against: the entity
-// parsed from the file that declares it, as the server behind parses it.
-var gateMachineEntity = ormpatch.MustEntityOf((*apptest.Machine)(nil).ProtoReflect().Descriptor().ParentFile(), "Machine")
-
 type gatePairing struct {
 	Gate
 	apptest.PairingServiceServer
@@ -5506,17 +5367,6 @@ func (s guardedCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*app
 	return s.CellServiceServer.Get(ctx, req)
 }
 
-func (s guardedCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	if err := gate.Direct(ctx, apptest.CellService_Patch_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.CellService_Patch_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.CellServiceServer.Patch(ctx, req)
-}
-
 func (s guardedCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
 	if err := gate.Direct(ctx, apptest.CellService_Apply_FullMethodName); err != nil {
 		return nil, err
@@ -5677,17 +5527,6 @@ func (s guardedPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequ
 	return s.PairingServiceServer.Patch(ctx, req)
 }
 
-func (s guardedPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
-	if err := gate.Direct(ctx, apptest.PairingService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.PairingService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.PairingServiceServer.Apply(ctx, req)
-}
-
 func (s guardedPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
 	if err := gate.Direct(ctx, apptest.PairingService_Erase_FullMethodName); err != nil {
 		return nil, err
@@ -5733,17 +5572,6 @@ func (s guardedJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest)
 	}
 
 	return s.JointServiceServer.Patch(ctx, req)
-}
-
-func (s guardedJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
-	if err := gate.Direct(ctx, apptest.JointService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.JointService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JointServiceServer.Apply(ctx, req)
 }
 
 func (s guardedJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
@@ -5795,17 +5623,6 @@ func (s guardedFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest)
 	}
 
 	return s.FleetServiceServer.Patch(ctx, req)
-}
-
-func (s guardedFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
-	if err := gate.Direct(ctx, apptest.FleetService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.FleetService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.FleetServiceServer.Apply(ctx, req)
 }
 
 func (s guardedFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
@@ -5866,17 +5683,6 @@ func (s guardedReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequ
 	return s.ReadingServiceServer.Patch(ctx, req)
 }
 
-func (s guardedReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
-	if err := gate.Direct(ctx, apptest.ReadingService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.ReadingService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.ReadingServiceServer.Apply(ctx, req)
-}
-
 func (s guardedReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	if err := gate.Direct(ctx, apptest.ReadingService_Erase_FullMethodName); err != nil {
 		return nil, err
@@ -5924,17 +5730,6 @@ func (s guardedJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (*a
 	return s.JobServiceServer.Patch(ctx, req)
 }
 
-func (s guardedJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	if err := gate.Direct(ctx, apptest.JobService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.JobService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.JobServiceServer.Apply(ctx, req)
-}
-
 func (s guardedJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
 	if err := gate.Direct(ctx, apptest.JobService_Erase_FullMethodName); err != nil {
 		return nil, err
@@ -5980,17 +5775,6 @@ func (s guardedMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequ
 	}
 
 	return s.MachineServiceServer.Patch(ctx, req)
-}
-
-func (s guardedMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
-	if err := gate.Direct(ctx, apptest.MachineService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.MachineService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.MachineServiceServer.Apply(ctx, req)
 }
 
 func (s guardedMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
@@ -6384,17 +6168,6 @@ func (s guardedSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (
 	return s.SealServiceServer.Patch(ctx, req)
 }
 
-func (s guardedSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	if err := gate.Direct(ctx, apptest.SealService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.SealService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.SealServiceServer.Apply(ctx, req)
-}
-
 func (s guardedSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
 	if err := gate.Direct(ctx, apptest.SealService_Erase_FullMethodName); err != nil {
 		return nil, err
@@ -6440,17 +6213,6 @@ func (s guardedStint) Patch(ctx context.Context, req *apptest.StintPatchRequest)
 	}
 
 	return s.StintServiceServer.Patch(ctx, req)
-}
-
-func (s guardedStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
-	if err := gate.Direct(ctx, apptest.StintService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.StintService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.StintServiceServer.Apply(ctx, req)
 }
 
 func (s guardedStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
@@ -10068,12 +9830,6 @@ func (s secretSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*
 	return hideSeal(v), err
 }
 
-func (s secretSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	v, err := s.SealServiceServer.Apply(ctx, req)
-
-	return hideSeal(v), err
-}
-
 // hideSeal clears what this entity declared it never answers with.
 //
 // A nil row passes through, because an error is answered with one and the
@@ -10278,11 +10034,6 @@ func (s interceptCell) Get(ctx context.Context, req *apptest.CellGetRequest) (*a
 		apptest.CellService_Get_FullMethodName, req, s.CellServiceServer.Get)
 }
 
-func (s interceptCell) Patch(ctx context.Context, req *apptest.CellPatchRequest) (*apptest.Cell, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
-		apptest.CellService_Patch_FullMethodName, req, s.CellServiceServer.Patch)
-}
-
 func (s interceptCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.CellServiceServer,
 		apptest.CellService_Apply_FullMethodName, req, s.CellServiceServer.Apply)
@@ -10371,11 +10122,6 @@ func (s interceptPairing) Patch(ctx context.Context, req *apptest.PairingPatchRe
 		apptest.PairingService_Patch_FullMethodName, req, s.PairingServiceServer.Patch)
 }
 
-func (s interceptPairing) Apply(ctx context.Context, req *apptest.PairingApplyRequest) (*apptest.Pairing, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
-		apptest.PairingService_Apply_FullMethodName, req, s.PairingServiceServer.Apply)
-}
-
 func (s interceptPairing) Erase(ctx context.Context, req *apptest.PairingRef) (*apptest.PairingEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.PairingServiceServer,
 		apptest.PairingService_Erase_FullMethodName, req, s.PairingServiceServer.Erase)
@@ -10405,11 +10151,6 @@ func (s interceptJoint) Patch(ctx context.Context, req *apptest.JointPatchReques
 		apptest.JointService_Patch_FullMethodName, req, s.JointServiceServer.Patch)
 }
 
-func (s interceptJoint) Apply(ctx context.Context, req *apptest.JointApplyRequest) (*apptest.Joint, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
-		apptest.JointService_Apply_FullMethodName, req, s.JointServiceServer.Apply)
-}
-
 func (s interceptJoint) Erase(ctx context.Context, req *apptest.JointRef) (*apptest.JointEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.JointServiceServer,
 		apptest.JointService_Erase_FullMethodName, req, s.JointServiceServer.Erase)
@@ -10437,11 +10178,6 @@ func (s interceptFleet) Get(ctx context.Context, req *apptest.FleetGetRequest) (
 func (s interceptFleet) Patch(ctx context.Context, req *apptest.FleetPatchRequest) (*apptest.Fleet, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
 		apptest.FleetService_Patch_FullMethodName, req, s.FleetServiceServer.Patch)
-}
-
-func (s interceptFleet) Apply(ctx context.Context, req *apptest.FleetApplyRequest) (*apptest.Fleet, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FleetServiceServer,
-		apptest.FleetService_Apply_FullMethodName, req, s.FleetServiceServer.Apply)
 }
 
 func (s interceptFleet) Erase(ctx context.Context, req *apptest.FleetRef) (*apptest.FleetEraseResponse, error) {
@@ -10478,11 +10214,6 @@ func (s interceptReading) Patch(ctx context.Context, req *apptest.ReadingPatchRe
 		apptest.ReadingService_Patch_FullMethodName, req, s.ReadingServiceServer.Patch)
 }
 
-func (s interceptReading) Apply(ctx context.Context, req *apptest.ReadingApplyRequest) (*apptest.Reading, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
-		apptest.ReadingService_Apply_FullMethodName, req, s.ReadingServiceServer.Apply)
-}
-
 func (s interceptReading) Erase(ctx context.Context, req *apptest.ReadingRef) (*apptest.ReadingEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.ReadingServiceServer,
 		apptest.ReadingService_Erase_FullMethodName, req, s.ReadingServiceServer.Erase)
@@ -10512,11 +10243,6 @@ func (s interceptJob) Patch(ctx context.Context, req *apptest.JobPatchRequest) (
 		apptest.JobService_Patch_FullMethodName, req, s.JobServiceServer.Patch)
 }
 
-func (s interceptJob) Apply(ctx context.Context, req *apptest.JobApplyRequest) (*apptest.Job, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
-		apptest.JobService_Apply_FullMethodName, req, s.JobServiceServer.Apply)
-}
-
 func (s interceptJob) Erase(ctx context.Context, req *apptest.JobRef) (*apptest.JobEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.JobServiceServer,
 		apptest.JobService_Erase_FullMethodName, req, s.JobServiceServer.Erase)
@@ -10544,11 +10270,6 @@ func (s interceptMachine) Get(ctx context.Context, req *apptest.MachineGetReques
 func (s interceptMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
 		apptest.MachineService_Patch_FullMethodName, req, s.MachineServiceServer.Patch)
-}
-
-func (s interceptMachine) Apply(ctx context.Context, req *apptest.MachineApplyRequest) (*apptest.Machine, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.MachineServiceServer,
-		apptest.MachineService_Apply_FullMethodName, req, s.MachineServiceServer.Apply)
 }
 
 func (s interceptMachine) Erase(ctx context.Context, req *apptest.MachineRef) (*apptest.MachineEraseResponse, error) {
@@ -10774,11 +10495,6 @@ func (s interceptSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest)
 		apptest.SealService_Patch_FullMethodName, req, s.SealServiceServer.Patch)
 }
 
-func (s interceptSeal) Apply(ctx context.Context, req *apptest.SealApplyRequest) (*apptest.Seal, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
-		apptest.SealService_Apply_FullMethodName, req, s.SealServiceServer.Apply)
-}
-
 func (s interceptSeal) Erase(ctx context.Context, req *apptest.SealRef) (*apptest.SealEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.SealServiceServer,
 		apptest.SealService_Erase_FullMethodName, req, s.SealServiceServer.Erase)
@@ -10806,11 +10522,6 @@ func (s interceptStint) Get(ctx context.Context, req *apptest.StintGetRequest) (
 func (s interceptStint) Patch(ctx context.Context, req *apptest.StintPatchRequest) (*apptest.Stint, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
 		apptest.StintService_Patch_FullMethodName, req, s.StintServiceServer.Patch)
-}
-
-func (s interceptStint) Apply(ctx context.Context, req *apptest.StintApplyRequest) (*apptest.Stint, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.StintServiceServer,
-		apptest.StintService_Apply_FullMethodName, req, s.StintServiceServer.Apply)
 }
 
 func (s interceptStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptest.StintEraseResponse, error) {
@@ -14329,7 +14040,6 @@ func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 		apptest.HolderService_Apply_FullMethodName,
 		apptest.MachineService_Add_FullMethodName,
 		apptest.MachineService_Patch_FullMethodName,
-		apptest.MachineService_Apply_FullMethodName,
 		apptest.RobotService_Add_FullMethodName,
 		apptest.RobotService_AddMany_FullMethodName,
 		apptest.RobotService_Patch_FullMethodName,
@@ -15189,8 +14899,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.CellService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
-	case apptest.CellService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.CellService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.CellService_Erase_FullMethodName:
@@ -15211,8 +14919,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.FleetService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.FleetService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.FleetService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.HolderService_Add_FullMethodName:
@@ -15227,23 +14933,17 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.JobService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.JobService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.JobService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.JointService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.JointService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.JointService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.JointService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.MachineService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.MachineService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.MachineService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.MachineService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
@@ -15253,8 +14953,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.PairingService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.PairingService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.PairingService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.ReadingService_Add_FullMethodName:
@@ -15262,8 +14960,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.ReadingService_AddMany_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.ReadingService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.ReadingService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.ReadingService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
@@ -15281,15 +14977,11 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.SealService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.SealService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.SealService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.StintService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.StintService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.StintService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.StintService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
@@ -15420,7 +15112,6 @@ func Admission(policy admission.Policy, options admission.Options) bare.Option {
 			{Row: &apptest.Cell{}, Requests: []proto.Message{
 				&apptest.CellRef{},
 				&apptest.CellAddRequest{},
-				&apptest.CellPatchRequest{},
 			}},
 			{Row: &apptest.Entitlement{}, Requests: []proto.Message{}},
 			{Row: &apptest.Event{}, Requests: []proto.Message{

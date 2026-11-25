@@ -25,7 +25,6 @@ const (
 	JobService_Add_FullMethodName   = "/app.JobService/Add"
 	JobService_Get_FullMethodName   = "/app.JobService/Get"
 	JobService_Patch_FullMethodName = "/app.JobService/Patch"
-	JobService_Apply_FullMethodName = "/app.JobService/Apply"
 	JobService_Erase_FullMethodName = "/app.JobService/Erase"
 )
 
@@ -39,8 +38,6 @@ type JobServiceClient interface {
 	Get(ctx context.Context, in *JobGetRequest, opts ...grpc.CallOption) (*Job, error)
 	// Patch updates an existing Job
 	Patch(ctx context.Context, in *JobPatchRequest, opts ...grpc.CallOption) (*Job, error)
-	// Apply applies a patch document to an existing Job
-	Apply(ctx context.Context, in *JobApplyRequest, opts ...grpc.CallOption) (*Job, error)
 	// Erase deletes a Job
 	Erase(ctx context.Context, in *JobRef, opts ...grpc.CallOption) (*JobEraseResponse, error)
 }
@@ -83,16 +80,6 @@ func (c *jobServiceClient) Patch(ctx context.Context, in *JobPatchRequest, opts 
 	return out, nil
 }
 
-func (c *jobServiceClient) Apply(ctx context.Context, in *JobApplyRequest, opts ...grpc.CallOption) (*Job, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Job)
-	err := c.cc.Invoke(ctx, JobService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *jobServiceClient) Erase(ctx context.Context, in *JobRef, opts ...grpc.CallOption) (*JobEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(JobEraseResponse)
@@ -113,8 +100,6 @@ type JobServiceServer interface {
 	Get(context.Context, *JobGetRequest) (*Job, error)
 	// Patch updates an existing Job
 	Patch(context.Context, *JobPatchRequest) (*Job, error)
-	// Apply applies a patch document to an existing Job
-	Apply(context.Context, *JobApplyRequest) (*Job, error)
 	// Erase deletes a Job
 	Erase(context.Context, *JobRef) (*JobEraseResponse, error)
 	mustEmbedUnimplementedJobServiceServer()
@@ -135,9 +120,6 @@ func (UnimplementedJobServiceServer) Get(context.Context, *JobGetRequest) (*Job,
 }
 func (UnimplementedJobServiceServer) Patch(context.Context, *JobPatchRequest) (*Job, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedJobServiceServer) Apply(context.Context, *JobApplyRequest) (*Job, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedJobServiceServer) Erase(context.Context, *JobRef) (*JobEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -217,24 +199,6 @@ func _JobService_Patch_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JobService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JobApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: JobService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobServiceServer).Apply(ctx, req.(*JobApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _JobService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JobRef)
 	if err := dec(in); err != nil {
@@ -271,10 +235,6 @@ var JobService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _JobService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _JobService_Apply_Handler,
 		},
 		{
 			MethodName: "Erase",

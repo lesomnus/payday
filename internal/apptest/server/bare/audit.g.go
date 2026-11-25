@@ -632,6 +632,9 @@ func (s AuditServiceServer) Erase(ctx context.Context, req *apptest.AuditRef) (*
 	tx.Writing()
 	n, err := st.Db.Audit.Delete().Where(p).Exec(ctx)
 	if err != nil {
+		if err, ok := err.(*ent.ConstraintError); ok && sqlgraph.IsForeignKeyConstraintError(err) {
+			return nil, status.Error(codes.FailedPrecondition, "Audit is still named by another row and cannot be erased")
+		}
 		return nil, err
 	}
 	if n > 0 {

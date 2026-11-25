@@ -10,7 +10,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -787,99 +786,6 @@ func (b0 SealPatchRequest_builder) Build() *SealPatchRequest {
 	return m0
 }
 
-type SealApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *SealRef               `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *SealApplyRequest) Reset() {
-	*x = SealApplyRequest{}
-	mi := &file_app_seal_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SealApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SealApplyRequest) ProtoMessage() {}
-
-func (x *SealApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_seal_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *SealApplyRequest) GetRef() *SealRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *SealApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *SealApplyRequest) SetRef(v *SealRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *SealApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *SealApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *SealApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *SealApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *SealApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type SealApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *SealRef
-	Patch *patchpb.Patch
-}
-
-func (b0 SealApplyRequest_builder) Build() *SealApplyRequest {
-	m0 := &SealApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type SealEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -891,7 +797,7 @@ type SealEraseResponse struct {
 
 func (x *SealEraseResponse) Reset() {
 	*x = SealEraseResponse{}
-	mi := &file_app_seal_svc_g_proto_msgTypes[6]
+	mi := &file_app_seal_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +809,7 @@ func (x *SealEraseResponse) String() string {
 func (*SealEraseResponse) ProtoMessage() {}
 
 func (x *SealEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_seal_svc_g_proto_msgTypes[6]
+	mi := &file_app_seal_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +870,7 @@ var File_app_seal_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_seal_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xc4\x01\n" +
+	"\x14app/seal_svc.g.proto\x12\x03app\x1a\x0eapp/seal.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xc4\x01\n" +
 	"\x0eSealAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12#\n" +
@@ -990,54 +896,44 @@ const file_app_seal_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\x14\n" +
 	"\x05alias\x18\b \x01(\tR\x05alias\x12\x1e\n" +
 	"\x06secret\x18\x10 \x01(\fB\x06\xea\x82\x16\x02\x10\fR\x06secret\x12\x12\n" +
-	"\x04code\x18\x12 \x01(\tR\x04code\"V\n" +
-	"\x10SealApplyRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.SealRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"+\n" +
+	"\x04code\x18\x12 \x01(\tR\x04code\"+\n" +
 	"\x11SealEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased2\xe0\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased2\xb5\x01\n" +
 	"\vSealService\x12%\n" +
 	"\x03Add\x12\x13.app.SealAddRequest\x1a\t.app.Seal\x12%\n" +
 	"\x03Get\x12\x13.app.SealGetRequest\x1a\t.app.Seal\x12)\n" +
-	"\x05Patch\x12\x15.app.SealPatchRequest\x1a\t.app.Seal\x12)\n" +
-	"\x05Apply\x12\x15.app.SealApplyRequest\x1a\t.app.Seal\x12-\n" +
+	"\x05Patch\x12\x15.app.SealPatchRequest\x1a\t.app.Seal\x12-\n" +
 	"\x05Erase\x12\f.app.SealRef\x1a\x16.app.SealEraseResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_seal_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_app_seal_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_app_seal_svc_g_proto_goTypes = []any{
 	(*SealAddRequest)(nil),        // 0: app.SealAddRequest
 	(*SealRef)(nil),               // 1: app.SealRef
 	(*SealSelect)(nil),            // 2: app.SealSelect
 	(*SealGetRequest)(nil),        // 3: app.SealGetRequest
 	(*SealPatchRequest)(nil),      // 4: app.SealPatchRequest
-	(*SealApplyRequest)(nil),      // 5: app.SealApplyRequest
-	(*SealEraseResponse)(nil),     // 6: app.SealEraseResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*patchpb.Patch)(nil),         // 8: patch.Patch
-	(*Seal)(nil),                  // 9: app.Seal
+	(*SealEraseResponse)(nil),     // 5: app.SealEraseResponse
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*Seal)(nil),                  // 7: app.Seal
 }
 var file_app_seal_svc_g_proto_depIdxs = []int32{
-	7,  // 0: app.SealAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	1,  // 1: app.SealGetRequest.ref:type_name -> app.SealRef
-	2,  // 2: app.SealGetRequest.select:type_name -> app.SealSelect
-	1,  // 3: app.SealPatchRequest.ref:type_name -> app.SealRef
-	1,  // 4: app.SealApplyRequest.ref:type_name -> app.SealRef
-	8,  // 5: app.SealApplyRequest.patch:type_name -> patch.Patch
-	0,  // 6: app.SealService.Add:input_type -> app.SealAddRequest
-	3,  // 7: app.SealService.Get:input_type -> app.SealGetRequest
-	4,  // 8: app.SealService.Patch:input_type -> app.SealPatchRequest
-	5,  // 9: app.SealService.Apply:input_type -> app.SealApplyRequest
-	1,  // 10: app.SealService.Erase:input_type -> app.SealRef
-	9,  // 11: app.SealService.Add:output_type -> app.Seal
-	9,  // 12: app.SealService.Get:output_type -> app.Seal
-	9,  // 13: app.SealService.Patch:output_type -> app.Seal
-	9,  // 14: app.SealService.Apply:output_type -> app.Seal
-	6,  // 15: app.SealService.Erase:output_type -> app.SealEraseResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	6, // 0: app.SealAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	1, // 1: app.SealGetRequest.ref:type_name -> app.SealRef
+	2, // 2: app.SealGetRequest.select:type_name -> app.SealSelect
+	1, // 3: app.SealPatchRequest.ref:type_name -> app.SealRef
+	0, // 4: app.SealService.Add:input_type -> app.SealAddRequest
+	3, // 5: app.SealService.Get:input_type -> app.SealGetRequest
+	4, // 6: app.SealService.Patch:input_type -> app.SealPatchRequest
+	1, // 7: app.SealService.Erase:input_type -> app.SealRef
+	7, // 8: app.SealService.Add:output_type -> app.Seal
+	7, // 9: app.SealService.Get:output_type -> app.Seal
+	7, // 10: app.SealService.Patch:output_type -> app.Seal
+	5, // 11: app.SealService.Erase:output_type -> app.SealEraseResponse
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_app_seal_svc_g_proto_init() }
@@ -1055,7 +951,7 @@ func file_app_seal_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_seal_svc_g_proto_rawDesc), len(file_app_seal_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

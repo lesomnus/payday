@@ -14,15 +14,13 @@ import { file_app_stint } from "./stint_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../orm_pb.js";
-import type { Patch } from "../patch/patch_pb.js";
-import { file_patch_patch } from "../patch/patch_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file app/stint_svc.g.proto.
  */
 export const file_app_stint_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvc3RpbnRfc3ZjLmcucHJvdG8SA2FwcCKTAgoPU3RpbnRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIdCghyb2JvdF9pZBgIIAEoDEILqgECCALqghYCEEASLgoKZGF0ZV9zdGFydBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZGF0ZV9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KCGV2ZW50X2lkGAsgASgMQguqAQIIAuqCFgIQQBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIicKCFN0aW50UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIAEIFCgNrZXkinQEKC1N0aW50U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EhAKCHJvYm90X2lkGAggASgIEhIKCmRhdGVfc3RhcnQYCSABKAgSEAoIZGF0ZV9lbmQYCiABKAgSEAoIZXZlbnRfaWQYCyABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIk8KD1N0aW50R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlN0aW50U2VsZWN0ItgBChFTdGludFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSGAoIcm9ib3RfaWQYECABKAxCBuqCFgIQQBIuCgpkYXRlX3N0YXJ0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghkYXRlX2VuZBgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGF0ZV9lbmRfbnVsbBgVIAEoCBIYCghldmVudF9pZBgWIAEoDEIG6oIWAhBAIkwKEVN0aW50QXBwbHlSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5TdGludFJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiQKElN0aW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgy6wEKDFN0aW50U2VydmljZRInCgNBZGQSFC5hcHAuU3RpbnRBZGRSZXF1ZXN0GgouYXBwLlN0aW50EicKA0dldBIULmFwcC5TdGludEdldFJlcXVlc3QaCi5hcHAuU3RpbnQSKwoFUGF0Y2gSFi5hcHAuU3RpbnRQYXRjaFJlcXVlc3QaCi5hcHAuU3RpbnQSKwoFQXBwbHkSFi5hcHAuU3RpbnRBcHBseVJlcXVlc3QaCi5hcHAuU3RpbnQSLwoFRXJhc2USDS5hcHAuU3RpbnRSZWYaFy5hcHAuU3RpbnRFcmFzZVJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_tenant_svc_g, file_app_stint, file_google_protobuf_timestamp, file_orm, file_patch_patch]);
+  fileDesc("ChVhcHAvc3RpbnRfc3ZjLmcucHJvdG8SA2FwcCKTAgoPU3RpbnRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIdCghyb2JvdF9pZBgIIAEoDEILqgECCALqghYCEEASLgoKZGF0ZV9zdGFydBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZGF0ZV9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEh0KCGV2ZW50X2lkGAsgASgMQguqAQIIAuqCFgIQQBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIicKCFN0aW50UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIAEIFCgNrZXkinQEKC1N0aW50U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EhAKCHJvYm90X2lkGAggASgIEhIKCmRhdGVfc3RhcnQYCSABKAgSEAoIZGF0ZV9lbmQYCiABKAgSEAoIZXZlbnRfaWQYCyABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIIk8KD1N0aW50R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlN0aW50U2VsZWN0ItgBChFTdGludFBhdGNoUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuU3RpbnRSZWYSGAoIcm9ib3RfaWQYECABKAxCBuqCFgIQQBIuCgpkYXRlX3N0YXJ0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghkYXRlX2VuZBgUIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZGF0ZV9lbmRfbnVsbBgVIAEoCBIYCghldmVudF9pZBgWIAEoDEIG6oIWAhBAIiQKElN0aW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgyvgEKDFN0aW50U2VydmljZRInCgNBZGQSFC5hcHAuU3RpbnRBZGRSZXF1ZXN0GgouYXBwLlN0aW50EicKA0dldBIULmFwcC5TdGludEdldFJlcXVlc3QaCi5hcHAuU3RpbnQSKwoFUGF0Y2gSFi5hcHAuU3RpbnRQYXRjaFJlcXVlc3QaCi5hcHAuU3RpbnQSLwoFRXJhc2USDS5hcHAuU3RpbnRSZWYaFy5hcHAuU3RpbnRFcmFzZVJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_tenant_svc_g, file_app_stint, file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message app.StintAddRequest
@@ -211,28 +209,6 @@ export const StintPatchRequestSchema: GenMessage<StintPatchRequest> = /*@__PURE_
   messageDesc(file_app_stint_svc_g, 4);
 
 /**
- * @generated from message app.StintApplyRequest
- */
-export type StintApplyRequest = Message<"app.StintApplyRequest"> & {
-  /**
-   * @generated from field: app.StintRef ref = 1;
-   */
-  ref?: StintRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.StintApplyRequest.
- * Use `create(StintApplyRequestSchema)` to create a new message.
- */
-export const StintApplyRequestSchema: GenMessage<StintApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_stint_svc_g, 5);
-
-/**
  * @generated from message app.StintEraseResponse
  */
 export type StintEraseResponse = Message<"app.StintEraseResponse"> & {
@@ -253,7 +229,7 @@ export type StintEraseResponse = Message<"app.StintEraseResponse"> & {
  * Use `create(StintEraseResponseSchema)` to create a new message.
  */
 export const StintEraseResponseSchema: GenMessage<StintEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_stint_svc_g, 6);
+  messageDesc(file_app_stint_svc_g, 5);
 
 /**
  * @generated from service app.StintService
@@ -287,16 +263,6 @@ export const StintService: GenService<{
   patch: {
     methodKind: "unary";
     input: typeof StintPatchRequestSchema;
-    output: typeof StintSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Stint
-   *
-   * @generated from rpc app.StintService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof StintApplyRequestSchema;
     output: typeof StintSchema;
   },
   /**

@@ -25,7 +25,6 @@ const (
 	StintService_Add_FullMethodName   = "/app.StintService/Add"
 	StintService_Get_FullMethodName   = "/app.StintService/Get"
 	StintService_Patch_FullMethodName = "/app.StintService/Patch"
-	StintService_Apply_FullMethodName = "/app.StintService/Apply"
 	StintService_Erase_FullMethodName = "/app.StintService/Erase"
 )
 
@@ -39,8 +38,6 @@ type StintServiceClient interface {
 	Get(ctx context.Context, in *StintGetRequest, opts ...grpc.CallOption) (*Stint, error)
 	// Patch updates an existing Stint
 	Patch(ctx context.Context, in *StintPatchRequest, opts ...grpc.CallOption) (*Stint, error)
-	// Apply applies a patch document to an existing Stint
-	Apply(ctx context.Context, in *StintApplyRequest, opts ...grpc.CallOption) (*Stint, error)
 	// Erase deletes a Stint
 	Erase(ctx context.Context, in *StintRef, opts ...grpc.CallOption) (*StintEraseResponse, error)
 }
@@ -83,16 +80,6 @@ func (c *stintServiceClient) Patch(ctx context.Context, in *StintPatchRequest, o
 	return out, nil
 }
 
-func (c *stintServiceClient) Apply(ctx context.Context, in *StintApplyRequest, opts ...grpc.CallOption) (*Stint, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Stint)
-	err := c.cc.Invoke(ctx, StintService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *stintServiceClient) Erase(ctx context.Context, in *StintRef, opts ...grpc.CallOption) (*StintEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StintEraseResponse)
@@ -113,8 +100,6 @@ type StintServiceServer interface {
 	Get(context.Context, *StintGetRequest) (*Stint, error)
 	// Patch updates an existing Stint
 	Patch(context.Context, *StintPatchRequest) (*Stint, error)
-	// Apply applies a patch document to an existing Stint
-	Apply(context.Context, *StintApplyRequest) (*Stint, error)
 	// Erase deletes a Stint
 	Erase(context.Context, *StintRef) (*StintEraseResponse, error)
 	mustEmbedUnimplementedStintServiceServer()
@@ -135,9 +120,6 @@ func (UnimplementedStintServiceServer) Get(context.Context, *StintGetRequest) (*
 }
 func (UnimplementedStintServiceServer) Patch(context.Context, *StintPatchRequest) (*Stint, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedStintServiceServer) Apply(context.Context, *StintApplyRequest) (*Stint, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedStintServiceServer) Erase(context.Context, *StintRef) (*StintEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -217,24 +199,6 @@ func _StintService_Patch_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StintService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StintApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StintServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StintService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StintServiceServer).Apply(ctx, req.(*StintApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _StintService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StintRef)
 	if err := dec(in); err != nil {
@@ -271,10 +235,6 @@ var StintService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _StintService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _StintService_Apply_Handler,
 		},
 		{
 			MethodName: "Erase",

@@ -25,7 +25,6 @@ const (
 	MachineService_Add_FullMethodName   = "/app.MachineService/Add"
 	MachineService_Get_FullMethodName   = "/app.MachineService/Get"
 	MachineService_Patch_FullMethodName = "/app.MachineService/Patch"
-	MachineService_Apply_FullMethodName = "/app.MachineService/Apply"
 	MachineService_Erase_FullMethodName = "/app.MachineService/Erase"
 )
 
@@ -39,8 +38,6 @@ type MachineServiceClient interface {
 	Get(ctx context.Context, in *MachineGetRequest, opts ...grpc.CallOption) (*Machine, error)
 	// Patch updates an existing Machine
 	Patch(ctx context.Context, in *MachinePatchRequest, opts ...grpc.CallOption) (*Machine, error)
-	// Apply applies a patch document to an existing Machine
-	Apply(ctx context.Context, in *MachineApplyRequest, opts ...grpc.CallOption) (*Machine, error)
 	// Erase deletes a Machine
 	Erase(ctx context.Context, in *MachineRef, opts ...grpc.CallOption) (*MachineEraseResponse, error)
 }
@@ -83,16 +80,6 @@ func (c *machineServiceClient) Patch(ctx context.Context, in *MachinePatchReques
 	return out, nil
 }
 
-func (c *machineServiceClient) Apply(ctx context.Context, in *MachineApplyRequest, opts ...grpc.CallOption) (*Machine, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Machine)
-	err := c.cc.Invoke(ctx, MachineService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *machineServiceClient) Erase(ctx context.Context, in *MachineRef, opts ...grpc.CallOption) (*MachineEraseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MachineEraseResponse)
@@ -113,8 +100,6 @@ type MachineServiceServer interface {
 	Get(context.Context, *MachineGetRequest) (*Machine, error)
 	// Patch updates an existing Machine
 	Patch(context.Context, *MachinePatchRequest) (*Machine, error)
-	// Apply applies a patch document to an existing Machine
-	Apply(context.Context, *MachineApplyRequest) (*Machine, error)
 	// Erase deletes a Machine
 	Erase(context.Context, *MachineRef) (*MachineEraseResponse, error)
 	mustEmbedUnimplementedMachineServiceServer()
@@ -135,9 +120,6 @@ func (UnimplementedMachineServiceServer) Get(context.Context, *MachineGetRequest
 }
 func (UnimplementedMachineServiceServer) Patch(context.Context, *MachinePatchRequest) (*Machine, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedMachineServiceServer) Apply(context.Context, *MachineApplyRequest) (*Machine, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedMachineServiceServer) Erase(context.Context, *MachineRef) (*MachineEraseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Erase not implemented")
@@ -217,24 +199,6 @@ func _MachineService_Patch_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MachineService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MachineApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MachineServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MachineService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MachineServiceServer).Apply(ctx, req.(*MachineApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MachineService_Erase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MachineRef)
 	if err := dec(in); err != nil {
@@ -271,10 +235,6 @@ var MachineService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _MachineService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _MachineService_Apply_Handler,
 		},
 		{
 			MethodName: "Erase",
