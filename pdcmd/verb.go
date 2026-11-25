@@ -45,7 +45,7 @@ var verbs = []struct {
 	// no command, rather than one that cannot work.
 	stream bool
 
-	build func(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
+	build func(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command
 }{
 	{name: "get", method: "Get", build: cmdGet},
 	{name: "list", aliases: []string{"ls"}, method: "List", build: cmdList},
@@ -62,28 +62,37 @@ type runner struct {
 	opts Options
 }
 
-// run is the last three lines of every command, kept in one place because they
-// are the three that must not differ between them: merge the raw request, call,
-// print what came back.
-func (r *runner) run(ctx context.Context, cmd *xli.Command, md protoreflect.MethodDescriptor, in proto.Message, raw ...string) error {
+// run is the last lines of every command that makes one call, kept in one
+// place because they are the ones that must not differ between them: merge the
+// raw request, call, print what came back, and tell `a` -- see [Tree.After].
+func (r *runner) run(ctx context.Context, cmd *xli.Command, md protoreflect.MethodDescriptor, in proto.Message, a *after, raw ...string) error {
 	if err := fillRaw(cmd, in, raw...); err != nil {
+		return err
+	}
+
+	// Before the call, as everything else the command line says is read: an
+	// `-o` that is no format refuses a request that was never sent. Read after
+	// it, it was the call made -- a write -- and then reported as failed, which
+	// is a write somebody makes twice.
+	p, err := r.printer(cmd)
+	if err != nil {
 		return err
 	}
 
 	// From the context rather than from here, because [runner.withConn] put it
 	// there -- which is what lets a command an app wrote itself reach the same
 	// connection; see [Tree.WithConn].
-	out, err := call(ctx, MustConn(ctx), md, in)
+	c := MustConn(ctx)
+	out, err := call(ctx, c, md, in)
 	if err != nil {
 		return err
 	}
-
-	p, err := r.printer(cmd)
-	if err != nil {
+	if err := p.Print(cmd, out); err != nil {
 		return err
 	}
 
-	return p.Print(cmd, out)
+	a.tell(ctx, Call{Conn: c, Method: method(md), Sent: in, Answered: out})
+	return nil
 }
 
 // watch is [runner.run] for a stream: the same request, the same printer, read
@@ -245,7 +254,7 @@ func flgInput() *flg.String {
 	}
 }
 
-func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("get one %s", e.Message.Name()),
 
@@ -264,7 +273,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 			if err := setRef(in, ref); err != nil {
 				return err
 			}
-			if err := r.run(ctx, cmd, md, in); err != nil {
+			if err := r.run(ctx, cmd, md, in, a); err != nil {
 				return err
 			}
 
@@ -283,7 +292,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 // the other is a name rather than a copy of anything. Anything else the request
 // can hold -- filters -- is the trailing protojson, for the reason given on
 // [argRaw]: a flag per filter would be a second copy of the schema.
-func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("list %s", e.Message.Name()),
 
@@ -347,7 +356,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command
 				m.Set(m.Descriptor().Fields().ByName("order"), protoreflect.ValueOfEnum(n))
 			}
 
-			if err := r.run(ctx, cmd, md, in); err != nil {
+			if err := r.run(ctx, cmd, md, in, a); err != nil {
 				return err
 			}
 
@@ -409,7 +418,7 @@ func orderNamed(md protoreflect.MessageDescriptor, name string) (protoreflect.En
 // accident: exiting is what a script needs, and reconnecting is what a person
 // watching one wants, and nothing here can close the gap without being told
 // which of the two it is.
-func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner, _ *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("watch %s", e.Message.Name()),
 
@@ -467,7 +476,7 @@ func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 // The alias is an argument rather than a flag because it is the one field
 // nearly every `add` sets, and it is optional because an entity may have no
 // alias at all -- `Reading` in payday's own test app has none.
-func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("add a %s", e.Message.Name()),
 
@@ -504,7 +513,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 				}
 			}
 
-			if err := r.run(ctx, cmd, md, in, raw...); err != nil {
+			if err := r.run(ctx, cmd, md, in, a, raw...); err != nil {
 				return err
 			}
 
@@ -513,7 +522,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command 
 	}
 }
 
-func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("change one %s", e.Message.Name()),
 
@@ -532,7 +541,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			if err := setRef(in, ref); err != nil {
 				return err
 			}
-			if err := r.run(ctx, cmd, md, in); err != nil {
+			if err := r.run(ctx, cmd, md, in, a); err != nil {
 				return err
 			}
 
@@ -546,7 +555,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 // It still accepts the trailing protojson, so that the shape of these commands
 // is one shape. There is nothing useful to put in it here, and a command that
 // refused it would be a special case to remember.
-func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Command {
+func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xli.Command {
 	return &xli.Command{
 		Brief: fmt.Sprintf("erase one %s", e.Message.Name()),
 
@@ -565,7 +574,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner) *xli.Comman
 			if err := setRef(in, ref); err != nil {
 				return err
 			}
-			if err := r.run(ctx, cmd, md, in); err != nil {
+			if err := r.run(ctx, cmd, md, in, a); err != nil {
 				return err
 			}
 

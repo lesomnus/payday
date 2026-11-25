@@ -26,8 +26,7 @@ func call(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in prot
 		return nil, err
 	}
 
-	name := fmt.Sprintf("/%s/%s", md.Parent().FullName(), md.Name())
-	if err := c.Invoke(ctx, name, in, out); err != nil {
+	if err := c.Invoke(ctx, method(md), in, out); err != nil {
 		return nil, err
 	}
 
@@ -42,9 +41,7 @@ func call(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in prot
 // is why `pdcmd` builds a `Watch` command at all -- what a stream needed was an
 // opinion about ending, not a second way of making a call.
 func open(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in proto.Message) (grpc.ClientStream, error) {
-	name := fmt.Sprintf("/%s/%s", md.Parent().FullName(), md.Name())
-
-	s, err := c.NewStream(ctx, &grpc.StreamDesc{StreamName: string(md.Name()), ServerStreams: true}, name)
+	s, err := c.NewStream(ctx, &grpc.StreamDesc{StreamName: string(md.Name()), ServerStreams: true}, method(md))
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +57,11 @@ func open(ctx context.Context, c Conn, md protoreflect.MethodDescriptor, in prot
 	}
 
 	return s, nil
+}
+
+// method is the full name of md as gRPC is asked for it: "/app.RobotService/Add".
+func method(md protoreflect.MethodDescriptor) string {
+	return fmt.Sprintf("/%s/%s", md.Parent().FullName(), md.Name())
 }
 
 func newMessage(d protoreflect.MessageDescriptor) (proto.Message, error) {

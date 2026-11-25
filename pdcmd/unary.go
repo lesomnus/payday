@@ -115,7 +115,8 @@ func (t *Tree) Unary(method string, options ...UnaryOption) (*xli.Command, error
 	}
 	args = append(args, argRaw())
 
-	return zoned(&xli.Command{
+	a := &after{}
+	return t.unary(zoned(&xli.Command{
 		// The RPC's name, as a command is typed: `AddMany` is `add-many`, the
 		// way an entity's name is its message's -- [pdid.Name] -- and not
 		// `addmany`, which is a word nobody would guess at. [Tree.Add] names
@@ -152,13 +153,13 @@ func (t *Tree) Unary(method string, options ...UnaryOption) (*xli.Command, error
 					}
 				}
 			}
-			if err := r.run(ctx, cmd, md, in, raw...); err != nil {
+			if err := r.run(ctx, cmd, md, in, a, raw...); err != nil {
 				return err
 			}
 
 			return next(ctx)
 		})),
-	}), nil
+	}), a), nil
 }
 
 // UnaryOption selects how a custom command takes its positional argument.
