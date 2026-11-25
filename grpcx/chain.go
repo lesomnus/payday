@@ -31,6 +31,12 @@ type Chain struct {
 
 	Unary  []grpc.UnaryServerInterceptor
 	Stream []grpc.StreamServerInterceptor
+
+	// parsed is whether the server says a request it could not unmarshal in
+	// payday's words ([Unparsed]), which a chain [Serving] began does. It is
+	// not an interceptor: grpc-go unmarshals a request before any of them is
+	// called, so its codec is the one place that sees the failure.
+	parsed bool
 }
 
 // With answers with this chain and `c` after it, which is how a deployment adds
@@ -42,6 +48,7 @@ func (v Chain) With(c Chain) Chain {
 	v.Stats = append(append([]stats.Handler{}, v.Stats...), c.Stats...)
 	v.Unary = append(append([]grpc.UnaryServerInterceptor{}, v.Unary...), c.Unary...)
 	v.Stream = append(append([]grpc.StreamServerInterceptor{}, v.Stream...), c.Stream...)
+	v.parsed = v.parsed || c.parsed
 
 	return v
 }
@@ -68,7 +75,10 @@ func (v Chain) WithStats(hs ...stats.Handler) Chain {
 // so a caller that adds an interceptor of its own beside this does not silently
 // replace what is here.
 func (v Chain) ServerOptions() []grpc.ServerOption {
-	opts := make([]grpc.ServerOption, 0, len(v.Stats)+2)
+	opts := make([]grpc.ServerOption, 0, len(v.Stats)+3)
+	if v.parsed {
+		opts = append(opts, forceCodec())
+	}
 	for _, h := range v.Stats {
 		opts = append(opts, grpc.StatsHandler(h))
 	}

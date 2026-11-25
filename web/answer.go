@@ -10,6 +10,8 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/vanguard"
 	"google.golang.org/grpc"
+
+	"github.com/lesomnus/payday/grpcx"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -57,14 +59,15 @@ func (c readableJSON) Unmarshal(b []byte, m proto.Message) error {
 //     refused again however long it waits: it is 413, and the code in the body
 //     stays `resource_exhausted`, as a gRPC caller of the same request is told;
 //   - a protobuf body that does not parse. The transcoder hands a protobuf body
-//     to gRPC as it came, and grpc-go answers what it cannot read `Internal`
-//     (`grpc: error unmarshalling request`, server.go), a server failing: it is
-//     the caller's, 400 `invalid_argument`, as a JSON body that does not read
-//     is ([readable]).
+//     to gRPC as it came, and grpc-go answers what it cannot read `Internal`, a
+//     server failing: it is the caller's, 400 `invalid_argument`, as a JSON body
+//     that does not read is ([readable]).
 //
-// The last two are told by grpc-go's sentence, the one thing that tells them
-// from a rate limit or a handler's `Internal`; TestWhatCannotBeReadIsTheCallers
-// holds the words, so a grpc-go that changes them fails there.
+// A message too large is told by grpc-go's sentence, the one thing that tells
+// it from a rate limit; TestWhatCannotBeReadIsTheCallers holds the words, so a
+// grpc-go that changes them fails there. A body that does not parse is told by
+// payday's own codec's words instead ([grpcx.Unparsed]): grpc-go's sentence
+// around them is not the same from one release to the next.
 func answered(h http.Handler, at map[string]grpc.ServiceInfo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := &answer{ResponseWriter: w, r: r, rpc: true, known: method(at, r.URL.Path)}
@@ -158,7 +161,7 @@ func (a *answer) finish() {
 	case http.StatusInternalServerError:
 		if why, ok := unread(a.body.Bytes()); ok {
 			a.fail(http.StatusBadRequest, connect.CodeInvalidArgument,
-				fmt.Sprintf("the body is not a protobuf of %s: %s", input(a.r.URL.Path), why))
+				"the body is not a protobuf of "+why)
 			return
 		}
 
@@ -225,8 +228,9 @@ func input(path string) string {
 	return string(md.Input().FullName())
 }
 
-// unread is whether a Connect error is grpc-go's refusal of a request it could
-// not unmarshal, and why, in the protobuf library's words.
+// unread is whether a Connect error is the refusal of a request the server
+// could not unmarshal, and of which message and why, in the protobuf library's
+// words.
 func unread(body []byte) (string, bool) {
 	var e struct {
 		Code    string `json:"code"`
@@ -236,7 +240,10 @@ func unread(body []byte) (string, bool) {
 		return "", false
 	}
 
-	return strings.CutPrefix(e.Message, "grpc: error unmarshalling request: ")
+	// Found wherever it is: what grpc-go writes around it is one release's
+	// sentence, and the codec's words are payday's. See [grpcx.Unparsed].
+	_, why, ok := strings.Cut(e.Message, grpcx.Unparsed)
+	return why, ok
 }
 
 // tooLarge is whether a Connect error is gRPC's refusal of a message larger
