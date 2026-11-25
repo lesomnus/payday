@@ -760,11 +760,13 @@ export const Entity_NamedOrderSchema: GenMessage<Entity_NamedOrder> = /*@__PURE_
  * Watch is how this entity is read as it changes.
  *
  * What arrives is **state and never a delta**, and that is the decision the
- * rest follows from. A client keeps what it was last told about a row and
- * replaces it, so a stream that missed something is still correct -- the next
- * item about that row carries the whole of it. It also makes a stream that
- * fell behind *cheaper* rather than more expensive: a row that changed three
- * times is one row to read.
+ * rest follows from. A client replaces what it was last told about a row with
+ * the whole of it, so an item sent twice, or a row changed three times before
+ * it was read, is one row to read and nothing to replay. A stream that cannot
+ * keep up is ended, not let skip, and the one asked for again begins with
+ * everything that matches then. What the generated Watch says, and what it
+ * does not -- a row that leaves a caller's sight with no write to it -- is on
+ * the rpc.
  *
  * @generated from message payday.Entity.Watch
  */

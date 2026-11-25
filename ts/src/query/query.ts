@@ -1088,9 +1088,19 @@ export class Queries {
 	 * watch opens the sibling `Watch` for as long as anybody is asking this.
 	 *
 	 * The sibling is found rather than named: a service that answers a `List`
-	 * over filters answers a `Watch` over the same filters, so the request is
-	 * the query's own. That is a payday shape rather than a general one, and
-	 * this is payday's package.
+	 * over filters answers a `Watch` over filters of the same type, so the
+	 * request is the query's own. That is a payday shape rather than a general
+	 * one, and this is payday's package.
+	 *
+	 * Only over filters that each name a row by `ref`, which is what a
+	 * generated `Watch` takes: it is about the rows its filters name, resolved
+	 * when it opens, and it refuses a filter that names none -- a tenant, an
+	 * edge, a field -- though the `List` beside it takes it. Opened over one,
+	 * the stream was refused at once, the refusal landed in the reopen path
+	 * below, and the list was read a second time to be refused again: a query
+	 * that was never live, for two calls more. So such a list is not watched,
+	 * as a filterless one is not, and is current by the re-reads a write of
+	 * this client's makes.
 	 */
 	private watch(v: Live): void {
 		if (v.stop !== undefined) return
@@ -1112,6 +1122,7 @@ export class Queries {
 		const filters = (v.input as unknown as Record<string, unknown>)['filters']
 		const filterless = filters === undefined || (Array.isArray(filters) && filters.length === 0)
 		if (filterless && v.opts.watch !== true) return
+		if (!namesRows(filters) && v.opts.watch !== true) return
 
 		const stop = new AbortController()
 		v.stop = stop
@@ -1478,6 +1489,16 @@ async function exclusive<T>(name: string, f: () => Promise<T>): Promise<T> {
 	} finally {
 		if (held.get(name) === tail) held.delete(name)
 	}
+}
+
+/**
+ * namesRows is whether every filter of a list names a row by `ref`, which is
+ * what a generated `Watch` takes. `[]` names none.
+ */
+function namesRows(filters: unknown): boolean {
+	if (!Array.isArray(filters) || filters.length === 0) return false
+
+	return filters.every((f) => (f as Record<string, unknown> | undefined)?.['ref'] !== undefined)
 }
 
 /** siblingWatch is the streaming method beside a query, when there is one. */

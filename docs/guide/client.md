@@ -127,8 +127,8 @@ every render is still one query.
 
 ### The watch comes with a filter
 
-A query that names **at least one filter** opens the sibling `Watch` behind it,
-for as long as anybody is asking. So a row somebody else changed arrives without
+A query whose filters **each name a row by `ref`** opens the sibling `Watch`
+behind it, for as long as anybody is asking. So a row somebody else changed arrives without
 anything here polling, and without you writing a line:
 
 ```tsx
@@ -151,6 +151,19 @@ stream looks like one that ended, and what follows an ended stream is one reopen
 re-read after every write **this** client makes, which is what a page that shows
 only what it is itself changing needs. A page that wants *other people's* writes
 live says which rows it is about.
+
+**Nor is a list over anything but rows.** A `Watch` is about the rows its
+filters name, resolved when it opens, so a filter that names a tenant, an edge
+or a field, which the `List` takes, is refused by the `Watch`:
+
+```
+filters[0]: a watch says which rows it is about by naming them
+```
+
+and the client does not open it, for the reason above. Such a list is current
+by the re-reads after this client's own writes; a page that wants other
+people's writes live lists the rows it is about by `ref`
+([what a watch takes](schema.md#6-watch--the-page-kept-current)).
 
 | | |
 | --- | --- |
