@@ -29,7 +29,7 @@ enum Mode {
 message Dock {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}, indexes: [{name: "by_tenant", refs: [{name: "tenant", number: 2}]}]};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}, indexes: [{name: "by_tenant", refs: [{name: "tenant", number: 2}]}]};
   option (payday.entity) = {domain: 8, erase: {hard: {}}};
 }
 
@@ -52,13 +52,13 @@ message Machine {
   bool spare = 23 [features.field_presence = EXPLICIT];
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}, indexes: [{name: "by_tenant", refs: [{name: "tenant", number: 2}]}]};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}, indexes: [{name: "by_tenant", refs: [{name: "tenant", number: 2}]}]};
   option (payday.entity) = {domain: 7};
 }
 
 message Fleet {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, global: {}, erase: {hard: {}}};
 }
 

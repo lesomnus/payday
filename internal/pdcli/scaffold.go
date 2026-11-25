@@ -449,7 +449,9 @@ func (e Entity) message(domain int) string {
 
 	b.WriteString("\n  google.protobuf.Timestamp date_created = 15 [(orm.field) = {\n    immutable: true\n    default: \"\"\n  }];\n")
 
-	b.WriteString("\n  option (orm.message) = {\n    rpc: {crud: true}\n")
+	// Each verb by its name. There was a `crud` that stood for these four, and
+	// `orm` no longer has it: a schema says the verbs it means.
+	b.WriteString("\n  option (orm.message) = {\n    rpc: {\n      add: {}\n      get: {}\n      patch: {}\n      erase: {}\n    }\n")
 	if e.Watch {
 		b.WriteString("    indexes: [\n")
 		b.WriteString("      // The order a List reads in. Generation warns without it, because\n")

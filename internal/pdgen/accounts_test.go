@@ -30,7 +30,7 @@ message Holder {
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   string role = 8;
 ` + field + `
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, own: OWN_HOLDER};
 }
 ` + svc
@@ -177,9 +177,9 @@ func TestAnAccountFieldNoIndexServesIsWarnedOf(t *testing.T) {
 	}, "%v", pdgen.Warnings(s))
 
 	indexed := strings.Replace(accounted(accountsAt9, accountField, ""),
-		`option (orm.message) = {rpc: {crud: true}};
+		`option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, own: OWN_HOLDER};`,
-		`option (orm.message) = {rpc: {crud: true}, indexes: [{name: "by_account", refs: [{name: "account", number: 9}]}]};
+		`option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}, indexes: [{name: "by_account", refs: [{name: "account", number: 9}]}]};
   option (payday.entity) = {domain: 2, own: OWN_HOLDER};`, 1)
 	s, err = readAs(t, "payday", indexed)
 	x.NoError(err)

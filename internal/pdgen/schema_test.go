@@ -180,7 +180,7 @@ message %s {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   string alias = 4;
 %s
-  option (orm.message) = {rpc: {crud: true}%s};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}%s};
   option (payday.entity) = {%s, erase: {hard: {}}};
 }
 `, name, body, orm, opts)
@@ -190,7 +190,7 @@ const tenant = `
 message Tenant {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   string alias = 4 [(orm.field) = {unique: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 }
 `
@@ -235,7 +235,7 @@ message Gadget {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   test.Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 7
     tenanted: {via: "tenant"}
@@ -285,7 +285,7 @@ func TestRefuses(t *testing.T) {
 		src: tenant + `
 message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 }`,
 		says: "(payday.entity)",
 	}, {
@@ -348,7 +348,7 @@ message Robot {
 		src: tenant + `
 message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}, (payday.field) = {personal: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }`,
 		says: "the key cannot be personal",
@@ -371,7 +371,7 @@ message Robot {
     bytes verifier = 1 [(payday.field) = {secret: true}];
   }
   Key key = 8;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }`,
 		says: "test.Robot.Key is not an entity",
@@ -466,7 +466,7 @@ func TestTenantedByField(t *testing.T) {
 message Audit {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 3, tenanted: {field: "tenant_id"}, erase: {hard: {}}};
 }`)
 		if err != nil {
@@ -545,7 +545,7 @@ message Holder {
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
 ` + extra + `
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, own: OWN_HOLDER};
 }`
 	}
@@ -574,7 +574,7 @@ message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`)
 		if err != nil {
@@ -665,9 +665,9 @@ message Site {
 		says: "(payday.entity) tenanted is not payday's",
 	}, {
 		what: "turning one of payday's rpcs off",
-		was:  `option (orm.message) = {rpc: {crud: true}};`,
-		is:   `option (orm.message) = {rpc: {crud: true, add: {disabled: true}}};`,
-		says: "(orm.message) rpc.add is not payday's",
+		was:  `option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};`,
+		is:   `option (orm.message) = {rpc: {add: {disabled: true}, get: {}, patch: {}, erase: {}}};`,
+		says: "(orm.message) rpc.add.disabled is not payday's",
 	}} {
 		t.Run(tt.what+" is refused", func(t *testing.T) {
 			if !strings.Contains(holder(""), tt.was) {
@@ -689,9 +689,9 @@ message Site {
 	t.Run("adding an index is fine", func(t *testing.T) {
 		// Unique per tenant, which `unique: true` on the field cannot say: one
 		// person in two tenants is two holders with one address.
-		const was = `option (orm.message) = {rpc: {crud: true}};`
+		const was = `option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};`
 		src := tenantOf("payday") + strings.Replace(holder(`  string email = 8;`), was,
-			`option (orm.message) = {rpc: {crud: true}, indexes: [`+
+			`option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}, indexes: [`+
 				`{name: "email", refs: [{name: "email", number: 8}, {name: "tenant", number: 2}], unique: true}]};`, 1)
 		if !strings.Contains(src, `name: "email"`) {
 			t.Fatalf("the fixture no longer says %q", was)
@@ -722,7 +722,7 @@ message Tenant {
   map<string, string> labels = 7 [(payday.field) = {personal: false}];
   google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 1, tenant: {}, own: OWN_TENANT, erase: {hard: {}}};
 }`
 }
@@ -737,7 +737,7 @@ message Robot {
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, list: {` + list + `}, erase: {hard: {}}};
 }`
 	}
@@ -914,7 +914,7 @@ message Robot {
   Tenant tenant = 2 [(orm.edge) = {}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [{name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]}]
   };
   option (payday.entity) = {
@@ -941,7 +941,7 @@ message Robot {
   Tenant tenant = 2 [(orm.edge) = {}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
   };
   option (payday.entity) = {
@@ -966,7 +966,7 @@ message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [{name: "page", refs: [{name: "date_created", number: 15}, {name: "id", number: 1}]}]
   };
   option (payday.entity) = {
@@ -992,7 +992,7 @@ message Robot {
   string alias = 4;
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [{name: "page", refs: [{name: "tenant", number: 2}, {name: "date_created", number: 15}, {name: "id", number: 1}]}]
   };
   option (payday.entity) = {
@@ -1033,7 +1033,7 @@ func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
@@ -1041,7 +1041,7 @@ func TestAWatchWithoutAVersionIsRefused(t *testing.T) {
 			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 			string alias = 4;
 			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
@@ -1070,7 +1070,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
@@ -1078,7 +1078,7 @@ func TestAListWithoutAWatchNeedsNoVersion(t *testing.T) {
 			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 			string alias = 4;
 			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
@@ -1109,7 +1109,7 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Robot {
@@ -1118,7 +1118,7 @@ func TestAWatchWithNothingToNameARowByIsRefused(t *testing.T) {
 			string alias = 4;
 			google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
 			google.protobuf.Timestamp date_created = 15 [(orm.field) = {immutable: true, default: ""}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {
 				domain: 7
 				tenanted: {via: "tenant"}
@@ -1154,7 +1154,7 @@ func TestAHeaderFieldOfTheWrongKindIsRefused(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			int64 name = 5;
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 	`)
@@ -1175,7 +1175,7 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Trail {
@@ -1183,7 +1183,7 @@ func TestAnEntityWithNoHeaderIsFine(t *testing.T) {
 			bytes tenant_id = 2 [(orm.field) = {type: TYPE_UUID}];
 			string action = 8;
 			bytes object_id = 9 [(orm.field) = {type: TYPE_UUID}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 8, tenanted: {field: "tenant_id"}, erase: {hard: {}}};
 		}
 	`)
@@ -1204,7 +1204,7 @@ func TestAHeaderFieldSomewhereElseIsRefused(t *testing.T) {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
 			string name = 9;
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 	`)
@@ -1227,14 +1227,14 @@ func TestAnEntityNobodyNamesIsOrdinary(t *testing.T) {
 		message Tenant {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			string alias = 4 [(orm.field) = {unique: true}];
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 1, tenant: {}, erase: {hard: {}}};
 		}
 		message Reading {
 			bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
 			Tenant tenant = 2 [(orm.edge) = {immutable: true}];
 			double celsius = 8;
-			option (orm.message) = {rpc: {crud: true}};
+			option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
 			option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}, erase: {hard: {}}};
 		}
 	`)
@@ -1330,7 +1330,7 @@ message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 ` + strings.Join(vs, "\n")
@@ -1343,7 +1343,7 @@ message Asset {
   Tenant tenant = 2 [(orm.edge) = {}];
   ` + at + `
   string alias = 4;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 	}
@@ -1415,14 +1415,14 @@ message Cell {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   string alias = 4;
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Reading {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Cell cell = 3 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 11, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, app(asset(`Site site = 3 [(orm.edge) = {}];`), second))
@@ -1441,21 +1441,21 @@ message Reading {
 message Area {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 8, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Area area = 3 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 message Asset {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Site site = 3 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 10, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, src)
@@ -1474,14 +1474,14 @@ message Asset {
 		src := tenant + `
 message Site {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 8, global: {}, erase: {hard: {}}};
 }
 message Asset {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   Site site = 3 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }`
 		_, err := read(t, src)
@@ -1506,7 +1506,7 @@ message Note {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   bytes about_id = 8 [(orm.field) = {type: TYPE_UUID}];
   bytes by_id = 9 [(orm.field) = {type: TYPE_UUID}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 7
     tenanted: {field: "about_id", field: "by_id"}
@@ -1530,7 +1530,7 @@ message Note {
 message Note {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   bytes about_id = 8 [(orm.field) = {type: TYPE_UUID}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 7
     tenanted: {field: "about_id", field: "nowhere"}
@@ -1574,7 +1574,7 @@ message Lock {
 	}
 
 	t.Run("one a server writes says nothing, and is checked", func(t *testing.T) {
-		s, err := read(t, lock(`rpc: {crud: true}`, ``))
+		s, err := read(t, lock(`rpc: {add: {}, get: {}, patch: {}, erase: {}}`, ``))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1627,7 +1627,7 @@ message Lock {
 		}
 
 		for _, v := range []string{`, trail: {recorded: {}}`, `, trail: {off: {why: "x"}}`} {
-			_, err := read(t, lock(`rpc: {crud: true}`, v))
+			_, err := read(t, lock(`rpc: {add: {}, get: {}, patch: {}, erase: {}}`, v))
 			if err == nil || !strings.Contains(err.Error(), "a server writes it") {
 				t.Fatalf("%s: a kind a server writes was given a second answer: %v", v, err)
 			}
@@ -1652,7 +1652,7 @@ message Robot {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
   ` + field + `
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, tenanted: {via: "tenant"}` + opt + `};
 }`
 	}
@@ -1804,7 +1804,7 @@ message Thing {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   string alias = 4;
   google.protobuf.Timestamp gone_at = 8 [(orm.field) = {erased: {}}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, global: {}};
 }`)
 		if err != nil {
@@ -1897,7 +1897,7 @@ func TestTenantedStamp(t *testing.T) {
 message Holder {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `
@@ -1907,7 +1907,7 @@ message Holder {
 message Holder {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `
@@ -2016,7 +2016,7 @@ func TestTenantedAgrees(t *testing.T) {
 message Holder {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `
