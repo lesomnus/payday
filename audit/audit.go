@@ -6,7 +6,7 @@
 // generated servers, which call it from inside the transaction that makes a
 // write -- so every RPC that changes anything is on the trail without anybody
 // having listed them, and one added later is on it without anybody remembering
-// to. A layer in front cannot do this: `Patch` and `Apply` are two Rpcs and one
+// to. A layer in front cannot do this: `Patch` and `Apply` are two RPCs and one
 // write, and they become one *below* anything that can be stacked on top.
 //
 // The **layer** is here for the other half. The trail is written by the app and

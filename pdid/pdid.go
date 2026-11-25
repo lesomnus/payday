@@ -65,7 +65,7 @@ import (
 	"uuid"
 )
 
-// Id is a Uuid that says what kind of thing it names.
+// Id is a UUID that says what kind of thing it names.
 type Id uuid.UUID
 
 // Nil is the identifier that names nothing, and so is the identifier nothing
@@ -86,7 +86,7 @@ func New(d Domain) Id {
 	return Id(v)
 }
 
-// Uuid answers with this identifier as a plain Uuid, which is what the database
+// Uuid answers with this identifier as a plain UUID, which is what the database
 // and the wire hold.
 func (v Id) Uuid() uuid.UUID { return uuid.UUID(v) }
 
@@ -112,7 +112,7 @@ func (v Id) IsZero() bool { return v == Nil }
 // this shape at all.
 //
 // The check is the point. Every sixteen bytes can be read as a UUID and every
-// Uuid has a ninth byte, so without it any identifier would be taken to be
+// UUID has a ninth byte, so without it any identifier would be taken to be
 // making a claim about itself -- a v4 whose ninth byte happens to be 3 would
 // pass as whatever 3 was registered as. What the version and the variant say is
 // the only reason to believe the rest.

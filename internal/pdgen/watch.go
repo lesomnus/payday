@@ -28,7 +28,7 @@ const (
 func emitWatch(g *protogen.GeneratedFile, v *Entity, p Paths, root protogen.GoImportPath) {
 	e := v.GoName()
 
-	g.P("// ", e, "Service is the prefix of every Rpc of that service, which is how a")
+	g.P("// ", e, "Service is the prefix of every RPC of that service, which is how a")
 	g.P("// change is known to be about a ", e, ". A service is named for the entity it")
 	g.P("// is about, so the name carries it.")
 	g.P("var ", e, "Service = ", pkgWatch.Ident("ServiceOf"), "(", root.Ident(e+"Service_Get_FullMethodName"), ")")

@@ -61,7 +61,7 @@ func emitOutboxRecorder(g *protogen.GeneratedFile, p Paths) {
 	g.P("// lose exactly the one it was written to keep.")
 	g.P("//")
 	g.P("// It writes through `s.Db`, which is the client this transaction is running")
-	g.P("// on, and not through a server: there are no Rpcs on this entity, on")
+	g.P("// on, and not through a server: there are no RPCs on this entity, on")
 	g.P("// purpose -- see the note in payday's outbox.proto.")
 	g.P("func (outboxRecorder) Record(ctx ", pkgCtx.Ident("Context"), ", s ", p.Bare.Ident("Server"),
 		", c ", p.Bare.Ident("Change"), ") error {")

@@ -1378,7 +1378,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 			if d.IsList() {
 				return fmt.Errorf(
 					"list: by: %q is a one-to-many edge, and there is no column on this row "+
-						"to compare -- which is a join, and a join wants an Rpc somebody wrote",
+						"to compare -- which is a join, and a join wants an RPC somebody wrote",
 					name)
 			}
 
@@ -1402,7 +1402,7 @@ func readList(e *Entity, opts *pdpb.Entity_List) error {
 		if protoTypeOf(f.Type()) == "" {
 			return fmt.Errorf(
 				"list: by: %q is %s, and a filter compares for equality -- which is not "+
-					"something this generator writes for that. An Rpc somebody wrote can",
+					"something this generator writes for that. An RPC somebody wrote can",
 				name, f.Type())
 		}
 		v.By = append(v.By, By{Field: name, Type: f.Type()})
@@ -2065,7 +2065,7 @@ func suggestErased(e graph.Entity) int {
 	}
 }
 
-// checkPresence refuses a field that has presence in the Api and nowhere to
+// checkPresence refuses a field that has presence in the API and nowhere to
 // keep it.
 //
 // # What goes wrong
@@ -2126,7 +2126,7 @@ func (s *Schema) checkPresence(v *Entity) error {
 		}
 
 		return fmt.Errorf(
-			"%s.%s: this field has presence in the Api -- `Has%s()` -- and a NOT NULL "+
+			"%s.%s: this field has presence in the API -- `Has%s()` -- and a NOT NULL "+
 				"column to keep it in, so a caller who never set it is told it is set\n\n"+
 				"    say which one you meant:\n"+
 				"      [(orm.field) = {nullable: true}]  the value may be absent\n"+

@@ -299,7 +299,7 @@ func TestTheFormats(t *testing.T) {
 		x.GreaterOrEqual(len(lines), 2)
 		x.Contains(lines[0], "ALIAS")
 		x.Contains(lines[0], "AGE")
-		x.NotContains(lines[0], "Id", "the identifier is wide, so a terminal shows the readable columns")
+		x.NotContains(lines[0], "ID", "the identifier is wide, so a terminal shows the readable columns")
 		x.Contains(got.Stdout, "admin")
 	})
 
@@ -308,7 +308,7 @@ func TestTheFormats(t *testing.T) {
 
 		got := run(t, "holder", "list", "-o", "wide")
 		x.NoError(got.Err)
-		x.Contains(got.Stdout, "Id")
+		x.Contains(got.Stdout, "ID")
 		x.Contains(got.Stdout, b.Holder.String())
 	})
 

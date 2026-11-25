@@ -709,7 +709,7 @@ func (s coreCredential) Set(ctx context.Context, req *api.CredentialSetRequest) 
 }
 ```
 
-Nothing generated changed and no Rpc was added. So *the generated verb takes the
+Nothing generated changed and no RPC was added. So *the generated verb takes the
 wrong thing* is not a wall — it takes what your layer hands it, and the
 conversion is the work. The same reading covers *there is no field for it*: the
 message is yours to extend in `proto/ext/`, which is a field number and
