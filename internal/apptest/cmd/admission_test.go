@@ -156,3 +156,55 @@ func TestAdmissionRejectsUnknownAndInternalEntitySelection(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+// TestACallAdmissionIsNotAskedAboutIsAdmittedAsOneLetThrough: a call of a
+// method `admission.Options.Asked` answers false for is admitted without the
+// policy, and the generated server does with it what it does with one the
+// policy let through. Its write is counted off against the guard on direct
+// ent writes, so its transaction commits; and a transaction it joins that
+// another write already had refused still does not. A write with no outer
+// method captured -- no AdmissionUnary, no bare.Origin -- is asked about by
+// the method the policy would have been given: the RPC that wrote.
+func TestACallAdmissionIsNotAskedAboutIsAdmittedAsOneLetThrough(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+	asked := []string{}
+	called := 0
+	s := admitted(t, b, admission.Func(func(context.Context, admission.Call) error {
+		called++
+		return status.Error(codes.PermissionDenied, "not this one")
+	}), admission.Options{Asked: func(m string) bool {
+		asked = append(asked, m)
+		return m != app.RobotService_Add_FullMethodName
+	}})
+	add := func(ctx context.Context, s app.Server, alias string) error {
+		_, err := s.Robot().Add(ctx, app.RobotAddRequest_builder{Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(), Alias: alias}.Build())
+		return err
+	}
+
+	x.NoError(add(b.as(ctx), s, "not-asked"))
+	x.Equal([]string{app.RobotService_Add_FullMethodName}, asked, "asked by the RPC that wrote")
+	x.Zero(called)
+	x.Equal(1, b.Ent.Robot.Query().CountX(ctx), "the write committed past the guard")
+
+	// Asked about the outer method, where one was captured.
+	_, err := pd.AdmissionUnary(b.as(ctx), wrapperspb.String("x"), &grpc.UnaryServerInfo{FullMethod: "/app.JobService/Complete"}, func(ctx context.Context, _ any) (any, error) {
+		return nil, add(ctx, s, "asked")
+	})
+	x.Equal(codes.PermissionDenied, status.Code(err))
+	x.Equal(1, called)
+
+	// And a transaction already refused stays refused, whatever joins it.
+	drv, tx, err := dialect.BeginTx(ctx, b.Drv)
+	x.NoError(err)
+	defer tx.Rollback()
+	sv, err := enttx.Rebind(s, drv)
+	x.NoError(err)
+	_, err = pd.AdmissionUnary(b.as(ctx), wrapperspb.String("x"), &grpc.UnaryServerInfo{FullMethod: "/app.JobService/Complete"}, func(ctx context.Context, _ any) (any, error) {
+		return nil, add(ctx, sv, "refused")
+	})
+	x.Equal(codes.PermissionDenied, status.Code(err))
+	x.NoError(add(b.as(ctx), sv, "joined"))
+	x.Error(tx.Commit())
+	x.Equal(1, b.Ent.Robot.Query().CountX(ctx))
+}

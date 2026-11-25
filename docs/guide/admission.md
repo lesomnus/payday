@@ -176,6 +176,28 @@ policy ignoring cancellation retains its slot until it returns, and exhaustion
 refuses new decisions. Give network clients their own timeouts too. Policies
 must avoid side effects: accepted writes can still fail afterwards.
 
+A policy that is asked about some methods and not others says which, with
+`Asked`, so that a policy that is down holds up only what it was asked about:
+
+```go
+asked := map[string]bool{"/app.RevisionService/Release": true, app.RevisionService_Patch_FullMethodName: true}
+pd.Admission(rules, admission.Options{
+    Entities: []string{"app.Revision"},
+    Asked:    func(method string) bool { return asked[method] },
+})
+```
+
+It is asked with the call's outer method, `Call.Method`: the RPC the transport
+captured (`pd.AdmissionUnary`, or `bare.Origin`), or, where none was, the
+generated RPC that wrote -- the same string the policy would have been given. A
+call it answers false for is admitted at once: the policy is not called,
+nothing is copied for it, and it takes no slot, while a policy that hangs holds
+every slot and refuses everything else it is asked about. It is otherwise a
+call the policy let through: its write is counted against the guard on direct
+ent writes, and a transaction another write already had refused stays refused.
+`Asked` runs first and unbounded, inside the write's transaction: keep it a
+lookup, never a call. Nil asks about every call.
+
 Refusals produce a structured `admission refused` log with entity, object,
 method, operation, actor, caller when represented, and result code. Request
 values and policy error text are omitted. Configure `Options.Log` to route
