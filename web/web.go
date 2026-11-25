@@ -101,7 +101,7 @@ func New(c config.HttpConfig, s *grpc.Server) (*Mux, error) {
 	// The transcoder in **front** of the mux rather than mounted in it, and
 	// reached by a request that both says it is a call and is addressed to a
 	// service this server has. See [dispatch].
-	var h http.Handler = mux
+	var h http.Handler = routed(mux)
 	if c.AllowWeb {
 		t, err := Transcode(s)
 		if err != nil {
@@ -139,7 +139,14 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) { m.h.ServeHTTP(
 // an app's route is not a service name.
 //
 // Preflights do not reach here at all: [Cors] answers `OPTIONS` itself, above.
-func dispatch(rpc http.Handler, app http.Handler, at map[string]grpc.ServiceInfo) http.Handler {
+//
+// What either half answers that is not an answer -- a route that is none, a
+// method a route does not take, a body too long or not JSON -- is the JSON every
+// other failure is; see [answered].
+func dispatch(rpc http.Handler, app *http.ServeMux, at map[string]grpc.ServiceInfo) http.Handler {
+	rpc = answered(rpc, at)
+	other := routed(app)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if Rpc(r) && addressed(at, r.URL.Path) {
 			rpc.ServeHTTP(w, r)
@@ -147,7 +154,25 @@ func dispatch(rpc http.Handler, app http.Handler, at map[string]grpc.ServiceInfo
 			return
 		}
 
-		app.ServeHTTP(w, r)
+		other.ServeHTTP(w, r)
+	})
+}
+
+// routed is the app's mux, with what it answers for a request no route of it
+// takes -- `404` for a path that is none, `405` for a method its route does not
+// take -- written as the JSON every other failure is, in place of the mux's
+// line of text. A request a route takes is the app's, whatever it answers.
+func routed(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, pattern := mux.Handler(r); pattern != "" {
+			mux.ServeHTTP(w, r)
+
+			return
+		}
+
+		a := &answer{ResponseWriter: w, r: r}
+		mux.ServeHTTP(a, r)
+		a.finish()
 	})
 }
 
@@ -156,6 +181,21 @@ func dispatch(rpc http.Handler, app http.Handler, at map[string]grpc.ServiceInfo
 // A gRPC address is `/<package>.<Service>/<Method>`, so the first segment is
 // the whole of the question and the names are known exactly. This is a lookup
 // and not a guess about shape.
+// method is whether the path names a method of a service this server has.
+func method(at map[string]grpc.ServiceInfo, path string) bool {
+	name, m, ok := strings.Cut(strings.TrimPrefix(path, "/"), "/")
+	if !ok {
+		return false
+	}
+	for _, v := range at[name].Methods {
+		if v.Name == m {
+			return true
+		}
+	}
+
+	return false
+}
+
 func addressed(at map[string]grpc.ServiceInfo, path string) bool {
 	name, _, ok := strings.Cut(strings.TrimPrefix(path, "/"), "/")
 	if !ok {
@@ -234,7 +274,10 @@ func Transcode(s *grpc.Server) (http.Handler, error) {
 		))
 	}
 
-	t, err := vanguard.NewTranscoder(vs)
+	// A third option, and it is about whose a failure is: a body that is not
+	// JSON, or JSON that is not the request, is the caller's (400), where the
+	// transcoder's own codec says `unknown` (500). See [readable].
+	t, err := vanguard.NewTranscoder(vs, vanguard.WithCodec(readable))
 	if err != nil {
 		return nil, fmt.Errorf("transcode: %w", err)
 	}
