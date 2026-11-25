@@ -7,7 +7,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1023,99 +1022,6 @@ func (b0 TenantPatchRequest_builder) Build() *TenantPatchRequest {
 	return m0
 }
 
-type TenantApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *TenantRef             `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *TenantApplyRequest) Reset() {
-	*x = TenantApplyRequest{}
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TenantApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TenantApplyRequest) ProtoMessage() {}
-
-func (x *TenantApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *TenantApplyRequest) GetRef() *TenantRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *TenantApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *TenantApplyRequest) SetRef(v *TenantRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *TenantApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *TenantApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *TenantApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *TenantApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *TenantApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type TenantApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *TenantRef
-	Patch *patchpb.Patch
-}
-
-func (b0 TenantApplyRequest_builder) Build() *TenantApplyRequest {
-	m0 := &TenantApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type TenantEraseResponse struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Erased      bool                   `protobuf:"varint,1,opt,name=erased"`
@@ -1127,7 +1033,7 @@ type TenantEraseResponse struct {
 
 func (x *TenantEraseResponse) Reset() {
 	*x = TenantEraseResponse{}
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1139,7 +1045,7 @@ func (x *TenantEraseResponse) String() string {
 func (*TenantEraseResponse) ProtoMessage() {}
 
 func (x *TenantEraseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[6]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1115,7 @@ type TenantListRequest struct {
 
 func (x *TenantListRequest) Reset() {
 	*x = TenantListRequest{}
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1221,7 +1127,7 @@ func (x *TenantListRequest) String() string {
 func (*TenantListRequest) ProtoMessage() {}
 
 func (x *TenantListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[7]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1353,7 +1259,7 @@ type TenantListResponse struct {
 
 func (x *TenantListResponse) Reset() {
 	*x = TenantListResponse{}
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1365,7 +1271,7 @@ func (x *TenantListResponse) String() string {
 func (*TenantListResponse) ProtoMessage() {}
 
 func (x *TenantListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1432,7 +1338,7 @@ type TenantFilter struct {
 
 func (x *TenantFilter) Reset() {
 	*x = TenantFilter{}
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1444,7 +1350,7 @@ func (x *TenantFilter) String() string {
 func (*TenantFilter) ProtoMessage() {}
 
 func (x *TenantFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_tenant_svc_g_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1495,7 +1401,7 @@ var File_app_payday_tenant_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1dapp/payday/tenant_svc.g.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\xd1\x02\n" +
+	"\x1dapp/payday/tenant_svc.g.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\xd1\x02\n" +
 	"\x10TenantAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12\x1b\n" +
 	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12\x19\n" +
@@ -1535,10 +1441,7 @@ const file_app_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\x06region\x18\x10 \x01(\tR\x06region\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +
-	"\x12TenantApplyRequest\x12 \n" +
-	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"-\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"-\n" +
 	"\x13TenantEraseResponse\x12\x16\n" +
 	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc4\x01\n" +
 	"\x11TenantListRequest\x12+\n" +
@@ -1551,64 +1454,57 @@ const file_app_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2\v.app.TenantR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"0\n" +
 	"\fTenantFilter\x12 \n" +
-	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref2\xaf\x02\n" +
+	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref2\x80\x02\n" +
 	"\rTenantService\x12)\n" +
 	"\x03Add\x12\x15.app.TenantAddRequest\x1a\v.app.Tenant\x12)\n" +
 	"\x03Get\x12\x15.app.TenantGetRequest\x1a\v.app.Tenant\x12-\n" +
-	"\x05Patch\x12\x17.app.TenantPatchRequest\x1a\v.app.Tenant\x12-\n" +
-	"\x05Apply\x12\x17.app.TenantApplyRequest\x1a\v.app.Tenant\x121\n" +
+	"\x05Patch\x12\x17.app.TenantPatchRequest\x1a\v.app.Tenant\x121\n" +
 	"\x05Erase\x12\x0e.app.TenantRef\x1a\x18.app.TenantEraseResponse\x127\n" +
 	"\x04List\x12\x16.app.TenantListRequest\x1a\x17.app.TenantListResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_payday_tenant_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_app_payday_tenant_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_app_payday_tenant_svc_g_proto_goTypes = []any{
 	(*TenantAddRequest)(nil),      // 0: app.TenantAddRequest
 	(*TenantGetRequest)(nil),      // 1: app.TenantGetRequest
 	(*TenantRef)(nil),             // 2: app.TenantRef
 	(*TenantSelect)(nil),          // 3: app.TenantSelect
 	(*TenantPatchRequest)(nil),    // 4: app.TenantPatchRequest
-	(*TenantApplyRequest)(nil),    // 5: app.TenantApplyRequest
-	(*TenantEraseResponse)(nil),   // 6: app.TenantEraseResponse
-	(*TenantListRequest)(nil),     // 7: app.TenantListRequest
-	(*TenantListResponse)(nil),    // 8: app.TenantListResponse
-	(*TenantFilter)(nil),          // 9: app.TenantFilter
-	nil,                           // 10: app.TenantAddRequest.LabelsEntry
-	nil,                           // 11: app.TenantPatchRequest.LabelsEntry
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
-	(*patchpb.Patch)(nil),         // 13: patch.Patch
-	(*Tenant)(nil),                // 14: app.Tenant
+	(*TenantEraseResponse)(nil),   // 5: app.TenantEraseResponse
+	(*TenantListRequest)(nil),     // 6: app.TenantListRequest
+	(*TenantListResponse)(nil),    // 7: app.TenantListResponse
+	(*TenantFilter)(nil),          // 8: app.TenantFilter
+	nil,                           // 9: app.TenantAddRequest.LabelsEntry
+	nil,                           // 10: app.TenantPatchRequest.LabelsEntry
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*Tenant)(nil),                // 12: app.Tenant
 }
 var file_app_payday_tenant_svc_g_proto_depIdxs = []int32{
-	10, // 0: app.TenantAddRequest.labels:type_name -> app.TenantAddRequest.LabelsEntry
-	12, // 1: app.TenantAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	9,  // 0: app.TenantAddRequest.labels:type_name -> app.TenantAddRequest.LabelsEntry
+	11, // 1: app.TenantAddRequest.date_created:type_name -> google.protobuf.Timestamp
 	2,  // 2: app.TenantGetRequest.ref:type_name -> app.TenantRef
 	3,  // 3: app.TenantGetRequest.select:type_name -> app.TenantSelect
 	2,  // 4: app.TenantPatchRequest.ref:type_name -> app.TenantRef
-	11, // 5: app.TenantPatchRequest.labels:type_name -> app.TenantPatchRequest.LabelsEntry
-	12, // 6: app.TenantPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	2,  // 7: app.TenantApplyRequest.ref:type_name -> app.TenantRef
-	13, // 8: app.TenantApplyRequest.patch:type_name -> patch.Patch
-	9,  // 9: app.TenantListRequest.filters:type_name -> app.TenantFilter
-	3,  // 10: app.TenantListRequest.select:type_name -> app.TenantSelect
-	14, // 11: app.TenantListResponse.items:type_name -> app.Tenant
-	2,  // 12: app.TenantFilter.ref:type_name -> app.TenantRef
-	0,  // 13: app.TenantService.Add:input_type -> app.TenantAddRequest
-	1,  // 14: app.TenantService.Get:input_type -> app.TenantGetRequest
-	4,  // 15: app.TenantService.Patch:input_type -> app.TenantPatchRequest
-	5,  // 16: app.TenantService.Apply:input_type -> app.TenantApplyRequest
-	2,  // 17: app.TenantService.Erase:input_type -> app.TenantRef
-	7,  // 18: app.TenantService.List:input_type -> app.TenantListRequest
-	14, // 19: app.TenantService.Add:output_type -> app.Tenant
-	14, // 20: app.TenantService.Get:output_type -> app.Tenant
-	14, // 21: app.TenantService.Patch:output_type -> app.Tenant
-	14, // 22: app.TenantService.Apply:output_type -> app.Tenant
-	6,  // 23: app.TenantService.Erase:output_type -> app.TenantEraseResponse
-	8,  // 24: app.TenantService.List:output_type -> app.TenantListResponse
-	19, // [19:25] is the sub-list for method output_type
-	13, // [13:19] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	10, // 5: app.TenantPatchRequest.labels:type_name -> app.TenantPatchRequest.LabelsEntry
+	11, // 6: app.TenantPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	8,  // 7: app.TenantListRequest.filters:type_name -> app.TenantFilter
+	3,  // 8: app.TenantListRequest.select:type_name -> app.TenantSelect
+	12, // 9: app.TenantListResponse.items:type_name -> app.Tenant
+	2,  // 10: app.TenantFilter.ref:type_name -> app.TenantRef
+	0,  // 11: app.TenantService.Add:input_type -> app.TenantAddRequest
+	1,  // 12: app.TenantService.Get:input_type -> app.TenantGetRequest
+	4,  // 13: app.TenantService.Patch:input_type -> app.TenantPatchRequest
+	2,  // 14: app.TenantService.Erase:input_type -> app.TenantRef
+	6,  // 15: app.TenantService.List:input_type -> app.TenantListRequest
+	12, // 16: app.TenantService.Add:output_type -> app.Tenant
+	12, // 17: app.TenantService.Get:output_type -> app.Tenant
+	12, // 18: app.TenantService.Patch:output_type -> app.Tenant
+	5,  // 19: app.TenantService.Erase:output_type -> app.TenantEraseResponse
+	7,  // 20: app.TenantService.List:output_type -> app.TenantListResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_tenant_svc_g_proto_init() }
@@ -1627,7 +1523,7 @@ func file_app_payday_tenant_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_tenant_svc_g_proto_rawDesc), len(file_app_payday_tenant_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

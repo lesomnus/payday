@@ -41,24 +41,22 @@ breaking:
   # reads the old ones. The registry holds payday's module and not the test
   # app's: remove once main and buf.build/payday/payday:dev both have it.
   #
-  # And, once: the test app's entities name their verbs, and an `Apply` is
-  # written only where one is asked for (protobuf-orm/protobuf-orm#4), so the
-  # contracts generated for the entities that asked for none lose that RPC and
-  # its request, and `Cell` its `Patch`. Out with the first change after this
-  # reaches main.
+  # And, once: payday's own entities name the verbs something calls or an app
+  # serves (lesomnus/roster#531), so the contracts generated for them lose
+  # what nothing called: the trail's Patch, Apply and Erase and their messages,
+  # and the Apply of the holder, the tenant and the past's fact. Out with the
+  # first change after this reaches main.
   ignore_only:
     RPC_NO_DELETE:
-      - internal/apptest/proto/app/job_svc.g.proto
-      - internal/apptest/proto/app/machine_svc.g.proto
-      - internal/apptest/proto/app/robot_svc.g.proto
-      - internal/apptest/proto/app/seal_svc.g.proto
-      - internal/apptest/proto/app/stint_svc.g.proto
+      - internal/apptest/proto/app/payday/audit_svc.g.proto
+      - internal/apptest/proto/app/payday/fact_svc.g.proto
+      - internal/apptest/proto/app/payday/holder_svc.g.proto
+      - internal/apptest/proto/app/payday/tenant_svc.g.proto
     MESSAGE_NO_DELETE:
-      - internal/apptest/proto/app/job_svc.g.proto
-      - internal/apptest/proto/app/machine_svc.g.proto
-      - internal/apptest/proto/app/robot_svc.g.proto
-      - internal/apptest/proto/app/seal_svc.g.proto
-      - internal/apptest/proto/app/stint_svc.g.proto
+      - internal/apptest/proto/app/payday/audit_svc.g.proto
+      - internal/apptest/proto/app/payday/fact_svc.g.proto
+      - internal/apptest/proto/app/payday/holder_svc.g.proto
+      - internal/apptest/proto/app/payday/tenant_svc.g.proto
     FIELD_SAME_NAME:
       - proto/payday/grant.proto
       - proto/payday/token.proto

@@ -82,7 +82,6 @@ message Tenant {
       add: {}
       get: {}
       patch: {}
-      apply: {}
       erase: {}
     }
     indexes: [

@@ -319,5 +319,13 @@ What an app does when it moves onto this payday:
    row still names the row was `Unknown`, in the driver's words. It is
    `FailedPrecondition` now (see [refusals](errors.md#5-what-this-is-not-for)).
 
+4. **Know what payday's own entities serve now.** Each has the verbs payday
+   calls or an app serves, and no more: the trail (`Audit`) has `Add`, which
+   its recorder calls, and `Get`, and no `Patch`, `Apply` or `Erase`, which
+   its layer refused to everybody. `Holder` and `Tenant` have `Add`, `Get`,
+   `Patch` and `Erase`, and no `Apply`; a past's `Fact` keeps the `Patch` that
+   supersedes one, and no `Apply`. Their RPCs, clients' methods and commands
+   are gone with them.
+
 Nothing is kept for the old spelling: a schema that says `crud` is refused
 until it names its verbs.

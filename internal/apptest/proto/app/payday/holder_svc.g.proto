@@ -7,7 +7,6 @@ import "app/profile.proto";
 import "app/robot_svc.g.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 import "payday.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
@@ -19,8 +18,6 @@ service HolderService {
   rpc Get(HolderGetRequest) returns (Holder);
   // Patch updates an existing Holder
   rpc Patch(HolderPatchRequest) returns (Holder);
-  // Apply applies a patch document to an existing Holder
-  rpc Apply(HolderApplyRequest) returns (Holder);
   // Erase deletes a Holder
   rpc Erase(HolderRef) returns (HolderEraseResponse);
   // List reads Holders a page at a time.
@@ -147,11 +144,6 @@ message HolderPatchRequest {
   // "leave it alone", so no value could have meant NULL. It wins
   // outright: setting both this and account clears.
   bool account_null = 25;
-}
-
-message HolderApplyRequest {
-  HolderRef ref = 1;
-  patch.Patch patch = 2;
 }
 
 message HolderEraseResponse {

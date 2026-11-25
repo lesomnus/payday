@@ -15,8 +15,6 @@ import { file_app_robot_svc_g } from "../robot_svc_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_orm } from "../../orm_pb.js";
-import type { Patch } from "../../patch/patch_pb.js";
-import { file_patch_patch } from "../../patch/patch_pb.js";
 import { file_payday } from "../../payday_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -24,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/holder_svc.g.proto.
  */
 export const file_app_payday_holder_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("Ch1hcHAvcGF5ZGF5L2hvbGRlcl9zdmMuZy5wcm90bxIDYXBwIqYDChBIb2xkZXJBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISEwoEbmFtZRgFIAEoCUIFqgECCAISEwoEZGVzYxgGIAEoCUIFqgECCAISMQoGbGFiZWxzGAcgAygLMiEuYXBwLkhvbGRlckFkZFJlcXVlc3QuTGFiZWxzRW50cnkSMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaCgtpZHBfc3ViamVjdBgIIAEoCUIFqgECCAISHQoHcHJvZmlsZRgJIAEoCzIMLmFwcC5Qcm9maWxlEhgKCWRpcmVjdG9yeRgKIAEoCUIFqgECCAISHAoFcm9ib3QYCyABKAsyDS5hcHAuUm9ib3RSZWYSFwoHYWNjb3VudBgMIAEoDEIG6oIWAhBAGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiUgoQSG9sZGVyR2V0UmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEiEKBnNlbGVjdBgCIAEoCzIRLmFwcC5Ib2xkZXJTZWxlY3QiTgoJSG9sZGVyUmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIkCgRzbHVnGAQgASgLMhQuYXBwLkhvbGRlclJlZkJ5U2x1Z0gAQgUKA2tleSJACg9Ib2xkZXJSZWZCeVNsdWcSDQoFYWxpYXMYBCABKAkSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZiKlAgoMSG9sZGVyU2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0Eg0KBWFsaWFzGAQgASgIEgwKBG5hbWUYBSABKAgSDAoEZGVzYxgGIAEoCBIOCgZsYWJlbHMYByABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtpZHBfc3ViamVjdBgIIAEoCBIPCgdwcm9maWxlGAkgASgIEhEKCWRpcmVjdG9yeRgKIAEoCBIfCgVyb2JvdBgLIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIPCgdhY2NvdW50GAwgASgIIswDChJIb2xkZXJQYXRjaFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhINCgVhbGlhcxgIIAEoCRIMCgRuYW1lGAogASgJEgwKBGRlc2MYDCABKAkSMwoGbGFiZWxzGA4gAygLMiMuYXBwLkhvbGRlclBhdGNoUmVxdWVzdC5MYWJlbHNFbnRyeRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCBITCgtpZHBfc3ViamVjdBgQIAEoCRIdCgdwcm9maWxlGBIgASgLMgwuYXBwLlByb2ZpbGUSFAoMcHJvZmlsZV9udWxsGBMgASgIEhEKCWRpcmVjdG9yeRgUIAEoCRIcCgVyb2JvdBgWIAEoCzINLmFwcC5Sb2JvdFJlZhISCgpyb2JvdF9udWxsGBcgASgIEhcKB2FjY291bnQYGCABKAxCBuqCFgIQQBIUCgxhY2NvdW50X251bGwYGSABKAgaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJOChJIb2xkZXJBcHBseVJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhIbCgVwYXRjaBgCIAEoCzIMLnBhdGNoLlBhdGNoIiUKE0hvbGRlckVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIp0BChFIb2xkZXJMaXN0UmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkhvbGRlckZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAISIQoGc2VsZWN0GAYgASgLMhEuYXBwLkhvbGRlclNlbGVjdCJFChJIb2xkZXJMaXN0UmVzcG9uc2USGgoFaXRlbXMYASADKAsyCy5hcHAuSG9sZGVyEhMKBG5leHQYAiABKAlCBaoBAggCIqkBCgxIb2xkZXJGaWx0ZXISGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEi0KBmxhYmVscxgDIAMoCzIdLmFwcC5Ib2xkZXJGaWx0ZXIuTGFiZWxzRW50cnkaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJWChJIb2xkZXJXYXRjaFJlcXVlc3QSIgoHZmlsdGVycxgBIAMoCzIRLmFwcC5Ib2xkZXJGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOgoTSG9sZGVyV2F0Y2hSZXNwb25zZRIjCgVpdGVtcxgBIAMoCzIULmFwcC5Ib2xkZXJXYXRjaEl0ZW0iUAoPSG9sZGVyV2F0Y2hJdGVtEgoKAmlkGAEgASgMEhoKBXZhbHVlGAIgASgLMgsuYXBwLkhvbGRlchIVCgZhY3Rpb24YAyABKAlCBaoBAggCIhoKGEhvbGRlck1lbWJlcnNoaXBzUmVxdWVzdCI3ChlIb2xkZXJNZW1iZXJzaGlwc1Jlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkhvbGRlcjLDAwoNSG9sZGVyU2VydmljZRIpCgNBZGQSFS5hcHAuSG9sZGVyQWRkUmVxdWVzdBoLLmFwcC5Ib2xkZXISKQoDR2V0EhUuYXBwLkhvbGRlckdldFJlcXVlc3QaCy5hcHAuSG9sZGVyEi0KBVBhdGNoEhcuYXBwLkhvbGRlclBhdGNoUmVxdWVzdBoLLmFwcC5Ib2xkZXISLQoFQXBwbHkSFy5hcHAuSG9sZGVyQXBwbHlSZXF1ZXN0GgsuYXBwLkhvbGRlchIxCgVFcmFzZRIOLmFwcC5Ib2xkZXJSZWYaGC5hcHAuSG9sZGVyRXJhc2VSZXNwb25zZRI3CgRMaXN0EhYuYXBwLkhvbGRlckxpc3RSZXF1ZXN0GhcuYXBwLkhvbGRlckxpc3RSZXNwb25zZRI8CgVXYXRjaBIXLmFwcC5Ib2xkZXJXYXRjaFJlcXVlc3QaGC5hcHAuSG9sZGVyV2F0Y2hSZXNwb25zZTABElQKC01lbWJlcnNoaXBzEh0uYXBwLkhvbGRlck1lbWJlcnNoaXBzUmVxdWVzdBoeLmFwcC5Ib2xkZXJNZW1iZXJzaGlwc1Jlc3BvbnNlIgbqzRYCCgBCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_holder, file_app_payday_tenant_svc_g, file_app_profile, file_app_robot_svc_g, file_google_protobuf_timestamp, file_orm, file_patch_patch, file_payday]);
+  fileDesc("Ch1hcHAvcGF5ZGF5L2hvbGRlcl9zdmMuZy5wcm90bxIDYXBwIqYDChBIb2xkZXJBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISEwoEbmFtZRgFIAEoCUIFqgECCAISEwoEZGVzYxgGIAEoCUIFqgECCAISMQoGbGFiZWxzGAcgAygLMiEuYXBwLkhvbGRlckFkZFJlcXVlc3QuTGFiZWxzRW50cnkSMAoMZGF0ZV9jcmVhdGVkGA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaCgtpZHBfc3ViamVjdBgIIAEoCUIFqgECCAISHQoHcHJvZmlsZRgJIAEoCzIMLmFwcC5Qcm9maWxlEhgKCWRpcmVjdG9yeRgKIAEoCUIFqgECCAISHAoFcm9ib3QYCyABKAsyDS5hcHAuUm9ib3RSZWYSFwoHYWNjb3VudBgMIAEoDEIG6oIWAhBAGi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiUgoQSG9sZGVyR2V0UmVxdWVzdBIbCgNyZWYYASABKAsyDi5hcHAuSG9sZGVyUmVmEiEKBnNlbGVjdBgCIAEoCzIRLmFwcC5Ib2xkZXJTZWxlY3QiTgoJSG9sZGVyUmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIkCgRzbHVnGAQgASgLMhQuYXBwLkhvbGRlclJlZkJ5U2x1Z0gAQgUKA2tleSJACg9Ib2xkZXJSZWZCeVNsdWcSDQoFYWxpYXMYBCABKAkSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZiKlAgoMSG9sZGVyU2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0Eg0KBWFsaWFzGAQgASgIEgwKBG5hbWUYBSABKAgSDAoEZGVzYxgGIAEoCBIOCgZsYWJlbHMYByABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhMKC2RhdGVfZXJhc2VkGA4gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtpZHBfc3ViamVjdBgIIAEoCBIPCgdwcm9maWxlGAkgASgIEhEKCWRpcmVjdG9yeRgKIAEoCBIfCgVyb2JvdBgLIAEoCzIQLmFwcC5Sb2JvdFNlbGVjdBIPCgdhY2NvdW50GAwgASgIIswDChJIb2xkZXJQYXRjaFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLkhvbGRlclJlZhINCgVhbGlhcxgIIAEoCRIMCgRuYW1lGAogASgJEgwKBGRlc2MYDCABKAkSMwoGbGFiZWxzGA4gAygLMiMuYXBwLkhvbGRlclBhdGNoUmVxdWVzdC5MYWJlbHNFbnRyeRIwCgxkYXRlX3VwZGF0ZWQYGiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGVfdXBkYXRlZF9mb3JjZRgbIAEoCBITCgtpZHBfc3ViamVjdBgQIAEoCRIdCgdwcm9maWxlGBIgASgLMgwuYXBwLlByb2ZpbGUSFAoMcHJvZmlsZV9udWxsGBMgASgIEhEKCWRpcmVjdG9yeRgUIAEoCRIcCgVyb2JvdBgWIAEoCzINLmFwcC5Sb2JvdFJlZhISCgpyb2JvdF9udWxsGBcgASgIEhcKB2FjY291bnQYGCABKAxCBuqCFgIQQBIUCgxhY2NvdW50X251bGwYGSABKAgaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIlChNIb2xkZXJFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCKdAQoRSG9sZGVyTGlzdFJlcXVlc3QSIgoHZmlsdGVycxgBIAMoCzIRLmFwcC5Ib2xkZXJGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCEiEKBnNlbGVjdBgGIAEoCzIRLmFwcC5Ib2xkZXJTZWxlY3QiRQoSSG9sZGVyTGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkhvbGRlchITCgRuZXh0GAIgASgJQgWqAQIIAiKpAQoMSG9sZGVyRmlsdGVyEhsKA3JlZhgBIAEoCzIOLmFwcC5Ib2xkZXJSZWYSHgoGdGVuYW50GAIgASgLMg4uYXBwLlRlbmFudFJlZhItCgZsYWJlbHMYAyADKAsyHS5hcHAuSG9sZGVyRmlsdGVyLkxhYmVsc0VudHJ5Gi0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiVgoSSG9sZGVyV2F0Y2hSZXF1ZXN0EiIKB2ZpbHRlcnMYASADKAsyES5hcHAuSG9sZGVyRmlsdGVyEhwKDXNraXBfc25hcHNob3QYAiABKAhCBaoBAggCIjoKE0hvbGRlcldhdGNoUmVzcG9uc2USIwoFaXRlbXMYASADKAsyFC5hcHAuSG9sZGVyV2F0Y2hJdGVtIlAKD0hvbGRlcldhdGNoSXRlbRIKCgJpZBgBIAEoDBIaCgV2YWx1ZRgCIAEoCzILLmFwcC5Ib2xkZXISFQoGYWN0aW9uGAMgASgJQgWqAQIIAiIaChhIb2xkZXJNZW1iZXJzaGlwc1JlcXVlc3QiNwoZSG9sZGVyTWVtYmVyc2hpcHNSZXNwb25zZRIaCgVpdGVtcxgBIAMoCzILLmFwcC5Ib2xkZXIylAMKDUhvbGRlclNlcnZpY2USKQoDQWRkEhUuYXBwLkhvbGRlckFkZFJlcXVlc3QaCy5hcHAuSG9sZGVyEikKA0dldBIVLmFwcC5Ib2xkZXJHZXRSZXF1ZXN0GgsuYXBwLkhvbGRlchItCgVQYXRjaBIXLmFwcC5Ib2xkZXJQYXRjaFJlcXVlc3QaCy5hcHAuSG9sZGVyEjEKBUVyYXNlEg4uYXBwLkhvbGRlclJlZhoYLmFwcC5Ib2xkZXJFcmFzZVJlc3BvbnNlEjcKBExpc3QSFi5hcHAuSG9sZGVyTGlzdFJlcXVlc3QaFy5hcHAuSG9sZGVyTGlzdFJlc3BvbnNlEjwKBVdhdGNoEhcuYXBwLkhvbGRlcldhdGNoUmVxdWVzdBoYLmFwcC5Ib2xkZXJXYXRjaFJlc3BvbnNlMAESVAoLTWVtYmVyc2hpcHMSHS5hcHAuSG9sZGVyTWVtYmVyc2hpcHNSZXF1ZXN0Gh4uYXBwLkhvbGRlck1lbWJlcnNoaXBzUmVzcG9uc2UiBurNFgIKAEItWitnaXRodWIuY29tL2xlc29tbnVzL3BheWRheS9pbnRlcm5hbC9hcHB0ZXN0YghlZGl0aW9uc3DoBw", [file_app_payday_holder, file_app_payday_tenant_svc_g, file_app_profile, file_app_robot_svc_g, file_google_protobuf_timestamp, file_orm, file_payday]);
 
 /**
  * @generated from message app.HolderAddRequest
@@ -370,28 +368,6 @@ export const HolderPatchRequestSchema: GenMessage<HolderPatchRequest> = /*@__PUR
   messageDesc(file_app_payday_holder_svc_g, 5);
 
 /**
- * @generated from message app.HolderApplyRequest
- */
-export type HolderApplyRequest = Message<"app.HolderApplyRequest"> & {
-  /**
-   * @generated from field: app.HolderRef ref = 1;
-   */
-  ref?: HolderRef | undefined;
-
-  /**
-   * @generated from field: patch.Patch patch = 2;
-   */
-  patch?: Patch | undefined;
-};
-
-/**
- * Describes the message app.HolderApplyRequest.
- * Use `create(HolderApplyRequestSchema)` to create a new message.
- */
-export const HolderApplyRequestSchema: GenMessage<HolderApplyRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 6);
-
-/**
  * @generated from message app.HolderEraseResponse
  */
 export type HolderEraseResponse = Message<"app.HolderEraseResponse"> & {
@@ -412,7 +388,7 @@ export type HolderEraseResponse = Message<"app.HolderEraseResponse"> & {
  * Use `create(HolderEraseResponseSchema)` to create a new message.
  */
 export const HolderEraseResponseSchema: GenMessage<HolderEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 7);
+  messageDesc(file_app_payday_holder_svc_g, 6);
 
 /**
  * @generated from message app.HolderListRequest
@@ -475,7 +451,7 @@ export type HolderListRequest = Message<"app.HolderListRequest"> & {
  * Use `create(HolderListRequestSchema)` to create a new message.
  */
 export const HolderListRequestSchema: GenMessage<HolderListRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 8);
+  messageDesc(file_app_payday_holder_svc_g, 7);
 
 /**
  * @generated from message app.HolderListResponse
@@ -505,7 +481,7 @@ export type HolderListResponse = Message<"app.HolderListResponse"> & {
  * Use `create(HolderListResponseSchema)` to create a new message.
  */
 export const HolderListResponseSchema: GenMessage<HolderListResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 9);
+  messageDesc(file_app_payday_holder_svc_g, 8);
 
 /**
  * @generated from message app.HolderFilter
@@ -532,7 +508,7 @@ export type HolderFilter = Message<"app.HolderFilter"> & {
  * Use `create(HolderFilterSchema)` to create a new message.
  */
 export const HolderFilterSchema: GenMessage<HolderFilter> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 10);
+  messageDesc(file_app_payday_holder_svc_g, 9);
 
 /**
  * @generated from message app.HolderWatchRequest
@@ -570,7 +546,7 @@ export type HolderWatchRequest = Message<"app.HolderWatchRequest"> & {
  * Use `create(HolderWatchRequestSchema)` to create a new message.
  */
 export const HolderWatchRequestSchema: GenMessage<HolderWatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 11);
+  messageDesc(file_app_payday_holder_svc_g, 10);
 
 /**
  * @generated from message app.HolderWatchResponse
@@ -589,7 +565,7 @@ export type HolderWatchResponse = Message<"app.HolderWatchResponse"> & {
  * Use `create(HolderWatchResponseSchema)` to create a new message.
  */
 export const HolderWatchResponseSchema: GenMessage<HolderWatchResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 12);
+  messageDesc(file_app_payday_holder_svc_g, 11);
 
 /**
  * @generated from message app.HolderWatchItem
@@ -637,7 +613,7 @@ export type HolderWatchItem = Message<"app.HolderWatchItem"> & {
  * Use `create(HolderWatchItemSchema)` to create a new message.
  */
 export const HolderWatchItemSchema: GenMessage<HolderWatchItem> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 13);
+  messageDesc(file_app_payday_holder_svc_g, 12);
 
 /**
  * @generated from message app.HolderMembershipsRequest
@@ -650,7 +626,7 @@ export type HolderMembershipsRequest = Message<"app.HolderMembershipsRequest"> &
  * Use `create(HolderMembershipsRequestSchema)` to create a new message.
  */
 export const HolderMembershipsRequestSchema: GenMessage<HolderMembershipsRequest> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 14);
+  messageDesc(file_app_payday_holder_svc_g, 13);
 
 /**
  * @generated from message app.HolderMembershipsResponse
@@ -669,7 +645,7 @@ export type HolderMembershipsResponse = Message<"app.HolderMembershipsResponse">
  * Use `create(HolderMembershipsResponseSchema)` to create a new message.
  */
 export const HolderMembershipsResponseSchema: GenMessage<HolderMembershipsResponse> = /*@__PURE__*/
-  messageDesc(file_app_payday_holder_svc_g, 15);
+  messageDesc(file_app_payday_holder_svc_g, 14);
 
 /**
  * @generated from service app.HolderService
@@ -703,16 +679,6 @@ export const HolderService: GenService<{
   patch: {
     methodKind: "unary";
     input: typeof HolderPatchRequestSchema;
-    output: typeof HolderSchema;
-  },
-  /**
-   * Apply applies a patch document to an existing Holder
-   *
-   * @generated from rpc app.HolderService.Apply
-   */
-  apply: {
-    methodKind: "unary";
-    input: typeof HolderApplyRequestSchema;
     output: typeof HolderSchema;
   },
   /**

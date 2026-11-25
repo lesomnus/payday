@@ -23,7 +23,6 @@ const (
 	FactService_AddMany_FullMethodName = "/app.FactService/AddMany"
 	FactService_Get_FullMethodName     = "/app.FactService/Get"
 	FactService_Patch_FullMethodName   = "/app.FactService/Patch"
-	FactService_Apply_FullMethodName   = "/app.FactService/Apply"
 	FactService_List_FullMethodName    = "/app.FactService/List"
 )
 
@@ -39,8 +38,6 @@ type FactServiceClient interface {
 	Get(ctx context.Context, in *FactGetRequest, opts ...grpc.CallOption) (*Fact, error)
 	// Patch updates an existing Fact
 	Patch(ctx context.Context, in *FactPatchRequest, opts ...grpc.CallOption) (*Fact, error)
-	// Apply applies a patch document to an existing Fact
-	Apply(ctx context.Context, in *FactApplyRequest, opts ...grpc.CallOption) (*Fact, error)
 	// List reads Facts a page at a time.
 	List(ctx context.Context, in *FactListRequest, opts ...grpc.CallOption) (*FactListResponse, error)
 }
@@ -93,16 +90,6 @@ func (c *factServiceClient) Patch(ctx context.Context, in *FactPatchRequest, opt
 	return out, nil
 }
 
-func (c *factServiceClient) Apply(ctx context.Context, in *FactApplyRequest, opts ...grpc.CallOption) (*Fact, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Fact)
-	err := c.cc.Invoke(ctx, FactService_Apply_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *factServiceClient) List(ctx context.Context, in *FactListRequest, opts ...grpc.CallOption) (*FactListResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FactListResponse)
@@ -125,8 +112,6 @@ type FactServiceServer interface {
 	Get(context.Context, *FactGetRequest) (*Fact, error)
 	// Patch updates an existing Fact
 	Patch(context.Context, *FactPatchRequest) (*Fact, error)
-	// Apply applies a patch document to an existing Fact
-	Apply(context.Context, *FactApplyRequest) (*Fact, error)
 	// List reads Facts a page at a time.
 	List(context.Context, *FactListRequest) (*FactListResponse, error)
 	mustEmbedUnimplementedFactServiceServer()
@@ -150,9 +135,6 @@ func (UnimplementedFactServiceServer) Get(context.Context, *FactGetRequest) (*Fa
 }
 func (UnimplementedFactServiceServer) Patch(context.Context, *FactPatchRequest) (*Fact, error) {
 	return nil, status.Error(codes.Unimplemented, "method Patch not implemented")
-}
-func (UnimplementedFactServiceServer) Apply(context.Context, *FactApplyRequest) (*Fact, error) {
-	return nil, status.Error(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedFactServiceServer) List(context.Context, *FactListRequest) (*FactListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method List not implemented")
@@ -250,24 +232,6 @@ func _FactService_Patch_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FactService_Apply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FactApplyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FactServiceServer).Apply(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FactService_Apply_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FactServiceServer).Apply(ctx, req.(*FactApplyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _FactService_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FactListRequest)
 	if err := dec(in); err != nil {
@@ -308,10 +272,6 @@ var FactService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Patch",
 			Handler:    _FactService_Patch_Handler,
-		},
-		{
-			MethodName: "Apply",
-			Handler:    _FactService_Apply_Handler,
 		},
 		{
 			MethodName: "List",

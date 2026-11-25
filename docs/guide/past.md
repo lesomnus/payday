@@ -458,7 +458,7 @@ servers' (`bare.WithClock`), or a test's.
 
 Your Event and Fact have one writer, and it is the package. The generated
 `Audit` layer refuses every write of either that `pd.Past`'s store did not hand
-the servers -- `Add` and `AddMany` of both, `Patch` and `Apply` of a fact --
+the servers -- `Add` and `AddMany` of both, and the `Patch` of a fact that supersedes it --
 however it arrives: a call over the wire, the ungated stack, your own code. The answer is `PermissionDenied`, to every caller alike:
 
 ```

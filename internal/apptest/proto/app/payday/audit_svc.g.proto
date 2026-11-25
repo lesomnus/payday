@@ -4,7 +4,6 @@ package app;
 import "app/payday/audit.proto";
 import "google/protobuf/timestamp.proto";
 import "orm.proto";
-import "patch/patch.proto";
 
 option go_package = "github.com/lesomnus/payday/internal/apptest";
 
@@ -13,12 +12,6 @@ service AuditService {
   rpc Add(AuditAddRequest) returns (Audit);
   // Get retrieves a Audit
   rpc Get(AuditGetRequest) returns (Audit);
-  // Patch updates an existing Audit
-  rpc Patch(AuditPatchRequest) returns (Audit);
-  // Apply applies a patch document to an existing Audit
-  rpc Apply(AuditApplyRequest) returns (Audit);
-  // Erase deletes a Audit
-  rpc Erase(AuditRef) returns (AuditEraseResponse);
   // List reads Audits a page at a time.
   rpc List(AuditListRequest) returns (AuditListResponse);
 }
@@ -86,60 +79,6 @@ message AuditSelect {
   bool fields = 20;
   bool digest = 21;
   bool digest_fields = 22;
-}
-
-message AuditPatchRequest {
-  AuditRef ref = 1;
-  bytes tenant_id = 4 [(orm.field) = {type: TYPE_UUID}];
-  bytes actor_id = 16 [(orm.field) = {type: TYPE_UUID}];
-  bytes caller_id = 46 [(orm.field) = {type: TYPE_UUID}];
-  // Clear caller_id instead of writing it.
-  // It takes a field of its own because an unset value already means
-  // "leave it alone", so no value could have meant NULL. It wins
-  // outright: setting both this and caller_id clears.
-  bool caller_id_null = 47;
-  bytes caller_tenant_id = 48 [(orm.field) = {type: TYPE_UUID}];
-  // Clear caller_tenant_id instead of writing it.
-  // It takes a field of its own because an unset value already means
-  // "leave it alone", so no value could have meant NULL. It wins
-  // outright: setting both this and caller_tenant_id clears.
-  bool caller_tenant_id_null = 49;
-  string presence = 50;
-  // Clear presence instead of writing it.
-  // It takes a field of its own because an unset value already means
-  // "leave it alone", so no value could have meant NULL. It wins
-  // outright: setting both this and presence clears.
-  bool presence_null = 51;
-  bytes trace_id = 18;
-  string action = 20;
-  bytes object_id = 22 [(orm.field) = {type: TYPE_UUID}];
-  bytes patch = 24;
-  bytes actor_tenant_id = 32 [(orm.field) = {type: TYPE_UUID}];
-  bytes value = 34;
-  bytes counterpart_tenant_id = 36 [(orm.field) = {type: TYPE_UUID}];
-  // Clear counterpart_tenant_id instead of writing it.
-  // It takes a field of its own because an unset value already means
-  // "leave it alone", so no value could have meant NULL. It wins
-  // outright: setting both this and counterpart_tenant_id clears.
-  bool counterpart_tenant_id_null = 37;
-  uint32 domain = 38;
-  repeated uint32 fields = 40;
-  bytes digest = 42;
-  repeated uint32 digest_fields = 44;
-}
-
-message AuditApplyRequest {
-  AuditRef ref = 1;
-  patch.Patch patch = 2;
-}
-
-message AuditEraseResponse {
-  // Erased is whether this call is the one that erased the row.
-  //
-  // False for a row that was already gone, was never there, or is out
-  // of this caller's reach -- which are one answer on purpose, and the
-  // reason the RPC does not fail instead.
-  bool erased = 1;
 }
 
 message AuditListRequest {

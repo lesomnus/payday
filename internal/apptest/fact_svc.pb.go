@@ -7,7 +7,6 @@
 package apptest
 
 import (
-	patchpb "github.com/lesomnus/protobuf-patch/patchpb"
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1571,99 +1570,6 @@ func (b0 FactPatchRequest_builder) Build() *FactPatchRequest {
 	return m0
 }
 
-type FactApplyRequest struct {
-	state            protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref   *FactRef               `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Patch *patchpb.Patch         `protobuf:"bytes,2,opt,name=patch"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *FactApplyRequest) Reset() {
-	*x = FactApplyRequest{}
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FactApplyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FactApplyRequest) ProtoMessage() {}
-
-func (x *FactApplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FactApplyRequest) GetRef() *FactRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *FactApplyRequest) GetPatch() *patchpb.Patch {
-	if x != nil {
-		return x.xxx_hidden_Patch
-	}
-	return nil
-}
-
-func (x *FactApplyRequest) SetRef(v *FactRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *FactApplyRequest) SetPatch(v *patchpb.Patch) {
-	x.xxx_hidden_Patch = v
-}
-
-func (x *FactApplyRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *FactApplyRequest) HasPatch() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Patch != nil
-}
-
-func (x *FactApplyRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *FactApplyRequest) ClearPatch() {
-	x.xxx_hidden_Patch = nil
-}
-
-type FactApplyRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref   *FactRef
-	Patch *patchpb.Patch
-}
-
-func (b0 FactApplyRequest_builder) Build() *FactApplyRequest {
-	m0 := &FactApplyRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Patch = b.Patch
-	return m0
-}
-
 type FactListRequest struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Filters *[]*FactFilter         `protobuf:"bytes,1,rep,name=filters"`
@@ -1677,7 +1583,7 @@ type FactListRequest struct {
 
 func (x *FactListRequest) Reset() {
 	*x = FactListRequest{}
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1689,7 +1595,7 @@ func (x *FactListRequest) String() string {
 func (*FactListRequest) ProtoMessage() {}
 
 func (x *FactListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[8]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1821,7 +1727,7 @@ type FactListResponse struct {
 
 func (x *FactListResponse) Reset() {
 	*x = FactListResponse{}
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1833,7 +1739,7 @@ func (x *FactListResponse) String() string {
 func (*FactListResponse) ProtoMessage() {}
 
 func (x *FactListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[9]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1904,7 +1810,7 @@ type FactFilter struct {
 
 func (x *FactFilter) Reset() {
 	*x = FactFilter{}
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[10]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1916,7 +1822,7 @@ func (x *FactFilter) String() string {
 func (*FactFilter) ProtoMessage() {}
 
 func (x *FactFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_app_payday_fact_svc_g_proto_msgTypes[10]
+	mi := &file_app_payday_fact_svc_g_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2028,7 +1934,7 @@ var File_app_payday_fact_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x1bapp/payday/fact_svc.g.proto\x12\x03app\x1a\x15app/payday/fact.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\"\x8f\x04\n" +
+	"\x1bapp/payday/fact_svc.g.proto\x12\x03app\x1a\x15app/payday/fact.proto\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\"\x8f\x04\n" +
 	"\x0eFactAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12*\n" +
@@ -2089,10 +1995,7 @@ const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"\x0fdate_superseded\x18( \x01(\v2\x1a.google.protobuf.TimestampR\x0edateSuperseded\x120\n" +
 	"\x14date_superseded_null\x18) \x01(\bR\x12dateSupersededNull\x12+\n" +
 	"\rsuperseded_by\x18* \x01(\fB\x06\xea\x82\x16\x02\x10@R\fsupersededBy\x12,\n" +
-	"\x12superseded_by_null\x18+ \x01(\bR\x10supersededByNull\"V\n" +
-	"\x10FactApplyRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.FactRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xbe\x01\n" +
+	"\x12superseded_by_null\x18+ \x01(\bR\x10supersededByNull\"\xbe\x01\n" +
 	"\x0fFactListRequest\x12)\n" +
 	"\afilters\x18\x01 \x03(\v2\x0f.app.FactFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
@@ -2107,16 +2010,15 @@ const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.FactRefR\x03ref\x12%\n" +
 	"\n" +
 	"subject_id\x18\x02 \x01(\fB\x06\xea\x82\x16\x02\x10@R\tsubjectId\x12!\n" +
-	"\ffield_number\x18\x03 \x01(\rR\vfieldNumber2\xa4\x02\n" +
+	"\ffield_number\x18\x03 \x01(\rR\vfieldNumber2\xf9\x01\n" +
 	"\vFactService\x12%\n" +
 	"\x03Add\x12\x13.app.FactAddRequest\x1a\t.app.Fact\x12<\n" +
 	"\aAddMany\x12\x17.app.FactAddManyRequest\x1a\x18.app.FactAddManyResponse\x12%\n" +
 	"\x03Get\x12\x13.app.FactGetRequest\x1a\t.app.Fact\x12)\n" +
-	"\x05Patch\x12\x15.app.FactPatchRequest\x1a\t.app.Fact\x12)\n" +
-	"\x05Apply\x12\x15.app.FactApplyRequest\x1a\t.app.Fact\x123\n" +
+	"\x05Patch\x12\x15.app.FactPatchRequest\x1a\t.app.Fact\x123\n" +
 	"\x04List\x12\x14.app.FactListRequest\x1a\x15.app.FactListResponseB-Z+github.com/lesomnus/payday/internal/apptestb\beditionsp\xe8\a"
 
-var file_app_payday_fact_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_app_payday_fact_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_app_payday_fact_svc_g_proto_goTypes = []any{
 	(*FactAddRequest)(nil),        // 0: app.FactAddRequest
 	(*FactAddManyRequest)(nil),    // 1: app.FactAddManyRequest
@@ -2125,53 +2027,47 @@ var file_app_payday_fact_svc_g_proto_goTypes = []any{
 	(*FactRef)(nil),               // 4: app.FactRef
 	(*FactSelect)(nil),            // 5: app.FactSelect
 	(*FactPatchRequest)(nil),      // 6: app.FactPatchRequest
-	(*FactApplyRequest)(nil),      // 7: app.FactApplyRequest
-	(*FactListRequest)(nil),       // 8: app.FactListRequest
-	(*FactListResponse)(nil),      // 9: app.FactListResponse
-	(*FactFilter)(nil),            // 10: app.FactFilter
-	(*TenantRef)(nil),             // 11: app.TenantRef
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
-	(*Fact)(nil),                  // 13: app.Fact
-	(*TenantSelect)(nil),          // 14: app.TenantSelect
-	(*patchpb.Patch)(nil),         // 15: patch.Patch
+	(*FactListRequest)(nil),       // 7: app.FactListRequest
+	(*FactListResponse)(nil),      // 8: app.FactListResponse
+	(*FactFilter)(nil),            // 9: app.FactFilter
+	(*TenantRef)(nil),             // 10: app.TenantRef
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*Fact)(nil),                  // 12: app.Fact
+	(*TenantSelect)(nil),          // 13: app.TenantSelect
 }
 var file_app_payday_fact_svc_g_proto_depIdxs = []int32{
-	11, // 0: app.FactAddRequest.tenant:type_name -> app.TenantRef
-	12, // 1: app.FactAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	12, // 2: app.FactAddRequest.date_start:type_name -> google.protobuf.Timestamp
-	12, // 3: app.FactAddRequest.date_superseded:type_name -> google.protobuf.Timestamp
+	10, // 0: app.FactAddRequest.tenant:type_name -> app.TenantRef
+	11, // 1: app.FactAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	11, // 2: app.FactAddRequest.date_start:type_name -> google.protobuf.Timestamp
+	11, // 3: app.FactAddRequest.date_superseded:type_name -> google.protobuf.Timestamp
 	0,  // 4: app.FactAddManyRequest.items:type_name -> app.FactAddRequest
-	13, // 5: app.FactAddManyResponse.items:type_name -> app.Fact
+	12, // 5: app.FactAddManyResponse.items:type_name -> app.Fact
 	4,  // 6: app.FactGetRequest.ref:type_name -> app.FactRef
 	5,  // 7: app.FactGetRequest.select:type_name -> app.FactSelect
-	14, // 8: app.FactSelect.tenant:type_name -> app.TenantSelect
+	13, // 8: app.FactSelect.tenant:type_name -> app.TenantSelect
 	4,  // 9: app.FactPatchRequest.ref:type_name -> app.FactRef
-	12, // 10: app.FactPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	12, // 11: app.FactPatchRequest.date_start:type_name -> google.protobuf.Timestamp
-	12, // 12: app.FactPatchRequest.date_superseded:type_name -> google.protobuf.Timestamp
-	4,  // 13: app.FactApplyRequest.ref:type_name -> app.FactRef
-	15, // 14: app.FactApplyRequest.patch:type_name -> patch.Patch
-	10, // 15: app.FactListRequest.filters:type_name -> app.FactFilter
-	5,  // 16: app.FactListRequest.select:type_name -> app.FactSelect
-	13, // 17: app.FactListResponse.items:type_name -> app.Fact
-	4,  // 18: app.FactFilter.ref:type_name -> app.FactRef
-	0,  // 19: app.FactService.Add:input_type -> app.FactAddRequest
-	1,  // 20: app.FactService.AddMany:input_type -> app.FactAddManyRequest
-	3,  // 21: app.FactService.Get:input_type -> app.FactGetRequest
-	6,  // 22: app.FactService.Patch:input_type -> app.FactPatchRequest
-	7,  // 23: app.FactService.Apply:input_type -> app.FactApplyRequest
-	8,  // 24: app.FactService.List:input_type -> app.FactListRequest
-	13, // 25: app.FactService.Add:output_type -> app.Fact
-	2,  // 26: app.FactService.AddMany:output_type -> app.FactAddManyResponse
-	13, // 27: app.FactService.Get:output_type -> app.Fact
-	13, // 28: app.FactService.Patch:output_type -> app.Fact
-	13, // 29: app.FactService.Apply:output_type -> app.Fact
-	9,  // 30: app.FactService.List:output_type -> app.FactListResponse
-	25, // [25:31] is the sub-list for method output_type
-	19, // [19:25] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	11, // 10: app.FactPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	11, // 11: app.FactPatchRequest.date_start:type_name -> google.protobuf.Timestamp
+	11, // 12: app.FactPatchRequest.date_superseded:type_name -> google.protobuf.Timestamp
+	9,  // 13: app.FactListRequest.filters:type_name -> app.FactFilter
+	5,  // 14: app.FactListRequest.select:type_name -> app.FactSelect
+	12, // 15: app.FactListResponse.items:type_name -> app.Fact
+	4,  // 16: app.FactFilter.ref:type_name -> app.FactRef
+	0,  // 17: app.FactService.Add:input_type -> app.FactAddRequest
+	1,  // 18: app.FactService.AddMany:input_type -> app.FactAddManyRequest
+	3,  // 19: app.FactService.Get:input_type -> app.FactGetRequest
+	6,  // 20: app.FactService.Patch:input_type -> app.FactPatchRequest
+	7,  // 21: app.FactService.List:input_type -> app.FactListRequest
+	12, // 22: app.FactService.Add:output_type -> app.Fact
+	2,  // 23: app.FactService.AddMany:output_type -> app.FactAddManyResponse
+	12, // 24: app.FactService.Get:output_type -> app.Fact
+	12, // 25: app.FactService.Patch:output_type -> app.Fact
+	8,  // 26: app.FactService.List:output_type -> app.FactListResponse
+	22, // [22:27] is the sub-list for method output_type
+	17, // [17:22] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_fact_svc_g_proto_init() }
@@ -2190,7 +2086,7 @@ func file_app_payday_fact_svc_g_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_payday_fact_svc_g_proto_rawDesc), len(file_app_payday_fact_svc_g_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

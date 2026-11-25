@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lesomnus/protobuf-patch/patch"
 	"github.com/lesomnus/z"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -603,13 +602,6 @@ func TestWhichAccountAMembershipIsOfIsTheDeployments(t *testing.T) {
 				Ref:              app.HolderRef_builder{Id: w.oneAcme.Bytes()}.Build(),
 				AccountNull:      z.Ptr(true),
 				DateUpdatedForce: z.Ptr(true),
-			}.Build())
-			return err
-		}},
-		{"a document moving it", func() error {
-			_, err := w.Walled.Holder().Apply(as, app.HolderApplyRequest_builder{
-				Ref:   mine,
-				Patch: patch.MustNewUntyped(patch.Target(patch.Name("account")).Assign(patch.Bytes(w.one.Bytes()))),
 			}.Build())
 			return err
 		}},

@@ -16,6 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lesomnus/payday/audit"
@@ -606,8 +608,14 @@ func TestTheTrailIsNotWrittenByHand(t *testing.T) {
 	}.Build())
 	x.Equal(codes.Unimplemented, status.Code(err))
 
-	_, err = b.Walled.Audit().Erase(b.as(ctx), app.AuditRef_builder{Id: b.Holder.Bytes()}.Build())
-	x.Equal(codes.Unimplemented, status.Code(err))
+	// And nothing else of it writes, because there is nothing else: payday's
+	// trail declares the Add its recorder calls and its reads, and no Patch,
+	// Apply or Erase for this layer to refuse to everybody.
+	d, err := protoregistry.GlobalFiles.FindDescriptorByName("app.AuditService")
+	x.NoError(err)
+	for _, m := range []protoreflect.Name{"Patch", "Apply", "Erase"} {
+		x.Nil(d.(protoreflect.ServiceDescriptor).Methods().ByName(m), m)
+	}
 }
 
 // TestEveryWriteIsOnTheTrail is the half the layer does not do.
@@ -1587,34 +1595,5 @@ func TestAnEdgeAnOverlayGivesTheHolderIsARead(t *testing.T) {
 		}.Build())
 		x.Equal(codes.NotFound, status.Code(err),
 			"a holder's edge was moved onto a robot in a tenant this caller cannot see")
-	})
-
-	t.Run("and when a document moves it", func(t *testing.T) {
-		x := require.New(t)
-
-		ref := app.HolderRef_builder{Id: v.GetId()}.Build()
-		_, err := b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
-			Ref:   ref,
-			Patch: moving("robot", theirs.GetId()),
-		}.Build())
-		x.Equal(codes.NotFound, status.Code(err),
-			"a document moved a holder's edge onto a robot in a tenant this caller cannot see")
-
-		got, err := b.Ungated.Holder().Get(ctx, app.HolderGetRequest_builder{Ref: ref}.Build())
-		x.NoError(err)
-		x.Equal(mine.GetId(), got.GetRobot().GetId(), "the holder was moved all the same")
-
-		other, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
-			Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
-			Alias:  "also-mine",
-		}.Build())
-		x.NoError(err)
-
-		got, err = b.Walled.Holder().Apply(b.as(ctx), app.HolderApplyRequest_builder{
-			Ref:   ref,
-			Patch: moving("robot", other.GetId()),
-		}.Build())
-		x.NoError(err, "the check refuses what it should allow")
-		x.Equal(other.GetId(), got.GetRobot().GetId())
 	})
 }

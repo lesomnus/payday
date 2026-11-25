@@ -361,16 +361,6 @@ var tenantOrmEntity = ormpatch.MustEntityOf(apptest.File_app_payday_tenant_proto
 var tenantPatchColumns = entpatch.Columns{
 	1: tenant.FieldId, 4: tenant.FieldAlias, 5: tenant.FieldName, 6: tenant.FieldDesc, 7: tenant.FieldLabels, 13: tenant.FieldDateUpdated, 15: tenant.FieldDateCreated, 8: tenant.FieldRegion}
 
-func (s TenantServiceServer) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	if s.admission != nil {
-		ctx = request(ctx, req)
-	}
-	if !req.HasPatch() {
-		return nil, status.Errorf(codes.InvalidArgument, "%s", ormpatch.ErrNoPatch)
-	}
-	return s.apply(ctx, req.GetRef(), req.GetPatch(), apptest.TenantService_Apply_FullMethodName)
-}
-
 func (s TenantServiceServer) apply(ctx context.Context, ref *apptest.TenantRef, doc *patchpb.Patch, by string) (*apptest.Tenant, error) {
 	plan := &ormpatch.Plan{Entity: tenantOrmEntity}
 	if doc != nil {

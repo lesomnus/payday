@@ -858,11 +858,10 @@ func TestThePastIsWrittenByItsStoreAlone(t *testing.T) {
 		{"auditFact", "Add", "FactAddRequest", "Fact"},
 		{"auditFact", "AddMany", "FactAddManyRequest", "FactAddManyResponse"},
 		{"auditFact", "Patch", "FactPatchRequest", "Fact"},
-		{"auditFact", "Apply", "FactApplyRequest", "Fact"},
 	} {
 		x.Contains(out, refuses(v[0], v[1], v[2], v[3]))
 	}
-	for _, v := range []string{"auditEvent) Get(", "auditEvent) List(", "auditFact) Get(", "auditFact) List(", "auditEvent) Patch(", "auditEvent) Erase(", "auditFact) Erase("} {
+	for _, v := range []string{"auditEvent) Get(", "auditEvent) List(", "auditFact) Get(", "auditFact) List(", "auditEvent) Patch(", "auditEvent) Erase(", "auditFact) Apply(", "auditFact) Erase("} {
 		x.NotContains(out, v, "a verb that reads, or one the entity does not have")
 	}
 	x.Contains(out, "codes.PermissionDenied")
@@ -881,7 +880,7 @@ func TestThePastIsWrittenByItsStoreAlone(t *testing.T) {
 	// And which verbs they are is payday's: an app cannot give either one
 	// that the layer would have to know of.
 	src := past(t, "")
-	more := strings.Replace(src, "      get: {}\n    }", "      get: {}\n      erase: {}\n    }", 1)
+	more := strings.Replace(src, "      add: {many: {}}\n      get: {}\n    }", "      add: {many: {}}\n      get: {}\n      erase: {}\n    }", 1)
 	x.NotEqual(src, more, "no Event rpc to add a verb to")
 	_, _, err := readPlugin(t, map[string]string{"test/schema.proto": inPkg("fleet", more)})
 	x.ErrorContains(err, "fleet.Event: (orm.message) rpc.erase is not payday's")

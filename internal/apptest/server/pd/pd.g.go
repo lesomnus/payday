@@ -1272,34 +1272,6 @@ func (s Sink) Audit() apptest.AuditServiceServer {
 	return sinkAudit{s.Server.Audit(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
-// Erase forgets what the transaction was told about the row, before it is
-// erased: whether a frame may see it, and where a walk from it arrives.
-// Neither is true of a row that is gone, nor of another put under its
-// key. See [seen.Forget].
-func (s sinkAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req)
-
-	return s.AuditServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
-
-	return s.AuditServiceServer.Apply(ctx, req)
-}
-
-// Patch forgets what the transaction was told about the row, before it is
-// written: a request may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	seen.Forget(s.store.Db.Driver(), "Audit", req.GetRef())
-
-	return s.AuditServiceServer.Patch(ctx, req)
-}
-
 // orderAudit is how Audits come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -1909,15 +1881,6 @@ func (s Sink) Fact() apptest.FactServiceServer {
 	return sinkFact{s.Server.Fact(), s.Server.Store, s.w, s.namer, s.joined}
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	seen.Forget(s.store.Db.Driver(), "Fact", req.GetRef())
-
-	return s.FactServiceServer.Apply(ctx, req)
-}
-
 // Patch forgets what the transaction was told about the row, before it is
 // written: a request may move it to a set the caller cannot see. See
 // [seen.Forget].
@@ -2386,15 +2349,6 @@ func (s sinkHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest
 	seen.Forget(s.store.Db.Driver(), "Holder", req)
 
 	return s.HolderServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
-
-	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 // orderHolder is how Holders come back.
@@ -4337,15 +4291,6 @@ func (s sinkTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest
 	return s.TenantServiceServer.Erase(ctx, req)
 }
 
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	seen.Forget(s.store.Db.Driver(), "Tenant", req.GetRef())
-
-	return s.TenantServiceServer.Apply(ctx, req)
-}
-
 // orderTenant is how Tenants come back.
 //
 // The last column is the key, and it is not decoration: a cursor cannot
@@ -5194,60 +5139,6 @@ func (s gateHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 	return s.HolderServiceServer.Patch(ctx, req)
 }
 
-// Apply refuses a document that moves an edge onto a row this caller cannot
-// see, as Patch refuses a request that does.
-//
-// A document names the row an edge points at by its key, and the server
-// behind writes that key into the column as it is -- compiling a document
-// reads nothing. So the read Patch is asked is asked here of the key the
-// document lands in the column, compiled the way the server behind will.
-func (s gateHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	if !req.HasPatch() {
-		// Nothing written, and the server behind refuses it in its own words.
-		return s.HolderServiceServer.Apply(ctx, req)
-	}
-
-	plan, err := ormpatch.Compile(gateHolderEntity, req.GetPatch())
-	if err != nil {
-		// Refused here rather than passed on, in the codes the server behind
-		// gives the same document: one this layer cannot read is one it can
-		// say nothing about.
-		if errors.Is(err, ormpatch.ErrUnsupported) {
-			return nil, status.Errorf(codes.Unimplemented, "%s", err)
-		}
-
-		return nil, status.Errorf(codes.InvalidArgument, "%s", err)
-	}
-
-	if _, ok := plan.WriteTo(12); ok {
-		return nil, pderr.Invalidf("account", "is the account this membership is of, and is written by the deployment through the server it holds, never by a request")
-	}
-
-	if w, ok := plan.WriteTo(11); ok {
-		if k, ok := w.Op.(ormpatch.SetEdge); ok {
-			ref := apptest.RobotRef_builder{Id: k.Key.Bytes()}.Build()
-			if err := seen.Visible(ctx, s.Gate.drv, "Robot", ref, func() error {
-				_, err := s.Gate.Next().Robot().Get(ctx, apptest.RobotGetRequest_builder{
-					Ref: ref,
-				}.Build())
-				return err
-			}); err != nil {
-				if status.Code(err) == codes.NotFound {
-					return nil, gate.ErrNotFound("Robot")
-				}
-
-				return nil, err
-			}
-		}
-	}
-
-	return s.HolderServiceServer.Apply(ctx, req)
-}
-
-// gateHolderEntity is what a Holder document is compiled against: the entity
-// parsed from the file that declares it, as the server behind parses it.
-var gateHolderEntity = ormpatch.MustEntityOf((*apptest.Holder)(nil).ProtoReflect().Descriptor().ParentFile(), "Holder")
-
 type gateCell struct {
 	Gate
 	apptest.CellServiceServer
@@ -5940,17 +5831,6 @@ func (s guardedTenant) Patch(ctx context.Context, req *apptest.TenantPatchReques
 	return s.TenantServiceServer.Patch(ctx, req)
 }
 
-func (s guardedTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	if err := gate.Direct(ctx, apptest.TenantService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.TenantService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.TenantServiceServer.Apply(ctx, req)
-}
-
 func (s guardedTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
 	if err := gate.Direct(ctx, apptest.TenantService_Erase_FullMethodName); err != nil {
 		return nil, err
@@ -6550,39 +6430,6 @@ func (s guardedAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (*a
 	return s.AuditServiceServer.Get(ctx, req)
 }
 
-func (s guardedAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Patch_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Patch_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Patch(ctx, req)
-}
-
-func (s guardedAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Apply(ctx, req)
-}
-
-func (s guardedAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	if err := gate.Direct(ctx, apptest.AuditService_Erase_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.AuditService_Erase_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.AuditServiceServer.Erase(ctx, req)
-}
-
 func (s guardedAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
 	if err := gate.Direct(ctx, apptest.AuditService_List_FullMethodName); err != nil {
 		return nil, err
@@ -6688,17 +6535,6 @@ func (s guardedFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (
 	return s.FactServiceServer.Patch(ctx, req)
 }
 
-func (s guardedFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	if err := gate.Direct(ctx, apptest.FactService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.FactService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.FactServiceServer.Apply(ctx, req)
-}
-
 func (s guardedFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
 	if err := gate.Direct(ctx, apptest.FactService_List_FullMethodName); err != nil {
 		return nil, err
@@ -6744,17 +6580,6 @@ func (s guardedHolder) Patch(ctx context.Context, req *apptest.HolderPatchReques
 	}
 
 	return s.HolderServiceServer.Patch(ctx, req)
-}
-
-func (s guardedHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	if err := gate.Direct(ctx, apptest.HolderService_Apply_FullMethodName); err != nil {
-		return nil, err
-	}
-	if err := gate.AsAccount(ctx, apptest.HolderService_Apply_FullMethodName, AccountMethod); err != nil {
-		return nil, err
-	}
-
-	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 func (s guardedHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
@@ -6982,18 +6807,6 @@ func (s auditService) Add(ctx context.Context, req *apptest.AuditAddRequest) (*a
 	return nil, errTrail()
 }
 
-func (s auditService) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	return nil, errTrail()
-}
-
-func (s auditService) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	return nil, errTrail()
-}
-
-func (s auditService) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	return nil, errTrail()
-}
-
 // errTrail is Unimplemented and not PermissionDenied, and to everybody: it
 // is not about who is asking, and no credential changes it.
 func errTrail() error {
@@ -7061,14 +6874,6 @@ func (s auditFact) Patch(ctx context.Context, req *apptest.FactPatchRequest) (*a
 	}
 
 	return s.FactServiceServer.Patch(ctx, req)
-}
-
-func (s auditFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	if !isPastWrite(ctx) {
-		return nil, errPast()
-	}
-
-	return s.FactServiceServer.Apply(ctx, req)
 }
 
 // pastWrite marks a context the past's store hands the servers (`Past`):
@@ -10665,11 +10470,6 @@ func (s interceptTenant) Patch(ctx context.Context, req *apptest.TenantPatchRequ
 		apptest.TenantService_Patch_FullMethodName, req, s.TenantServiceServer.Patch)
 }
 
-func (s interceptTenant) Apply(ctx context.Context, req *apptest.TenantApplyRequest) (*apptest.Tenant, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
-		apptest.TenantService_Apply_FullMethodName, req, s.TenantServiceServer.Apply)
-}
-
 func (s interceptTenant) Erase(ctx context.Context, req *apptest.TenantRef) (*apptest.TenantEraseResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.TenantServiceServer,
 		apptest.TenantService_Erase_FullMethodName, req, s.TenantServiceServer.Erase)
@@ -11019,21 +10819,6 @@ func (s interceptAudit) Get(ctx context.Context, req *apptest.AuditGetRequest) (
 		apptest.AuditService_Get_FullMethodName, req, s.AuditServiceServer.Get)
 }
 
-func (s interceptAudit) Patch(ctx context.Context, req *apptest.AuditPatchRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Patch_FullMethodName, req, s.AuditServiceServer.Patch)
-}
-
-func (s interceptAudit) Apply(ctx context.Context, req *apptest.AuditApplyRequest) (*apptest.Audit, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Apply_FullMethodName, req, s.AuditServiceServer.Apply)
-}
-
-func (s interceptAudit) Erase(ctx context.Context, req *apptest.AuditRef) (*apptest.AuditEraseResponse, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
-		apptest.AuditService_Erase_FullMethodName, req, s.AuditServiceServer.Erase)
-}
-
 func (s interceptAudit) List(ctx context.Context, req *apptest.AuditListRequest) (*apptest.AuditListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.AuditServiceServer,
 		apptest.AuditService_List_FullMethodName, req, s.AuditServiceServer.List)
@@ -11097,11 +10882,6 @@ func (s interceptFact) Patch(ctx context.Context, req *apptest.FactPatchRequest)
 		apptest.FactService_Patch_FullMethodName, req, s.FactServiceServer.Patch)
 }
 
-func (s interceptFact) Apply(ctx context.Context, req *apptest.FactApplyRequest) (*apptest.Fact, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
-		apptest.FactService_Apply_FullMethodName, req, s.FactServiceServer.Apply)
-}
-
 func (s interceptFact) List(ctx context.Context, req *apptest.FactListRequest) (*apptest.FactListResponse, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.FactServiceServer,
 		apptest.FactService_List_FullMethodName, req, s.FactServiceServer.List)
@@ -11129,11 +10909,6 @@ func (s interceptHolder) Get(ctx context.Context, req *apptest.HolderGetRequest)
 func (s interceptHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
 		apptest.HolderService_Patch_FullMethodName, req, s.HolderServiceServer.Patch)
-}
-
-func (s interceptHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	return grpcx.RunUnary(ctx, s.unary, s.HolderServiceServer,
-		apptest.HolderService_Apply_FullMethodName, req, s.HolderServiceServer.Apply)
 }
 
 func (s interceptHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest.HolderEraseResponse, error) {
@@ -14741,7 +14516,6 @@ func (accessRecorder) Snapshots(method string) bare.SnapshotOptions {
 		apptest.EventService_AddMany_FullMethodName,
 		apptest.HolderService_Add_FullMethodName,
 		apptest.HolderService_Patch_FullMethodName,
-		apptest.HolderService_Apply_FullMethodName,
 		apptest.MachineService_Add_FullMethodName,
 		apptest.MachineService_Patch_FullMethodName,
 		apptest.RobotService_Add_FullMethodName,
@@ -15596,12 +15370,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	switch method {
 	case apptest.AuditService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
-	case apptest.AuditService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.AuditService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.AuditService_Erase_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_DELETED
 	case apptest.CellService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.CellService_Apply_FullMethodName:
@@ -15618,8 +15386,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.FactService_Patch_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.FactService_Apply_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.FleetService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.FleetService_Patch_FullMethodName:
@@ -15629,8 +15395,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.HolderService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.HolderService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.HolderService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.HolderService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
@@ -15693,8 +15457,6 @@ func resourceChangeKind(method string) pdpb.ChangeKind {
 	case apptest.TenantService_Add_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_CREATED
 	case apptest.TenantService_Patch_FullMethodName:
-		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
-	case apptest.TenantService_Apply_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_UPDATED
 	case apptest.TenantService_Erase_FullMethodName:
 		return pdpb.ChangeKind_CHANGE_KIND_DELETED
@@ -15812,7 +15574,6 @@ func Admission(policy admission.Policy, options admission.Options) bare.Option {
 			{Row: &apptest.Audit{}, Requests: []proto.Message{
 				&apptest.AuditRef{},
 				&apptest.AuditAddRequest{},
-				&apptest.AuditPatchRequest{},
 			}},
 			{Row: &apptest.Cell{}, Requests: []proto.Message{
 				&apptest.CellRef{},
