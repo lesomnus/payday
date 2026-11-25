@@ -566,7 +566,10 @@ string alias = 4;
 
 Declaring it turns on rather a lot. Every write of it is folded and checked on
 the way in, so `"  Arm-01 "` and `"arm-01"` are one row and `"Not A Name"` is
-refused with the field it was in. The row becomes reachable by
+refused with the field it was in. An `Apply`'s document is held to the same
+alias rather than rewritten: one that writes `"  Arm-01 "` is refused, saying
+it is kept as `"arm-01"`, and is sent in that form -- so what is stored is the
+same whichever of the two wrote it. The row becomes reachable by
 **slug** — `@acme/arm-01` — wherever a reference is taken, and the generated
 `RobotRefBySlug` is what carries it.
 

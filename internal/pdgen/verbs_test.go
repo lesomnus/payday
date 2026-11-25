@@ -102,6 +102,16 @@ func TestEachGeneralWriteIsWrittenForWhereItIsAskedFor(t *testing.T) {
 		x.NotContains(out, v, "written for a verb the entity does not have")
 	}
 
+	// And the Sink's Apply of an entity whose name it keeps asks what the
+	// document writes to the alias, as its Patch folds the field, and still
+	// forgets the row first.
+	apply := out[strings.Index(out, "func (s sinkApplier) Apply("):]
+	apply = apply[:strings.Index(apply, "\n}\n")]
+	for _, v := range []string{`seen.Forget(s.store.Db.Driver(), "Applier", req.GetRef())`, "ormpatch.Compile(sinkApplierEntity", "slug.ParseAlias(given)"} {
+		x.Contains(apply, v)
+	}
+	x.Equal(1, strings.Count(out, "func (s sinkApplier) Apply("))
+
 	// The two kinds each has a record of, by the method that wrote it.
 	flat := strings.Join(strings.Fields(out), " ")
 	x.Contains(flat, "case app.PatcherService_Patch_FullMethodName: return pdpb.ChangeKind_CHANGE_KIND_UPDATED")

@@ -1583,6 +1583,46 @@ func (s sinkCell) Add(ctx context.Context, req *apptest.CellAddRequest) (*apptes
 	}
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
+	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.CellServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkCellEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.CellServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.CellServiceServer.Apply(ctx, req)
+}
+
+// sinkCellEntity is what a Cell document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkCellEntity = ormpatch.MustEntityOf((*apptest.Cell)(nil).ProtoReflect().Descriptor().ParentFile(), "Cell")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -1591,15 +1631,6 @@ func (s sinkCell) Erase(ctx context.Context, req *apptest.CellRef) (*apptest.Cel
 	seen.Forget(s.store.Db.Driver(), "Cell", req)
 
 	return s.CellServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkCell) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
-	seen.Forget(s.store.Db.Driver(), "Cell", req.GetRef())
-
-	return s.CellServiceServer.Apply(ctx, req)
 }
 
 // Get answers with the Cell as the generated one reads it, and without
@@ -2341,6 +2372,46 @@ func (s sinkHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) 
 	return s.HolderServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkHolderEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.HolderServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.HolderServiceServer.Apply(ctx, req)
+}
+
+// sinkHolderEntity is what a Holder document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkHolderEntity = ormpatch.MustEntityOf((*apptest.Holder)(nil).ProtoReflect().Descriptor().ParentFile(), "Holder")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -2349,15 +2420,6 @@ func (s sinkHolder) Erase(ctx context.Context, req *apptest.HolderRef) (*apptest
 	seen.Forget(s.store.Db.Driver(), "Holder", req)
 
 	return s.HolderServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
-	seen.Forget(s.store.Db.Driver(), "Holder", req.GetRef())
-
-	return s.HolderServiceServer.Apply(ctx, req)
 }
 
 // orderHolder is how Holders come back.
@@ -3494,6 +3556,46 @@ func (s sinkRobot) Patch(ctx context.Context, req *apptest.RobotPatchRequest) (*
 	return s.RobotServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
+	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.RobotServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkRobotEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.RobotServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.RobotServiceServer.Apply(ctx, req)
+}
+
+// sinkRobotEntity is what a Robot document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkRobotEntity = ormpatch.MustEntityOf((*apptest.Robot)(nil).ProtoReflect().Descriptor().ParentFile(), "Robot")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -3502,15 +3604,6 @@ func (s sinkRobot) Erase(ctx context.Context, req *apptest.RobotRef) (*apptest.R
 	seen.Forget(s.store.Db.Driver(), "Robot", req)
 
 	return s.RobotServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkRobot) Apply(ctx context.Context, req *apptest.RobotApplyRequest) (*apptest.Robot, error) {
-	seen.Forget(s.store.Db.Driver(), "Robot", req.GetRef())
-
-	return s.RobotServiceServer.Apply(ctx, req)
 }
 
 // orderRobot is how Robots come back.
@@ -4602,6 +4695,46 @@ func (s sinkThing) Patch(ctx context.Context, req *apptest.ThingPatchRequest) (*
 	return s.ThingServiceServer.Patch(ctx, req)
 }
 
+// Apply refuses a document that writes an alias in any form but the one it
+// is kept in, which is what a Patch folds the alias it is given into: so the
+// alias kept is the same whichever wrote it.
+//
+// And it forgets what the transaction was told about the row, before it
+// is written: a document may move it to a set the caller cannot see. See
+// [seen.Forget].
+func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
+	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
+
+	if !req.HasPatch() {
+		return s.ThingServiceServer.Apply(ctx, req)
+	}
+
+	plan, err := ormpatch.Compile(sinkThingEntity, req.GetPatch())
+	if err != nil {
+		// The server behind refuses it, in its own words.
+		return s.ThingServiceServer.Apply(ctx, req)
+	}
+	if w, ok := plan.WriteTo(4); ok {
+		given := ""
+		if c, ok := w.Op.(ormpatch.SetColumn); ok {
+			given = c.Value.String()
+		}
+		v, err := slug.ParseAlias(given)
+		if err != nil {
+			return nil, pderr.At("alias", err)
+		}
+		if v != given {
+			return nil, pderr.Invalidf("alias", "is kept as %q; a document writes it in that form, folded and without surrounding spaces", v)
+		}
+	}
+
+	return s.ThingServiceServer.Apply(ctx, req)
+}
+
+// sinkThingEntity is what a Thing document is compiled against: the entity
+// parsed from the file that declares it, as the server behind parses it.
+var sinkThingEntity = ormpatch.MustEntityOf((*apptest.Thing)(nil).ProtoReflect().Descriptor().ParentFile(), "Thing")
+
 // Erase forgets what the transaction was told about the row, before it is
 // erased: whether a frame may see it, and where a walk from it arrives.
 // Neither is true of a row that is gone, nor of another put under its
@@ -4610,15 +4743,6 @@ func (s sinkThing) Erase(ctx context.Context, req *apptest.ThingRef) (*apptest.T
 	seen.Forget(s.store.Db.Driver(), "Thing", req)
 
 	return s.ThingServiceServer.Erase(ctx, req)
-}
-
-// Apply forgets what the transaction was told about the row, before it is
-// written: a document may move it to a set the caller cannot see. See
-// [seen.Forget].
-func (s sinkThing) Apply(ctx context.Context, req *apptest.ThingApplyRequest) (*apptest.Thing, error) {
-	seen.Forget(s.store.Db.Driver(), "Thing", req.GetRef())
-
-	return s.ThingServiceServer.Apply(ctx, req)
 }
 
 // orderThing is how Things come back.
