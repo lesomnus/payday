@@ -146,7 +146,7 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 
 ### A rule about the rows an `Add` writes
 
-An entity that asks for `AddMany` (`rpc: {crud: true, add: {many: {}}}`) is
+An entity that asks for `AddMany` (`rpc: {add: {many: {}}, ...}`) is
 written to by two RPCs, and the `Add` above is said of one of them. Its
 `AddMany` comes from the server behind, past the override, and writes the rows
 the rule was there to refuse.

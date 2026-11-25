@@ -276,7 +276,7 @@ func TestOnlyThePastMayAddMany(t *testing.T) {
 	src := ownAll(t)
 	before, after, ok := strings.Cut(src, "message Holder {")
 	x.True(ok)
-	src = before + "message Holder {" + strings.Replace(after, "rpc: {crud: true}", "rpc: {crud: true, add: {many: {}}}", 1)
+	src = before + "message Holder {" + strings.Replace(after, "add: {}", "add: {many: {}}", 1)
 
 	_, err = readAs(t, "fleet", declare(20, 21)+src+copies(t, 20, 21))
 	x.Error(err, "payday's holder was given an AddMany")
@@ -359,7 +359,7 @@ func TestAColumnThatCannotNameAnEventIsRefused(t *testing.T) {
 message Stint {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}, (payday.field) = {event: true}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 9, erase: {hard: {}}};
 }
 `),

@@ -23,7 +23,7 @@ func TestTheSinkRemembersOnlyAWalkThatCannotMove(t *testing.T) {
 message Loose {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `
@@ -31,7 +31,7 @@ message Loose {
 message Fixed {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 3, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `
@@ -88,7 +88,7 @@ func TestTheSinkForgetsARowItWrites(t *testing.T) {
 message Plain {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 2, tenanted: {via: "tenant"}, erase: {hard: {}}};
 }
 `

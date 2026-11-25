@@ -31,7 +31,7 @@ message Job {
     default: ""
   }];
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
   };
   option (payday.entity) = {
     domain: 42

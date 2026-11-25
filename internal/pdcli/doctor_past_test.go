@@ -85,7 +85,7 @@ message Shift {
     default: ""
   }];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 203
     erase: {hard: {}}
@@ -105,7 +105,7 @@ message CalendarEvent {
     default: ""
   }];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 204
     erase: {hard: {}}

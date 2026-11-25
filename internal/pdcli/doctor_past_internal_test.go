@@ -92,7 +92,7 @@ message Booking {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID, key: true, default: ""}];
   bytes event_id = 8 [(orm.field) = {type: TYPE_UUID}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7, global: {}, erase: {hard: {}}};
 }
 `

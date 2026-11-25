@@ -47,7 +47,7 @@ message Stint {
   }];
 
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {add: {}, get: {}, patch: {}, erase: {}}
     indexes: [
       // What the expiry asks of each event it would take: whether a stint
       // names it. Without it, every stint of every tenant, for each event.

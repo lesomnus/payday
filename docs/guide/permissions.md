@@ -27,7 +27,7 @@ message Robot {
   // `Erase` does to a row, and carrying this field is how "softly" is said.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message)   = {rpc: {crud: true}};
+  option (orm.message)   = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {domain: 7};
 }
 ```

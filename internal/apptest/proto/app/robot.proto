@@ -159,7 +159,7 @@ message Cell {
   // trail can still say what it held.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 10
   };
@@ -268,8 +268,10 @@ message Robot {
     // And AddMany, which is here to be asked what an Add is: every item
     // through the gate and the Sink, each answer through the Secret layer.
     rpc: {
-      crud: true
       add: {many: {}}
+      get: {}
+      patch: {}
+      erase: {}
     }
     indexes: [
       // The order a List reads in. Without it a page scans the table and sorts
@@ -414,7 +416,7 @@ message Pairing {
     default: ""
   }];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     erase: {hard: {}}
     domain: 12
@@ -445,7 +447,7 @@ message Joint {
   // trail can still say what it held.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 8
     tenanted: {via: "robot.tenant"}
@@ -467,7 +469,7 @@ message Fleet {
   // trail can still say what it held.
   google.protobuf.Timestamp date_erased = 14 [(orm.field) = {erased: {}}];
 
-  option (orm.message) = {rpc: {crud: true}};
+  option (orm.message) = {rpc: {add: {}, get: {}, patch: {}, erase: {}}};
   option (payday.entity) = {
     domain: 9
     global: {}
@@ -514,8 +516,10 @@ message Reading {
     // And AddMany, which readings are the case for: they arrive many at a
     // time, and each is stamped as an Add of it would be.
     rpc: {
-      crud: true
       add: {many: {}}
+      get: {}
+      patch: {}
+      erase: {}
     }
     indexes: [
       // The stamp leads, which is what makes it worth keeping: the wall on this

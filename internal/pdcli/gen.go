@@ -688,7 +688,7 @@ func checkContractRpcs(b []byte, contract string) error {
 //
 // The contract **as merged so far**, which is why this is here rather than in
 // [CheckOverlayFile]: the app's overlay is merged after payday's own, so by
-// this point `b` carries the crud rpcs and `List` and `Watch` both. An overlay
+// this point `b` carries the storage's rpcs and `List` and `Watch` both. An overlay
 // redeclaring any of them is caught by one rule.
 //
 // An app that genuinely wants a different `Get` has an answer already -- write

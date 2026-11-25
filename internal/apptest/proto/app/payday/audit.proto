@@ -334,7 +334,12 @@ message Audit {
   repeated uint32 digest_fields = 22;
 
   option (orm.message) = {
-    rpc: {crud: true}
+    rpc: {
+      add: {}
+      get: {}
+      patch: {}
+      erase: {}
+    }
     indexes: [
       {
         name: "object"

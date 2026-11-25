@@ -157,7 +157,7 @@ func ownAll(t *testing.T) string {
 // with in mind, and nothing has a use for one.
 func TestPaydaysOwnHaveNoAddMany(t *testing.T) {
 	many := func(v string) string {
-		return strings.Replace(v, "rpc: {crud: true}", "rpc: {crud: true, add: {many: {}}}", 1)
+		return strings.Replace(v, "rpc: {add: {}, get: {}, patch: {}, erase: {}}", "rpc: {add: {many: {}}, get: {}, patch: {}, erase: {}}", 1)
 	}
 
 	_, err := readAs(t, "payday", many(tenantOf("payday")))
