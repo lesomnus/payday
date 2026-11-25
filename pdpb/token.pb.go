@@ -7,6 +7,7 @@
 package pdpb
 
 import (
+	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -462,7 +463,7 @@ var File_payday_token_proto protoreflect.FileDescriptor
 
 const file_payday_token_proto_rawDesc = "" +
 	"\n" +
-	"\x12payday/token.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\".\n" +
+	"\x12payday/token.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\".\n" +
 	"\x16TokenIntrospectRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"\xa3\x02\n" +
 	"\x17TokenIntrospectResponse\x12\x0e\n" +
@@ -472,13 +473,13 @@ const file_payday_token_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12#\n" +
 	"\x05grant\x18\x05 \x01(\v2\r.payday.GrantR\x05grant\x12=\n" +
 	"\fdate_expired\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpired\x12I\n" +
-	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\"\xa6\x01\n" +
+	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\"\xb6\x01\n" +
 	"\x05Grant\x12\x1d\n" +
 	"\n" +
-	"any_tenant\x18\x01 \x01(\bR\tanyTenant\x12\x18\n" +
-	"\atenants\x18\x02 \x03(\fR\atenants\x12\x17\n" +
-	"\aany_set\x18\x03 \x01(\bR\x06anySet\x12\x12\n" +
-	"\x04sets\x18\x04 \x03(\fR\x04sets\x12\x1d\n" +
+	"any_tenant\x18\x01 \x01(\bR\tanyTenant\x12 \n" +
+	"\atenants\x18\x02 \x03(\fB\x06\xea\x82\x16\x02\x10@R\atenants\x12\x17\n" +
+	"\aany_set\x18\x03 \x01(\bR\x06anySet\x12\x1a\n" +
+	"\x04sets\x18\x04 \x03(\fB\x06\xea\x82\x16\x02\x10@R\x04sets\x12\x1d\n" +
 	"\n" +
 	"any_action\x18\x05 \x01(\bR\tanyAction\x12\x18\n" +
 	"\aactions\x18\x06 \x03(\tR\aactions2]\n" +

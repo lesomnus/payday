@@ -367,6 +367,21 @@ id: invalid UUID (got 27 bytes)
 | `wide` | the same table, with the identifiers |
 | `template=...` | `text/template` over the JSON |
 
+`pretty` prints a `bytes` field as an identifier where it is one -- its
+`(orm.field)` says `type: TYPE_UUID`, as every entity's key and edge does, or
+a field of a message that is no entity is called `id` or `<something>_id` --
+and as `(n bytes)` where it is not. An element of a list or a value of a map
+is printed the same, and is an identifier only where the field says so: a
+plural such as `sites` is no name the rule reads, so an answer carrying a list
+of identifiers says it on the field:
+
+```proto
+repeated bytes sites = 1 [(orm.field) = {type: TYPE_UUID}];
+```
+
+A field declared `(payday.field) = {secret: true}` is never printed element by
+element: a list of them is how many there are, `(2 values)`.
+
 A name that is none of these, or a template that does not parse, is refused
 before the command asks for a connection, as a wrong flag is (an
 `xli.UsageError`): nothing is opened or sent, by a command that writes as much

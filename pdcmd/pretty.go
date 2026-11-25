@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/lesomnus/payday/internal/pdcolumn"
 	"github.com/lesomnus/payday/pdpb"
 )
 
@@ -112,6 +113,13 @@ func pretty(w io.Writer, m protoreflect.Message, indent string, loc *time.Locati
 		v := m.Get(fd)
 
 		switch {
+		case fd.IsList() && pdcolumn.Secret(fd):
+			// How many, and nothing of any of them: what a single secret is
+			// printed as says how much of it there is, and a list of them
+			// printed element by element is a list of secrets in a terminal's
+			// scrollback.
+			fmt.Fprintf(w, "%s(%d values)\n", name, v.List().Len())
+
 		case fd.IsList():
 			l := v.List()
 			fmt.Fprintf(w, "%s(%d)\n", name, l.Len())
@@ -123,8 +131,11 @@ func pretty(w io.Writer, m protoreflect.Message, indent string, loc *time.Locati
 					continue
 				}
 
-				fmt.Fprintf(w, "%s  %s\n", indent, l.Get(i).String())
+				fmt.Fprintf(w, "%s  %s\n", indent, element(fd, l.Get(i)))
 			}
+
+		case fd.IsMap() && pdcolumn.Secret(fd):
+			fmt.Fprintf(w, "%s(%d values)\n", name, v.Map().Len())
 
 		case fd.IsMap():
 			fmt.Fprintf(w, "%s\n", name)
@@ -139,7 +150,7 @@ func pretty(w io.Writer, m protoreflect.Message, indent string, loc *time.Locati
 					_, err = fmt.Fprintf(w, "%s  %s: %s\n", indent, k.String(), b)
 					return err == nil
 				}
-				fmt.Fprintf(w, "%s  %s: %s\n", indent, k.String(), v.String())
+				fmt.Fprintf(w, "%s  %s: %s\n", indent, k.String(), element(fd, v))
 				return true
 			})
 			if err != nil {
@@ -204,6 +215,36 @@ func pretty(w io.Writer, m protoreflect.Message, indent string, loc *time.Locati
 	}
 
 	return nil
+}
+
+// element is one value of a list or a map of scalars, printed as a single
+// field of its kind is: an identifier where the field says it holds them,
+// `(n bytes)` for other bytes -- never Go's rendering of a byte slice, which
+// is what Value.String gives one -- and anything else as itself.
+//
+// A list or a map is an identifier only where the field says so, with
+// `(orm.field) = {type: TYPE_UUID}`: the rule of names [isId] falls back to
+// is about one field, `id` and `<something>_id`, and a plural is not a name
+// that says what it holds -- `sites` and `tenants` do, `previous` does not.
+func element(fd protoreflect.FieldDescriptor, v protoreflect.Value) string {
+	kind := fd.Kind()
+	if fd.IsMap() {
+		kind = fd.MapValue().Kind()
+	}
+	if kind != protoreflect.BytesKind {
+		return v.String()
+	}
+	if saysUuid(fd) {
+		return uuidOf(v.Bytes())
+	}
+
+	return fmt.Sprintf("(%d bytes)", len(v.Bytes()))
+}
+
+// saysUuid is whether a field's `(orm.field)` says it holds identifiers.
+func saysUuid(fd protoreflect.FieldDescriptor) bool {
+	opts, _ := proto.GetExtension(fd.Options(), ormpb.E_Field).(*ormpb.FieldOptions)
+	return opts.GetType() == ormpb.Type_TYPE_UUID
 }
 
 // oneLine is a nested message worth a line rather than a block: an entity,
