@@ -73,6 +73,18 @@ type Options struct {
 	// Limit defaults to 32 simultaneous decisions. A timed-out policy that ignores
 	// cancellation retains its slot until it returns. Exhaustion refuses new work.
 	Limit int
+	// Asked says which calls the policy is asked about, by the outer method a
+	// Call carries (Call.Method: the RPC the transport captured, or, for a
+	// write with no outer method captured, the method the policy would have
+	// been given). A call it answers false for is admitted at once: the policy
+	// is not called, nothing is copied or cleared for it, and it takes no slot,
+	// so a policy that is down or slow holds up only the calls it is asked
+	// about. Nil asks about every call.
+	//
+	// It is called with the method alone, first, on the write's own goroutine
+	// and inside its transaction, and nothing bounds it: it must be cheap and
+	// must not block. A set of method names is what it is for.
+	Asked func(method string) bool
 	// Secrets adds fields on custom RPC messages. Generated entity and Add/Patch
 	// secrets are included automatically and cannot be removed by this map.
 	// An opaque bytes or JSON field containing secrets must be declared in full.
@@ -115,6 +127,7 @@ func Select(patterns, names []string) ([]string, error) {
 // Construct one per sink; policies may be called concurrently.
 type Checker struct {
 	policy  Policy
+	asked   func(string) bool
 	timeout time.Duration
 	slots   chan struct{}
 	secrets map[protoreflect.FullName][]protoreflect.FieldNumber
@@ -190,7 +203,7 @@ func New(policy Policy, o Options, entities []Entity, secrets map[protoreflect.F
 	for i := 0; i < md.Fields().Len(); i++ {
 		r[md.FullName()] = append(r[md.FullName()], md.Fields().Get(i).Number())
 	}
-	return &Checker{policy: policy, timeout: o.Timeout, slots: make(chan struct{}, o.Limit), secrets: r, log: o.Log}, nil
+	return &Checker{policy: policy, asked: o.Asked, timeout: o.Timeout, slots: make(chan struct{}, o.Limit), secrets: r, log: o.Log}, nil
 }
 
 // decisionContext withholds arbitrary request values, especially bearer tokens
@@ -226,7 +239,17 @@ func (r *Checker) principal(f *frame.Frame) *frame.Frame {
 // Check copies and redacts the call before invoking policy. Frame comes from the
 // verified context, not a caller-supplied Call field. Missing identity is refused;
 // bootstrap must use the explicit generated bare.TrustAdmission context.
+//
+// A call of a method [Options.Asked] answers false for is admitted before any
+// of that: it is none of the policy's business, so it spends none of what the
+// policy's calls share. What the generated server does with an admission --
+// counting the write off against the guard on direct ent writes, so that its
+// transaction may commit -- it does with this one as with one the policy let
+// through, since both are a nil here.
 func (r *Checker) Check(ctx context.Context, c Call) (err error) {
+	if r.asked != nil && !r.asked(c.Method) {
+		return nil
+	}
 	f, ok := frame.From(ctx)
 	// Capture log attributes before invoking policy: its copies can be changed.
 	attrs := []any{"entity", c.Entity, "object", c.Object.String(), "method", c.Method, "operation", c.By}
