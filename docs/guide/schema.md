@@ -674,6 +674,18 @@ depth, however many rows the page holds; the columns the order walks are read
 whether or not the select names them, since the cursor is made of them. A list
 with no select answers as it does without one.
 
+**A select goes eight levels deep at most**, on a `Get` and a `List` alike: the
+entity's own fields are the first level, and each edge it fills is one more.
+A deeper one is refused before anything is read, `InvalidArgument`:
+
+```
+select: 9 levels deep, and a select goes 8 at most
+```
+
+It is a bound a request is held to, a constant of payday's
+(`internal/pdgen.SelectDepth`), and no setting changes it. A `Watch` takes no
+select, and no write answers through one.
+
 **A list reads the other way round, and in the orders it names.** Every List
 request has `reverse`, which turns every column of the order round at once --
 oldest first where it is newest first -- and needs declaring nowhere: an index

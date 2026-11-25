@@ -23,6 +23,8 @@ type Mutation struct {
 	exprs         map[string]sql.Querier
 	tenant        *uuid.UUID
 	clearedtenant bool
+	within        *uuid.UUID
+	clearedwithin bool
 	predicates    []predicate.Cell
 }
 
@@ -116,6 +118,39 @@ func (m *Mutation) ResetTenantId() {
 	m.tenant = nil
 }
 
+// SetWithinId sets the "within_id" field.
+func (m *Mutation) SetWithinId(u uuid.UUID) {
+	m.within = &u
+	delete(m.clearedFields, FieldWithinId)
+}
+
+// WithinId returns the value of the "within_id" field in the mutation.
+func (m *Mutation) WithinId() (r uuid.UUID, exists bool) {
+	v := m.within
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearWithinId clears the value of the "within_id" field.
+func (m *Mutation) ClearWithinId() {
+	m.within = nil
+	m.clearedFields[FieldWithinId] = struct{}{}
+}
+
+// WithinIdCleared returns if the "within_id" field was cleared in this mutation.
+func (m *Mutation) WithinIdCleared() bool {
+	_, ok := m.clearedFields[FieldWithinId]
+	return ok
+}
+
+// ResetWithinId resets all changes to the "within_id" field.
+func (m *Mutation) ResetWithinId() {
+	m.within = nil
+	delete(m.clearedFields, FieldWithinId)
+}
+
 // ClearTenant clears the "tenant" edge to the Tenant entity.
 func (m *Mutation) ClearTenant() {
 	m.clearedtenant = true
@@ -141,6 +176,33 @@ func (m *Mutation) TenantIds() (ids []uuid.UUID) {
 func (m *Mutation) ResetTenant() {
 	m.tenant = nil
 	m.clearedtenant = false
+}
+
+// ClearWithin clears the "within" edge to the Cell entity.
+func (m *Mutation) ClearWithin() {
+	m.clearedwithin = true
+	m.clearedFields[FieldWithinId] = struct{}{}
+}
+
+// WithinCleared reports if the "within" edge to the Cell entity was cleared.
+func (m *Mutation) WithinCleared() bool {
+	return m.WithinIdCleared() || m.clearedwithin
+}
+
+// WithinIds returns the "within" edge Ids in the mutation.
+// Note that Ids always returns len(Ids) <= 1 for unique edges, and you should use
+// WithinId instead. It exists only for internal usage by the builders.
+func (m *Mutation) WithinIds() (ids []uuid.UUID) {
+	if id := m.within; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWithin resets all changes to the "within" edge.
+func (m *Mutation) ResetWithin() {
+	m.within = nil
+	m.clearedwithin = false
 }
 
 // Where appends a list predicates to the Mutation builder.
@@ -177,7 +239,7 @@ func (m *Mutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *Mutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.alias != nil || m.exprs[FieldAlias] != nil {
 		fields = append(fields, FieldAlias)
 	}
@@ -186,6 +248,9 @@ func (m *Mutation) Fields() []string {
 	}
 	if m.tenant != nil {
 		fields = append(fields, FieldTenantId)
+	}
+	if m.within != nil {
+		fields = append(fields, FieldWithinId)
 	}
 	return fields
 }
@@ -207,6 +272,8 @@ func (m *Mutation) Field(name string) (ent.Value, bool) {
 		return m.DateErased()
 	case FieldTenantId:
 		return m.TenantId()
+	case FieldWithinId:
+		return m.WithinId()
 	}
 	return nil, false
 }
@@ -256,6 +323,16 @@ func (m *Mutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTenantId(v)
 		return nil
+	case FieldWithinId:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			if e, ok := value.(sql.Querier); ok {
+				return m.SetFieldExpr(name, e)
+			}
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWithinId(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Cell field %s", name)
 }
@@ -283,6 +360,8 @@ func (m *Mutation) SetFieldExpr(name string, expr sql.Querier) error {
 	case FieldDateErased:
 		m.ResetDateErased()
 	case FieldTenantId:
+		return fmt.Errorf("field %s cannot be assigned an expression: it holds an edge, which is set through the edge", name)
+	case FieldWithinId:
 		return fmt.Errorf("field %s cannot be assigned an expression: it holds an edge, which is set through the edge", name)
 	default:
 		return fmt.Errorf("unknown Cell field %s", name)
@@ -343,6 +422,9 @@ func (m *Mutation) ClearedFields() []string {
 	if m.FieldCleared(FieldDateErased) {
 		fields = append(fields, FieldDateErased)
 	}
+	if m.FieldCleared(FieldWithinId) {
+		fields = append(fields, FieldWithinId)
+	}
 	return fields
 }
 
@@ -359,6 +441,9 @@ func (m *Mutation) ClearField(name string) error {
 	switch name {
 	case FieldDateErased:
 		m.ClearDateErased()
+		return nil
+	case FieldWithinId:
+		m.ClearWithinId()
 		return nil
 	}
 	return fmt.Errorf("unknown Cell nullable field %s", name)
@@ -377,15 +462,21 @@ func (m *Mutation) ResetField(name string) error {
 	case FieldTenantId:
 		m.ResetTenantId()
 		return nil
+	case FieldWithinId:
+		m.ResetWithinId()
+		return nil
 	}
 	return fmt.Errorf("unknown Cell field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *Mutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.tenant != nil {
 		edges = append(edges, EdgeTenant)
+	}
+	if m.within != nil {
+		edges = append(edges, EdgeWithin)
 	}
 	return edges
 }
@@ -398,13 +489,17 @@ func (m *Mutation) AddedIds(name string) []ent.Value {
 		if id := m.tenant; id != nil {
 			return []ent.Value{*id}
 		}
+	case EdgeWithin:
+		if id := m.within; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *Mutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -416,9 +511,12 @@ func (m *Mutation) RemovedIds(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *Mutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedtenant {
 		edges = append(edges, EdgeTenant)
+	}
+	if m.clearedwithin {
+		edges = append(edges, EdgeWithin)
 	}
 	return edges
 }
@@ -429,6 +527,8 @@ func (m *Mutation) EdgeCleared(name string) bool {
 	switch name {
 	case EdgeTenant:
 		return m.clearedtenant
+	case EdgeWithin:
+		return m.clearedwithin
 	}
 	return false
 }
@@ -440,6 +540,9 @@ func (m *Mutation) ClearEdge(name string) error {
 	case EdgeTenant:
 		m.ClearTenant()
 		return nil
+	case EdgeWithin:
+		m.ClearWithin()
+		return nil
 	}
 	return fmt.Errorf("unknown Cell unique edge %s", name)
 }
@@ -450,6 +553,9 @@ func (m *Mutation) ResetEdge(name string) error {
 	switch name {
 	case EdgeTenant:
 		m.ResetTenant()
+		return nil
+	case EdgeWithin:
+		m.ResetWithin()
 		return nil
 	}
 	return fmt.Errorf("unknown Cell edge %s", name)

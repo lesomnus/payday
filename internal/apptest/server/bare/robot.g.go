@@ -121,6 +121,20 @@ func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
 			trim(m.Get(f).Message())
 		}
 	}
+	{
+		f := m.Descriptor().Fields().ByNumber(20)
+		if m.Has(f) {
+			trim := func(r protoreflect.Message) {
+				r.Range(func(f protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+					if f.Number() != 1 {
+						r.Clear(f)
+					}
+					return true
+				})
+			}
+			trim(m.Get(f).Message())
+		}
+	}
 	return out
 }
 
@@ -128,7 +142,7 @@ func (s CellServiceServer) image(v *apptest.Cell) *apptest.Cell {
 // and what the answer says about its edges. Add and AddMany both write
 // with it, so that an item of an AddMany is the row an Add of it would be.
 func (st CellServiceServer) create(ctx context.Context, req *apptest.CellAddRequest) (*ent.CellCreate, []func(v *apptest.Cell), error) {
-	ds := make([]func(v *apptest.Cell), 0, 1)
+	ds := make([]func(v *apptest.Cell), 0, 2)
 	q := st.Db.Cell.Create()
 	var k uuid.UUID
 	if req.HasId() {
@@ -152,6 +166,16 @@ func (st CellServiceServer) create(ctx context.Context, req *apptest.CellAddRequ
 		})
 	}
 	q.SetAlias(req.GetAlias())
+	if req.HasWithin() {
+		if k, err := CellGetKey(ctx, st.Db, req.GetWithin()); err != nil {
+			return nil, nil, err
+		} else {
+			q.SetWithinId(k)
+			ds = append(ds, func(v *apptest.Cell) {
+				v.SetWithin(apptest.Cell_builder{Id: k[:]}.Build())
+			})
+		}
+	}
 	return q, ds, nil
 }
 
@@ -319,6 +343,21 @@ func CellSelect(ctx context.Context, scope Scope, q *ent.CellQuery, m *apptest.C
 			return err
 		}
 	}
+	if m.HasWithin() {
+		p, err := CellNarrow(ctx, scope, nil)
+		if err != nil {
+			return err
+		}
+		q.WithWithin(func(q *ent.CellQuery) {
+			if p != nil {
+				q.Where(p)
+			}
+			err = CellSelect(ctx, scope, q, m.GetWithin())
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -360,7 +399,7 @@ func CellGetKey(ctx context.Context, db *ent.Client, ref *apptest.CellRef) (uuid
 var cellOrmEntity = ormpatch.MustEntityOf(apptest.File_app_robot_proto, "Cell")
 
 var cellPatchColumns = entpatch.Columns{
-	1: cell.FieldId, 2: cell.TenantColumn, 4: cell.FieldAlias, 14: cell.FieldDateErased}
+	1: cell.FieldId, 2: cell.TenantColumn, 4: cell.FieldAlias, 20: cell.WithinColumn, 14: cell.FieldDateErased}
 
 func (s CellServiceServer) Apply(ctx context.Context, req *apptest.CellApplyRequest) (*apptest.Cell, error) {
 	if s.admission != nil {

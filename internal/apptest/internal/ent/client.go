@@ -977,6 +977,22 @@ func (c *CellClient) QueryTenant(_m *Cell) *TenantQuery {
 	return query
 }
 
+// QueryWithin queries the within edge of a Cell.
+func (c *CellClient) QueryWithin(_m *Cell) *CellQuery {
+	query := (&CellClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.Id
+		step := sqlgraph.NewStep(
+			sqlgraph.From(cell.Table, cell.FieldId, id),
+			sqlgraph.To(cell.Table, cell.FieldId),
+			sqlgraph.Edge(sqlgraph.O2O, false, cell.WithinTable, cell.WithinColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *CellClient) Hooks() []Hook {
 	return c.hooks.Cell

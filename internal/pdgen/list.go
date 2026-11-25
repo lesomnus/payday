@@ -191,9 +191,64 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	for _, v := range wraps {
 		if answers(s, v) {
 			emitUnselect(g)
+			emitSelectDepth(g)
 			break
 		}
 	}
+}
+
+// SelectDepth is how many levels deep a select may go: the entity's own fields
+// are the first, and each edge it fills is one more. A deeper one is refused,
+// InvalidArgument, before anything is read, by the Get and the List of every
+// entity's Sink, which every port and every caller in process reads through.
+//
+// A bound a request is held to, and a constant: no setting changes it. Nothing
+// else held a select's depth, and a schema whose edges make a cycle -- a row
+// that names another of its own kind -- had a select as deep as a request was
+// written.
+const SelectDepth = 8
+
+// emitSelectDepth writes what holds a select to [SelectDepth].
+func emitSelectDepth(g *protogen.GeneratedFile) {
+	r := func(name string) protogen.GoIdent { return pkgReflect.Ident(name) }
+
+	g.P("// pdSelectDepth is how many levels deep a select may go; see")
+	g.P("// pdgen.SelectDepth, which is where it is said.")
+	g.P("const pdSelectDepth = ", SelectDepth)
+	g.P("")
+	g.P("// pdSelectDepthOf refuses a select deeper than pdSelectDepth: the entity's")
+	g.P("// own fields are its first level and each edge it fills one more.")
+	g.P("func pdSelectDepthOf(m ", r("Message"), ") error {")
+	g.P("	if n := pdDepth(m, pdSelectDepth+1); n > pdSelectDepth {")
+	g.P("		return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ",")
+	g.P("			\"select: %d levels deep, and a select goes %d at most\", n, pdSelectDepth)")
+	g.P("	}")
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
+	g.P("")
+	g.P("// pdDepth is how many levels deep `m` goes, counted no further than `most`,")
+	g.P("// so that a request nested a thousand deep costs what one past the bound does.")
+	g.P("func pdDepth(m ", r("Message"), ", most int) int {")
+	g.P("	if !m.IsValid() {")
+	g.P("		return 0")
+	g.P("	}")
+	g.P("	if most <= 1 {")
+	g.P("		return 1")
+	g.P("	}")
+	g.P("")
+	g.P("	deepest := 0")
+	g.P("	m.Range(func(fd ", r("FieldDescriptor"), ", v ", r("Value"), ") bool {")
+	g.P("		if fd.Kind() != ", r("MessageKind"), " || fd.IsList() || fd.IsMap() {")
+	g.P("			return true")
+	g.P("		}")
+	g.P("		deepest = max(deepest, pdDepth(v.Message(), most-1))")
+	g.P("		return deepest < most-1")
+	g.P("	})")
+	g.P("")
+	g.P("	return 1 + deepest")
+	g.P("}")
+	g.P("")
 }
 
 // answers is whether the Sink answers a Get of `v` ([emitSinkGet]): it has
@@ -229,6 +284,9 @@ func emitSinkGet(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPat
 	g.P("// what its select did not ask for; see [pdUnselect].")
 	g.P("func (s sink", e, ") Get(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"GetRequest"),
 		") (*", root.Ident(e), ", error) {")
+	g.P("	if err := pdSelectDepthOf(req.GetSelect().ProtoReflect()); err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
 	g.P("	v, err := s.", e, "ServiceServer.Get(ctx, req)")
 	g.P("	if err != nil {")
 	g.P("		return nil, err")
@@ -843,6 +901,10 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	// What each row is answered with: the select's, as a Get reads it, or
 	// what the list declared to answer with when there is none.
 	g.P("	if sel := req.GetSelect(); sel != nil {")
+	g.P("		if err := pdSelectDepthOf(sel.ProtoReflect()); err != nil {")
+	g.P("			return nil, err")
+	g.P("		}")
+	g.P("")
 	g.P("		// As a Get with it reads one row, each edge through the narrowing of")
 	g.P("		// the entity it reaches; one query for the rows and one for each")
 	g.P("		// edge, whatever the size of the page.")

@@ -50,6 +50,20 @@ func (_c *CellCreate) SetTenantId(v uuid.UUID) *CellCreate {
 	return _c
 }
 
+// SetWithinId sets the "within_id" field.
+func (_c *CellCreate) SetWithinId(v uuid.UUID) *CellCreate {
+	_c.mutation.SetWithinId(v)
+	return _c
+}
+
+// SetNillableWithinId sets the "within_id" field if the given value is not nil.
+func (_c *CellCreate) SetNillableWithinId(v *uuid.UUID) *CellCreate {
+	if v != nil {
+		_c.SetWithinId(*v)
+	}
+	return _c
+}
+
 // SetId sets the "id" field.
 func (_c *CellCreate) SetId(v uuid.UUID) *CellCreate {
 	_c.mutation.SetId(v)
@@ -59,6 +73,11 @@ func (_c *CellCreate) SetId(v uuid.UUID) *CellCreate {
 // SetTenant sets the "tenant" edge to the Tenant entity.
 func (_c *CellCreate) SetTenant(v *Tenant) *CellCreate {
 	return _c.SetTenantId(v.Id)
+}
+
+// SetWithin sets the "within" edge to the Cell entity.
+func (_c *CellCreate) SetWithin(v *Cell) *CellCreate {
+	return _c.SetWithinId(v.Id)
 }
 
 // Mutation returns the CellMutation object of the builder.
@@ -181,6 +200,23 @@ func (_c *CellCreate) createSpec() (*Cell, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.TenantId = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WithinIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   cell.WithinTable,
+			Columns: []string{cell.WithinColumn},
+			Bidi:    true,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.WithinId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
