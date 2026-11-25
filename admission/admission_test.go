@@ -164,3 +164,57 @@ func TestCallerDeadlineAndFailClosedResults(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, codes.Unauthenticated, status.Code(check.Check(context.Background(), admission.Call{})))
 }
+
+// TestACallThePolicyIsNotAskedAboutSpendsNothing: a policy that is a network
+// call, asked about some methods and not others, could hold every slot while
+// it hung, and a write it was never asked about was refused for want of one
+// (lesomnus/roster#305). With `Asked`, a call of a method it answers false for
+// is admitted at once: no slot, no copy, no policy. Without it, the same call
+// waits its turn as before, and is refused when there is none.
+func TestACallThePolicyIsNotAskedAboutSpendsNothing(t *testing.T) {
+	const asked, other = "/app.Job/Patch", "/app.Cell/Add"
+
+	synctest.Test(t, func(t *testing.T) {
+		x := require.New(t)
+		release := make(chan struct{})
+		seen := make(chan string, 4)
+		policy := admission.Func(func(_ context.Context, c admission.Call) error {
+			seen <- c.Method
+			<-release
+			return nil
+		})
+
+		for _, tt := range []struct {
+			name  string
+			asked func(string) bool
+			want  codes.Code
+		}{
+			{"asked about one method", func(m string) bool { return m == asked }, codes.OK},
+			{"asked about every call", nil, codes.ResourceExhausted},
+		} {
+			check, err := admission.New(policy, admission.Options{Timeout: time.Minute, Limit: 1, Log: quiet(), Asked: tt.asked}, nil, nil)
+			x.NoError(err)
+
+			held := make(chan error, 1)
+			go func() { held <- check.Check(identity(), admission.Call{Method: asked}) }()
+			synctest.Wait()
+			x.Equal(asked, <-seen, tt.name)
+
+			x.Equal(tt.want, status.Code(check.Check(identity(), admission.Call{Method: other})), tt.name)
+			synctest.Wait()
+			x.Empty(seen, "%s: the policy was asked about a call it is not asked about", tt.name)
+
+			release <- struct{}{}
+			x.NoError(<-held)
+		}
+		close(release)
+	})
+
+	// Asked is asked first, with the method alone: a call it is not asked
+	// about is admitted even with no frame to check it by.
+	check, err := admission.New(admission.Func(func(context.Context, admission.Call) error { t.Error("the policy ran"); return nil }),
+		admission.Options{Log: quiet(), Asked: func(m string) bool { return m == asked }}, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, check.Check(context.Background(), admission.Call{Method: other}))
+	require.Equal(t, codes.Unauthenticated, status.Code(check.Check(context.Background(), admission.Call{Method: asked})))
+}
