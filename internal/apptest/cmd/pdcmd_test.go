@@ -1137,3 +1137,58 @@ func TestListReadsTheOtherWayAndInANamedOrder(t *testing.T) {
 	x.ErrorContains(got.Err, `"height"`)
 	x.ErrorContains(got.Err, "alias_desc", "and which orders there are")
 }
+
+// untouched is a connector a test holds never to be asked: what the command
+// line got wrong is refused before an app's connector opens anything -- a
+// database, a prompt for who is at the terminal.
+type untouched struct{ t *testing.T }
+
+func (u untouched) Connect(context.Context) (pdcmd.Conn, func(), error) {
+	u.t.Error("the connector was asked for a connection")
+	return nil, nil, errors.New("not connected")
+}
+
+// TestAWrongFlagIsRefusedBeforeTheConnectorIsAsked: a `-o` that names no
+// format, a template that does not parse, a --tz that names no zone and an
+// --in that names no input format are the command line's own failure, the
+// status a wrong flag has (xli.UsageError), and are refused before the
+// connector is asked for anything, on every command the tree builds and on a
+// Tree.Unary one. A typo in `-o` used to open the database first, and a
+// wrong --in was a plain error, after the connection.
+func TestAWrongFlagIsRefusedBeforeTheConnectorIsAsked(t *testing.T) {
+	commands := [][]string{
+		{"holder", "add", "@acme/zed"},
+		{"holder", "get", "@acme/admin"},
+		{"holder", "list"},
+		{"holder", "patch", "@acme/admin", `{"name":"x"}`},
+		{"holder", "erase", "@acme/admin"},
+		{"robot", "watch", "@acme/arm"},
+		{"robot", "move", "@acme/arm-07", `{}`},
+	}
+	for _, wrong := range [][]string{
+		{"-o", "yaml", "not a format"},
+		{"-o", "template={{", "template"},
+		{"--tz", "Nowhere/At_All", "--tz"},
+		{"--in", "yaml", "--in"},
+	} {
+		says := wrong[2]
+		wrong := wrong[:2]
+		for _, c := range commands {
+			t.Run(strings.Join(append(append([]string{}, c[:2]...), wrong...), " "), func(t *testing.T) {
+				x := require.New(t)
+
+				tree, err := pdcmd.New(untouched{t})
+				x.NoError(err)
+				m, err := tree.Unary("app.RobotService.Move")
+				x.NoError(err)
+				x.NoError(tree.Add("robot/move", m))
+
+				args := append(append(append([]string{}, c[:2]...), wrong...), c[2:]...)
+				got := xlitest.Harness{Cmd: &xli.Command{Name: "app", Commands: tree.Commands()}, Ctx: t.Context()}.Run(t, args...)
+				var usage *xli.UsageError
+				x.ErrorAs(got.Err, &usage, "the status a wrong flag has: %v", got.Err)
+				x.Contains(got.Err.Error(), says)
+			})
+		}
+	}
+}

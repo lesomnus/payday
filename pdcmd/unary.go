@@ -127,7 +127,7 @@ func (t *Tree) Unary(method string, options ...UnaryOption) (*xli.Command, error
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  args,
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err

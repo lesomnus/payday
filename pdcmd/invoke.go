@@ -95,6 +95,22 @@ func argRaw() *arg.RestStrings {
 	}
 }
 
+// inputOf is what `--in` asked for: whether REQ is read as protojson exactly.
+func inputOf(cmd *xli.Command) (bool, error) {
+	v, ok := flg.Find[string](cmd, "in")
+	if !ok || v == "" {
+		return false, nil
+	}
+	switch v {
+	case "json":
+		return false, nil
+	case "protojson":
+		return true, nil
+	default:
+		return false, fmt.Errorf("--in %s: not an input format; one of json, protojson", v)
+	}
+}
+
 // fillRaw merges the trailing protojson over what the typed arguments set.
 //
 // Merged **over**, so the JSON wins where they overlap. That order is the one
@@ -115,15 +131,9 @@ func fillRaw(cmd *xli.Command, in proto.Message, first ...string) error {
 	// `--in` decides how strictly the request is read; both readings are
 	// protojson and the lenient one only adds identifiers written as uuids. See
 	// [unmarshalJson].
-	strict := false
-	if v, ok := flg.Find[string](cmd, "in"); ok && v != "" {
-		switch v {
-		case "json":
-		case "protojson":
-			strict = true
-		default:
-			return fmt.Errorf("--in %s: not an input format; one of json, protojson", v)
-		}
+	strict, err := inputOf(cmd)
+	if err != nil {
+		return &xli.UsageError{Cmd: cmd, Err: err}
 	}
 
 	raw := in.ProtoReflect().New().Interface()

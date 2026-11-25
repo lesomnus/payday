@@ -261,7 +261,7 @@ func cmdGet(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xl
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -306,7 +306,7 @@ func cmdList(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *x
 		},
 		Args: arg.Args{argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -433,7 +433,7 @@ func cmdWatch(e Entity, md protoreflect.MethodDescriptor, r *runner, _ *after) *
 		},
 		Args: arg.Args{&arg.String{Name: "REF", Optional: true}, argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -484,7 +484,7 @@ func cmdAdd(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *xl
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&arg.String{Name: "NAME", Optional: true}, argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -530,7 +530,7 @@ func cmdPatch(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
@@ -563,7 +563,7 @@ func cmdErase(e Entity, md protoreflect.MethodDescriptor, r *runner, a *after) *
 		Flags: flg.Flags{flgOutput(r.opts.def()), flgZone(), flgInput()},
 		Args:  arg.Args{&ArgRef{Name: "REF"}, argRaw()},
 
-		Handler: xli.Chain(r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		Handler: xli.Chain(r.flagsFirst(), r.withConn(), xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			in, err := r.input(md)
 			if err != nil {
 				return err
