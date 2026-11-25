@@ -124,8 +124,10 @@ func (r *runner) withConn() xli.Handler {
 		// hang on a server that is not there.
 		func(m mode.Mode) bool { return m.Is(mode.Run) },
 		func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			// A --tz that names no zone is the command line's mistake, before
+			// anything is dialled; see [runner.printerAs].
 			if _, err := Location(cmd); err != nil {
-				return err
+				return &xli.UsageError{Cmd: cmd, Err: err}
 			}
 			if _, ok := ConnFrom(ctx); ok {
 				return next(ctx)
