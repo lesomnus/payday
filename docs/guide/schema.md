@@ -727,8 +727,9 @@ not in.
 watch: {}
 ```
 
-A watch is the list it declared, run again for every write that touches the
-entity, for as long as a stream is open. So it needs three things, and each is a
+A watch is the rows its filters name, read again for every write that touches
+one of them, for as long as a stream is open, and it begins with what the list
+it declared answers for those filters. So it needs three things, and each is a
 refusal rather than a surprise later:
 
 | | why |
@@ -781,7 +782,9 @@ and there is deliberately no way to tell "erased" apart from "no longer yours":
 a stream that distinguished them would be telling a caller about rows that
 stopped being theirs, which is the thing the wall is for. It is only ever said
 about a row this stream has already carried — one that never matched is not
-news.
+news — and only when a write touches the row. A row that leaves a caller's
+sight because what they may see changed, with no write to it, is not said: the
+caller goes on holding it for as long as the stream is open.
 
 ---
 

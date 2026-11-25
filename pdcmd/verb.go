@@ -397,9 +397,10 @@ func orderNamed(md protoreflect.MessageDescriptor, name string) (protoreflect.En
 // cmdWatch is `list`, kept current, and the only command here that does not
 // end on its own.
 //
-// The request is a `List`'s in the same words -- what is watched is what that
-// list would answer with, now and afterwards -- so the arguments are the same
-// trailing protojson. The one addition is the optional reference, taken the way
+// The request is a `List`'s filters -- each naming a row by `ref`, which is
+// what a generated `Watch` takes, and the first message is that list's answer
+// now -- so the arguments are the same trailing protojson. The one addition is
+// the optional reference, taken the way
 // `add` takes a name and for the same reason it is optional: `filters` is
 // **required** on a watch, since a watch with none is the whole table forever,
 // so a command that could not name a row on the line would have no short form
