@@ -1192,3 +1192,35 @@ func TestAWrongFlagIsRefusedBeforeTheConnectorIsAsked(t *testing.T) {
 		}
 	}
 }
+
+// TestATemplateThatDoesNotParseNamesItsFlag: a template that does not parse
+// is refused as every other wrong flag is, naming the flag and the value, and
+// then what is wrong with it once -- in the form a `-o` that names no format
+// is refused in -- on a command the tree builds and on a Tree.Unary one. It
+// said `template: template: :1: unclosed action`, which named no flag.
+func TestATemplateThatDoesNotParseNamesItsFlag(t *testing.T) {
+	for _, c := range [][]string{
+		{"holder", "get", "-o", "template={{", "@acme/admin"},
+		{"robot", "move", "-o", "template={{", "@acme/arm-07", `{}`},
+	} {
+		t.Run(c[1], func(t *testing.T) {
+			x := require.New(t)
+
+			tree, err := pdcmd.New(untouched{t})
+			x.NoError(err)
+			m, err := tree.Unary("app.RobotService.Move")
+			x.NoError(err)
+			x.NoError(tree.Add("robot/move", m))
+
+			got := xlitest.Harness{Cmd: &xli.Command{Name: "app", Commands: tree.Commands()}, Ctx: t.Context()}.Run(t, c...)
+			var usage *xli.UsageError
+			x.ErrorAs(got.Err, &usage)
+			x.ErrorContains(got.Err, "-o template={{: line 1: unclosed action")
+			x.Equal(1, strings.Count(got.Err.Error(), "template"), got.Err.Error())
+		})
+	}
+
+	// And Template says what is wrong with the text, once.
+	_, err := pdcmd.Template("{{")
+	require.EqualError(t, err, "line 1: unclosed action")
+}
