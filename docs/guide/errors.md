@@ -146,6 +146,40 @@ index by input name:
 There is also `violations(err)` for the raw list and `byField(err)` if you want
 the developer prose unchanged.
 
+### What status a code is, over HTTP
+
+A page that calls through `web` is answered in Connect's protocol: the code is
+in the JSON body, `{"code": "not_found", "message": "..."}`, and the HTTP status
+is the code's. Every failure on that listener has that body, those the
+listener answers itself included.
+
+| code | status |
+| --- | --- |
+| `invalid_argument`, `failed_precondition`, `out_of_range` | 400 |
+| `unauthenticated` | 401 |
+| `permission_denied` | 403 |
+| `not_found` | 404 |
+| `already_exists`, `aborted` | 409 |
+| `resource_exhausted` | 429 |
+| `canceled` | 499 |
+| `unknown`, `internal`, `data_loss` | 500 |
+| `unimplemented` | 501 |
+| `unavailable` | 503 |
+| `deadline_exceeded` | 504 |
+
+And five that are the listener's own, before any handler:
+
+| what | code | status |
+| --- | --- | --- |
+| a body that is not JSON, or JSON that is not the request, or protobuf that does not parse | `invalid_argument` | 400 |
+| a content type the call does not take | `invalid_argument` | 415 |
+| a body larger than the server takes (`server.max_recv_msg_size`, 4 MiB unsaid) | `resource_exhausted` | 413 |
+| a path no route and no method of a service takes | `unimplemented` | 404 |
+| an HTTP method a route or a call does not take | `unimplemented` | 405 |
+
+`429` is the rate limit's alone: a request too large is refused however long a
+client waits, so it is not told to wait.
+
 ## 4. The words are yours
 
 `messages` takes a table:

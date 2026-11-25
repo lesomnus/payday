@@ -161,6 +161,7 @@ var (
 		{Name: "alias", Type: field.TypeString},
 		{Name: "date_erased", Type: field.TypeTime, Nullable: true},
 		{Name: "tenant_id", Type: field.TypeUuid},
+		{Name: "within_id", Type: field.TypeUuid, Unique: true, Nullable: true},
 	}
 	// CellTable holds the schema information for the "cell" table.
 	CellTable = &schema.Table{
@@ -173,6 +174,12 @@ var (
 				Columns:    []*schema.Column{CellColumns[3]},
 				RefColumns: []*schema.Column{TenantColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "cell_cell_within",
+				Columns:    []*schema.Column{CellColumns[4]},
+				RefColumns: []*schema.Column{CellColumns[0]},
+				OnDelete:   schema.SetNull,
 			},
 		},
 	}
@@ -906,6 +913,7 @@ func init() {
 		Table: "audit",
 	}
 	CellTable.ForeignKeys[0].RefTable = TenantTable
+	CellTable.ForeignKeys[1].RefTable = CellTable
 	CellTable.Annotation = &entsql.Annotation{
 		Table: "cell",
 	}

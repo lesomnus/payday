@@ -1670,6 +1670,7 @@ type FactListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *FactSelect            `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1729,6 +1730,13 @@ func (x *FactListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *FactListRequest) GetSelect() *FactSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *FactListRequest) SetFilters(v []*FactFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -1743,6 +1751,21 @@ func (x *FactListRequest) SetAfter(v string) {
 
 func (x *FactListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *FactListRequest) SetSelect(v *FactSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *FactListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *FactListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type FactListRequest_builder struct {
@@ -1765,6 +1788,15 @@ type FactListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *FactSelect
 }
 
 func (b0 FactListRequest_builder) Build() *FactListRequest {
@@ -1775,6 +1807,7 @@ func (b0 FactListRequest_builder) Build() *FactListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -2059,12 +2092,13 @@ const file_app_payday_fact_svc_g_proto_rawDesc = "" +
 	"\x12superseded_by_null\x18+ \x01(\bR\x10supersededByNull\"V\n" +
 	"\x10FactApplyRequest\x12\x1e\n" +
 	"\x03ref\x18\x01 \x01(\v2\f.app.FactRefR\x03ref\x12\"\n" +
-	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\x95\x01\n" +
+	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"\xbe\x01\n" +
 	"\x0fFactListRequest\x12)\n" +
 	"\afilters\x18\x01 \x03(\v2\x0f.app.FactFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"N\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12'\n" +
+	"\x06select\x18\x06 \x01(\v2\x0f.app.FactSelectR\x06select\"N\n" +
 	"\x10FactListResponse\x12\x1f\n" +
 	"\x05items\x18\x01 \x03(\v2\t.app.FactR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"v\n" +
@@ -2118,25 +2152,26 @@ var file_app_payday_fact_svc_g_proto_depIdxs = []int32{
 	4,  // 13: app.FactApplyRequest.ref:type_name -> app.FactRef
 	15, // 14: app.FactApplyRequest.patch:type_name -> patch.Patch
 	10, // 15: app.FactListRequest.filters:type_name -> app.FactFilter
-	13, // 16: app.FactListResponse.items:type_name -> app.Fact
-	4,  // 17: app.FactFilter.ref:type_name -> app.FactRef
-	0,  // 18: app.FactService.Add:input_type -> app.FactAddRequest
-	1,  // 19: app.FactService.AddMany:input_type -> app.FactAddManyRequest
-	3,  // 20: app.FactService.Get:input_type -> app.FactGetRequest
-	6,  // 21: app.FactService.Patch:input_type -> app.FactPatchRequest
-	7,  // 22: app.FactService.Apply:input_type -> app.FactApplyRequest
-	8,  // 23: app.FactService.List:input_type -> app.FactListRequest
-	13, // 24: app.FactService.Add:output_type -> app.Fact
-	2,  // 25: app.FactService.AddMany:output_type -> app.FactAddManyResponse
-	13, // 26: app.FactService.Get:output_type -> app.Fact
-	13, // 27: app.FactService.Patch:output_type -> app.Fact
-	13, // 28: app.FactService.Apply:output_type -> app.Fact
-	9,  // 29: app.FactService.List:output_type -> app.FactListResponse
-	24, // [24:30] is the sub-list for method output_type
-	18, // [18:24] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	5,  // 16: app.FactListRequest.select:type_name -> app.FactSelect
+	13, // 17: app.FactListResponse.items:type_name -> app.Fact
+	4,  // 18: app.FactFilter.ref:type_name -> app.FactRef
+	0,  // 19: app.FactService.Add:input_type -> app.FactAddRequest
+	1,  // 20: app.FactService.AddMany:input_type -> app.FactAddManyRequest
+	3,  // 21: app.FactService.Get:input_type -> app.FactGetRequest
+	6,  // 22: app.FactService.Patch:input_type -> app.FactPatchRequest
+	7,  // 23: app.FactService.Apply:input_type -> app.FactApplyRequest
+	8,  // 24: app.FactService.List:input_type -> app.FactListRequest
+	13, // 25: app.FactService.Add:output_type -> app.Fact
+	2,  // 26: app.FactService.AddMany:output_type -> app.FactAddManyResponse
+	13, // 27: app.FactService.Get:output_type -> app.Fact
+	13, // 28: app.FactService.Patch:output_type -> app.Fact
+	13, // 29: app.FactService.Apply:output_type -> app.Fact
+	9,  // 30: app.FactService.List:output_type -> app.FactListResponse
+	25, // [25:31] is the sub-list for method output_type
+	19, // [19:25] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_fact_svc_g_proto_init() }

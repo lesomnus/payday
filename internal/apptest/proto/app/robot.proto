@@ -154,6 +154,11 @@ message Cell {
   Tenant tenant = 2 [(orm.edge) = {immutable: true}];
   string alias = 4;
 
+  // The cell this one is in, which is a cell too: an edge to its own kind, so
+  // that a select of it goes as deep as a request writes it -- which is what
+  // the bound on a select's depth is tried against.
+  Cell within = 20 [(orm.edge) = {nullable: true}];
+
   // Erased softly, which is what saying nothing means: the row is stamped and
   // stays, so it cannot be read or changed, its alias comes free again, and the
   // trail can still say what it held.

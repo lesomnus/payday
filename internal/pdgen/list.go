@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"fmt"
+	"github.com/lesomnus/payday/pdpb"
 	"strconv"
 	"strings"
 
@@ -36,9 +37,12 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// transaction was told about a row stale. They share one wrapper per
 	// entity because two wrappers over one service would each have to know
 	// about the other to pass the methods it did not override.
+	//
+	// And every entity with a Get, since what a Get answers is said here too:
+	// a field its select did not ask for is absent ([emitSinkGet]).
 	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil || admits(v) || names(v) || forgets(v) {
+		if v.List != nil || admits(v) || names(v) || forgets(v) || answers(s, v) {
 			wraps = append(wraps, v)
 		}
 	}
@@ -173,6 +177,9 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 		if v.List != nil {
 			emitList(g, v, s, p, root)
 		}
+		if answers(s, v) {
+			emitSinkGet(g, v, root)
+		}
 	}
 
 	for _, v := range wraps {
@@ -181,6 +188,175 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 			break
 		}
 	}
+	for _, v := range wraps {
+		if answers(s, v) {
+			emitUnselect(g)
+			emitSelectDepth(g)
+			break
+		}
+	}
+}
+
+// SelectDepth is how many levels deep a select may go: the entity's own fields
+// are the first, and each edge it fills is one more. A deeper one is refused,
+// InvalidArgument, before anything is read, by the Get and the List of every
+// entity's Sink, which every port and every caller in process reads through.
+//
+// A bound a request is held to, and a constant: no setting changes it. Nothing
+// else held a select's depth, and a schema whose edges make a cycle -- a row
+// that names another of its own kind -- had a select as deep as a request was
+// written.
+const SelectDepth = 8
+
+// emitSelectDepth writes what holds a select to [SelectDepth].
+func emitSelectDepth(g *protogen.GeneratedFile) {
+	r := func(name string) protogen.GoIdent { return pkgReflect.Ident(name) }
+
+	g.P("// pdSelectDepth is how many levels deep a select may go; see")
+	g.P("// pdgen.SelectDepth, which is where it is said.")
+	g.P("const pdSelectDepth = ", SelectDepth)
+	g.P("")
+	g.P("// pdSelectDepthOf refuses a select deeper than pdSelectDepth: the entity's")
+	g.P("// own fields are its first level and each edge it fills one more.")
+	g.P("func pdSelectDepthOf(m ", r("Message"), ") error {")
+	g.P("	if n := pdDepth(m, pdSelectDepth+1); n > pdSelectDepth {")
+	g.P("		return ", pkgStatus.Ident("Errorf"), "(", pkgCodes.Ident("InvalidArgument"), ",")
+	g.P("			\"select: %d levels deep, and a select goes %d at most\", n, pdSelectDepth)")
+	g.P("	}")
+	g.P("")
+	g.P("	return nil")
+	g.P("}")
+	g.P("")
+	g.P("// pdDepth is how many levels deep `m` goes, counted no further than `most`,")
+	g.P("// so that a request nested a thousand deep costs what one past the bound does.")
+	g.P("func pdDepth(m ", r("Message"), ", most int) int {")
+	g.P("	if !m.IsValid() {")
+	g.P("		return 0")
+	g.P("	}")
+	g.P("	if most <= 1 {")
+	g.P("		return 1")
+	g.P("	}")
+	g.P("")
+	g.P("	deepest := 0")
+	g.P("	m.Range(func(fd ", r("FieldDescriptor"), ", v ", r("Value"), ") bool {")
+	g.P("		if fd.Kind() != ", r("MessageKind"), " || fd.IsList() || fd.IsMap() {")
+	g.P("			return true")
+	g.P("		}")
+	g.P("		deepest = max(deepest, pdDepth(v.Message(), most-1))")
+	g.P("		return deepest < most-1")
+	g.P("	})")
+	g.P("")
+	g.P("	return 1 + deepest")
+	g.P("}")
+	g.P("")
+}
+
+// answers is whether the Sink answers a Get of `v` ([emitSinkGet]): it has
+// one, and it is not a record of notify's, whose Sink refuses every Get
+// (`emitAuditNotify`).
+func answers(s *Schema, v *Entity) bool {
+	if !v.Rpcs().HasGet() {
+		return false
+	}
+	for _, own := range []pdpb.Own{pdpb.Own_OWN_NOTIFICATION, pdpb.Own_OWN_NOTIFICATION_RECEIPT} {
+		if s.Own(own) == v {
+			return false
+		}
+	}
+
+	return true
+}
+
+// emitSinkGet writes the Get of an entity's Sink: the generated one, with what
+// its select did not ask for taken out of the answer.
+//
+// The generated read selects the columns asked for and fills the answer from
+// the row it read, so a column it did not read is answered as its zero: an
+// empty string, `false`, a timestamp of year one. Year one is the one that
+// went wrong first -- `date_updated` is the version a caller sends back, and a
+// stamp nobody selected was sent as one and refused -- but none of them is
+// what the row holds, and each reads as though it were. So a field the select
+// did not ask for is absent, at every edge it asked for too.
+func emitSinkGet(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	g.P("// Get answers with the ", e, " as the generated one reads it, and without")
+	g.P("// what its select did not ask for; see [pdUnselect].")
+	g.P("func (s sink", e, ") Get(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"GetRequest"),
+		") (*", root.Ident(e), ", error) {")
+	g.P("	if err := pdSelectDepthOf(req.GetSelect().ProtoReflect()); err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("	v, err := s.", e, "ServiceServer.Get(ctx, req)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("	if m := req.GetSelect(); m != nil {")
+	g.P("		pdUnselect(v.ProtoReflect(), m.ProtoReflect())")
+	g.P("	}")
+	g.P("")
+	g.P("	return v, nil")
+	g.P("}")
+	g.P("")
+}
+
+// emitUnselect writes what takes out of an answer the fields its select did
+// not ask for, once for every entity.
+//
+// By reflection over the two messages, field by name, rather than written out
+// per entity: a select is the entity's fields by their names -- a switch for a
+// column, a select of its own for an edge -- because that is how the
+// generator of both writes it, and pairing them by name here is reading that
+// and not a second copy of it.
+func emitUnselect(g *protogen.GeneratedFile) {
+	r := func(name string) protogen.GoIdent { return pkgReflect.Ident(name) }
+
+	g.P("// pdUnselect clears from `v` each field `m`, its select, did not ask for:")
+	g.P("// a column whose switch is off, unless `all` is on; and in an edge `m`")
+	g.P("// selected, what the edge's own select did not ask for. The identifier, an")
+	g.P("// edge nobody selected -- answered as its reference -- and a field the")
+	g.P("// select has no word for are left as they are.")
+	g.P("func pdUnselect(v, m ", r("Message"), ") {")
+	g.P("	if !v.IsValid() || !m.IsValid() {")
+	g.P("		return")
+	g.P("	}")
+	g.P("")
+	g.P("	sel := m.Descriptor().Fields()")
+	g.P("	all := false")
+	g.P("	if fd := sel.ByName(\"all\"); fd != nil && fd.Kind() == ", r("BoolKind"), " {")
+	g.P("		all = m.Get(fd).Bool()")
+	g.P("	}")
+	g.P("")
+	g.P("	fs := v.Descriptor().Fields()")
+	g.P("	for i := range fs.Len() {")
+	g.P("		fd := fs.Get(i)")
+	g.P("		sd := sel.ByName(fd.Name())")
+	g.P("		if sd == nil || fd.Name() == \"id\" || sd.Name() == \"all\" {")
+	g.P("			continue")
+	g.P("		}")
+	g.P("")
+	g.P("		switch {")
+	g.P("		case sd.Kind() == ", r("BoolKind"), " && !sd.IsList():")
+	g.P("			if !all && !m.Get(sd).Bool() {")
+	g.P("				v.Clear(fd)")
+	g.P("			}")
+	g.P("")
+	g.P("		case sd.Kind() == ", r("MessageKind"), " && !sd.IsList() && fd.Kind() == ", r("MessageKind"), ":")
+	g.P("			if !m.Has(sd) || !v.Has(fd) {")
+	g.P("				continue")
+	g.P("			}")
+	g.P("			if fd.IsList() {")
+	g.P("				l := v.Get(fd).List()")
+	g.P("				for j := range l.Len() {")
+	g.P("					pdUnselect(l.Get(j).Message(), m.Get(sd).Message())")
+	g.P("				}")
+	g.P("				continue")
+	g.P("			}")
+	g.P("			pdUnselect(v.Mutable(fd).Message(), m.Get(sd).Message())")
+	g.P("		}")
+	g.P("	}")
+	g.P("}")
+	g.P("")
 }
 
 // emitCursor writes what every list's cursor is read and written with.
@@ -722,12 +898,38 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("	}")
 	g.P("")
 
-	for _, w := range l.With {
-		g.P("	q.With", pascal(w), "()")
-	}
+	// What each row is answered with: the select's, as a Get reads it, or
+	// what the list declared to answer with when there is none.
+	g.P("	if sel := req.GetSelect(); sel != nil {")
+	g.P("		if err := pdSelectDepthOf(sel.ProtoReflect()); err != nil {")
+	g.P("			return nil, err")
+	g.P("		}")
+	g.P("")
+	g.P("		// As a Get with it reads one row, each edge through the narrowing of")
+	g.P("		// the entity it reaches; one query for the rows and one for each")
+	g.P("		// edge, whatever the size of the page.")
+	g.P("		if err := ", p.Bare.Ident(e+"Select"), "(ctx, s.store.Scope, q, sel); err != nil {")
+	g.P("			return nil, err")
+	g.P("		}")
+	g.P("		if !sel.GetAll() {")
+	g.P("			// And the columns the order walks, which the cursor is made of,")
+	g.P("			// whether or not the select asked for them.")
+	g.P("			have := ", p.Bare.Ident(e+"SelectedFields"), "(sel)")
+	g.P("			for _, o := range by {")
+	g.P("				if !", pkgSlices.Ident("Contains"), "(have, o.Column) {")
+	g.P("					q.Select(o.Column)")
+	g.P("					have = append(have, o.Column)")
+	g.P("				}")
+	g.P("			}")
+	g.P("		}")
 	if len(l.With) > 0 {
-		g.P("")
+		g.P("	} else {")
+		for _, w := range l.With {
+			g.P("		q.With", pascal(w), "()")
+		}
 	}
+	g.P("	}")
+	g.P("")
 
 	g.P("	// One row more than the page, which is how \"is there another\" is answered")
 	g.P("	// without a second query and without a count. The extra is dropped before")
@@ -758,6 +960,15 @@ func emitList(g *protogen.GeneratedFile, v *Entity, s *Schema, p Paths, root pro
 	g.P("		}")
 	g.P("")
 	g.P("		res.SetNext(v)")
+	g.P("	}")
+	g.P("")
+	g.P("	// And without what the select did not ask for, as a Get answers, now")
+	g.P("	// that the cursor -- which may be made of a column it did not ask")
+	g.P("	// for -- is made.")
+	g.P("	if m := req.GetSelect(); m != nil {")
+	g.P("		for _, v := range items {")
+	g.P("			pdUnselect(v.ProtoReflect(), m.ProtoReflect())")
+	g.P("		}")
 	g.P("	}")
 	g.P("")
 	g.P("	return res, nil")

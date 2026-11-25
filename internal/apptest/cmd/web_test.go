@@ -249,6 +249,140 @@ func TestAPageIsToldWhatIsWrongInItsOwnTerms(t *testing.T) {
 	x.Contains(body, `"not_found"`)
 }
 
+// TestWhatCannotBeReadIsTheCallers: a body that is not JSON, or JSON that is
+// not the request, is 400, too long is 413, a route that is none 404 and a
+// method a route does not take 405, each in the JSON every other failure is.
+//
+// They were 500 (`unknown`, in protojson's words), 429 like the rate limit, and
+// a line of text a Connect client reads no code from.
+func TestWhatCannotBeReadIsTheCallers(t *testing.T) {
+	b, _ := build(t)
+	srv := b.serving(t)
+
+	send := func(t *testing.T, method, path, body string) (int, string, string) {
+		t.Helper()
+		x := require.New(t)
+
+		req, err := http.NewRequestWithContext(t.Context(), method, srv.URL+path, strings.NewReader(body))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
+
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		defer res.Body.Close()
+
+		out, err := io.ReadAll(res.Body)
+		x.NoError(err)
+
+		return res.StatusCode, res.Header.Get("Content-Type"), string(out)
+	}
+	failed := func(t *testing.T, code int, ct, body string, status int, says ...string) {
+		t.Helper()
+		x := require.New(t)
+
+		x.Equal(status, code, body)
+		x.Equal("application/json", ct)
+
+		var e struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		}
+		x.NoError(json.Unmarshal([]byte(body), &e), body)
+		x.NotEmpty(e.Code)
+		for _, s := range says {
+			x.Contains(e.Message, s)
+		}
+	}
+
+	t.Run("a body that is not JSON is 400", func(t *testing.T) {
+		code, ct, body := send(t, http.MethodPost, "/app.RobotService/List", "not json")
+		failed(t, code, ct, body, http.StatusBadRequest, "not JSON")
+		require.Contains(t, body, `"invalid_argument"`)
+	})
+	t.Run("and JSON that is not the request", func(t *testing.T) {
+		for _, b := range []string{`[]`, `{"size":"x"}`, `"robot"`} {
+			code, ct, body := send(t, http.MethodPost, "/app.RobotService/List", b)
+			failed(t, code, ct, body, http.StatusBadRequest, "app.RobotListRequest")
+		}
+	})
+	t.Run("a body too long is 413, and 429 is the rate limit's", func(t *testing.T) {
+		long := `{"after":"` + strings.Repeat("a", 5<<20) + `"}`
+		code, ct, body := send(t, http.MethodPost, "/app.RobotService/List", long)
+		failed(t, code, ct, body, http.StatusRequestEntityTooLarge, "larger than this server takes")
+	})
+	t.Run("a method no service has is 404", func(t *testing.T) {
+		code, ct, body := send(t, http.MethodPost, "/app.RobotService/Nope", "{}")
+		failed(t, code, ct, body, http.StatusNotFound, "/app.RobotService/Nope")
+	})
+	t.Run("and a service this server has not", func(t *testing.T) {
+		code, ct, body := send(t, http.MethodPost, "/app.NopeService/List", "{}")
+		failed(t, code, ct, body, http.StatusNotFound, "/app.NopeService/List")
+	})
+	t.Run("and a path no route of the app's takes", func(t *testing.T) {
+		code, ct, body := send(t, http.MethodGet, "/nothing", "")
+		failed(t, code, ct, body, http.StatusNotFound, "/nothing")
+	})
+	t.Run("a method a call does not take is 405", func(t *testing.T) {
+		code, ct, body := send(t, http.MethodPut, "/app.RobotService/List", "{}")
+		failed(t, code, ct, body, http.StatusMethodNotAllowed, "PUT", "POST")
+	})
+
+	t.Run("a protobuf body that does not parse is 400", func(t *testing.T) {
+		x := require.New(t)
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+"/app.RobotService/List", strings.NewReader("\xff\xff\xff"))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "application/proto")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		defer res.Body.Close()
+		out, err := io.ReadAll(res.Body)
+		x.NoError(err)
+
+		failed(t, res.StatusCode, res.Header.Get("Content-Type"), string(out), http.StatusBadRequest, "not a protobuf of app.RobotListRequest")
+		x.Contains(string(out), `"invalid_argument"`)
+		x.NotContains(string(out), "grpc:", "in payday's words")
+	})
+	t.Run("a content type the call does not take is 415", func(t *testing.T) {
+		x := require.New(t)
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+"/app.RobotService/List", strings.NewReader("{}"))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "text/plain")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		req.Header.Set(auth.Header, auth.PlainScheme+" @acme/admin")
+		res, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		defer res.Body.Close()
+		out, err := io.ReadAll(res.Body)
+		x.NoError(err)
+
+		failed(t, res.StatusCode, res.Header.Get("Content-Type"), string(out), http.StatusUnsupportedMediaType, "text/plain")
+		x.Contains(string(out), `"invalid_argument"`)
+
+		// And a method that is none is still 404, whatever it was sent as.
+		req, err = http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+"/app.RobotService/Nope", strings.NewReader("{}"))
+		x.NoError(err)
+		req.Header.Set("Content-Type", "text/plain")
+		req.Header.Set("Connect-Protocol-Version", "1")
+		res2, err := http.DefaultClient.Do(req)
+		x.NoError(err)
+		res2.Body.Close()
+		x.Equal(http.StatusNotFound, res2.StatusCode)
+	})
+
+	t.Run("and what a route of the app's answers is the app's", func(t *testing.T) {
+		x := require.New(t)
+		code, _, body := send(t, http.MethodPost, "/login", "not json")
+		x.Equal(http.StatusOK, code)
+		x.Contains(body, "token")
+	})
+}
+
 // TestAnOriginNobodyNamedIsNotAnsweredFor.
 //
 // The preflight is answered either way -- a browser that gets a 404 there says

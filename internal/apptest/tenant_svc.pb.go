@@ -1202,6 +1202,7 @@ type TenantListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *TenantSelect          `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1261,6 +1262,13 @@ func (x *TenantListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *TenantListRequest) GetSelect() *TenantSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *TenantListRequest) SetFilters(v []*TenantFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -1275,6 +1283,21 @@ func (x *TenantListRequest) SetAfter(v string) {
 
 func (x *TenantListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *TenantListRequest) SetSelect(v *TenantSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *TenantListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *TenantListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type TenantListRequest_builder struct {
@@ -1297,6 +1320,15 @@ type TenantListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *TenantSelect
 }
 
 func (b0 TenantListRequest_builder) Build() *TenantListRequest {
@@ -1307,6 +1339,7 @@ func (b0 TenantListRequest_builder) Build() *TenantListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -1507,12 +1540,13 @@ const file_app_payday_tenant_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.TenantRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"-\n" +
 	"\x13TenantEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x99\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc4\x01\n" +
 	"\x11TenantListRequest\x12+\n" +
 	"\afilters\x18\x01 \x03(\v2\x11.app.TenantFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"R\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12)\n" +
+	"\x06select\x18\x06 \x01(\v2\x11.app.TenantSelectR\x06select\"R\n" +
 	"\x12TenantListResponse\x12!\n" +
 	"\x05items\x18\x01 \x03(\v2\v.app.TenantR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"0\n" +
@@ -1555,25 +1589,26 @@ var file_app_payday_tenant_svc_g_proto_depIdxs = []int32{
 	2,  // 7: app.TenantApplyRequest.ref:type_name -> app.TenantRef
 	13, // 8: app.TenantApplyRequest.patch:type_name -> patch.Patch
 	9,  // 9: app.TenantListRequest.filters:type_name -> app.TenantFilter
-	14, // 10: app.TenantListResponse.items:type_name -> app.Tenant
-	2,  // 11: app.TenantFilter.ref:type_name -> app.TenantRef
-	0,  // 12: app.TenantService.Add:input_type -> app.TenantAddRequest
-	1,  // 13: app.TenantService.Get:input_type -> app.TenantGetRequest
-	4,  // 14: app.TenantService.Patch:input_type -> app.TenantPatchRequest
-	5,  // 15: app.TenantService.Apply:input_type -> app.TenantApplyRequest
-	2,  // 16: app.TenantService.Erase:input_type -> app.TenantRef
-	7,  // 17: app.TenantService.List:input_type -> app.TenantListRequest
-	14, // 18: app.TenantService.Add:output_type -> app.Tenant
-	14, // 19: app.TenantService.Get:output_type -> app.Tenant
-	14, // 20: app.TenantService.Patch:output_type -> app.Tenant
-	14, // 21: app.TenantService.Apply:output_type -> app.Tenant
-	6,  // 22: app.TenantService.Erase:output_type -> app.TenantEraseResponse
-	8,  // 23: app.TenantService.List:output_type -> app.TenantListResponse
-	18, // [18:24] is the sub-list for method output_type
-	12, // [12:18] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	3,  // 10: app.TenantListRequest.select:type_name -> app.TenantSelect
+	14, // 11: app.TenantListResponse.items:type_name -> app.Tenant
+	2,  // 12: app.TenantFilter.ref:type_name -> app.TenantRef
+	0,  // 13: app.TenantService.Add:input_type -> app.TenantAddRequest
+	1,  // 14: app.TenantService.Get:input_type -> app.TenantGetRequest
+	4,  // 15: app.TenantService.Patch:input_type -> app.TenantPatchRequest
+	5,  // 16: app.TenantService.Apply:input_type -> app.TenantApplyRequest
+	2,  // 17: app.TenantService.Erase:input_type -> app.TenantRef
+	7,  // 18: app.TenantService.List:input_type -> app.TenantListRequest
+	14, // 19: app.TenantService.Add:output_type -> app.Tenant
+	14, // 20: app.TenantService.Get:output_type -> app.Tenant
+	14, // 21: app.TenantService.Patch:output_type -> app.Tenant
+	14, // 22: app.TenantService.Apply:output_type -> app.Tenant
+	6,  // 23: app.TenantService.Erase:output_type -> app.TenantEraseResponse
+	8,  // 24: app.TenantService.List:output_type -> app.TenantListResponse
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_tenant_svc_g_proto_init() }

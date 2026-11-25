@@ -18,8 +18,12 @@ const (
 	FieldDateErased = "date_erased"
 	// FieldTenantId holds the string denoting the tenant_id field in the database.
 	FieldTenantId = "tenant_id"
+	// FieldWithinId holds the string denoting the within_id field in the database.
+	FieldWithinId = "within_id"
 	// EdgeTenant holds the string denoting the tenant edge name in mutations.
 	EdgeTenant = "tenant"
+	// EdgeWithin holds the string denoting the within edge name in mutations.
+	EdgeWithin = "within"
 	// Table holds the table name of the cell in the database.
 	Table = "cell"
 	// TenantTable is the table that holds the tenant relation/edge.
@@ -29,6 +33,10 @@ const (
 	TenantInverseTable = "tenant"
 	// TenantColumn is the table column denoting the tenant relation/edge.
 	TenantColumn = "tenant_id"
+	// WithinTable is the table that holds the within relation/edge.
+	WithinTable = "cell"
+	// WithinColumn is the table column denoting the within relation/edge.
+	WithinColumn = "within_id"
 )
 
 // Columns holds all SQL columns for cell fields.
@@ -37,6 +45,7 @@ var Columns = []string{
 	FieldAlias,
 	FieldDateErased,
 	FieldTenantId,
+	FieldWithinId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -72,10 +81,22 @@ func ByTenantId(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantId, opts...).ToFunc()
 }
 
+// ByWithinId orders the results by the within_id field.
+func ByWithinId(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWithinId, opts...).ToFunc()
+}
+
 // ByTenantField orders the results by tenant field.
 func ByTenantField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newTenantStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByWithinField orders the results by within field.
+func ByWithinField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWithinStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newTenantStep() *sqlgraph.Step {
@@ -83,5 +104,12 @@ func newTenantStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldId),
 		sqlgraph.To(TenantInverseTable, FieldId),
 		sqlgraph.Edge(sqlgraph.M2O, false, TenantTable, TenantColumn),
+	)
+}
+func newWithinStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldId),
+		sqlgraph.To(Table, FieldId),
+		sqlgraph.Edge(sqlgraph.O2O, false, WithinTable, WithinColumn),
 	)
 }

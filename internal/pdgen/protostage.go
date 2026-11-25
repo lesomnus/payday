@@ -153,7 +153,17 @@ message %sListRequest {
   // from the other end. A cursor is of the way it was read, so the next page
   // carries on that way, and one of the other way is refused.
   bool reverse = 4 [features.field_presence = IMPLICIT];
-%s}
+%s
+  // Which fields of each row to answer with, and which edges filled and how
+  // deep, as a Get's select says it. Unset is what a list answers without
+  // one. Each row is read as a Get of it with this select would read it, each
+  // edge through what the caller may see of its entity; a list costs one
+  // read for the rows and one for each edge selected, at any depth, however
+  // many rows the page holds.
+  //
+  // Field 6 in every entity: 5 is the order's, declared or not.
+  %sSelect select = 6;
+}
 %s
 message %sListResponse {
   repeated %s items = 1;
@@ -167,7 +177,7 @@ message %sListResponse {
   // looked.
   string next = 2 [features.field_presence = IMPLICIT];
 }
-`, e, e, orderField(v), orderEnum(v), e, e))
+`, e, e, orderField(v), e, orderEnum(v), e, e))
 
 		if v.Watch {
 			b.WriteString(fmt.Sprintf(`

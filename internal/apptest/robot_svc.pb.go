@@ -75,6 +75,7 @@ type CellAddRequest struct {
 	xxx_hidden_Id          []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant      *TenantRef             `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Alias       string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Within      *CellRef               `protobuf:"bytes,20,opt,name=within"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -127,12 +128,19 @@ func (x *CellAddRequest) GetAlias() string {
 	return ""
 }
 
+func (x *CellAddRequest) GetWithin() *CellRef {
+	if x != nil {
+		return x.xxx_hidden_Within
+	}
+	return nil
+}
+
 func (x *CellAddRequest) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
 	}
 	x.xxx_hidden_Id = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *CellAddRequest) SetTenant(v *TenantRef) {
@@ -141,6 +149,10 @@ func (x *CellAddRequest) SetTenant(v *TenantRef) {
 
 func (x *CellAddRequest) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
+}
+
+func (x *CellAddRequest) SetWithin(v *CellRef) {
+	x.xxx_hidden_Within = v
 }
 
 func (x *CellAddRequest) HasId() bool {
@@ -157,6 +169,13 @@ func (x *CellAddRequest) HasTenant() bool {
 	return x.xxx_hidden_Tenant != nil
 }
 
+func (x *CellAddRequest) HasWithin() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Within != nil
+}
+
 func (x *CellAddRequest) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -166,12 +185,17 @@ func (x *CellAddRequest) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
+func (x *CellAddRequest) ClearWithin() {
+	x.xxx_hidden_Within = nil
+}
+
 type CellAddRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Id     []byte
 	Tenant *TenantRef
 	Alias  string
+	Within *CellRef
 }
 
 func (b0 CellAddRequest_builder) Build() *CellAddRequest {
@@ -179,104 +203,12 @@ func (b0 CellAddRequest_builder) Build() *CellAddRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_Id = b.Id
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
-	return m0
-}
-
-type CellGetRequest struct {
-	state             protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Ref    *CellRef               `protobuf:"bytes,1,opt,name=ref"`
-	xxx_hidden_Select *CellSelect            `protobuf:"bytes,2,opt,name=select"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *CellGetRequest) Reset() {
-	*x = CellGetRequest{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CellGetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CellGetRequest) ProtoMessage() {}
-
-func (x *CellGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *CellGetRequest) GetRef() *CellRef {
-	if x != nil {
-		return x.xxx_hidden_Ref
-	}
-	return nil
-}
-
-func (x *CellGetRequest) GetSelect() *CellSelect {
-	if x != nil {
-		return x.xxx_hidden_Select
-	}
-	return nil
-}
-
-func (x *CellGetRequest) SetRef(v *CellRef) {
-	x.xxx_hidden_Ref = v
-}
-
-func (x *CellGetRequest) SetSelect(v *CellSelect) {
-	x.xxx_hidden_Select = v
-}
-
-func (x *CellGetRequest) HasRef() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Ref != nil
-}
-
-func (x *CellGetRequest) HasSelect() bool {
-	if x == nil {
-		return false
-	}
-	return x.xxx_hidden_Select != nil
-}
-
-func (x *CellGetRequest) ClearRef() {
-	x.xxx_hidden_Ref = nil
-}
-
-func (x *CellGetRequest) ClearSelect() {
-	x.xxx_hidden_Select = nil
-}
-
-type CellGetRequest_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Ref    *CellRef
-	Select *CellSelect
-}
-
-func (b0 CellGetRequest_builder) Build() *CellGetRequest {
-	m0 := &CellGetRequest{}
-	b, x := &b0, m0
-	_, _ = b, x
-	x.xxx_hidden_Ref = b.Ref
-	x.xxx_hidden_Select = b.Select
+	x.xxx_hidden_Within = b.Within
 	return m0
 }
 
@@ -289,7 +221,7 @@ type CellRef struct {
 
 func (x *CellRef) Reset() {
 	*x = CellRef{}
-	mi := &file_app_robot_svc_g_proto_msgTypes[2]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -301,7 +233,7 @@ func (x *CellRef) String() string {
 func (*CellRef) ProtoMessage() {}
 
 func (x *CellRef) ProtoReflect() protoreflect.Message {
-	mi := &file_app_robot_svc_g_proto_msgTypes[2]
+	mi := &file_app_robot_svc_g_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -389,7 +321,7 @@ func (b0 CellRef_builder) Build() *CellRef {
 type case_CellRef_Key protoreflect.FieldNumber
 
 func (x case_CellRef_Key) String() string {
-	md := file_app_robot_svc_g_proto_msgTypes[2].Descriptor()
+	md := file_app_robot_svc_g_proto_msgTypes[1].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -406,11 +338,105 @@ type cellRef_Id struct {
 
 func (*cellRef_Id) isCellRef_Key() {}
 
+type CellGetRequest struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ref    *CellRef               `protobuf:"bytes,1,opt,name=ref"`
+	xxx_hidden_Select *CellSelect            `protobuf:"bytes,2,opt,name=select"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CellGetRequest) Reset() {
+	*x = CellGetRequest{}
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CellGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CellGetRequest) ProtoMessage() {}
+
+func (x *CellGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_app_robot_svc_g_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CellGetRequest) GetRef() *CellRef {
+	if x != nil {
+		return x.xxx_hidden_Ref
+	}
+	return nil
+}
+
+func (x *CellGetRequest) GetSelect() *CellSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
+func (x *CellGetRequest) SetRef(v *CellRef) {
+	x.xxx_hidden_Ref = v
+}
+
+func (x *CellGetRequest) SetSelect(v *CellSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *CellGetRequest) HasRef() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ref != nil
+}
+
+func (x *CellGetRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *CellGetRequest) ClearRef() {
+	x.xxx_hidden_Ref = nil
+}
+
+func (x *CellGetRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
+}
+
+type CellGetRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Ref    *CellRef
+	Select *CellSelect
+}
+
+func (b0 CellGetRequest_builder) Build() *CellGetRequest {
+	m0 := &CellGetRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Ref = b.Ref
+	x.xxx_hidden_Select = b.Select
+	return m0
+}
+
 type CellSelect struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_All         bool                   `protobuf:"varint,1,opt,name=all"`
 	xxx_hidden_Tenant      *TenantSelect          `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Alias       bool                   `protobuf:"varint,4,opt,name=alias"`
+	xxx_hidden_Within      *CellSelect            `protobuf:"bytes,20,opt,name=within"`
 	xxx_hidden_DateErased  bool                   `protobuf:"varint,14,opt,name=date_erased,json=dateErased"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
@@ -464,6 +490,13 @@ func (x *CellSelect) GetAlias() bool {
 	return false
 }
 
+func (x *CellSelect) GetWithin() *CellSelect {
+	if x != nil {
+		return x.xxx_hidden_Within
+	}
+	return nil
+}
+
 func (x *CellSelect) GetDateErased() bool {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -473,7 +506,7 @@ func (x *CellSelect) GetDateErased() bool {
 
 func (x *CellSelect) SetAll(v bool) {
 	x.xxx_hidden_All = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *CellSelect) SetTenant(v *TenantSelect) {
@@ -482,12 +515,16 @@ func (x *CellSelect) SetTenant(v *TenantSelect) {
 
 func (x *CellSelect) SetAlias(v bool) {
 	x.xxx_hidden_Alias = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *CellSelect) SetWithin(v *CellSelect) {
+	x.xxx_hidden_Within = v
 }
 
 func (x *CellSelect) SetDateErased(v bool) {
 	x.xxx_hidden_DateErased = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *CellSelect) HasAll() bool {
@@ -511,11 +548,18 @@ func (x *CellSelect) HasAlias() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *CellSelect) HasWithin() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Within != nil
+}
+
 func (x *CellSelect) HasDateErased() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
 func (x *CellSelect) ClearAll() {
@@ -532,8 +576,12 @@ func (x *CellSelect) ClearAlias() {
 	x.xxx_hidden_Alias = false
 }
 
+func (x *CellSelect) ClearWithin() {
+	x.xxx_hidden_Within = nil
+}
+
 func (x *CellSelect) ClearDateErased() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_DateErased = false
 }
 
@@ -543,6 +591,7 @@ type CellSelect_builder struct {
 	All        *bool
 	Tenant     *TenantSelect
 	Alias      *bool
+	Within     *CellSelect
 	DateErased *bool
 }
 
@@ -551,16 +600,17 @@ func (b0 CellSelect_builder) Build() *CellSelect {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.All != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_All = *b.All
 	}
 	x.xxx_hidden_Tenant = b.Tenant
 	if b.Alias != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
 		x.xxx_hidden_Alias = *b.Alias
 	}
+	x.xxx_hidden_Within = b.Within
 	if b.DateErased != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
 		x.xxx_hidden_DateErased = *b.DateErased
 	}
 	return m0
@@ -2570,6 +2620,7 @@ type RobotListRequest struct {
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
 	xxx_hidden_Order   RobotListOrder         `protobuf:"varint,5,opt,name=order,enum=app.RobotListOrder"`
+	xxx_hidden_Select  *RobotSelect           `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2636,6 +2687,13 @@ func (x *RobotListRequest) GetOrder() RobotListOrder {
 	return RobotListOrder_ROBOT_LIST_ORDER_UNSPECIFIED
 }
 
+func (x *RobotListRequest) GetSelect() *RobotSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *RobotListRequest) SetFilters(v []*RobotFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -2654,6 +2712,21 @@ func (x *RobotListRequest) SetReverse(v bool) {
 
 func (x *RobotListRequest) SetOrder(v RobotListOrder) {
 	x.xxx_hidden_Order = v
+}
+
+func (x *RobotListRequest) SetSelect(v *RobotSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *RobotListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *RobotListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type RobotListRequest_builder struct {
@@ -2679,6 +2752,15 @@ type RobotListRequest_builder struct {
 	// Which of the orders the schema declares to read in. Unspecified is the one
 	// it reads in otherwise.
 	Order RobotListOrder
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *RobotSelect
 }
 
 func (b0 RobotListRequest_builder) Build() *RobotListRequest {
@@ -2690,6 +2772,7 @@ func (b0 RobotListRequest_builder) Build() *RobotListRequest {
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
 	x.xxx_hidden_Order = b.Order
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -6201,22 +6284,24 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"m\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"\x93\x01\n" +
 	"\x0eCellAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
-	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\"Y\n" +
-	"\x0eCellGetRequest\x12\x1e\n" +
-	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
-	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"*\n" +
+	"\x05alias\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05alias\x12$\n" +
+	"\x06within\x18\x14 \x01(\v2\f.app.CellRefR\x06within\"*\n" +
 	"\aCellRef\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@H\x00R\x02idB\x05\n" +
-	"\x03key\"\x80\x01\n" +
+	"\x03key\"Y\n" +
+	"\x0eCellGetRequest\x12\x1e\n" +
+	"\x03ref\x18\x01 \x01(\v2\f.app.CellRefR\x03ref\x12'\n" +
+	"\x06select\x18\x02 \x01(\v2\x0f.app.CellSelectR\x06select\"\xa9\x01\n" +
 	"\n" +
 	"CellSelect\x12\x10\n" +
 	"\x03all\x18\x01 \x01(\bR\x03all\x12)\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x11.app.TenantSelectR\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\bR\x05alias\x12\x1f\n" +
+	"\x05alias\x18\x04 \x01(\bR\x05alias\x12'\n" +
+	"\x06within\x18\x14 \x01(\v2\x0f.app.CellSelectR\x06within\x12\x1f\n" +
 	"\vdate_erased\x18\x0e \x01(\bR\n" +
 	"dateErased\"V\n" +
 	"\x10CellApplyRequest\x12\x1e\n" +
@@ -6284,13 +6369,14 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.RobotRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12RobotEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc9\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xf3\x01\n" +
 	"\x10RobotListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.RobotFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
 	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x120\n" +
-	"\x05order\x18\x05 \x01(\x0e2\x13.app.RobotListOrderB\x05\xaa\x01\x02\b\x02R\x05order\"P\n" +
+	"\x05order\x18\x05 \x01(\x0e2\x13.app.RobotListOrderB\x05\xaa\x01\x02\b\x02R\x05order\x12(\n" +
+	"\x06select\x18\x06 \x01(\v2\x10.app.RobotSelectR\x06select\"P\n" +
 	"\x11RobotListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.RobotR\x05items\x12\x19\n" +
@@ -6460,8 +6546,8 @@ var file_app_robot_svc_g_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_app_robot_svc_g_proto_goTypes = []any{
 	(RobotListOrder)(0),            // 0: app.RobotListOrder
 	(*CellAddRequest)(nil),         // 1: app.CellAddRequest
-	(*CellGetRequest)(nil),         // 2: app.CellGetRequest
-	(*CellRef)(nil),                // 3: app.CellRef
+	(*CellRef)(nil),                // 2: app.CellRef
+	(*CellGetRequest)(nil),         // 3: app.CellGetRequest
 	(*CellSelect)(nil),             // 4: app.CellSelect
 	(*CellApplyRequest)(nil),       // 5: app.CellApplyRequest
 	(*CellEraseResponse)(nil),      // 6: app.CellEraseResponse
@@ -6523,132 +6609,135 @@ var file_app_robot_svc_g_proto_goTypes = []any{
 }
 var file_app_robot_svc_g_proto_depIdxs = []int32{
 	50, // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
-	3,  // 1: app.CellGetRequest.ref:type_name -> app.CellRef
-	4,  // 2: app.CellGetRequest.select:type_name -> app.CellSelect
-	51, // 3: app.CellSelect.tenant:type_name -> app.TenantSelect
-	3,  // 4: app.CellApplyRequest.ref:type_name -> app.CellRef
-	52, // 5: app.CellApplyRequest.patch:type_name -> patch.Patch
-	50, // 6: app.RobotAddRequest.tenant:type_name -> app.TenantRef
-	53, // 7: app.RobotAddRequest.thing:type_name -> shared.ThingRef
-	3,  // 8: app.RobotAddRequest.cell:type_name -> app.CellRef
-	54, // 9: app.RobotAddRequest.date_attested:type_name -> google.protobuf.Timestamp
-	54, // 10: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	7,  // 11: app.RobotAddManyRequest.items:type_name -> app.RobotAddRequest
-	55, // 12: app.RobotAddManyResponse.items:type_name -> app.Robot
-	11, // 13: app.RobotGetRequest.ref:type_name -> app.RobotRef
-	13, // 14: app.RobotGetRequest.select:type_name -> app.RobotSelect
-	12, // 15: app.RobotRef.slug:type_name -> app.RobotRefBySlug
-	50, // 16: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
-	51, // 17: app.RobotSelect.tenant:type_name -> app.TenantSelect
-	56, // 18: app.RobotSelect.thing:type_name -> shared.ThingSelect
-	4,  // 19: app.RobotSelect.cell:type_name -> app.CellSelect
-	11, // 20: app.RobotPatchRequest.ref:type_name -> app.RobotRef
-	53, // 21: app.RobotPatchRequest.thing:type_name -> shared.ThingRef
-	3,  // 22: app.RobotPatchRequest.cell:type_name -> app.CellRef
-	54, // 23: app.RobotPatchRequest.date_attested:type_name -> google.protobuf.Timestamp
-	54, // 24: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
-	11, // 25: app.RobotApplyRequest.ref:type_name -> app.RobotRef
-	52, // 26: app.RobotApplyRequest.patch:type_name -> patch.Patch
-	19, // 27: app.RobotListRequest.filters:type_name -> app.RobotFilter
-	0,  // 28: app.RobotListRequest.order:type_name -> app.RobotListOrder
-	55, // 29: app.RobotListResponse.items:type_name -> app.Robot
-	11, // 30: app.RobotFilter.ref:type_name -> app.RobotRef
-	50, // 31: app.RobotFilter.tenant:type_name -> app.TenantRef
-	53, // 32: app.RobotFilter.thing:type_name -> shared.ThingRef
-	19, // 33: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
-	22, // 34: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
-	55, // 35: app.RobotWatchItem.value:type_name -> app.Robot
-	11, // 36: app.RobotMoveRequest.ref:type_name -> app.RobotRef
-	3,  // 37: app.RobotMoveRequest.to:type_name -> app.CellRef
-	11, // 38: app.PairingAddRequest.lead:type_name -> app.RobotRef
-	11, // 39: app.PairingAddRequest.follow:type_name -> app.RobotRef
-	54, // 40: app.PairingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	26, // 41: app.PairingGetRequest.ref:type_name -> app.PairingRef
-	27, // 42: app.PairingGetRequest.select:type_name -> app.PairingSelect
-	13, // 43: app.PairingSelect.lead:type_name -> app.RobotSelect
-	13, // 44: app.PairingSelect.follow:type_name -> app.RobotSelect
-	26, // 45: app.PairingPatchRequest.ref:type_name -> app.PairingRef
-	11, // 46: app.JointAddRequest.robot:type_name -> app.RobotRef
-	32, // 47: app.JointGetRequest.ref:type_name -> app.JointRef
-	33, // 48: app.JointGetRequest.select:type_name -> app.JointSelect
-	13, // 49: app.JointSelect.robot:type_name -> app.RobotSelect
-	32, // 50: app.JointPatchRequest.ref:type_name -> app.JointRef
-	38, // 51: app.FleetGetRequest.ref:type_name -> app.FleetRef
-	39, // 52: app.FleetGetRequest.select:type_name -> app.FleetSelect
-	38, // 53: app.FleetPatchRequest.ref:type_name -> app.FleetRef
-	11, // 54: app.ReadingAddRequest.robot:type_name -> app.RobotRef
-	54, // 55: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
-	42, // 56: app.ReadingAddManyRequest.items:type_name -> app.ReadingAddRequest
-	57, // 57: app.ReadingAddManyResponse.items:type_name -> app.Reading
-	46, // 58: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
-	47, // 59: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
-	13, // 60: app.ReadingSelect.robot:type_name -> app.RobotSelect
-	46, // 61: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
-	1,  // 62: app.CellService.Add:input_type -> app.CellAddRequest
-	2,  // 63: app.CellService.Get:input_type -> app.CellGetRequest
-	5,  // 64: app.CellService.Apply:input_type -> app.CellApplyRequest
-	3,  // 65: app.CellService.Erase:input_type -> app.CellRef
-	7,  // 66: app.RobotService.Add:input_type -> app.RobotAddRequest
-	8,  // 67: app.RobotService.AddMany:input_type -> app.RobotAddManyRequest
-	10, // 68: app.RobotService.Get:input_type -> app.RobotGetRequest
-	14, // 69: app.RobotService.Patch:input_type -> app.RobotPatchRequest
-	15, // 70: app.RobotService.Apply:input_type -> app.RobotApplyRequest
-	11, // 71: app.RobotService.Erase:input_type -> app.RobotRef
-	17, // 72: app.RobotService.List:input_type -> app.RobotListRequest
-	20, // 73: app.RobotService.Watch:input_type -> app.RobotWatchRequest
-	23, // 74: app.RobotService.Move:input_type -> app.RobotMoveRequest
-	24, // 75: app.PairingService.Add:input_type -> app.PairingAddRequest
-	25, // 76: app.PairingService.Get:input_type -> app.PairingGetRequest
-	28, // 77: app.PairingService.Patch:input_type -> app.PairingPatchRequest
-	26, // 78: app.PairingService.Erase:input_type -> app.PairingRef
-	30, // 79: app.JointService.Add:input_type -> app.JointAddRequest
-	31, // 80: app.JointService.Get:input_type -> app.JointGetRequest
-	34, // 81: app.JointService.Patch:input_type -> app.JointPatchRequest
-	32, // 82: app.JointService.Erase:input_type -> app.JointRef
-	36, // 83: app.FleetService.Add:input_type -> app.FleetAddRequest
-	37, // 84: app.FleetService.Get:input_type -> app.FleetGetRequest
-	40, // 85: app.FleetService.Patch:input_type -> app.FleetPatchRequest
-	38, // 86: app.FleetService.Erase:input_type -> app.FleetRef
-	42, // 87: app.ReadingService.Add:input_type -> app.ReadingAddRequest
-	43, // 88: app.ReadingService.AddMany:input_type -> app.ReadingAddManyRequest
-	45, // 89: app.ReadingService.Get:input_type -> app.ReadingGetRequest
-	48, // 90: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
-	46, // 91: app.ReadingService.Erase:input_type -> app.ReadingRef
-	58, // 92: app.CellService.Add:output_type -> app.Cell
-	58, // 93: app.CellService.Get:output_type -> app.Cell
-	58, // 94: app.CellService.Apply:output_type -> app.Cell
-	6,  // 95: app.CellService.Erase:output_type -> app.CellEraseResponse
-	55, // 96: app.RobotService.Add:output_type -> app.Robot
-	9,  // 97: app.RobotService.AddMany:output_type -> app.RobotAddManyResponse
-	55, // 98: app.RobotService.Get:output_type -> app.Robot
-	55, // 99: app.RobotService.Patch:output_type -> app.Robot
-	55, // 100: app.RobotService.Apply:output_type -> app.Robot
-	16, // 101: app.RobotService.Erase:output_type -> app.RobotEraseResponse
-	18, // 102: app.RobotService.List:output_type -> app.RobotListResponse
-	21, // 103: app.RobotService.Watch:output_type -> app.RobotWatchResponse
-	55, // 104: app.RobotService.Move:output_type -> app.Robot
-	59, // 105: app.PairingService.Add:output_type -> app.Pairing
-	59, // 106: app.PairingService.Get:output_type -> app.Pairing
-	59, // 107: app.PairingService.Patch:output_type -> app.Pairing
-	29, // 108: app.PairingService.Erase:output_type -> app.PairingEraseResponse
-	60, // 109: app.JointService.Add:output_type -> app.Joint
-	60, // 110: app.JointService.Get:output_type -> app.Joint
-	60, // 111: app.JointService.Patch:output_type -> app.Joint
-	35, // 112: app.JointService.Erase:output_type -> app.JointEraseResponse
-	61, // 113: app.FleetService.Add:output_type -> app.Fleet
-	61, // 114: app.FleetService.Get:output_type -> app.Fleet
-	61, // 115: app.FleetService.Patch:output_type -> app.Fleet
-	41, // 116: app.FleetService.Erase:output_type -> app.FleetEraseResponse
-	57, // 117: app.ReadingService.Add:output_type -> app.Reading
-	44, // 118: app.ReadingService.AddMany:output_type -> app.ReadingAddManyResponse
-	57, // 119: app.ReadingService.Get:output_type -> app.Reading
-	57, // 120: app.ReadingService.Patch:output_type -> app.Reading
-	49, // 121: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
-	92, // [92:122] is the sub-list for method output_type
-	62, // [62:92] is the sub-list for method input_type
-	62, // [62:62] is the sub-list for extension type_name
-	62, // [62:62] is the sub-list for extension extendee
-	0,  // [0:62] is the sub-list for field type_name
+	2,  // 1: app.CellAddRequest.within:type_name -> app.CellRef
+	2,  // 2: app.CellGetRequest.ref:type_name -> app.CellRef
+	4,  // 3: app.CellGetRequest.select:type_name -> app.CellSelect
+	51, // 4: app.CellSelect.tenant:type_name -> app.TenantSelect
+	4,  // 5: app.CellSelect.within:type_name -> app.CellSelect
+	2,  // 6: app.CellApplyRequest.ref:type_name -> app.CellRef
+	52, // 7: app.CellApplyRequest.patch:type_name -> patch.Patch
+	50, // 8: app.RobotAddRequest.tenant:type_name -> app.TenantRef
+	53, // 9: app.RobotAddRequest.thing:type_name -> shared.ThingRef
+	2,  // 10: app.RobotAddRequest.cell:type_name -> app.CellRef
+	54, // 11: app.RobotAddRequest.date_attested:type_name -> google.protobuf.Timestamp
+	54, // 12: app.RobotAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	7,  // 13: app.RobotAddManyRequest.items:type_name -> app.RobotAddRequest
+	55, // 14: app.RobotAddManyResponse.items:type_name -> app.Robot
+	11, // 15: app.RobotGetRequest.ref:type_name -> app.RobotRef
+	13, // 16: app.RobotGetRequest.select:type_name -> app.RobotSelect
+	12, // 17: app.RobotRef.slug:type_name -> app.RobotRefBySlug
+	50, // 18: app.RobotRefBySlug.tenant:type_name -> app.TenantRef
+	51, // 19: app.RobotSelect.tenant:type_name -> app.TenantSelect
+	56, // 20: app.RobotSelect.thing:type_name -> shared.ThingSelect
+	4,  // 21: app.RobotSelect.cell:type_name -> app.CellSelect
+	11, // 22: app.RobotPatchRequest.ref:type_name -> app.RobotRef
+	53, // 23: app.RobotPatchRequest.thing:type_name -> shared.ThingRef
+	2,  // 24: app.RobotPatchRequest.cell:type_name -> app.CellRef
+	54, // 25: app.RobotPatchRequest.date_attested:type_name -> google.protobuf.Timestamp
+	54, // 26: app.RobotPatchRequest.date_updated:type_name -> google.protobuf.Timestamp
+	11, // 27: app.RobotApplyRequest.ref:type_name -> app.RobotRef
+	52, // 28: app.RobotApplyRequest.patch:type_name -> patch.Patch
+	19, // 29: app.RobotListRequest.filters:type_name -> app.RobotFilter
+	0,  // 30: app.RobotListRequest.order:type_name -> app.RobotListOrder
+	13, // 31: app.RobotListRequest.select:type_name -> app.RobotSelect
+	55, // 32: app.RobotListResponse.items:type_name -> app.Robot
+	11, // 33: app.RobotFilter.ref:type_name -> app.RobotRef
+	50, // 34: app.RobotFilter.tenant:type_name -> app.TenantRef
+	53, // 35: app.RobotFilter.thing:type_name -> shared.ThingRef
+	19, // 36: app.RobotWatchRequest.filters:type_name -> app.RobotFilter
+	22, // 37: app.RobotWatchResponse.items:type_name -> app.RobotWatchItem
+	55, // 38: app.RobotWatchItem.value:type_name -> app.Robot
+	11, // 39: app.RobotMoveRequest.ref:type_name -> app.RobotRef
+	2,  // 40: app.RobotMoveRequest.to:type_name -> app.CellRef
+	11, // 41: app.PairingAddRequest.lead:type_name -> app.RobotRef
+	11, // 42: app.PairingAddRequest.follow:type_name -> app.RobotRef
+	54, // 43: app.PairingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	26, // 44: app.PairingGetRequest.ref:type_name -> app.PairingRef
+	27, // 45: app.PairingGetRequest.select:type_name -> app.PairingSelect
+	13, // 46: app.PairingSelect.lead:type_name -> app.RobotSelect
+	13, // 47: app.PairingSelect.follow:type_name -> app.RobotSelect
+	26, // 48: app.PairingPatchRequest.ref:type_name -> app.PairingRef
+	11, // 49: app.JointAddRequest.robot:type_name -> app.RobotRef
+	32, // 50: app.JointGetRequest.ref:type_name -> app.JointRef
+	33, // 51: app.JointGetRequest.select:type_name -> app.JointSelect
+	13, // 52: app.JointSelect.robot:type_name -> app.RobotSelect
+	32, // 53: app.JointPatchRequest.ref:type_name -> app.JointRef
+	38, // 54: app.FleetGetRequest.ref:type_name -> app.FleetRef
+	39, // 55: app.FleetGetRequest.select:type_name -> app.FleetSelect
+	38, // 56: app.FleetPatchRequest.ref:type_name -> app.FleetRef
+	11, // 57: app.ReadingAddRequest.robot:type_name -> app.RobotRef
+	54, // 58: app.ReadingAddRequest.date_created:type_name -> google.protobuf.Timestamp
+	42, // 59: app.ReadingAddManyRequest.items:type_name -> app.ReadingAddRequest
+	57, // 60: app.ReadingAddManyResponse.items:type_name -> app.Reading
+	46, // 61: app.ReadingGetRequest.ref:type_name -> app.ReadingRef
+	47, // 62: app.ReadingGetRequest.select:type_name -> app.ReadingSelect
+	13, // 63: app.ReadingSelect.robot:type_name -> app.RobotSelect
+	46, // 64: app.ReadingPatchRequest.ref:type_name -> app.ReadingRef
+	1,  // 65: app.CellService.Add:input_type -> app.CellAddRequest
+	3,  // 66: app.CellService.Get:input_type -> app.CellGetRequest
+	5,  // 67: app.CellService.Apply:input_type -> app.CellApplyRequest
+	2,  // 68: app.CellService.Erase:input_type -> app.CellRef
+	7,  // 69: app.RobotService.Add:input_type -> app.RobotAddRequest
+	8,  // 70: app.RobotService.AddMany:input_type -> app.RobotAddManyRequest
+	10, // 71: app.RobotService.Get:input_type -> app.RobotGetRequest
+	14, // 72: app.RobotService.Patch:input_type -> app.RobotPatchRequest
+	15, // 73: app.RobotService.Apply:input_type -> app.RobotApplyRequest
+	11, // 74: app.RobotService.Erase:input_type -> app.RobotRef
+	17, // 75: app.RobotService.List:input_type -> app.RobotListRequest
+	20, // 76: app.RobotService.Watch:input_type -> app.RobotWatchRequest
+	23, // 77: app.RobotService.Move:input_type -> app.RobotMoveRequest
+	24, // 78: app.PairingService.Add:input_type -> app.PairingAddRequest
+	25, // 79: app.PairingService.Get:input_type -> app.PairingGetRequest
+	28, // 80: app.PairingService.Patch:input_type -> app.PairingPatchRequest
+	26, // 81: app.PairingService.Erase:input_type -> app.PairingRef
+	30, // 82: app.JointService.Add:input_type -> app.JointAddRequest
+	31, // 83: app.JointService.Get:input_type -> app.JointGetRequest
+	34, // 84: app.JointService.Patch:input_type -> app.JointPatchRequest
+	32, // 85: app.JointService.Erase:input_type -> app.JointRef
+	36, // 86: app.FleetService.Add:input_type -> app.FleetAddRequest
+	37, // 87: app.FleetService.Get:input_type -> app.FleetGetRequest
+	40, // 88: app.FleetService.Patch:input_type -> app.FleetPatchRequest
+	38, // 89: app.FleetService.Erase:input_type -> app.FleetRef
+	42, // 90: app.ReadingService.Add:input_type -> app.ReadingAddRequest
+	43, // 91: app.ReadingService.AddMany:input_type -> app.ReadingAddManyRequest
+	45, // 92: app.ReadingService.Get:input_type -> app.ReadingGetRequest
+	48, // 93: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
+	46, // 94: app.ReadingService.Erase:input_type -> app.ReadingRef
+	58, // 95: app.CellService.Add:output_type -> app.Cell
+	58, // 96: app.CellService.Get:output_type -> app.Cell
+	58, // 97: app.CellService.Apply:output_type -> app.Cell
+	6,  // 98: app.CellService.Erase:output_type -> app.CellEraseResponse
+	55, // 99: app.RobotService.Add:output_type -> app.Robot
+	9,  // 100: app.RobotService.AddMany:output_type -> app.RobotAddManyResponse
+	55, // 101: app.RobotService.Get:output_type -> app.Robot
+	55, // 102: app.RobotService.Patch:output_type -> app.Robot
+	55, // 103: app.RobotService.Apply:output_type -> app.Robot
+	16, // 104: app.RobotService.Erase:output_type -> app.RobotEraseResponse
+	18, // 105: app.RobotService.List:output_type -> app.RobotListResponse
+	21, // 106: app.RobotService.Watch:output_type -> app.RobotWatchResponse
+	55, // 107: app.RobotService.Move:output_type -> app.Robot
+	59, // 108: app.PairingService.Add:output_type -> app.Pairing
+	59, // 109: app.PairingService.Get:output_type -> app.Pairing
+	59, // 110: app.PairingService.Patch:output_type -> app.Pairing
+	29, // 111: app.PairingService.Erase:output_type -> app.PairingEraseResponse
+	60, // 112: app.JointService.Add:output_type -> app.Joint
+	60, // 113: app.JointService.Get:output_type -> app.Joint
+	60, // 114: app.JointService.Patch:output_type -> app.Joint
+	35, // 115: app.JointService.Erase:output_type -> app.JointEraseResponse
+	61, // 116: app.FleetService.Add:output_type -> app.Fleet
+	61, // 117: app.FleetService.Get:output_type -> app.Fleet
+	61, // 118: app.FleetService.Patch:output_type -> app.Fleet
+	41, // 119: app.FleetService.Erase:output_type -> app.FleetEraseResponse
+	57, // 120: app.ReadingService.Add:output_type -> app.Reading
+	44, // 121: app.ReadingService.AddMany:output_type -> app.ReadingAddManyResponse
+	57, // 122: app.ReadingService.Get:output_type -> app.Reading
+	57, // 123: app.ReadingService.Patch:output_type -> app.Reading
+	49, // 124: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
+	95, // [95:125] is the sub-list for method output_type
+	65, // [65:95] is the sub-list for method input_type
+	65, // [65:65] is the sub-list for extension type_name
+	65, // [65:65] is the sub-list for extension extendee
+	0,  // [0:65] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_svc_g_proto_init() }
@@ -6659,7 +6748,7 @@ func file_app_robot_svc_g_proto_init() {
 	file_app_payday_tenant_svc_g_proto_init()
 	file_app_robot_proto_init()
 	file_shared_thing_svc_g_proto_init()
-	file_app_robot_svc_g_proto_msgTypes[2].OneofWrappers = []any{
+	file_app_robot_svc_g_proto_msgTypes[1].OneofWrappers = []any{
 		(*cellRef_Id)(nil),
 	}
 	file_app_robot_svc_g_proto_msgTypes[10].OneofWrappers = []any{

@@ -30,6 +30,7 @@ type Cell struct {
 	xxx_hidden_Id         []byte                 `protobuf:"bytes,1,opt,name=id"`
 	xxx_hidden_Tenant     *Tenant                `protobuf:"bytes,2,opt,name=tenant"`
 	xxx_hidden_Alias      string                 `protobuf:"bytes,4,opt,name=alias"`
+	xxx_hidden_Within     *Cell                  `protobuf:"bytes,20,opt,name=within"`
 	xxx_hidden_DateErased *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=date_erased,json=dateErased"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
@@ -81,6 +82,13 @@ func (x *Cell) GetAlias() string {
 	return ""
 }
 
+func (x *Cell) GetWithin() *Cell {
+	if x != nil {
+		return x.xxx_hidden_Within
+	}
+	return nil
+}
+
 func (x *Cell) GetDateErased() *timestamppb.Timestamp {
 	if x != nil {
 		return x.xxx_hidden_DateErased
@@ -103,6 +111,10 @@ func (x *Cell) SetAlias(v string) {
 	x.xxx_hidden_Alias = v
 }
 
+func (x *Cell) SetWithin(v *Cell) {
+	x.xxx_hidden_Within = v
+}
+
 func (x *Cell) SetDateErased(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateErased = v
 }
@@ -112,6 +124,13 @@ func (x *Cell) HasTenant() bool {
 		return false
 	}
 	return x.xxx_hidden_Tenant != nil
+}
+
+func (x *Cell) HasWithin() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Within != nil
 }
 
 func (x *Cell) HasDateErased() bool {
@@ -125,6 +144,10 @@ func (x *Cell) ClearTenant() {
 	x.xxx_hidden_Tenant = nil
 }
 
+func (x *Cell) ClearWithin() {
+	x.xxx_hidden_Within = nil
+}
+
 func (x *Cell) ClearDateErased() {
 	x.xxx_hidden_DateErased = nil
 }
@@ -135,6 +158,10 @@ type Cell_builder struct {
 	Id     []byte
 	Tenant *Tenant
 	Alias  string
+	// The cell this one is in, which is a cell too: an edge to its own kind, so
+	// that a select of it goes as deep as a request writes it -- which is what
+	// the bound on a select's depth is tried against.
+	Within *Cell
 	// Erased softly, which is what saying nothing means: the row is stamped and
 	// stays, so it cannot be read or changed, its alias comes free again, and the
 	// trail can still say what it held.
@@ -148,6 +175,7 @@ func (b0 Cell_builder) Build() *Cell {
 	x.xxx_hidden_Id = b.Id
 	x.xxx_hidden_Tenant = b.Tenant
 	x.xxx_hidden_Alias = b.Alias
+	x.xxx_hidden_Within = b.Within
 	x.xxx_hidden_DateErased = b.DateErased
 	return m0
 }
@@ -1163,11 +1191,12 @@ var File_app_robot_proto protoreflect.FileDescriptor
 
 const file_app_robot_proto_rawDesc = "" +
 	"\n" +
-	"\x0fapp/robot.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x12shared/thing.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xc6\x01\n" +
+	"\x0fapp/robot.proto\x12\x03app\x1a\x17app/payday/tenant.proto\x1a\x12shared/thing.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\fpayday.proto\"\xf1\x01\n" +
 	"\x04Cell\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\fB\v\xea\x82\x16\a\x10@(\x01\x82\x01\x00R\x02id\x12+\n" +
 	"\x06tenant\x18\x02 \x01(\v2\v.app.TenantB\x06\xf2\x82\x16\x02@\x01R\x06tenant\x12\x14\n" +
-	"\x05alias\x18\x04 \x01(\tR\x05alias\x12D\n" +
+	"\x05alias\x18\x04 \x01(\tR\x05alias\x12)\n" +
+	"\x06within\x18\x14 \x01(\v2\t.app.CellB\x06\xf2\x82\x16\x028\x01R\x06within\x12D\n" +
 	"\vdate_erased\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampB\a\xea\x82\x16\x03\x92\x01\x00R\n" +
 	"dateErased:\x18\xca\xfc\x15\x0e\x12\f\x82\x01\x00\x8a\x01\x00\x9a\x01\x00\xa2\x01\x00\x8a\xbb\x16\x02\b\n" +
 	"\"\x81\a\n" +
@@ -1311,27 +1340,28 @@ var file_app_robot_proto_goTypes = []any{
 }
 var file_app_robot_proto_depIdxs = []int32{
 	7,  // 0: app.Cell.tenant:type_name -> app.Tenant
-	8,  // 1: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
-	7,  // 2: app.Robot.tenant:type_name -> app.Tenant
-	9,  // 3: app.Robot.thing:type_name -> shared.Thing
-	0,  // 4: app.Robot.cell:type_name -> app.Cell
-	8,  // 5: app.Robot.date_attested:type_name -> google.protobuf.Timestamp
-	8,  // 6: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
-	8,  // 7: app.Robot.date_created:type_name -> google.protobuf.Timestamp
-	8,  // 8: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 9: app.Pairing.lead:type_name -> app.Robot
-	1,  // 10: app.Pairing.follow:type_name -> app.Robot
-	8,  // 11: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
-	1,  // 12: app.Joint.robot:type_name -> app.Robot
-	8,  // 13: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
-	8,  // 14: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
-	1,  // 15: app.Reading.robot:type_name -> app.Robot
-	8,  // 16: app.Reading.date_created:type_name -> google.protobuf.Timestamp
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	0,  // 1: app.Cell.within:type_name -> app.Cell
+	8,  // 2: app.Cell.date_erased:type_name -> google.protobuf.Timestamp
+	7,  // 3: app.Robot.tenant:type_name -> app.Tenant
+	9,  // 4: app.Robot.thing:type_name -> shared.Thing
+	0,  // 5: app.Robot.cell:type_name -> app.Cell
+	8,  // 6: app.Robot.date_attested:type_name -> google.protobuf.Timestamp
+	8,  // 7: app.Robot.date_updated:type_name -> google.protobuf.Timestamp
+	8,  // 8: app.Robot.date_created:type_name -> google.protobuf.Timestamp
+	8,  // 9: app.Robot.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 10: app.Pairing.lead:type_name -> app.Robot
+	1,  // 11: app.Pairing.follow:type_name -> app.Robot
+	8,  // 12: app.Pairing.date_created:type_name -> google.protobuf.Timestamp
+	1,  // 13: app.Joint.robot:type_name -> app.Robot
+	8,  // 14: app.Joint.date_erased:type_name -> google.protobuf.Timestamp
+	8,  // 15: app.Fleet.date_erased:type_name -> google.protobuf.Timestamp
+	1,  // 16: app.Reading.robot:type_name -> app.Robot
+	8,  // 17: app.Reading.date_created:type_name -> google.protobuf.Timestamp
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_app_robot_proto_init() }

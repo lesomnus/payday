@@ -20,7 +20,10 @@ import (
 
 func TestFilterPreservesDeclaredUUIDType(t *testing.T) {
 	source := entity("Part", `domain:7 global:{} list:{max:100 by:[{name:"subject"},{name:"alias"}]}`,
-		`bytes subject=8 [(orm.field)={type:TYPE_UUID nullable:true}];`) + `message PartRef {bytes id=1;}`
+		`bytes subject=8 [(orm.field)={type:TYPE_UUID nullable:true}];`) + `message PartRef {bytes id=1;}` +
+		// What the ORM generator's service file declares beside the overlay,
+		// which a list's request names for its select.
+		`message PartSelect {bool all=1;}`
 	schema, err := read(t, source)
 	require.NoError(t, err)
 	overlay := pdgen.Proto(schema.Entities, "test")

@@ -664,6 +664,28 @@ before it kept its order comes out different, and the migration moves it.
 `with:` names edges to load alongside, so a page can render without a second
 round trip per row.
 
+**A list takes a `select`**, the entity's own, as `Get` does (field 6 of every
+list request): which fields of each row, and which edges filled and how deep.
+Each row is read as a `Get` of it with that select would read it -- each edge
+through what the caller may see of the entity it reaches, a `secret:` field
+not answered with -- and a select replaces `with:` for that request. A list
+reads its rows in one query and each edge the select names in one more, at any
+depth, however many rows the page holds; the columns the order walks are read
+whether or not the select names them, since the cursor is made of them. A list
+with no select answers as it does without one.
+
+**A select goes eight levels deep at most**, on a `Get` and a `List` alike: the
+entity's own fields are the first level, and each edge it fills is one more.
+A deeper one is refused before anything is read, `InvalidArgument`:
+
+```
+select: 9 levels deep, and a select goes 8 at most
+```
+
+It is a bound a request is held to, a constant of payday's
+(`internal/pdgen.SelectDepth`), and no setting changes it. A `Watch` takes no
+select, and no write answers through one.
+
 **A list reads the other way round, and in the orders it names.** Every List
 request has `reverse`, which turns every column of the order round at once --
 oldest first where it is newest first -- and needs declaring nowhere: an index

@@ -16,7 +16,7 @@
 import { create, toJson, type Registry } from '@bufbuild/protobuf'
 import { anyPack, timestampFromDate } from '@bufbuild/protobuf/wkt'
 import type { Transport } from '@connectrpc/connect'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { pdid } from '@lesomnus/payday'
@@ -197,6 +197,12 @@ function text(of: EntityDesc, name: string, label = 'served'): string {
 async function tab(name: string): Promise<void> {
 	await act(async () => void fireEvent.click(screen.getByText(name)))
 }
+
+/**
+ * box is a column's checkbox in the table served, by the column's name: the
+ * request above it has a select whose boxes are named for the same fields.
+ */
+const box = (name: string): HTMLElement => within(screen.getByLabelText('served')).getByLabelText(name)
 
 describe('the panel over a whole schema', () => {
 	it('offers the entities that answer a List, and no others', async () => {
@@ -394,7 +400,7 @@ describe('the table', () => {
 		await mount()
 		await pick(Robot.typeName)
 
-		await act(async () => void fireEvent.click(screen.getByLabelText('alias')))
+		await act(async () => void fireEvent.click(box('alias')))
 
 		const head = () => Array.from(screen.getByLabelText('served').querySelectorAll('th'), (v) => v.textContent)
 		expect(head()).not.toContain('alias')
@@ -448,6 +454,23 @@ describe('an edge', () => {
 		expect((screen.getByLabelText('entity') as HTMLSelectElement).value).toBe(Tenant.typeName)
 		expect((screen.getByLabelText('ref.key') as HTMLSelectElement).value).toBe('id')
 		expect((screen.getByLabelText('ref.id') as HTMLInputElement).value).toBe(pdid.from(tenant).toString())
+	})
+})
+
+describe('a request of an entity with an edge to its own kind', () => {
+	// `Cell.within` is a cell, so a Cell's select holds a select of a cell,
+	// which holds another: drawn open, the form had no bottom and the page ran
+	// out of memory. The edge is drawn closed and opened a level at a time.
+	it('is drawn, and opens a level at a time', async () => {
+		await mount()
+		await tab('get')
+		await pick('app.Cell')
+
+		const open = screen.getByLabelText('open select.within')
+		expect(screen.queryByLabelText('open select.within.within')).toBeNull()
+
+		await act(async () => void fireEvent.click(open))
+		expect(screen.getByLabelText('open select.within.within')).toBeDefined()
 	})
 })
 
@@ -625,13 +648,13 @@ describe('a column that is turned off', () => {
 		const head = () => Array.from(screen.getByLabelText('served').querySelectorAll('th'), (v) => v.textContent)
 		expect(head()).toContain('alias')
 
-		await act(async () => void fireEvent.click(screen.getByLabelText('alias')))
+		await act(async () => void fireEvent.click(box('alias')))
 		expect(head(), 'the name goes and the box stays').not.toContain('alias')
-		expect(screen.getByLabelText('alias'), 'the box is still there to turn back on').toBeDefined()
+		expect(box('alias'), 'the box is still there to turn back on').toBeDefined()
 
 		// Hovering it brings the name back, over the rows rather than in them.
 		expect(screen.queryByRole('tooltip')).toBeNull()
-		await act(async () => void fireEvent.mouseEnter(screen.getByLabelText('alias').parentElement as Element))
+		await act(async () => void fireEvent.mouseEnter(box('alias').parentElement as Element))
 
 		const tip = screen.getByRole('tooltip')
 		expect(tip.textContent).toBe('alias')
@@ -982,16 +1005,16 @@ describe('a column checkbox', () => {
 		const first = names[0] as string
 		const last = names[names.length - 1] as string
 
-		await act(async () => void fireEvent.click(screen.getByLabelText(first)))
+		await act(async () => void fireEvent.click(box(first)))
 		await act(async () => {
-			fireEvent.click(screen.getByLabelText(last), { shiftKey: true })
+			fireEvent.click(box(last), { shiftKey: true })
 		})
 
 		// Every one of them, and given the state of the one that was shifted
 		// onto rather than each flipped -- a range that flipped would turn some
 		// on and some off.
 		for (const n of names) {
-			expect((screen.getByLabelText(n) as HTMLInputElement).checked, n).toBe(false)
+			expect((box(n) as HTMLInputElement).checked, n).toBe(false)
 		}
 	})
 })

@@ -892,7 +892,7 @@ export class Queries {
 
 		const f = client[method.localName] as (v: Message, o: CallOptions) => Promise<unknown>
 
-		return f(input, { headers })
+		return f(versioned(method.input, input, this.entities), { headers })
 	}
 
 	/** said is what every call made here says of its store; see [IDENTITY_HEADER]. */
@@ -1499,6 +1499,51 @@ function namesRows(filters: unknown): boolean {
 	if (!Array.isArray(filters) || filters.length === 0) return false
 
 	return filters.every((f) => (f as Record<string, unknown> | undefined)?.['ref'] !== undefined)
+}
+
+/**
+ * versioned is a request whose answer goes into the store, with the version of
+ * every entity its select reads asked for as well: the store orders two answers
+ * about a row by it ([newer]), and a row that came without one reads as older
+ * than any it holds and replaces none -- which, since a field a read did not
+ * select is not answered, is every read whose select left the stamp out. So
+ * what this layer sends asks for it, at every edge the select fills, and
+ * `all`, which asks for it already, is left as it is. A request with no select
+ * answers everything and is sent as it was written, and so is a call an app
+ * makes past this layer: what it asked for is its own.
+ *
+ * A select is its entity's fields by name, an edge's own select under the
+ * edge's name, and is named `<Entity>Select` -- which is how the generator
+ * writes it, and how the entity is found here.
+ */
+export function versioned(d: DescMessage, req: Message, entities: ReadonlyMap<string, EntityDesc>): Message {
+	const f = d.fields.find((v) => v.localName === 'select')
+	const sel = f === undefined ? undefined : (req as unknown as Record<string, unknown>)['select']
+	if (f?.message === undefined || sel === undefined || sel === null) return req
+
+	return create(d, { ...(req as object), select: withVersion(f.message, sel as Record<string, unknown>, entities) } as never)
+}
+
+function withVersion(
+	d: DescMessage,
+	sel: Record<string, unknown>,
+	entities: ReadonlyMap<string, EntityDesc>,
+): Record<string, unknown> {
+	const out: Record<string, unknown> = { ...sel }
+	const entity = d.typeName.endsWith('Select') ? entities.get(d.typeName.slice(0, -'Select'.length)) : undefined
+	const version = entity?.version
+	if (version !== undefined && out['all'] !== true && d.fields.some((v) => v.localName === version)) {
+		out[version] = true
+	}
+
+	for (const v of d.fields) {
+		if (v.fieldKind !== 'message') continue
+		const got = out[v.localName]
+		if (got === undefined || got === null) continue
+		out[v.localName] = create(v.message, withVersion(v.message, got as Record<string, unknown>, entities) as never)
+	}
+
+	return create(d, out as never) as unknown as Record<string, unknown>
 }
 
 /** siblingWatch is the streaming method beside a query, when there is one. */

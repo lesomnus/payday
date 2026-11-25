@@ -2158,6 +2158,7 @@ type AuditListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *AuditSelect           `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2217,6 +2218,13 @@ func (x *AuditListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *AuditListRequest) GetSelect() *AuditSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *AuditListRequest) SetFilters(v []*AuditFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -2231,6 +2239,21 @@ func (x *AuditListRequest) SetAfter(v string) {
 
 func (x *AuditListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *AuditListRequest) SetSelect(v *AuditSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *AuditListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *AuditListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type AuditListRequest_builder struct {
@@ -2253,6 +2276,15 @@ type AuditListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *AuditSelect
 }
 
 func (b0 AuditListRequest_builder) Build() *AuditListRequest {
@@ -2263,6 +2295,7 @@ func (b0 AuditListRequest_builder) Build() *AuditListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -2633,12 +2666,13 @@ const file_app_payday_audit_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\r.app.AuditRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\",\n" +
 	"\x12AuditEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x97\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc1\x01\n" +
 	"\x10AuditListRequest\x12*\n" +
 	"\afilters\x18\x01 \x03(\v2\x10.app.AuditFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"P\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12(\n" +
+	"\x06select\x18\x06 \x01(\v2\x10.app.AuditSelectR\x06select\"P\n" +
 	"\x11AuditListResponse\x12 \n" +
 	"\x05items\x18\x01 \x03(\v2\n" +
 	".app.AuditR\x05items\x12\x19\n" +
@@ -2685,24 +2719,25 @@ var file_app_payday_audit_svc_g_proto_depIdxs = []int32{
 	2,  // 4: app.AuditApplyRequest.ref:type_name -> app.AuditRef
 	11, // 5: app.AuditApplyRequest.patch:type_name -> patch.Patch
 	9,  // 6: app.AuditListRequest.filters:type_name -> app.AuditFilter
-	12, // 7: app.AuditListResponse.items:type_name -> app.Audit
-	0,  // 8: app.AuditService.Add:input_type -> app.AuditAddRequest
-	1,  // 9: app.AuditService.Get:input_type -> app.AuditGetRequest
-	4,  // 10: app.AuditService.Patch:input_type -> app.AuditPatchRequest
-	5,  // 11: app.AuditService.Apply:input_type -> app.AuditApplyRequest
-	2,  // 12: app.AuditService.Erase:input_type -> app.AuditRef
-	7,  // 13: app.AuditService.List:input_type -> app.AuditListRequest
-	12, // 14: app.AuditService.Add:output_type -> app.Audit
-	12, // 15: app.AuditService.Get:output_type -> app.Audit
-	12, // 16: app.AuditService.Patch:output_type -> app.Audit
-	12, // 17: app.AuditService.Apply:output_type -> app.Audit
-	6,  // 18: app.AuditService.Erase:output_type -> app.AuditEraseResponse
-	8,  // 19: app.AuditService.List:output_type -> app.AuditListResponse
-	14, // [14:20] is the sub-list for method output_type
-	8,  // [8:14] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	3,  // 7: app.AuditListRequest.select:type_name -> app.AuditSelect
+	12, // 8: app.AuditListResponse.items:type_name -> app.Audit
+	0,  // 9: app.AuditService.Add:input_type -> app.AuditAddRequest
+	1,  // 10: app.AuditService.Get:input_type -> app.AuditGetRequest
+	4,  // 11: app.AuditService.Patch:input_type -> app.AuditPatchRequest
+	5,  // 12: app.AuditService.Apply:input_type -> app.AuditApplyRequest
+	2,  // 13: app.AuditService.Erase:input_type -> app.AuditRef
+	7,  // 14: app.AuditService.List:input_type -> app.AuditListRequest
+	12, // 15: app.AuditService.Add:output_type -> app.Audit
+	12, // 16: app.AuditService.Get:output_type -> app.Audit
+	12, // 17: app.AuditService.Patch:output_type -> app.Audit
+	12, // 18: app.AuditService.Apply:output_type -> app.Audit
+	6,  // 19: app.AuditService.Erase:output_type -> app.AuditEraseResponse
+	8,  // 20: app.AuditService.List:output_type -> app.AuditListResponse
+	15, // [15:21] is the sub-list for method output_type
+	9,  // [9:15] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_audit_svc_g_proto_init() }

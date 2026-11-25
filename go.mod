@@ -20,6 +20,7 @@ retract (
 
 require (
 	cel.dev/cel-go v0.32.0
+	connectrpc.com/connect v1.19.1
 	connectrpc.com/cors v0.1.0
 	connectrpc.com/vanguard v0.4.0
 	filippo.io/age v1.3.2
@@ -69,7 +70,6 @@ require (
 require (
 	ariga.io/atlas v1.3.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
-	connectrpc.com/connect v1.19.1 // indirect
 	filippo.io/hpke v0.4.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.9.0-default-no-op // indirect

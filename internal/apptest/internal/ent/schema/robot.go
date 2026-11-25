@@ -27,6 +27,8 @@ func (Cell) Fields() []ent.Field {
 			Optional(),
 		field.Uuid("tenant_id").
 			Immutable(),
+		field.Uuid("within_id").
+			Optional(),
 	}
 }
 
@@ -37,6 +39,9 @@ func (Cell) Edges() []ent.Edge {
 			Field("tenant_id").
 			Required().
 			Immutable(),
+		edge.To("within", Cell.Type).
+			Unique().
+			Field("within_id"),
 	}
 }
 

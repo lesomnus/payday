@@ -130,11 +130,7 @@ message CellAddRequest {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
   string alias = 4 [features.field_presence = IMPLICIT];
-}
-
-message CellGetRequest {
-  CellRef ref = 1;
-  CellSelect select = 2;
+  CellRef within = 20;
 }
 
 message CellRef {
@@ -143,10 +139,16 @@ message CellRef {
   }
 }
 
+message CellGetRequest {
+  CellRef ref = 1;
+  CellSelect select = 2;
+}
+
 message CellSelect {
   bool all = 1;
   TenantSelect tenant = 2;
   bool alias = 4;
+  CellSelect within = 20;
   bool date_erased = 14;
 }
 
@@ -301,6 +303,16 @@ message RobotListRequest {
   // Which of the orders the schema declares to read in. Unspecified is the one
   // it reads in otherwise.
   RobotListOrder order = 5 [features.field_presence = IMPLICIT];
+
+  // Which fields of each row to answer with, and which edges filled and how
+  // deep, as a Get's select says it. Unset is what a list answers without
+  // one. Each row is read as a Get of it with this select would read it, each
+  // edge through what the caller may see of its entity; a list costs one
+  // read for the rows and one for each edge selected, at any depth, however
+  // many rows the page holds.
+  //
+  // Field 6 in every entity: 5 is the order's, declared or not.
+  RobotSelect select = 6;
 }
 
 message RobotListResponse {

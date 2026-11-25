@@ -361,6 +361,10 @@ id: invalid UUID (got 27 bytes)
 | `wide` | the same table, with the identifiers |
 | `template=...` | `text/template` over the JSON |
 
+A name that is none of these, or a template that does not parse, is refused
+before the command calls the server, as a wrong flag is (an `xli.UsageError`):
+nothing is sent, by a command that writes as much as by one that reads.
+
 ```
 $ app holder get @acme/bob            $ app holder list -o table
 id           01a00104-e385-8595-…     ALIAS   NAME        AGE
@@ -440,8 +444,8 @@ Put flags before positional arguments, as with `-o`.
 
 This setting applies to pretty, table and wide timestamps. Relative age
 columns still show elapsed time. JSON, protojson, prototext and templates keep
-their existing serialization. A bad zone is rejected before the command calls
-the server, including commands that write.
+their existing serialization. A bad zone is rejected as a wrong flag is, before
+the command calls the server, including commands that write.
 
 An application's own command can add `pdcmd.TimeZoneFlag()` and call
 `pdcmd.Location(cmd)` before doing work. Its help names no variable, since a

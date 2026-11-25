@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -464,5 +465,55 @@ func TestAnAppsOwnRouteIsNotACallHoweverItIsAsked(t *testing.T) {
 
 			require.Equal(t, http.StatusNoContent, res.StatusCode, "the transcoder took the app's route")
 		})
+	}
+}
+
+// TestWhatNoRouteTakesIsJson: the mux's own 404 and 405 are the JSON every
+// other failure on this listener is, with web on and with it off, where they
+// were a line of text a Connect client reads no code from. What a route of the
+// app's answers is not touched.
+func TestWhatNoRouteTakesIsJson(t *testing.T) {
+	for _, allow := range []bool{true, false} {
+		x := require.New(t)
+
+		g := grpc.NewServer()
+		healthpb.RegisterHealthServer(g, health.NewServer())
+
+		m, err := web.New(config.HttpConfig{AllowWeb: allow}, g)
+		x.NoError(err)
+		m.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "the app's own words", http.StatusUnauthorized)
+		})
+
+		s := httptest.NewServer(m)
+		defer s.Close()
+
+		get := func(method, path string) (*http.Response, string) {
+			req, err := http.NewRequestWithContext(t.Context(), method, s.URL+path, nil)
+			x.NoError(err)
+			res, err := http.DefaultClient.Do(req)
+			x.NoError(err)
+			defer res.Body.Close()
+
+			b := &strings.Builder{}
+			_, err = io.Copy(b, res.Body)
+			x.NoError(err)
+
+			return res, b.String()
+		}
+
+		res, body := get(http.MethodGet, "/nothing")
+		x.Equal(http.StatusNotFound, res.StatusCode)
+		x.Equal("application/json", res.Header.Get("Content-Type"))
+		x.JSONEq(`{"code":"unimplemented","message":"/nothing is not a route of this server"}`, body)
+
+		res, body = get(http.MethodGet, "/login")
+		x.Equal(http.StatusMethodNotAllowed, res.StatusCode)
+		x.Equal("application/json", res.Header.Get("Content-Type"))
+		x.JSONEq(`{"code":"unimplemented","message":"/login does not take GET; it takes POST"}`, body)
+
+		res, body = get(http.MethodPost, "/login")
+		x.Equal(http.StatusUnauthorized, res.StatusCode)
+		x.Equal("the app's own words\n", body)
 	}
 }

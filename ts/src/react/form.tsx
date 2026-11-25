@@ -107,6 +107,11 @@ function one(f: DescField, v: Vals, at: string, item = false): unknown {
 		const m = f.fieldKind === 'list' ? f.message : f.fieldKind === 'message' ? f.message : undefined
 		if (m === undefined) return undefined
 
+		// Nothing typed under it is nothing to build, and is not walked: a
+		// message that holds its own kind -- a select of an edge to its own
+		// entity -- has no bottom to walk to.
+		if (!touched(v, at)) return undefined
+
 		const got = build(m, v, at)
 
 		// An empty nested message is one nobody typed in. Sending it would ask
@@ -163,6 +168,14 @@ export function leafOf(f: DescField, s: string, asEnum = false): unknown {
 	}
 }
 
+/** touched is whether anything was typed at `at` or under it. */
+function touched(v: Vals, at: string): boolean {
+	const under = `${at}.`
+	const is = (k: string) => k === at || k.startsWith(under)
+
+	return Object.keys(v.leaf).some(is) || Object.keys(v.pick).some(is) || Object.keys(v.many).some(is)
+}
+
 function path(at: string, name: string): string {
 	return at === '' ? name : `${at}.${name}`
 }
@@ -209,9 +222,18 @@ export function Form(props: {
 	 * different number into is a box that disagrees with the scrolling.
 	 */
 	skip?: readonly string[]
+
+	/**
+	 * The messages this one is inside, by type name. A field of one of them is
+	 * drawn closed, and opened a level at a time: a message that holds its own
+	 * kind -- a select of an edge to its own entity -- drawn open would be
+	 * drawn without end.
+	 */
+	within?: readonly string[]
 }): ReactNode {
 	const at = props.at ?? ''
 	const skip = new Set(props.skip ?? [])
+	const within = [...(props.within ?? []), props.desc.typeName]
 
 	const set = (part: keyof Vals, k: string, v: string | number): void => {
 		props.onChange({ ...props.vals, [part]: { ...props.vals[part], [k]: v } })
@@ -222,12 +244,12 @@ export function Form(props: {
 			{props.desc.oneofs.map((o) => (
 				// The spread goes first: it carries this form's own `at`, and
 				// what each of these needs is where **it** sits.
-				<OneOf key={o.localName} {...props} oneof={o} at={at} set={set} />
+				<OneOf key={o.localName} {...props} oneof={o} at={at} set={set} within={within} />
 			))}
 
 			{props.desc.fields.map((f) =>
 				f.oneof !== undefined || skip.has(f.localName) ? null : (
-					<Field key={f.localName} {...props} field={f} at={path(at, f.localName)} set={set} />
+					<Field key={f.localName} {...props} field={f} at={path(at, f.localName)} set={set} within={within} />
 				),
 			)}
 		</>
@@ -235,6 +257,32 @@ export function Form(props: {
 }
 
 type Set = (part: keyof Vals, k: string, v: string | number) => void
+
+/**
+ * Nested is the form of a message inside another: drawn open, unless it is of
+ * a kind it is already inside, which is drawn closed until somebody opens it
+ * -- or until something under it was typed, which stays where it was.
+ */
+function Nested(props: {
+	desc: DescMessage
+	vals: Vals
+	onChange: (v: Vals) => void
+	at: string
+	within: readonly string[]
+}): ReactNode {
+	const again = props.within.includes(props.desc.typeName)
+	const [open, setOpen] = useState(false)
+
+	if (again && !open && !touched(props.vals, props.at)) {
+		return (
+			<button type="button" aria-label={`open ${props.at}`} style={{ ...style.input, cursor: 'pointer' }} onClick={() => setOpen(true)}>
+				open
+			</button>
+		)
+	}
+
+	return <Form desc={props.desc} vals={props.vals} onChange={props.onChange} at={props.at} within={props.within} />
+}
 
 /** OneOf is the choice, and then whichever member was chosen. */
 function OneOf(props: {
@@ -244,6 +292,7 @@ function OneOf(props: {
 	onChange: (v: Vals) => void
 	at: string
 	set: Set
+	within: readonly string[]
 }): ReactNode {
 	const p = path(props.at, props.oneof.localName)
 	const picked = props.vals.pick[p] ?? ''
@@ -274,6 +323,7 @@ function OneOf(props: {
 					vals={props.vals}
 					onChange={props.onChange}
 					set={props.set}
+					within={props.within}
 					bare
 				/>
 			)}
@@ -290,6 +340,7 @@ function Field(props: {
 	onChange: (v: Vals) => void
 	set: Set
 	bare?: boolean
+	within: readonly string[]
 }): ReactNode {
 	const f = props.field
 	const name = props.bare === true ? null : <span style={style.label}>{f.localName}</span>
@@ -322,12 +373,7 @@ function Field(props: {
 				{Array.from({ length: n }, (_, i) =>
 					f.listKind === 'message' ? (
 						<div key={i} style={style.group}>
-							<Form
-								desc={f.message}
-								vals={props.vals}
-								onChange={props.onChange}
-								at={`${props.at}.${String(i)}`}
-							/>
+							<Nested desc={f.message} vals={props.vals} onChange={props.onChange} at={`${props.at}.${String(i)}`} within={props.within} />
 						</div>
 					) : (
 						<Leaf key={i} at={`${props.at}.${String(i)}`} vals={props.vals} set={props.set} />
@@ -341,7 +387,7 @@ function Field(props: {
 		return (
 			<div style={style.group}>
 				{name}
-				<Form desc={f.message} vals={props.vals} onChange={props.onChange} at={props.at} />
+				<Nested desc={f.message} vals={props.vals} onChange={props.onChange} at={props.at} within={props.within} />
 			</div>
 		)
 	}

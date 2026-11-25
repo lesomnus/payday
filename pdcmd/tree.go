@@ -738,7 +738,22 @@ func (r *runner) printer(cmd *xli.Command) (Printer, error) {
 // A format an app supplied is handed back the same either way. What a stream
 // means for it is the app's, and a [Printer] that had to be told would be an
 // interface with two methods for what is one thing -- the reason it has one.
+//
+// What it refuses is the command line's: a `-o` that names no format, a
+// template that does not parse, a --tz that names no zone. So the refusal is
+// an [xli.UsageError] on cmd, what xli answers an unknown flag with, and a
+// caller that tells a mistyped command from a failed call by it tells this one
+// the same way. [runner.run] asks before the call, so nothing was sent.
 func (r *runner) printerAs(cmd *xli.Command, header bool) (Printer, error) {
+	p, err := r.printerOf(cmd, header)
+	if err != nil {
+		return nil, &xli.UsageError{Cmd: cmd, Err: err}
+	}
+
+	return p, nil
+}
+
+func (r *runner) printerOf(cmd *xli.Command, header bool) (Printer, error) {
 	loc, err := Location(cmd)
 	if err != nil {
 		return nil, err
