@@ -2,6 +2,7 @@ package pdgen
 
 import (
 	"fmt"
+	"github.com/lesomnus/payday/pdpb"
 	"strconv"
 	"strings"
 
@@ -36,9 +37,12 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	// transaction was told about a row stale. They share one wrapper per
 	// entity because two wrappers over one service would each have to know
 	// about the other to pass the methods it did not override.
+	//
+	// And every entity with a Get, since what a Get answers is said here too:
+	// a field its select did not ask for is absent ([emitSinkGet]).
 	wraps := []*Entity{}
 	for _, v := range s.Sorted() {
-		if v.List != nil || admits(v) || names(v) || forgets(v) {
+		if v.List != nil || admits(v) || names(v) || forgets(v) || answers(s, v) {
 			wraps = append(wraps, v)
 		}
 	}
@@ -173,6 +177,9 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 		if v.List != nil {
 			emitList(g, v, s, p, root)
 		}
+		if answers(s, v) {
+			emitSinkGet(g, v, root)
+		}
 	}
 
 	for _, v := range wraps {
@@ -181,6 +188,117 @@ func EmitSink(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 			break
 		}
 	}
+	for _, v := range wraps {
+		if answers(s, v) {
+			emitUnselect(g)
+			break
+		}
+	}
+}
+
+// answers is whether the Sink answers a Get of `v` ([emitSinkGet]): it has
+// one, and it is not a record of notify's, whose Sink refuses every Get
+// (`emitAuditNotify`).
+func answers(s *Schema, v *Entity) bool {
+	if !v.Rpcs().HasGet() {
+		return false
+	}
+	for _, own := range []pdpb.Own{pdpb.Own_OWN_NOTIFICATION, pdpb.Own_OWN_NOTIFICATION_RECEIPT} {
+		if s.Own(own) == v {
+			return false
+		}
+	}
+
+	return true
+}
+
+// emitSinkGet writes the Get of an entity's Sink: the generated one, with what
+// its select did not ask for taken out of the answer.
+//
+// The generated read selects the columns asked for and fills the answer from
+// the row it read, so a column it did not read is answered as its zero: an
+// empty string, `false`, a timestamp of year one. Year one is the one that
+// went wrong first -- `date_updated` is the version a caller sends back, and a
+// stamp nobody selected was sent as one and refused -- but none of them is
+// what the row holds, and each reads as though it were. So a field the select
+// did not ask for is absent, at every edge it asked for too.
+func emitSinkGet(g *protogen.GeneratedFile, v *Entity, root protogen.GoImportPath) {
+	e := v.GoName()
+
+	g.P("// Get answers with the ", e, " as the generated one reads it, and without")
+	g.P("// what its select did not ask for; see [pdUnselect].")
+	g.P("func (s sink", e, ") Get(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(e+"GetRequest"),
+		") (*", root.Ident(e), ", error) {")
+	g.P("	v, err := s.", e, "ServiceServer.Get(ctx, req)")
+	g.P("	if err != nil {")
+	g.P("		return nil, err")
+	g.P("	}")
+	g.P("	if m := req.GetSelect(); m != nil {")
+	g.P("		pdUnselect(v.ProtoReflect(), m.ProtoReflect())")
+	g.P("	}")
+	g.P("")
+	g.P("	return v, nil")
+	g.P("}")
+	g.P("")
+}
+
+// emitUnselect writes what takes out of an answer the fields its select did
+// not ask for, once for every entity.
+//
+// By reflection over the two messages, field by name, rather than written out
+// per entity: a select is the entity's fields by their names -- a switch for a
+// column, a select of its own for an edge -- because that is how the
+// generator of both writes it, and pairing them by name here is reading that
+// and not a second copy of it.
+func emitUnselect(g *protogen.GeneratedFile) {
+	r := func(name string) protogen.GoIdent { return pkgReflect.Ident(name) }
+
+	g.P("// pdUnselect clears from `v` each field `m`, its select, did not ask for:")
+	g.P("// a column whose switch is off, unless `all` is on; and in an edge `m`")
+	g.P("// selected, what the edge's own select did not ask for. The identifier, an")
+	g.P("// edge nobody selected -- answered as its reference -- and a field the")
+	g.P("// select has no word for are left as they are.")
+	g.P("func pdUnselect(v, m ", r("Message"), ") {")
+	g.P("	if !v.IsValid() || !m.IsValid() {")
+	g.P("		return")
+	g.P("	}")
+	g.P("")
+	g.P("	sel := m.Descriptor().Fields()")
+	g.P("	all := false")
+	g.P("	if fd := sel.ByName(\"all\"); fd != nil && fd.Kind() == ", r("BoolKind"), " {")
+	g.P("		all = m.Get(fd).Bool()")
+	g.P("	}")
+	g.P("")
+	g.P("	fs := v.Descriptor().Fields()")
+	g.P("	for i := range fs.Len() {")
+	g.P("		fd := fs.Get(i)")
+	g.P("		sd := sel.ByName(fd.Name())")
+	g.P("		if sd == nil || fd.Name() == \"id\" || sd.Name() == \"all\" {")
+	g.P("			continue")
+	g.P("		}")
+	g.P("")
+	g.P("		switch {")
+	g.P("		case sd.Kind() == ", r("BoolKind"), " && !sd.IsList():")
+	g.P("			if !all && !m.Get(sd).Bool() {")
+	g.P("				v.Clear(fd)")
+	g.P("			}")
+	g.P("")
+	g.P("		case sd.Kind() == ", r("MessageKind"), " && !sd.IsList() && fd.Kind() == ", r("MessageKind"), ":")
+	g.P("			if !m.Has(sd) || !v.Has(fd) {")
+	g.P("				continue")
+	g.P("			}")
+	g.P("			if fd.IsList() {")
+	g.P("				l := v.Get(fd).List()")
+	g.P("				for j := range l.Len() {")
+	g.P("					pdUnselect(l.Get(j).Message(), m.Get(sd).Message())")
+	g.P("				}")
+	g.P("				continue")
+	g.P("			}")
+	g.P("			pdUnselect(v.Mutable(fd).Message(), m.Get(sd).Message())")
+	g.P("		}")
+	g.P("	}")
+	g.P("}")
+	g.P("")
 }
 
 // emitCursor writes what every list's cursor is read and written with.
