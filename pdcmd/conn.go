@@ -110,6 +110,32 @@ func connInto(ctx context.Context, c Conn) context.Context {
 	return context.WithValue(ctx, connKey{}, c)
 }
 
+// flagsFirst refuses what the command line got wrong before anything else of a
+// command this package built runs: a `-o` that names no format, a template
+// that does not parse, a --tz that names no zone, an --in that names no input
+// format. Each is an [xli.UsageError], the status a wrong flag has.
+//
+// Before [runner.withConn], and that is the point: an app's [Connector] may
+// open a database or ask who is at the terminal, and a typo in a flag is not a
+// reason to do either. It is not part of withConn because [Tree.WithConn] puts
+// that in front of an app's own commands, whose `-o` and `--in`, if they have
+// them, are the app's to read.
+func (r *runner) flagsFirst() xli.Handler {
+	return xli.OnF(
+		func(m mode.Mode) bool { return m.Is(mode.Run) },
+		func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			if _, err := r.printer(cmd); err != nil {
+				return err
+			}
+			if _, err := inputOf(cmd); err != nil {
+				return &xli.UsageError{Cmd: cmd, Err: err}
+			}
+
+			return next(ctx)
+		},
+	)
+}
+
 // withConn opens the connection, puts it in the context and closes it after.
 //
 // Idempotent on purpose: a command that already has one -- because a parent

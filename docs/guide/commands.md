@@ -78,6 +78,12 @@ connection:
 - **`--help` opens nothing.** The connector is asked only when a command is
   actually running. Printing usage or completing a word must not be able to
   hang on a server that is not there.
+- **Nor does a wrong flag.** On a command the tree builds, and one `Unary`
+  builds, a `-o` that names no format, a template that does not parse, a
+  `--tz` that names no zone and an `--in` that names no input format are
+  refused as a wrong flag is (an `xli.UsageError`) before the connector is
+  asked for anything: a typo does not open a database or ask who is at the
+  terminal.
 - **Something closes it.** The second answer is called when the command is
   done. A connection stored in a tree belongs to whoever built the tree, and
   nothing says when they are finished with it.
@@ -362,8 +368,9 @@ id: invalid UUID (got 27 bytes)
 | `template=...` | `text/template` over the JSON |
 
 A name that is none of these, or a template that does not parse, is refused
-before the command calls the server, as a wrong flag is (an `xli.UsageError`):
-nothing is sent, by a command that writes as much as by one that reads.
+before the command asks for a connection, as a wrong flag is (an
+`xli.UsageError`): nothing is opened or sent, by a command that writes as much
+as by one that reads.
 
 ```
 $ app holder get @acme/bob            $ app holder list -o table
