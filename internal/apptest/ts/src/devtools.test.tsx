@@ -457,6 +457,23 @@ describe('an edge', () => {
 	})
 })
 
+describe('a request of an entity with an edge to its own kind', () => {
+	// `Cell.within` is a cell, so a Cell's select holds a select of a cell,
+	// which holds another: drawn open, the form had no bottom and the page ran
+	// out of memory. The edge is drawn closed and opened a level at a time.
+	it('is drawn, and opens a level at a time', async () => {
+		await mount()
+		await tab('get')
+		await pick('app.Cell')
+
+		const open = screen.getByLabelText('open select.within')
+		expect(screen.queryByLabelText('open select.within.within')).toBeNull()
+
+		await act(async () => void fireEvent.click(open))
+		expect(screen.getByLabelText('open select.within.within')).toBeDefined()
+	})
+})
+
 describe('the get form', () => {
 	it('asks for one row by identifier', async () => {
 		await mount()

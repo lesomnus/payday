@@ -1360,6 +1360,23 @@ func (m *CellMutation) OldTenantId(ctx context.Context) (v uuid.UUID, err error)
 	return oldValue.TenantId, nil
 }
 
+// OldWithinId returns the old "within_id" field's value of the Cell entity.
+// If the Cell object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CellMutation) OldWithinId(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.Op().Is(OpUpdateOne) {
+		return v, errors.New("OldWithinId is only allowed on UpdateOne operations")
+	}
+	if _, exists := m.Id(); !exists || m.oldValue == nil {
+		return v, errors.New("OldWithinId requires an Id field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWithinId: %w", err)
+	}
+	return oldValue.WithinId, nil
+}
+
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
@@ -1371,6 +1388,8 @@ func (m *CellMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldDateErased(ctx)
 	case cell.FieldTenantId:
 		return m.OldTenantId(ctx)
+	case cell.FieldWithinId:
+		return m.OldWithinId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Cell field %s", name)
 }

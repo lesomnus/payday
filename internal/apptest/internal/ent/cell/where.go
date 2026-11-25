@@ -71,6 +71,11 @@ func TenantId(v uuid.UUID) predicate.Cell {
 	return predicate.Cell(sql.FieldEQ(FieldTenantId, v))
 }
 
+// WithinId applies equality check predicate on the "within_id" field. It's identical to WithinIdEQ.
+func WithinId(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldEQ(FieldWithinId, v))
+}
+
 // AliasEQ applies the EQ predicate on the "alias" field.
 func AliasEQ(v string) predicate.Cell {
 	return predicate.Cell(sql.FieldEQ(FieldAlias, v))
@@ -206,6 +211,36 @@ func TenantIdNotIn(vs ...uuid.UUID) predicate.Cell {
 	return predicate.Cell(sql.FieldNotIn(FieldTenantId, vs...))
 }
 
+// WithinIdEQ applies the EQ predicate on the "within_id" field.
+func WithinIdEQ(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldEQ(FieldWithinId, v))
+}
+
+// WithinIdNEQ applies the NEQ predicate on the "within_id" field.
+func WithinIdNEQ(v uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldNEQ(FieldWithinId, v))
+}
+
+// WithinIdIn applies the In predicate on the "within_id" field.
+func WithinIdIn(vs ...uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldIn(FieldWithinId, vs...))
+}
+
+// WithinIdNotIn applies the NotIn predicate on the "within_id" field.
+func WithinIdNotIn(vs ...uuid.UUID) predicate.Cell {
+	return predicate.Cell(sql.FieldNotIn(FieldWithinId, vs...))
+}
+
+// WithinIdIsNil applies the IsNil predicate on the "within_id" field.
+func WithinIdIsNil() predicate.Cell {
+	return predicate.Cell(sql.FieldIsNull(FieldWithinId))
+}
+
+// WithinIdNotNil applies the NotNil predicate on the "within_id" field.
+func WithinIdNotNil() predicate.Cell {
+	return predicate.Cell(sql.FieldNotNull(FieldWithinId))
+}
+
 // HasTenant applies the HasEdge predicate on the "tenant" edge.
 func HasTenant() predicate.Cell {
 	return predicate.Cell(func(s *sql.Selector) {
@@ -221,6 +256,29 @@ func HasTenant() predicate.Cell {
 func HasTenantWith(preds ...predicate.Tenant) predicate.Cell {
 	return predicate.Cell(func(s *sql.Selector) {
 		step := newTenantStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasWithin applies the HasEdge predicate on the "within" edge.
+func HasWithin() predicate.Cell {
+	return predicate.Cell(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldId),
+			sqlgraph.Edge(sqlgraph.O2O, false, WithinTable, WithinColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasWithinWith applies the HasEdge predicate on the "within" edge with a given conditions (other predicates).
+func HasWithinWith(preds ...predicate.Cell) predicate.Cell {
+	return predicate.Cell(func(s *sql.Selector) {
+		step := newWithinStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

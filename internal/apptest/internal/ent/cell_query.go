@@ -25,6 +25,7 @@ type CellQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Cell
 	withTenant *TenantQuery
+	withWithin *CellQuery
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -77,6 +78,28 @@ func (_q *CellQuery) QueryTenant() *TenantQuery {
 			sqlgraph.From(cell.Table, cell.FieldId, selector),
 			sqlgraph.To(tenant.Table, tenant.FieldId),
 			sqlgraph.Edge(sqlgraph.M2O, false, cell.TenantTable, cell.TenantColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryWithin chains the current query on the "within" edge.
+func (_q *CellQuery) QueryWithin() *CellQuery {
+	query := (&CellClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(cell.Table, cell.FieldId, selector),
+			sqlgraph.To(cell.Table, cell.FieldId),
+			sqlgraph.Edge(sqlgraph.O2O, false, cell.WithinTable, cell.WithinColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -277,6 +300,7 @@ func (_q *CellQuery) Clone() *CellQuery {
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Cell{}, _q.predicates...),
 		withTenant: _q.withTenant.Clone(),
+		withWithin: _q.withWithin.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -292,6 +316,17 @@ func (_q *CellQuery) WithTenant(opts ...func(*TenantQuery)) *CellQuery {
 		opt(query)
 	}
 	_q.withTenant = query
+	return _q
+}
+
+// WithWithin tells the query-builder to eager-load the nodes that are connected to
+// the "within" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CellQuery) WithWithin(opts ...func(*CellQuery)) *CellQuery {
+	query := (&CellClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withWithin = query
 	return _q
 }
 
@@ -373,8 +408,9 @@ func (_q *CellQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cell, e
 	var (
 		nodes       = []*Cell{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withTenant != nil,
+			_q.withWithin != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -404,6 +440,12 @@ func (_q *CellQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cell, e
 			return nil, err
 		}
 	}
+	if query := _q.withWithin; query != nil {
+		if err := _q.loadWithin(ctx, query, nodes, nil,
+			func(n *Cell, e *Cell) { n.Edges.Within = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
@@ -429,6 +471,35 @@ func (_q *CellQuery) loadTenant(ctx context.Context, query *TenantQuery, nodes [
 		nodes, ok := nodeids[n.Id]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "tenant_id" returned %v`, n.Id)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *CellQuery) loadWithin(ctx context.Context, query *CellQuery, nodes []*Cell, init func(*Cell), assign func(*Cell, *Cell)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Cell)
+	for i := range nodes {
+		fk := nodes[i].WithinId
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(cell.IdIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.Id]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "within_id" returned %v`, n.Id)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -467,6 +538,9 @@ func (_q *CellQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withTenant != nil {
 			_spec.Node.AddColumnOnce(cell.FieldTenantId)
+		}
+		if _q.withWithin != nil {
+			_spec.Node.AddColumnOnce(cell.FieldWithinId)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

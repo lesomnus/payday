@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/cell"
 	"github.com/lesomnus/payday/internal/apptest/internal/ent/predicate"
@@ -63,9 +64,40 @@ func (_u *CellUpdate) ClearDateErased() *CellUpdate {
 	return _u
 }
 
+// SetWithinId sets the "within_id" field.
+func (_u *CellUpdate) SetWithinId(v uuid.UUID) *CellUpdate {
+	_u.mutation.SetWithinId(v)
+	return _u
+}
+
+// SetNillableWithinId sets the "within_id" field if the given value is not nil.
+func (_u *CellUpdate) SetNillableWithinId(v *uuid.UUID) *CellUpdate {
+	if v != nil {
+		_u.SetWithinId(*v)
+	}
+	return _u
+}
+
+// ClearWithinId clears the value of the "within_id" field.
+func (_u *CellUpdate) ClearWithinId() *CellUpdate {
+	_u.mutation.ClearWithinId()
+	return _u
+}
+
+// SetWithin sets the "within" edge to the Cell entity.
+func (_u *CellUpdate) SetWithin(v *Cell) *CellUpdate {
+	return _u.SetWithinId(v.Id)
+}
+
 // Mutation returns the CellMutation object of the builder.
 func (_u *CellUpdate) Mutation() *CellMutation {
 	return _u.mutation
+}
+
+// ClearWithin clears the "within" edge to the Cell entity.
+func (_u *CellUpdate) ClearWithin() *CellUpdate {
+	_u.mutation.ClearWithin()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -136,6 +168,35 @@ func (_u *CellUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(cell.FieldDateErased, field.TypeTime)
 	}
+	if _u.mutation.WithinCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   cell.WithinTable,
+			Columns: []string{cell.WithinColumn},
+			Bidi:    true,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WithinIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   cell.WithinTable,
+			Columns: []string{cell.WithinColumn},
+			Bidi:    true,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -192,9 +253,40 @@ func (_u *CellUpdateOne) ClearDateErased() *CellUpdateOne {
 	return _u
 }
 
+// SetWithinId sets the "within_id" field.
+func (_u *CellUpdateOne) SetWithinId(v uuid.UUID) *CellUpdateOne {
+	_u.mutation.SetWithinId(v)
+	return _u
+}
+
+// SetNillableWithinId sets the "within_id" field if the given value is not nil.
+func (_u *CellUpdateOne) SetNillableWithinId(v *uuid.UUID) *CellUpdateOne {
+	if v != nil {
+		_u.SetWithinId(*v)
+	}
+	return _u
+}
+
+// ClearWithinId clears the value of the "within_id" field.
+func (_u *CellUpdateOne) ClearWithinId() *CellUpdateOne {
+	_u.mutation.ClearWithinId()
+	return _u
+}
+
+// SetWithin sets the "within" edge to the Cell entity.
+func (_u *CellUpdateOne) SetWithin(v *Cell) *CellUpdateOne {
+	return _u.SetWithinId(v.Id)
+}
+
 // Mutation returns the CellMutation object of the builder.
 func (_u *CellUpdateOne) Mutation() *CellMutation {
 	return _u.mutation
+}
+
+// ClearWithin clears the "within" edge to the Cell entity.
+func (_u *CellUpdateOne) ClearWithin() *CellUpdateOne {
+	_u.mutation.ClearWithin()
+	return _u
 }
 
 // Where appends a list predicates to the CellUpdate builder.
@@ -294,6 +386,35 @@ func (_u *CellUpdateOne) sqlSave(ctx context.Context) (_node *Cell, err error) {
 	}
 	if _u.mutation.DateErasedCleared() {
 		_spec.ClearField(cell.FieldDateErased, field.TypeTime)
+	}
+	if _u.mutation.WithinCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   cell.WithinTable,
+			Columns: []string{cell.WithinColumn},
+			Bidi:    true,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WithinIds(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   cell.WithinTable,
+			Columns: []string{cell.WithinColumn},
+			Bidi:    true,
+			Target: &sqlgraph.EdgeTarget{
+				IdSpec: sqlgraph.NewFieldSpec(cell.FieldId, field.TypeUuid),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Cell{config: _u.config}

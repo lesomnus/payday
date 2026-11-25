@@ -130,11 +130,7 @@ message CellAddRequest {
   bytes id = 1 [(orm.field) = {type: TYPE_UUID}];
   TenantRef tenant = 2;
   string alias = 4 [features.field_presence = IMPLICIT];
-}
-
-message CellGetRequest {
-  CellRef ref = 1;
-  CellSelect select = 2;
+  CellRef within = 20;
 }
 
 message CellRef {
@@ -143,10 +139,16 @@ message CellRef {
   }
 }
 
+message CellGetRequest {
+  CellRef ref = 1;
+  CellSelect select = 2;
+}
+
 message CellSelect {
   bool all = 1;
   TenantSelect tenant = 2;
   bool alias = 4;
+  CellSelect within = 20;
   bool date_erased = 14;
 }
 

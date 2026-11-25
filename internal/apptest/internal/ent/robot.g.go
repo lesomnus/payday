@@ -20,6 +20,13 @@ func (e *Cell) Proto() *apptest.Cell {
 		x.SetTenant(r)
 	}
 	x.SetAlias(e.Alias)
+	if v := e.Edges.Within; v != nil {
+		x.SetWithin(v.Proto())
+	} else if v := e.WithinId; v != *new(uuid.UUID) {
+		r := &apptest.Cell{}
+		r.SetId(v[:])
+		x.SetWithin(r)
+	}
 	if e.DateErased != nil {
 		x.SetDateErased(timestamppb.New(*e.DateErased))
 	}

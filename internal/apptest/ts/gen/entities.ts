@@ -90,7 +90,7 @@ export const Cell = {
 	typeName: "app.Cell",
 	schema: CellSchema,
 	domain: 10,
-	refs: [{ field: "tenant", to: "app.Tenant" }],
+	refs: [{ field: "tenant", to: "app.Tenant" }, { field: "within", to: "app.Cell" }],
 	alias: "alias",
 	key: "id",
 	ids: ["id"],

@@ -25,6 +25,8 @@ type Cell struct {
 	DateErased *time.Time `json:"date_erased,omitempty"`
 	// TenantId holds the value of the "tenant_id" field.
 	TenantId uuid.UUID `json:"tenant_id,omitempty"`
+	// WithinId holds the value of the "within_id" field.
+	WithinId uuid.UUID `json:"within_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the CellQuery when eager-loading is set.
 	Edges        CellEdges `json:"edges"`
@@ -35,9 +37,11 @@ type Cell struct {
 type CellEdges struct {
 	// Tenant holds the value of the tenant edge.
 	Tenant *Tenant `json:"tenant,omitempty"`
+	// Within holds the value of the within edge.
+	Within *Cell `json:"within,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // TenantOrErr returns the Tenant value or an error if the edge
@@ -51,6 +55,17 @@ func (e CellEdges) TenantOrErr() (*Tenant, error) {
 	return nil, &NotLoadedError{edge: "tenant"}
 }
 
+// WithinOrErr returns the Within value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e CellEdges) WithinOrErr() (*Cell, error) {
+	if e.Within != nil {
+		return e.Within, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: cell.Label}
+	}
+	return nil, &NotLoadedError{edge: "within"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Cell) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -60,6 +75,8 @@ func (*Cell) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case cell.FieldDateErased:
 			values[i] = new(sql.NullTime)
+		case cell.FieldWithinId:
+			values[i] = new(sql.Null[uuid.UUID])
 		case cell.FieldId, cell.FieldTenantId:
 			values[i] = new(uuid.UUID)
 		default:
@@ -102,6 +119,12 @@ func (_m *Cell) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.TenantId = *value
 			}
+		case cell.FieldWithinId:
+			if value, ok := values[i].(*sql.Null[uuid.UUID]); !ok {
+				return fmt.Errorf("unexpected type %T for field within_id", values[i])
+			} else if value.Valid {
+				_m.WithinId = value.V
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -118,6 +141,11 @@ func (_m *Cell) Value(name string) (ent.Value, error) {
 // QueryTenant queries the "tenant" edge of the Cell entity.
 func (_m *Cell) QueryTenant() *TenantQuery {
 	return NewCellClient(_m.config).QueryTenant(_m)
+}
+
+// QueryWithin queries the "within" edge of the Cell entity.
+func (_m *Cell) QueryWithin() *CellQuery {
+	return NewCellClient(_m.config).QueryWithin(_m)
 }
 
 // Update returns a builder for updating this Cell.
@@ -153,6 +181,9 @@ func (_m *Cell) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("tenant_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TenantId))
+	builder.WriteString(", ")
+	builder.WriteString("within_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.WithinId))
 	builder.WriteByte(')')
 	return builder.String()
 }
