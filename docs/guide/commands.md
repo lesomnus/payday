@@ -354,8 +354,8 @@ id: invalid UUID (got 27 bytes)
 | --- | --- |
 | `pretty` | the default. Identifiers as uuids, timestamps as times, a nested entity on one line |
 | `json` | protojson with the identifiers as uuids |
-| `protojson` | exactly protojson |
-| `prototext` | exactly prototext |
+| `protojson` | exactly protojson, but for an empty list (below) |
+| `prototext` | exactly prototext, but for an empty list (below) |
 | `name` | the identifier of each row, one per line |
 | `table` | columns |
 | `wide` | the same table, with the identifiers |
@@ -370,6 +370,13 @@ name         Bob Vance
 date_updated 2026-08-14T16:04:52Z
 date_created 2026-08-14T16:04:52Z
 ```
+
+**An empty list is a list.** `json` and `protojson` print `{"items": []}` for a
+list with nothing in it, the key a list with rows has, `prototext` prints
+`items: []`, and a template reads the `items` `json` writes. The encoders
+write an empty repeated field as nothing, which made an empty list `{}`; both
+libraries read the key back. `table` and `wide` print `(none)`, and `pretty`
+and `name` print nothing.
 
 **There are two JSONs on purpose.** `-o protojson` is base64 for every
 identifier, because that is what protojson is and a script that feeds it back

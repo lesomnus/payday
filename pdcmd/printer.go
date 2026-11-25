@@ -1,6 +1,7 @@
 package pdcmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -50,10 +51,20 @@ func (f PrinterFunc) Print(w io.Writer, m proto.Message) error { return f(w, m) 
 // mislead: every field that is set is shown, with the name the schema gave it,
 // and nothing is derived. That is also why it is not the default -- see
 // [Pretty].
+//
+// With one addition, which is not derived but said: a list that holds nothing
+// is `items: []`, the field the answer has when it holds something. The
+// library writes a repeated field that is empty as nothing at all, so an empty
+// list was an empty document, which reads as no answer and not as a list with
+// nothing in it; see [emptyItems]. `items: []` is text format the library reads
+// back as the same message.
 var ProtoText Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	b, err := prototext.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
 	if err != nil {
 		return err
+	}
+	if fd := emptyItems(m.ProtoReflect()); fd != nil {
+		b = append([]byte(fmt.Sprintf("%s: []\n", fd.TextName())), b...)
 	}
 
 	_, err = w.Write(b)
@@ -67,8 +78,21 @@ var ProtoText Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 // of a shell can read. `EmitUnpopulated` is off: a field that was not set reads
 // as absent rather than as a zero somebody might act on, which matters most for
 // the `bytes` identifiers, where an empty one is not a valid id.
+//
+// A list that holds nothing is `{"items": []}`, the key the answer has when it
+// holds something, where protojson writes `{}`: see [emptyItems]. Turning
+// `EmitUnpopulated` on for it instead would have answered every other empty
+// field of the response too.
 var ProtoJson Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
-	b, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
+	var (
+		b   []byte
+		err error
+	)
+	if fd := emptyItems(m.ProtoReflect()); fd != nil {
+		b, err = withEmptyItems(m, fd)
+	} else {
+		b, err = protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
+	}
 	if err != nil {
 		return err
 	}
@@ -76,6 +100,57 @@ var ProtoJson Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	_, err = fmt.Fprintf(w, "%s\n", b)
 	return err
 })
+
+// withEmptyItems is protojson of a list answer with no rows, with the key of
+// its rows said, indented as [ProtoJson] indents.
+//
+// The key goes first, where the generated list responses declare it. Indented
+// by encoding/json and not by protojson's own Multiline, which varies its
+// whitespace from build to build on purpose; Indent reads past what it was
+// given and writes its own.
+func withEmptyItems(m proto.Message, fd protoreflect.FieldDescriptor) ([]byte, error) {
+	raw, err := protojson.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	rest := bytes.TrimSpace(raw)
+	rest = bytes.TrimSpace(rest[1:]) // past the '{'
+	head := fmt.Sprintf("{%q:[]", fd.JSONName())
+	if !bytes.HasPrefix(rest, []byte("}")) {
+		head += ","
+	}
+
+	b := &bytes.Buffer{}
+	if err := json.Indent(b, append([]byte(head), rest...), "", "  "); err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+// emptyItems is the field of a list answer's rows when it holds none, and nil
+// for anything else: a list answer that has rows, a `Get`'s entity, a message
+// with no `items`.
+//
+// An empty list is a list. Every encoder here writes a repeated field that is
+// empty as nothing, so `-o json` of a list with no rows was `{}`: a script
+// reading `.items` read null where it reads an array, and an answer with
+// nothing in it looked like no answer. So the printers that write the answer's
+// structure -- json, protojson, prototext, and a template, which reads json's
+// document -- say the key with nothing in it. Recognised as [Rows] recognises a
+// list, by `items`.
+func emptyItems(m protoreflect.Message) protoreflect.FieldDescriptor {
+	fd := m.Descriptor().Fields().ByName("items")
+	if fd == nil || !fd.IsList() || fd.Kind() != protoreflect.MessageKind {
+		return nil
+	}
+	if m.Get(fd).List().Len() > 0 {
+		return nil
+	}
+
+	return fd
+}
 
 // Name prints the identifier of each row and nothing else.
 //

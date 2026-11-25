@@ -90,6 +90,10 @@ func jsonOf(m protoreflect.Message, indent string) ([]byte, error) {
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return nil, err
 	}
+	if fd := emptyItems(m); fd != nil {
+		// A list with nothing in it is still a list; see [emptyItems].
+		decoded[fd.JSONName()] = []any{}
+	}
 
 	b := &bytes.Buffer{}
 	if err := emit(b, decoded, m.Descriptor(), indent); err != nil {

@@ -15,6 +15,8 @@ import (
 	"github.com/lesomnus/xli/xlitest"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -324,6 +326,65 @@ func TestTheFormats(t *testing.T) {
 		got := run(t, "holder", "get", "-o", "yaml", "@acme/admin")
 		x.Error(got.Err)
 		x.Contains(got.Err.Error(), "not a format")
+	})
+}
+
+// TestAnEmptyListIsAList: a list with nothing in it says the key its rows are
+// under, in every format that writes the answer's structure.
+//
+// It was `{}`, which a script reading `.items` read as null and a person read
+// as no answer at all.
+func TestAnEmptyListIsAList(t *testing.T) {
+	b, ctx := build(t)
+	conn := b.dialed(t, ctx)
+	as := b.travels(ctx)
+
+	run := func(t *testing.T, args ...string) string {
+		t.Helper()
+		got := xlitest.Harness{Cmd: rooted(t, conn), Ctx: as}.Run(t, append([]string{"robot", "list"}, args...)...)
+		require.NoError(t, got.Err)
+		return got.Stdout
+	}
+
+	t.Run("json", func(t *testing.T) {
+		x := require.New(t)
+		x.JSONEq(`{"items": []}`, run(t, "-o", "json"))
+	})
+	t.Run("protojson", func(t *testing.T) {
+		x := require.New(t)
+		got := run(t, "-o", "protojson")
+		x.JSONEq(`{"items": []}`, got)
+
+		res := &app.RobotListResponse{}
+		x.NoError(protojson.Unmarshal([]byte(got), res), "and protojson reads it back")
+	})
+	t.Run("prototext", func(t *testing.T) {
+		x := require.New(t)
+		got := run(t, "-o", "prototext")
+		x.Equal("items: []", strings.TrimSpace(got))
+
+		res := &app.RobotListResponse{}
+		x.NoError(prototext.Unmarshal([]byte(got), res), "and prototext reads it back")
+	})
+	t.Run("a template reads what json writes", func(t *testing.T) {
+		x := require.New(t)
+		x.Equal("0", strings.TrimSpace(run(t, "-o", "template={{len .items}}")))
+	})
+	t.Run("a table is as it was", func(t *testing.T) {
+		x := require.New(t)
+		x.Equal("(none)", strings.TrimSpace(run(t, "-o", "table")))
+	})
+
+	t.Run("and a list with rows is as it was", func(t *testing.T) {
+		x := require.New(t)
+		b.sow(ctx, x, b.Tenant, 1, "arm-")
+
+		var res struct {
+			Items []map[string]any `json:"items"`
+		}
+		x.NoError(json.Unmarshal([]byte(run(t, "-o", "json")), &res))
+		x.Len(res.Items, 1)
+		x.Regexp(`items:\s+\{`, run(t, "-o", "prototext"))
 	})
 }
 
