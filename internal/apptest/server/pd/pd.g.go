@@ -2657,7 +2657,7 @@ func filterHolder(f *apptest.HolderFilter) (predicate.Holder, error) {
 	return entHolder.And(ps...), nil
 }
 
-// HolderService is the prefix of every Rpc of that service, which is how a
+// HolderService is the prefix of every RPC of that service, which is how a
 // change is known to be about a Holder. A service is named for the entity it
 // is about, so the name carries it.
 var HolderService = watch.ServiceOf(apptest.HolderService_Get_FullMethodName)
@@ -3905,7 +3905,7 @@ func filterRobot(f *apptest.RobotFilter) (predicate.Robot, error) {
 	return entRobot.And(ps...), nil
 }
 
-// RobotService is the prefix of every Rpc of that service, which is how a
+// RobotService is the prefix of every RPC of that service, which is how a
 // change is known to be about a Robot. A service is named for the entity it
 // is about, so the name carries it.
 var RobotService = watch.ServiceOf(apptest.RobotService_Get_FullMethodName)
@@ -6932,7 +6932,7 @@ func (s guardedStint) Erase(ctx context.Context, req *apptest.StintRef) (*apptes
 // `past` package did not write (payday#151): what no read of the past could
 // be sure of, written by whoever asked. See [pastWrite].
 //
-// The Rpcs exist because the trail is an entity like any other and a test is
+// The RPCs exist because the trail is an entity like any other and a test is
 // far plainer for having them. A deployment serves none of the ones that
 // write: a trail somebody can edit is evidence of nothing.
 type Audit struct {
@@ -7114,9 +7114,9 @@ func (s notifyNotificationRecordGuard) Get(ctx context.Context, req *apptest.Not
 // Recorder writes one row of the trail for every write the generated
 // servers make, keeping as much of each as `content` says of its kind.
 //
-// It is not a layer and it does not override an Rpc. The servers call it
+// It is not a layer and it does not override an RPC. The servers call it
 // from inside the transaction that makes the write, so the row and the
-// record of it hold or fall together -- and so every Rpc that changes
+// record of it hold or fall together -- and so every RPC that changes
 // anything is on the trail without anybody having listed them.
 //
 //	content, err := c.Audit.Contents()
@@ -7281,7 +7281,7 @@ func (r recorder) Record(ctx context.Context, s bare.Server, c bare.Change) erro
 
 // notNull is `v` as a column that says it always has bytes takes it.
 //
-// The two drivers disagree about exactly one value: a nil `[]byte` is Sql
+// The two drivers disagree about exactly one value: a nil `[]byte` is SQL
 // NULL to pgx and an empty blob to SQLite's driver. So a nil bound to a NOT
 // NULL column is a write that passes on the database the tests run on and is
 // refused by the one the app is deployed on.
@@ -11309,7 +11309,7 @@ func (outboxRecorder) Snapshots(method string) bare.SnapshotOptions { return rou
 // lose exactly the one it was written to keep.
 //
 // It writes through `s.Db`, which is the client this transaction is running
-// on, and not through a server: there are no Rpcs on this entity, on
+// on, and not through a server: there are no RPCs on this entity, on
 // purpose -- see the note in payday's outbox.proto.
 func (outboxRecorder) Record(ctx context.Context, s bare.Server, c bare.Change) error {
 	k, err := pdid.From(keyBytes(c.Key))

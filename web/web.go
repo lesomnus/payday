@@ -74,7 +74,7 @@ import (
 //
 // Whether there is anything here. An address with nothing behind it used to be
 // refused, and that was right only while payday owned the whole mux: a
-// deployment that serves a login endpoint and no browser Rpcs is a real one,
+// deployment that serves a login endpoint and no browser RPCs is a real one,
 // and payday has no way to know the app has routes. See [config.HttpConfig].
 type Mux struct {
 	*http.ServeMux

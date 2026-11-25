@@ -128,11 +128,11 @@ func TestColumnsAndTemplateUseTheDeclaredContract(t *testing.T) {
 	require.NoError(t, unmarshalJson([]byte(fmt.Sprintf(`{"id":%q,"value":{"id":%q,"serial":"0042"},"action":"Patch"}`, id.String(), id.String())), watch, false))
 	var watched bytes.Buffer
 	require.NoError(t, Table(true).Print(&watched, watch))
-	require.Equal(t, "ACTION NUMBER DETAIL.RESULT Id Patch 0042 - "+id.String(), strings.Join(strings.Fields(watched.String()), " "))
+	require.Equal(t, "ACTION NUMBER DETAIL.RESULT ID Patch 0042 - "+id.String(), strings.Join(strings.Fields(watched.String()), " "))
 	require.NoError(t, unmarshalJson([]byte(fmt.Sprintf(`{"id":%q,"action":"Erase"}`, id.String())), watch, false))
 	watched.Reset()
 	require.NoError(t, Table(true).Print(&watched, watch))
-	require.Equal(t, "ACTION NUMBER DETAIL.RESULT Id Erase - - "+id.String(), strings.Join(strings.Fields(watched.String()), " "))
+	require.Equal(t, "ACTION NUMBER DETAIL.RESULT ID Erase - - "+id.String(), strings.Join(strings.Fields(watched.String()), " "))
 
 	require.NoError(t, unmarshalJson([]byte(`{"serial":"x"}`), m, false))
 	var out bytes.Buffer

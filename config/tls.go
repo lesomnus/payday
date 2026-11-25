@@ -52,7 +52,7 @@ type TlsConfig struct {
 	ClientCertOptional bool `yaml:"client_cert_optional"`
 }
 
-// Active reports whether Tls should be used for the server.
+// Active reports whether TLS should be used for the server.
 //
 // A client CA bundle counts, and that is not obvious: it names nothing the
 // server presents, so a configuration holding only that one looks like a
@@ -116,7 +116,7 @@ func (c TlsConfig) Server() (*tls.Config, error) {
 	return v, nil
 }
 
-// Credentials builds gRPC transport credentials from the Tls configuration.
+// Credentials builds gRPC transport credentials from the TLS configuration.
 // It returns insecure credentials when TLS is not configured, so the caller
 // can pass the result to grpc.Creds unconditionally.
 func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
@@ -131,7 +131,7 @@ func (c TlsConfig) Credentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(cfg), nil
 }
 
-// DialConfig is Tls for a connection this app **makes**, which is the other
+// DialConfig is TLS for a connection this app **makes**, which is the other
 // half of [TlsConfig] and a different shape.
 //
 // A server proves who it is and decides whether to ask the same of a caller. A
@@ -180,7 +180,7 @@ type DialConfig struct {
 	ServerName string `yaml:"server_name"`
 }
 
-// Active reports whether this connection should use Tls.
+// Active reports whether this connection should use TLS.
 func (c DialConfig) Active() bool {
 	return c.Enabled || !c.Ca.IsZero() || !c.Cert.IsZero() || !c.Key.IsZero()
 }
@@ -196,7 +196,7 @@ func (c DialConfig) Active() bool {
 func (c DialConfig) Credentials() (credentials.TransportCredentials, error) {
 	if !c.Active() {
 		plainDialSaid.Do(func() {
-			slog.Warn("config: dialling without Tls; anything sent on this connection " +
+			slog.Warn("config: dialling without TLS; anything sent on this connection " +
 				"is readable by whatever is between here and there")
 		})
 

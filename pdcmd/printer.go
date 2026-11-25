@@ -170,7 +170,7 @@ var Name Printer = PrinterFunc(func(w io.Writer, m proto.Message) error {
 	return nil
 })
 
-// Template renders with `text/template` over the message decoded as Json.
+// Template renders with `text/template` over the message decoded as JSON.
 //
 // Over the decoded JSON rather than over the protobuf message, so that the
 // names in a template are the names in `-o json` -- `{{.alias}}`, not
@@ -342,7 +342,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptions
 	add("ALIAS", "alias", func(v protoreflect.Value) string { return v.String() })
 	add("NAME", "name", func(v protoreflect.Value) string { return v.String() })
 	if wide {
-		add("Id", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
+		add("ID", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 		add("TENANT", "tenant_id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 	}
 	add("AGE", "date_created", func(v protoreflect.Value) string { return age(v) })
@@ -351,7 +351,7 @@ func columnsOf(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptions
 		// Nothing the field-number rule reserves, which is a legitimate entity
 		// -- `Reading` in apptest has no alias and no name. The identifier is
 		// the one thing every entity has, so a table of it is still a table.
-		add("Id", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
+		add("ID", "id", func(v protoreflect.Value) string { return uuidOf(v.Bytes()) })
 	}
 
 	return vs, nil
@@ -411,7 +411,7 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptio
 	for _, c := range cols {
 		if c.key {
 			// The item names the row itself, and says so for one that is gone
-			// as well. Two Id columns would be the same uuid twice.
+			// as well. Two ID columns would be the same uuid twice.
 			continue
 		}
 
@@ -425,7 +425,7 @@ func itemColumns(d protoreflect.MessageDescriptor, wide bool, opts ...PrintOptio
 		}})
 	}
 
-	return append(vs, column{head: "Id", read: func(m protoreflect.Message) string {
+	return append(vs, column{head: "ID", read: func(m protoreflect.Message) string {
 		if !m.Has(id) {
 			return "-"
 		}

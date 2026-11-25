@@ -605,7 +605,7 @@ func CheckOverlayFile(p string) error {
 			"contract -- every field of every message in it, including the ones the generator "+
 			"wrote.\n\n"+
 			"    %s\n\n"+
-			"Delete the line. An overlay adds messages and Rpcs; what the file **is** belongs "+
+			"Delete the line. An overlay adds messages and RPCs; what the file **is** belongs "+
 			"to the contract, which is generated",
 		filepath.Base(p), strings.TrimSpace(string(b[m[0]:m[1]]))+" ...")
 }

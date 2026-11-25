@@ -337,7 +337,7 @@ func WithPath(p string) Option { return func(s *Sessions) { s.path = p } }
 // it is for an app deliberately embedded cross-site.
 func WithSameSite(v http.SameSite) Option { return func(s *Sessions) { s.sameSite = v } }
 
-// Insecure serves the cookie without `Secure`, for a checkout over plain Http.
+// Insecure serves the cookie without `Secure`, for a checkout over plain HTTP.
 //
 // It says so in the log, once per process, for the reason [auth.Plain] does:
 // the way this goes wrong is silence. A session cookie without `Secure` is one
