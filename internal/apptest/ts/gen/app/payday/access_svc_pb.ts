@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/payday/access_svc.g.proto.
  */
 export const file_app_payday_access_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("Ch1hcHAvcGF5ZGF5L2FjY2Vzc19zdmMuZy5wcm90bxIDYXBwIlIKEEFjY2Vzc0dldFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLkFjY2Vzc1JlZhIhCgZzZWxlY3QYAiABKAsyES5hcHAuQWNjZXNzU2VsZWN0IigKCUFjY2Vzc1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5IvcBCgxBY2Nlc3NTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSDAoEa2luZBgLIAEoCBIOCgZyZXN1bHQYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEhcKD2FjdG9yX3RlbmFudF9pZBgQIAEoCBINCgV2YWx1ZRgRIAEoCBIOCgZkb21haW4YEyABKAgSEAoIc3ViamVjdHMYFCABKAgSFQoNc3ViamVjdF9jb3VudBgVIAEoCCJ6ChFBY2Nlc3NMaXN0UmVxdWVzdBIiCgdmaWx0ZXJzGAEgAygLMhEuYXBwLkFjY2Vzc0ZpbHRlchITCgRzaXplGAIgASgFQgWqAQIIAhIUCgVhZnRlchgDIAEoCUIFqgECCAISFgoHcmV2ZXJzZRgEIAEoCEIFqgECCAIiRQoSQWNjZXNzTGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkFjY2VzcxITCgRuZXh0GAIgASgJQgWqAQIIAiJyCgxBY2Nlc3NGaWx0ZXISGAoIYWN0b3JfaWQYASABKAxCBuqCFgIQQBIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIfCg9hY3Rvcl90ZW5hbnRfaWQYAyABKAxCBuqCFgIQQBIMCgRraW5kGAQgASgJMnMKDUFjY2Vzc1NlcnZpY2USKQoDR2V0EhUuYXBwLkFjY2Vzc0dldFJlcXVlc3QaCy5hcHAuQWNjZXNzEjcKBExpc3QSFi5hcHAuQWNjZXNzTGlzdFJlcXVlc3QaFy5hcHAuQWNjZXNzTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_access, file_orm]);
+  fileDesc("Ch1hcHAvcGF5ZGF5L2FjY2Vzc19zdmMuZy5wcm90bxIDYXBwIlIKEEFjY2Vzc0dldFJlcXVlc3QSGwoDcmVmGAEgASgLMg4uYXBwLkFjY2Vzc1JlZhIhCgZzZWxlY3QYAiABKAsyES5hcHAuQWNjZXNzU2VsZWN0IigKCUFjY2Vzc1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5IvcBCgxBY2Nlc3NTZWxlY3QSCwoDYWxsGAEgASgIEhEKCXRlbmFudF9pZBgCIAEoCBIQCghhY3Rvcl9pZBgIIAEoCBIQCgh0cmFjZV9pZBgJIAEoCBIOCgZhY3Rpb24YCiABKAgSDAoEa2luZBgLIAEoCBIOCgZyZXN1bHQYDCABKAgSFAoMZGF0ZV9jcmVhdGVkGA8gASgIEhcKD2FjdG9yX3RlbmFudF9pZBgQIAEoCBINCgV2YWx1ZRgRIAEoCBIOCgZkb21haW4YEyABKAgSEAoIc3ViamVjdHMYFCABKAgSFQoNc3ViamVjdF9jb3VudBgVIAEoCCKdAQoRQWNjZXNzTGlzdFJlcXVlc3QSIgoHZmlsdGVycxgBIAMoCzIRLmFwcC5BY2Nlc3NGaWx0ZXISEwoEc2l6ZRgCIAEoBUIFqgECCAISFAoFYWZ0ZXIYAyABKAlCBaoBAggCEhYKB3JldmVyc2UYBCABKAhCBaoBAggCEiEKBnNlbGVjdBgGIAEoCzIRLmFwcC5BY2Nlc3NTZWxlY3QiRQoSQWNjZXNzTGlzdFJlc3BvbnNlEhoKBWl0ZW1zGAEgAygLMgsuYXBwLkFjY2VzcxITCgRuZXh0GAIgASgJQgWqAQIIAiJyCgxBY2Nlc3NGaWx0ZXISGAoIYWN0b3JfaWQYASABKAxCBuqCFgIQQBIZCgl0ZW5hbnRfaWQYAiABKAxCBuqCFgIQQBIfCg9hY3Rvcl90ZW5hbnRfaWQYAyABKAxCBuqCFgIQQBIMCgRraW5kGAQgASgJMnMKDUFjY2Vzc1NlcnZpY2USKQoDR2V0EhUuYXBwLkFjY2Vzc0dldFJlcXVlc3QaCy5hcHAuQWNjZXNzEjcKBExpc3QSFi5hcHAuQWNjZXNzTGlzdFJlcXVlc3QaFy5hcHAuQWNjZXNzTGlzdFJlc3BvbnNlQi1aK2dpdGh1Yi5jb20vbGVzb21udXMvcGF5ZGF5L2ludGVybmFsL2FwcHRlc3RiCGVkaXRpb25zcOgH", [file_app_payday_access, file_orm]);
 
 /**
  * @generated from message app.AccessGetRequest
@@ -177,6 +177,20 @@ export type AccessListRequest = Message<"app.AccessListRequest"> & {
    * @generated from field: bool reverse = 4 [features.field_presence = IMPLICIT];
    */
   reverse: boolean;
+
+  /**
+   * Which fields of each row to answer with, and which edges filled and how
+   * deep, as a Get's select says it. Unset is what a list answers without
+   * one. Each row is read as a Get of it with this select would read it, each
+   * edge through what the caller may see of its entity; a list costs one
+   * read for the rows and one for each edge selected, at any depth, however
+   * many rows the page holds.
+   *
+   * Field 6 in every entity: 5 is the order's, declared or not.
+   *
+   * @generated from field: app.AccessSelect select = 6;
+   */
+  select?: AccessSelect | undefined;
 };
 
 /**

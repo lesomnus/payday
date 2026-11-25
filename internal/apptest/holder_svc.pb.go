@@ -1820,6 +1820,7 @@ type HolderListRequest struct {
 	xxx_hidden_Size    int32                  `protobuf:"varint,2,opt,name=size"`
 	xxx_hidden_After   string                 `protobuf:"bytes,3,opt,name=after"`
 	xxx_hidden_Reverse bool                   `protobuf:"varint,4,opt,name=reverse"`
+	xxx_hidden_Select  *HolderSelect          `protobuf:"bytes,6,opt,name=select"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1879,6 +1880,13 @@ func (x *HolderListRequest) GetReverse() bool {
 	return false
 }
 
+func (x *HolderListRequest) GetSelect() *HolderSelect {
+	if x != nil {
+		return x.xxx_hidden_Select
+	}
+	return nil
+}
+
 func (x *HolderListRequest) SetFilters(v []*HolderFilter) {
 	x.xxx_hidden_Filters = &v
 }
@@ -1893,6 +1901,21 @@ func (x *HolderListRequest) SetAfter(v string) {
 
 func (x *HolderListRequest) SetReverse(v bool) {
 	x.xxx_hidden_Reverse = v
+}
+
+func (x *HolderListRequest) SetSelect(v *HolderSelect) {
+	x.xxx_hidden_Select = v
+}
+
+func (x *HolderListRequest) HasSelect() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Select != nil
+}
+
+func (x *HolderListRequest) ClearSelect() {
+	x.xxx_hidden_Select = nil
 }
 
 type HolderListRequest_builder struct {
@@ -1915,6 +1938,15 @@ type HolderListRequest_builder struct {
 	// from the other end. A cursor is of the way it was read, so the next page
 	// carries on that way, and one of the other way is refused.
 	Reverse bool
+	// Which fields of each row to answer with, and which edges filled and how
+	// deep, as a Get's select says it. Unset is what a list answers without
+	// one. Each row is read as a Get of it with this select would read it, each
+	// edge through what the caller may see of its entity; a list costs one
+	// read for the rows and one for each edge selected, at any depth, however
+	// many rows the page holds.
+	//
+	// Field 6 in every entity: 5 is the order's, declared or not.
+	Select *HolderSelect
 }
 
 func (b0 HolderListRequest_builder) Build() *HolderListRequest {
@@ -1925,6 +1957,7 @@ func (b0 HolderListRequest_builder) Build() *HolderListRequest {
 	x.xxx_hidden_Size = b.Size
 	x.xxx_hidden_After = b.After
 	x.xxx_hidden_Reverse = b.Reverse
+	x.xxx_hidden_Select = b.Select
 	return m0
 }
 
@@ -2577,12 +2610,13 @@ const file_app_payday_holder_svc_g_proto_rawDesc = "" +
 	"\x03ref\x18\x01 \x01(\v2\x0e.app.HolderRefR\x03ref\x12\"\n" +
 	"\x05patch\x18\x02 \x01(\v2\f.patch.PatchR\x05patch\"-\n" +
 	"\x13HolderEraseResponse\x12\x16\n" +
-	"\x06erased\x18\x01 \x01(\bR\x06erased\"\x99\x01\n" +
+	"\x06erased\x18\x01 \x01(\bR\x06erased\"\xc4\x01\n" +
 	"\x11HolderListRequest\x12+\n" +
 	"\afilters\x18\x01 \x03(\v2\x11.app.HolderFilterR\afilters\x12\x19\n" +
 	"\x04size\x18\x02 \x01(\x05B\x05\xaa\x01\x02\b\x02R\x04size\x12\x1b\n" +
 	"\x05after\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x02R\x05after\x12\x1f\n" +
-	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\"R\n" +
+	"\areverse\x18\x04 \x01(\bB\x05\xaa\x01\x02\b\x02R\areverse\x12)\n" +
+	"\x06select\x18\x06 \x01(\v2\x11.app.HolderSelectR\x06select\"R\n" +
 	"\x12HolderListResponse\x12!\n" +
 	"\x05items\x18\x01 \x03(\v2\v.app.HolderR\x05items\x12\x19\n" +
 	"\x04next\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x02R\x04next\"\xca\x01\n" +
@@ -2666,35 +2700,36 @@ var file_app_payday_holder_svc_g_proto_depIdxs = []int32{
 	2,  // 16: app.HolderApplyRequest.ref:type_name -> app.HolderRef
 	25, // 17: app.HolderApplyRequest.patch:type_name -> patch.Patch
 	10, // 18: app.HolderListRequest.filters:type_name -> app.HolderFilter
-	26, // 19: app.HolderListResponse.items:type_name -> app.Holder
-	2,  // 20: app.HolderFilter.ref:type_name -> app.HolderRef
-	19, // 21: app.HolderFilter.tenant:type_name -> app.TenantRef
-	18, // 22: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
-	10, // 23: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
-	13, // 24: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
-	26, // 25: app.HolderWatchItem.value:type_name -> app.Holder
-	26, // 26: app.HolderMembershipsResponse.items:type_name -> app.Holder
-	0,  // 27: app.HolderService.Add:input_type -> app.HolderAddRequest
-	1,  // 28: app.HolderService.Get:input_type -> app.HolderGetRequest
-	5,  // 29: app.HolderService.Patch:input_type -> app.HolderPatchRequest
-	6,  // 30: app.HolderService.Apply:input_type -> app.HolderApplyRequest
-	2,  // 31: app.HolderService.Erase:input_type -> app.HolderRef
-	8,  // 32: app.HolderService.List:input_type -> app.HolderListRequest
-	11, // 33: app.HolderService.Watch:input_type -> app.HolderWatchRequest
-	14, // 34: app.HolderService.Memberships:input_type -> app.HolderMembershipsRequest
-	26, // 35: app.HolderService.Add:output_type -> app.Holder
-	26, // 36: app.HolderService.Get:output_type -> app.Holder
-	26, // 37: app.HolderService.Patch:output_type -> app.Holder
-	26, // 38: app.HolderService.Apply:output_type -> app.Holder
-	7,  // 39: app.HolderService.Erase:output_type -> app.HolderEraseResponse
-	9,  // 40: app.HolderService.List:output_type -> app.HolderListResponse
-	12, // 41: app.HolderService.Watch:output_type -> app.HolderWatchResponse
-	15, // 42: app.HolderService.Memberships:output_type -> app.HolderMembershipsResponse
-	35, // [35:43] is the sub-list for method output_type
-	27, // [27:35] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	4,  // 19: app.HolderListRequest.select:type_name -> app.HolderSelect
+	26, // 20: app.HolderListResponse.items:type_name -> app.Holder
+	2,  // 21: app.HolderFilter.ref:type_name -> app.HolderRef
+	19, // 22: app.HolderFilter.tenant:type_name -> app.TenantRef
+	18, // 23: app.HolderFilter.labels:type_name -> app.HolderFilter.LabelsEntry
+	10, // 24: app.HolderWatchRequest.filters:type_name -> app.HolderFilter
+	13, // 25: app.HolderWatchResponse.items:type_name -> app.HolderWatchItem
+	26, // 26: app.HolderWatchItem.value:type_name -> app.Holder
+	26, // 27: app.HolderMembershipsResponse.items:type_name -> app.Holder
+	0,  // 28: app.HolderService.Add:input_type -> app.HolderAddRequest
+	1,  // 29: app.HolderService.Get:input_type -> app.HolderGetRequest
+	5,  // 30: app.HolderService.Patch:input_type -> app.HolderPatchRequest
+	6,  // 31: app.HolderService.Apply:input_type -> app.HolderApplyRequest
+	2,  // 32: app.HolderService.Erase:input_type -> app.HolderRef
+	8,  // 33: app.HolderService.List:input_type -> app.HolderListRequest
+	11, // 34: app.HolderService.Watch:input_type -> app.HolderWatchRequest
+	14, // 35: app.HolderService.Memberships:input_type -> app.HolderMembershipsRequest
+	26, // 36: app.HolderService.Add:output_type -> app.Holder
+	26, // 37: app.HolderService.Get:output_type -> app.Holder
+	26, // 38: app.HolderService.Patch:output_type -> app.Holder
+	26, // 39: app.HolderService.Apply:output_type -> app.Holder
+	7,  // 40: app.HolderService.Erase:output_type -> app.HolderEraseResponse
+	9,  // 41: app.HolderService.List:output_type -> app.HolderListResponse
+	12, // 42: app.HolderService.Watch:output_type -> app.HolderWatchResponse
+	15, // 43: app.HolderService.Memberships:output_type -> app.HolderMembershipsResponse
+	36, // [36:44] is the sub-list for method output_type
+	28, // [28:36] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_app_payday_holder_svc_g_proto_init() }
