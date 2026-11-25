@@ -360,6 +360,61 @@ describe('a filterless list is not watched', () => {
 	})
 })
 
+describe('a list a Watch does not take is not watched', () => {
+	it('opens no stream, and reads once, for a list over a tenant', { timeout: 30_000 }, async () => {
+		let streams = 0
+		let lists = 0
+		const q = new Queries(
+			store,
+			counting((kind, method) => {
+				if (kind === 'stream') streams++
+				if (kind === 'unary' && method === 'List') lists++
+			}),
+			entities,
+		)
+
+		// A filter the List takes and the generated Watch refuses: it names a
+		// tenant and no row. Opened anyway, the watch was refused at once, the
+		// reopen path read the list a second time, and the second watch was
+		// refused too -- a list that was never live, for three calls more.
+		await add(named('tw'))
+		const req = { filters: [{ tenant: { key: { case: 'alias' as const, value: 'acme' } } }], size: 100 }
+		const e = q.get(RobotService.method.list, req)
+		await new Promise<void>((ok) => q.subscribe(e.key, () => ok()))
+		expect(q.get(RobotService.method.list, req).data?.items.length).toBeGreaterThan(0)
+
+		await new Promise((ok) => setTimeout(ok, 300))
+		expect(streams).toBe(0)
+		expect(lists).toBe(1)
+
+		// And one filter that names a row beside one that does not is the same:
+		// the Watch refuses the whole request.
+		const made = await add(named('tm'))
+		const mixed = {
+			filters: [
+				{ ref: { key: { case: 'id' as const, value: made.id } } },
+				{ tenant: { key: { case: 'alias' as const, value: 'acme' } } },
+			],
+		}
+		const m = q.get(RobotService.method.list, mixed)
+		await new Promise<void>((ok) => q.subscribe(m.key, () => ok()))
+		await new Promise((ok) => setTimeout(ok, 300))
+		expect(streams).toBe(0)
+	})
+
+	it('which the server does refuse', async () => {
+		const c = createClient(RobotService, transport)
+		const s = c.watch({ filters: [{ tenant: { key: { case: 'alias', value: 'acme' } } }] })
+		await expect(
+			(async () => {
+				for await (const _ of s) {
+					// nothing arrives
+				}
+			})(),
+		).rejects.toThrow('a watch says which rows it is about by naming them')
+	})
+})
+
 describe('a query nobody is drawing rests', () => {
 	it('is not revalidated at rest, and is read once when drawn again', { timeout: 30_000 }, async () => {
 		let lists = 0

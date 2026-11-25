@@ -2373,10 +2373,12 @@ var HolderService = watch.ServiceOf(apptest.HolderService_Get_FullMethodName)
 // Watch answers with the Holders this caller may see, as they are now and as
 // they change.
 //
-// What is sent is **state and never a delta**, which is what makes a stream
-// that missed something still correct: the next item about a row carries the
-// whole of it, so a client converges rather than replays. It is also what
-// makes the first message safe to duplicate against the ones after it.
+// What is sent is **state and never a delta**: an item is the whole of a row
+// as the caller's Get reads it when a write touches it, which is what makes
+// the first message safe to duplicate against the ones after it. A row that
+// leaves the caller's sight with no write to it is not said; and a stream
+// that cannot keep up is ended rather than let skip, so the one that is open
+// has missed nothing.
 func (s sinkHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
 	ctx := out.Context()
 
@@ -2481,9 +2483,9 @@ func (s sinkHolder) watchNow(
 }
 
 // watchRead answers with the row as it is now, or nil when it is no longer
-// one this caller may see -- erased, walled off, or no longer matching what
-// they asked for. The three are deliberately indistinguishable to a caller:
-// a stream that told them apart would be saying which rows stopped being
+// one this caller may see -- erased, or walled off -- or not one this stream
+// names. The first two are deliberately indistinguishable to a caller: a
+// stream that told them apart would be saying which rows stopped being
 // theirs, which is the thing the wall is for.
 //
 // The Get is what keeps the wall out of this file. It goes through the same
@@ -3453,10 +3455,12 @@ var RobotService = watch.ServiceOf(apptest.RobotService_Get_FullMethodName)
 // Watch answers with the Robots this caller may see, as they are now and as
 // they change.
 //
-// What is sent is **state and never a delta**, which is what makes a stream
-// that missed something still correct: the next item about a row carries the
-// whole of it, so a client converges rather than replays. It is also what
-// makes the first message safe to duplicate against the ones after it.
+// What is sent is **state and never a delta**: an item is the whole of a row
+// as the caller's Get reads it when a write touches it, which is what makes
+// the first message safe to duplicate against the ones after it. A row that
+// leaves the caller's sight with no write to it is not said; and a stream
+// that cannot keep up is ended rather than let skip, so the one that is open
+// has missed nothing.
 func (s sinkRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStreamingServer[apptest.RobotWatchResponse]) error {
 	ctx := out.Context()
 
@@ -3561,9 +3565,9 @@ func (s sinkRobot) watchNow(
 }
 
 // watchRead answers with the row as it is now, or nil when it is no longer
-// one this caller may see -- erased, walled off, or no longer matching what
-// they asked for. The three are deliberately indistinguishable to a caller:
-// a stream that told them apart would be saying which rows stopped being
+// one this caller may see -- erased, or walled off -- or not one this stream
+// names. The first two are deliberately indistinguishable to a caller: a
+// stream that told them apart would be saying which rows stopped being
 // theirs, which is the thing the wall is for.
 //
 // The Get is what keeps the wall out of this file. It goes through the same
