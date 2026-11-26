@@ -128,15 +128,12 @@ message Holder {
     // payday's own, so that generation finds it whatever an app called the
     // proto package. An app never writes this; see `Own` in entity.proto.
     own: OWN_HOLDER
-
     domain: 2
-
     // Nothing about tenancy, which **is** the declaration: behind the wall, by
     // the edge called `tenant`. Getting that wrong hides every row, which is
     // noticed; getting it wrong the other way shows every row to everybody,
     // which is not -- so the assumption is the loud one, and the quiet one
     // (`global: {}`) is the thing that has to be written.
-
     // Watchable, which is here and not in an app because an app cannot add it:
     // an overlay may add fields and indexes to payday's entity and not to this
     // option, so a deployment has no way to declare payday's own entity
@@ -150,7 +147,6 @@ message Holder {
     // A `Watch` nobody opens costs a generated method and nothing else: the
     // outbox and the drain are already there for whatever else an app declares.
     watch: {}
-
     // And the page a watch is, over and over. Without one there is no order to
     // read in, nothing for a filter to be about, and no cap on the first
     // message -- which is a stream whose opening frame is the whole table.
@@ -163,7 +159,6 @@ message Holder {
         {field: {name: "date_created"}},
         {field: {name: "id"}}
       ]
-
       // `tenant` as well as `ref`, because "who is in this tenant" is the
       // question a deployment administering its customers asks first and could
       // not ask at all.
@@ -181,8 +176,8 @@ message Holder {
         {name: "tenant"},
         {name: "labels"}
       ]
-      size: 20
-      max: 100
+      size: 40
+      max: 120
     }
   };
   // The subject an external identity provider knows this holder by: what

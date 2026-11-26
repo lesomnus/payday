@@ -48,6 +48,15 @@ message Holder {
     nullable: true
   }];
 
+  // A page of people larger than payday's twenty, and a cap above its hundred:
+  // how many of its people a page holds is the app's to say of its Holder, as
+  // it is of its own entities. What it leaves unsaid -- the order, what a
+  // filter may be about -- is payday's. The two numbers are payday's 20 and
+  // 100 moved enough that a test tells them apart.
+  option (payday.entity) = {
+    list: {size: 40, max: 120}
+  };
+
   // By account, since every call an account makes is resolved by it: without
   // the index each one reads every holder there is (`pd gen` warns).
   // An Apply, which payday's Holder does not declare and this app's tests

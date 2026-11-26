@@ -232,12 +232,59 @@ func TestAnOverlayAddsAnIndexToPaydaysEntity(t *testing.T) {
 `
 		b, err := os.ReadFile(at)
 		x.NoError(err)
-		x.NoError(os.WriteFile(at, []byte(strings.Replace(string(b), "message Holder {\n", tenancy, 1)), 0o644))
+		// Into the option the overlay declares already, when it declares one:
+		// the reference app's says its Holder's page there.
+		src := string(b)
+		if strings.Contains(src, "  option (payday.entity) = {\n") {
+			src = strings.Replace(src, "  option (payday.entity) = {\n", "  option (payday.entity) = {\n    tenanted: {via: \"tenant\"}\n", 1)
+		} else {
+			src = strings.Replace(src, "message Holder {\n", tenancy, 1)
+		}
+		x.NoError(os.WriteFile(at, []byte(src), 0o644))
 
 		err = pdcli.Gen{Layout: l}.Run(t.Context())
 		x.Error(err, "an overlay wrote payday's tenancy quietly")
 		x.Contains(err.Error(), "(payday.entity) tenanted is not payday's")
 	})
+}
+
+// TestAnOverlayOfPaydaysEntitySaysWhatItSays: a value an overlay of payday's
+// entity says where payday's says another is what the copy says, and then
+// what generation allows or refuses by its path.
+//
+// The merge keeps the base's word for a scalar both sides set, so `list: {max:
+// 500}` on payday's Holder was a copy that still said `max: 100` and a server
+// that capped a page at a hundred, with nothing printed. The
+// reference app says a page of forty and a cap of a hundred and twenty on its
+// Holder, and that is what the copy and the server say; a domain said on it is
+// refused, where it was merged away.
+func TestAnOverlayOfPaydaysEntitySaysWhatItSays(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+	x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+
+	b, err := os.ReadFile(filepath.Join(l.Root, l.DirPd(), "holder.proto"))
+	x.NoError(err)
+	x.Contains(string(b), "      size: 40\n      max: 120\n", "the overlay's page is not the copy's")
+	x.Contains(string(b), `{name: "labels"}`, "payday's rest of the list went")
+
+	b, err = os.ReadFile(l.Path(pdcli.DirPd_, "pd.g.go"))
+	x.NoError(err)
+	x.Regexp(`HolderPageSize\s+= 40\n`, string(b))
+	x.Regexp(`HolderPageLimit = 120\n`, string(b))
+	x.Regexp(`TenantPageLimit = 100\n`, string(b), "and Tenant's is payday's, which it did not say")
+
+	at := filepath.Join(l.Path(pdcli.DirExt), "payday", "holder.ext.proto")
+	b, err = os.ReadFile(at)
+	x.NoError(err)
+	const page = "    list: {size: 40, max: 120}\n"
+	x.Contains(string(b), page)
+	x.NoError(os.WriteFile(at, []byte(strings.Replace(string(b), page, page+"    domain: 99\n", 1)), 0o644))
+
+	err = pdcli.Gen{Layout: l}.Run(t.Context())
+	x.Error(err, "an overlay renumbered payday's Holder quietly")
+	x.Contains(err.Error(), "(payday.entity) domain is not payday's")
 }
 
 // TestAnOverlayOfPaydaysEntityKeepsWhatItReserves.
