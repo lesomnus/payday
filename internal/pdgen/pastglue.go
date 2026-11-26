@@ -751,6 +751,7 @@ func emitAuditPast(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportP
 		g.P("	", root.Ident(name+"ServiceServer"))
 		g.P("}")
 		g.P("")
+		shadowed(g, s, root, "Audit", lower, name, "Add", "AddMany", "Patch", "Apply", "Erase")
 
 		// Every verb that writes, of the ones the entity has: what a template
 		// of payday's declares is what is served, so it is read off it rather

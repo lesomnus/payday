@@ -9,6 +9,7 @@ import (
 	"github.com/protobuf-orm/ent/dialect"
 	"github.com/protobuf-orm/protoc-gen-orm-ent/runtime/enttx"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 	"github.com/lesomnus/payday/internal/apptest/server/bare"
@@ -81,6 +82,14 @@ type jointsRobot struct {
 
 func (s joints) Robot() app.RobotServiceServer {
 	return jointsRobot{s, s.Next().Robot()}
+}
+
+// Joint is the robot service's: `RobotService/Joint` is called what this
+// layer's accessor of joints is called, and with the two at one depth Go
+// promotes neither. A layer an app writes says the RPC itself, as the layers
+// payday writes do.
+func (s jointsRobot) Joint(out grpc.BidiStreamingServer[app.RobotRef, app.Robot]) error {
+	return s.RobotServiceServer.Joint(out)
 }
 
 type jointsJoint struct {

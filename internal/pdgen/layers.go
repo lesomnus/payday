@@ -148,6 +148,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("TenantServiceServer"))
 	g.P("}")
 	g.P("")
+	shadowed(g, s, root, "Gate", "gateTenant", "Tenant", "Erase")
 	ruled(g, p, root, "Gate", "Tenant", "s, s.Next().Tenant()", wrap)
 	g.P("// admit refuses every row: no tenant is served by an Add, nor by an")
 	g.P("// AddMany if the entity had one. A tenant is put up by whoever runs the")
@@ -175,6 +176,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("HolderServiceServer"))
 	g.P("}")
 	g.P("")
+	shadowed(g, s, root, "Gate", "gateHolder", "Holder")
 	ruled(g, p, root, "Gate", "Holder", "s, s.Next().Holder()", wrap)
 	g.P("// admit is the one thing about a holder this layer still says, and it is here")
 	g.P("// because it is the one that is not a predicate: the row does not exist yet,")
@@ -336,41 +338,8 @@ func ruled(g *protogen.GeneratedFile, p Paths, root protogen.GoImportPath, recv 
 // see past: a global row belongs to no tenant and is readable by everybody.
 func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath, wrap string, served map[string]bool) {
 	for _, v := range s.Sorted() {
-		// The tenant is refused outright above and the holder's gate is written
-		// out there too, with whatever an overlay added to it: a gate here as
-		// well would be a second type of the same name (#29).
-		if v.IsTenant || v.Own == pdpb.Own_OWN_HOLDER {
-			continue
-		}
-
-		// No Add, nothing to admit: the gate is the Add's rule. An entity no
-		// server writes is one of these.
-		if !v.Rpcs().HasAdd() && !v.Rpcs().HasAddMany() {
-			continue
-		}
-
-		// An entity that is not behind the wall has nothing to check. An entity
-		// that names its tenant with a column (`field:`) is refused a
-		// hand-written row by the audit layer.
-		walled := !v.IsGlobal && len(v.Via) > 0
-
-		var (
-			hop string
-			to  *Entity
-		)
-		if walled {
-			hop = v.Via[0]
-
-			e, ok := edge(v.Entity, hop)
-			if !ok {
-				walled = false
-			} else if to, ok = s.of(e.Target().FullName()); !ok {
-				walled = false
-			}
-		}
-		if !walled && len(v.Stamped) == 0 {
-			// Nothing to say about this entity at all: it is not behind the
-			// wall, and it declares no stamp a request must not assert.
+		walled, hop, to, ok := s.admitted(v)
+		if !ok {
 			continue
 		}
 
@@ -381,6 +350,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		g.P("	", root.Ident(name+"ServiceServer"))
 		g.P("}")
 		g.P("")
+		shadowed(g, s, root, "Gate", "gate"+name, name)
 		ruled(g, p, root, "Gate", name, "s, s.Next()."+name+"()", wrap)
 
 		if walled {
@@ -433,6 +403,47 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 
 		emitAdmitPatch(g, v, s, root)
 	}
+}
+
+// admitted says whether [emitAdmit] writes a `gate<E>` for `v`, and what it
+// asks: whether the row is behind the wall, by which edge, and of what. It is
+// apart so that what refuses an RPC by the types around its service
+// ([Schema.layersAround]) reads the same conditions the gate is written under.
+func (s *Schema) admitted(v *Entity) (walled bool, hop string, to *Entity, ok bool) {
+	// The tenant is refused outright above and the holder's gate is written
+	// out there too, with whatever an overlay added to it: a gate here as
+	// well would be a second type of the same name (#29).
+	if v.IsTenant || v.Own == pdpb.Own_OWN_HOLDER {
+		return false, "", nil, false
+	}
+
+	// No Add, nothing to admit: the gate is the Add's rule. An entity no
+	// server writes is one of these.
+	if !v.Rpcs().HasAdd() && !v.Rpcs().HasAddMany() {
+		return false, "", nil, false
+	}
+
+	// An entity that is not behind the wall has nothing to check. An entity
+	// that names its tenant with a column (`field:`) is refused a
+	// hand-written row by the audit layer.
+	walled = !v.IsGlobal && len(v.Via) > 0
+	if walled {
+		hop = v.Via[0]
+
+		e, found := edge(v.Entity, hop)
+		if !found {
+			walled = false
+		} else if to, found = s.of(e.Target().FullName()); !found {
+			walled = false
+		}
+	}
+	if !walled && len(v.Stamped) == 0 {
+		// Nothing to say about this entity at all: it is not behind the
+		// wall, and it declares no stamp a request must not assert.
+		return false, "", nil, false
+	}
+
+	return walled, hop, to, true
 }
 
 // emitAdmitPatch asks the same question of a `Patch` that moves an edge.
@@ -842,6 +853,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	", root.Ident("AuditServiceServer"))
 	g.P("}")
 	g.P("")
+	shadowed(g, s, root, "Audit", "auditService", s.Own(pdpb.Own_OWN_AUDIT).GoName(), "Add", "AddMany", "Patch", "Apply", "Erase")
 	g.P("func (s Audit) Audit() ", root.Ident("AuditServiceServer"), " {")
 	g.P("	return auditService{s, s.Next().Audit()}")
 	g.P("}")
@@ -1895,12 +1907,12 @@ func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("")
 
 	for _, v := range vs {
-		emitSecretOf(g, v, root)
+		emitSecretOf(g, s, v, root)
 	}
 }
 
 // emitSecretOf writes the wrapper for one entity that declared a secret.
-func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPath) {
+func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen.GoImportPath) {
 	name := e.GoName()
 	lower := "secret" + name
 
@@ -1913,6 +1925,7 @@ func emitSecretOf(g *protogen.GeneratedFile, e *Entity, root protogen.GoImportPa
 	g.P("	", root.Ident(name+"ServiceServer"))
 	g.P("}")
 	g.P("")
+	shadowed(g, s, root, "Secret", lower, name, "Add", "AddMany", "Get", "Patch", "Apply", "List", "Watch")
 
 	// The four that answer with the entity, of the ones it has.
 	for _, m := range []struct {

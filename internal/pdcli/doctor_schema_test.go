@@ -138,6 +138,22 @@ func TestDoctorRefusesAnAppFieldInAReservedHeaderSlot(t *testing.T) {
 	x.Contains(found(t, l), "reserved for alias")
 }
 
+// TestDoctorRefusesAnRpcCalledWhatATypeAroundItsServiceHolds: a name the
+// generator cannot forward, since a field holds it, is said here in the words
+// `pd gen` uses -- the service, the RPC, and what holds the name.
+func TestDoctorRefusesAnRpcCalledWhatATypeAroundItsServiceHolds(t *testing.T) {
+	x := require.New(t)
+	l := apptest(t, x)
+	at := l.Path(pdcli.DirProto, "app", "namesake.proto")
+	src := strings.Replace(clash, "domain: 14", "domain: 201", 1)
+	src = strings.Replace(src, "global: {}", "global: {}\n    erase: {hard: {}}", 1)
+	src += "\nmessage Word {}\n\nservice ClashService {\n  rpc Db(Word) returns (Word);\n}\n"
+	x.NoError(os.WriteFile(at, []byte(src), 0o644))
+	t.Cleanup(func() { _ = os.Remove(at) })
+
+	x.Contains(found(t, l), "pd gen would refuse this schema: ClashService/Db is called what bare.ClashServiceServer (from bare.Store) holds as a field")
+}
+
 // TestDoctorAsksAboutAKindKeptOffTheTrailThatHoldsASecret: a kind a check of
 // the rows does not read, whose rows are a way in, is one whose row added in
 // the database nothing finds (payday#115). The doctor says so, with the reason

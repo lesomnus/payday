@@ -199,12 +199,12 @@ func EmitIntercept(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.
 	}
 
 	for _, name := range order {
-		emitInterceptOf(g, name, by[name], root)
+		emitInterceptOf(g, s, name, by[name], root)
 	}
 }
 
 // emitInterceptOf writes the wrapper for one entity's service.
-func emitInterceptOf(g *protogen.GeneratedFile, name string, vs []interceptRpc, root protogen.GoImportPath) {
+func emitInterceptOf(g *protogen.GeneratedFile, s *Schema, name string, vs []interceptRpc, root protogen.GoImportPath) {
 	lower := "intercept" + name
 
 	g.P("func (s Intercept) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
@@ -216,6 +216,15 @@ func emitInterceptOf(g *protogen.GeneratedFile, name string, vs []interceptRpc, 
 	g.P("	", root.Ident(name+"ServiceServer"))
 	g.P("}")
 	g.P("")
+
+	// Every RPC but a client stream is written below, through an interceptor;
+	// a client stream has no single request to hand one and is promoted, so it
+	// is the one that can be shadowed.
+	wrapped := make([]string, 0, len(vs))
+	for _, v := range vs {
+		wrapped = append(wrapped, v.Rpc)
+	}
+	shadowed(g, s, root, "Intercept", lower, name, wrapped...)
 
 	for _, v := range vs {
 		if v.Stream {

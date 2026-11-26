@@ -78,6 +78,29 @@ service RobotService {
     // Moving a robot between operating cells requires the person to call directly.
     option (payday.method) = {direct: {}};
   }
+  // Seal, Reading, Job and Joint are here for their names. Each is called what
+  // another entity of this app is called, and every type a layer writes around
+  // this service embeds the layer's struct beside it -- a struct that has a
+  // method for every entity. Go promotes neither of two methods of one name at
+  // one depth, so an app whose RPC was called what one of its entities is
+  // called had a server that did not compile, in a file `pd gen` owns. One of
+  // each shape a method has, since each is written differently.
+  //
+  // What they do is read the robot named, through the wall, and answer it: the
+  // claim is about what reaches them and what refuses them, not about acts.
+  // Direct, like Move, so that the gate has a rule of its own for them.
+  rpc Seal(RobotRef) returns (Robot) {
+    option (payday.method) = {direct: {}};
+  }
+  rpc Reading(RobotRef) returns (stream Robot) {
+    option (payday.method) = {direct: {}};
+  }
+  rpc Job(stream RobotRef) returns (RobotJobResponse) {
+    option (payday.method) = {direct: {}};
+  }
+  rpc Joint(stream RobotRef) returns (stream Robot) {
+    option (payday.method) = {direct: {}};
+  }
 }
 
 service PairingService {
@@ -406,6 +429,12 @@ message RobotMoveRequest {
   // not a predicate: the row has not moved yet, so there is nothing to narrow.
   // It is read through the wall for the same reason the robot is.
   CellRef to = 2;
+}
+
+// RobotJobResponse is every robot a `Job` was sent, in the order it was sent
+// them.
+message RobotJobResponse {
+  repeated Robot items = 1;
 }
 
 message PairingAddRequest {

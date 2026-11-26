@@ -5790,6 +5790,34 @@ type gateRobot struct {
 	apptest.RobotServiceServer
 }
 
+// Seal is the service's: Gate answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s gateRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
+	return s.RobotServiceServer.Seal(ctx, req)
+}
+
+// Reading is the service's: Gate answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s gateRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
+	return s.RobotServiceServer.Reading(req, out)
+}
+
+// Job is the service's: Gate answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s gateRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
+	return s.RobotServiceServer.Job(out)
+}
+
+// Joint is the service's: Gate answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s gateRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
+	return s.RobotServiceServer.Joint(out)
+}
+
 func (s Gate) Robot() apptest.RobotServiceServer {
 	v := gateRobot{s, s.Next().Robot()}
 	v.RobotServiceServer = bare.RobotWithAddRule(v.RobotServiceServer, v.admit)
@@ -6233,6 +6261,48 @@ func (s guardedRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (
 	}
 
 	return s.RobotServiceServer.Move(ctx, req)
+}
+
+func (s guardedRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Seal_FullMethodName); err != nil {
+		return nil, err
+	}
+	if err := gate.AsAccount(ctx, apptest.RobotService_Seal_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Seal(ctx, req)
+}
+
+func (s guardedRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
+	if err := gate.Direct(out.Context(), apptest.RobotService_Reading_FullMethodName); err != nil {
+		return err
+	}
+	if err := gate.AsAccount(out.Context(), apptest.RobotService_Reading_FullMethodName, AccountMethod); err != nil {
+		return err
+	}
+
+	return s.RobotServiceServer.Reading(req, out)
+}
+
+func (s guardedRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
+	if err := gate.Direct(out.Context(), apptest.RobotService_Job_FullMethodName); err != nil {
+		return err
+	}
+	if err := gate.AsAccount(out.Context(), apptest.RobotService_Job_FullMethodName, AccountMethod); err != nil {
+		return err
+	}
+	return s.RobotServiceServer.Job(out)
+}
+
+func (s guardedRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
+	if err := gate.Direct(out.Context(), apptest.RobotService_Joint_FullMethodName); err != nil {
+		return err
+	}
+	if err := gate.AsAccount(out.Context(), apptest.RobotService_Joint_FullMethodName, AccountMethod); err != nil {
+		return err
+	}
+	return s.RobotServiceServer.Joint(out)
 }
 
 // guardedPairing enforces method declarations on in-process calls too.
@@ -10332,6 +10402,34 @@ type secretRobot struct {
 	apptest.RobotServiceServer
 }
 
+// Seal is the service's: Secret answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s secretRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
+	return s.RobotServiceServer.Seal(ctx, req)
+}
+
+// Reading is the service's: Secret answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s secretRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
+	return s.RobotServiceServer.Reading(req, out)
+}
+
+// Job is the service's: Secret answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s secretRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
+	return s.RobotServiceServer.Job(out)
+}
+
+// Joint is the service's: Secret answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s secretRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
+	return s.RobotServiceServer.Joint(out)
+}
+
 func (s secretRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
 	v, err := s.RobotServiceServer.Add(ctx, req)
 
@@ -10723,6 +10821,20 @@ type interceptRobot struct {
 	apptest.RobotServiceServer
 }
 
+// Job is the service's: Intercept answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s interceptRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
+	return s.RobotServiceServer.Job(out)
+}
+
+// Joint is the service's: Intercept answers to the name as well, and
+// where the two are at one depth neither is promoted. This is what
+// promotion would have been.
+func (s interceptRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
+	return s.RobotServiceServer.Joint(out)
+}
+
 func (s interceptRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_Add_FullMethodName, req, s.RobotServiceServer.Add)
@@ -10766,6 +10878,16 @@ func (s interceptRobot) Watch(req *apptest.RobotWatchRequest, out grpc.ServerStr
 func (s interceptRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_Move_FullMethodName, req, s.RobotServiceServer.Move)
+}
+
+func (s interceptRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Seal_FullMethodName, req, s.RobotServiceServer.Seal)
+}
+
+func (s interceptRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
+	return grpcx.RunStream(s.stream, s.RobotServiceServer,
+		apptest.RobotService_Reading_FullMethodName, req, out, s.RobotServiceServer.Reading)
 }
 
 func (s Intercept) Pairing() apptest.PairingServiceServer {
