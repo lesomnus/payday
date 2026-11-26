@@ -862,8 +862,8 @@ an overlay may add to one of payday's entities and may not change it.
 payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.
 Of its optional records, payday keeps every number they declare, and an app's own go at any other.
 Of its options, an overlay may add an index to (orm.message), and of Holder and Tenant switch a verb
-off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`;
-nothing else.
+off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`,
+and say their page, `(payday.entity) = {list: {size: <n>, max: <n>}}`; nothing else.
 
   app.Holder: 4 is payday's "alias" (string) and was redeclared as "handle" (string)
 ```
@@ -891,13 +891,22 @@ nothing and is not refused -- and is nothing an overlay needs to do.
 
 An overlay may add an **index**, as above. payday's entity declares
 `(orm.message)` too, and the two are merged: the overlay's indexes are appended
-to payday's. Nothing else in either option is the overlay's. `(payday.entity)` is
-payday's declaration, so an overlay that adds anything to it is refused.
+to payday's. Nothing else in either option is the overlay's -- but for the verbs
+and the page of `Holder` and `Tenant`, below. `(payday.entity)` is payday's
+declaration, so an overlay that adds anything to it is refused.
 `(payday.entity) = {tenanted: {via: "tenant"}}` on Holder is refused even though
 it restates the default, because saying nothing **is** Holder's declaration.
-Anything in `(orm.message)` other than an index is refused the same way, and
-where both sides set the same value, payday's is the one kept -- but for the
-verbs of `Holder` and `Tenant`.
+Anything in `(orm.message)` other than an index is refused the same way.
+
+A value the overlay says where payday's says another is refused the same way,
+and not merged away: `(payday.entity) = {domain: 99}` on Holder is
+
+```
+  app.Holder: (payday.entity) domain is not payday's; an overlay may say the page of payday's Holder and Tenant (`list: {size: <n>, max: <n>}`) and may not add anything else to payday's declaration
+```
+
+Saying one of payday's values again, as payday says it, changes nothing and
+passes.
 
 ### Switching a verb of payday's `Holder` and `Tenant`
 
@@ -936,6 +945,34 @@ message Tenant {
 
 The merged entity is what every generator reads, so a verb switched off is gone
 from the contract, the server, the clients and the command tree.
+
+### The page of payday's `Holder` and `Tenant`
+
+Each answers a list twenty rows at a time to a request that does not say, and a
+hundred at most however many it asks for. How many of its people or its
+customers a page holds is the app's to know, as it is of its own entities, so an
+overlay of either may say the page in `(payday.entity)`, `size` and `max`, each
+or both:
+
+```proto
+message Holder {
+  option (payday.entity) = {
+    list: {size: 50, max: 500}
+  };
+}
+```
+
+What it says is the page, in the server, and so at the command line -- `holder
+list` with no `-n` answers fifty, and `-n 1000` five hundred -- and in the page
+client, which ask it. What it leaves unsaid is payday's: `list: {max: 500}` is a
+page of twenty and a cap of five hundred. The page is held to what your own
+entities' is, in the same words: a `max` of none is refused, and so is a `size`
+above the `max`, which `list: {max: 10}` is, since payday's size is twenty. A
+request asking for more than the `max` gets the `max`, as from any entity.
+
+The rest of the list -- its order, what a filter may be about, how many filters
+one request may carry -- is what the wall and payday's own reads are written
+against, and stays payday's; so is the page of every other entity of payday's.
 
 What the gate asks of your own entities it asks of what an overlay adds to
 these. A field the overlay stamps (`(payday.field) = {stamped: true}`) is refused

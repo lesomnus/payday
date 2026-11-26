@@ -441,7 +441,7 @@ const file_app_payday_holder_proto_rawDesc = "" +
 	"\x02id\x1a\x05\n" +
 	"\x03ref\x1a\b\n" +
 	"\x06tenant\x1a\b\n" +
-	"\x06labels \x14(d:\x00H\x02B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
+	"\x06labels ((x:\x00H\x02B2Z+github.com/lesomnus/payday/internal/apptest\x92\x03\x02\b\x02b\beditionsp\xe8\a"
 
 var file_app_payday_holder_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_app_payday_holder_proto_goTypes = []any{

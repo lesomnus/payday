@@ -225,10 +225,24 @@ func (g Gen) copyEntity(ctx context.Context, v string, dst string, edit func([]b
 			return err
 		}
 
+		// What the overlay says of an option payday's says too is put where
+		// payday's was, or the merge keeps payday's and says nothing; what of
+		// it an overlay may say is CheckOverlay's.
+		overlay, err := os.ReadFile(ext)
+		if err != nil {
+			return err
+		}
+		said, err := overlaysWord(b, name, overlay, ext)
+		if err != nil {
+			return err
+		}
+		edited := edit != nil || !bytes.Equal(said, b)
+		b = said
+
 		// protobuf-merge takes files, so one that was edited has to be one
 		// again.
 		at := v
-		if edit != nil {
+		if edited {
 			if at, err = writeTemp(b, "*.proto"); err != nil {
 				return err
 			}

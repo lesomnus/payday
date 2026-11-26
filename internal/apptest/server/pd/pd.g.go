@@ -2467,8 +2467,8 @@ func orderByHolder(by []sqlpage.Order) []entHolder.OrderOption {
 const (
 	// HolderPageSize is what a request that did not say gets, and
 	// HolderPageLimit is the most it gets however loudly it asks.
-	HolderPageSize  = 20
-	HolderPageLimit = 100
+	HolderPageSize  = 40
+	HolderPageLimit = 120
 
 	// HolderFilterLimit is how many filters one request may carry. Each is a
 	// predicate in the same query, so it is what says how much of the

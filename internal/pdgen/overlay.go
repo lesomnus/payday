@@ -148,13 +148,41 @@ func CheckOwn(s *Schema) error {
 //
 // # And the options, which are the declaration
 //
-// The merge keeps payday's value for an option both sides set, and fills in
-// what only the overlay set. So the one way left to change payday's entity is
-// to set what payday left unset -- `global: {}` on a Holder that says nothing
-// about tenancy because saying nothing **is** its declaration -- and that is
-// refused the same way a number is. What an overlay may add is an index: a key
+// The merge fills in what only the overlay set, and `pd gen` gives it the
+// overlay's word for a value both sides set (see the page, below). So an
+// overlay changes payday's entity by setting what payday left unset --
+// `global: {}` on a Holder that says nothing about tenancy because saying
+// nothing **is** its declaration -- or by saying another value for what payday
+// set, and both are refused the same way a number is, by the path of what
+// was said. What an overlay may add is an index: a key
 // over the fields it added is what those fields are often for, and an index
 // narrows what may be written without changing what anything reads.
+//
+// # And the page of Holder and Tenant
+//
+// An overlay of either may say `list: {size, max}` in `(payday.entity)`, each
+// or both, and what it says is the entity's page: what a request that said
+// nothing gets and the most any gets, in the server and so at the command line
+// and the page client, which ask it. What it leaves unsaid is payday's, since
+// the merge keeps what only payday's says, and the page is then held to what
+// an app's own entity's is held to, by [readList], in its words: a `max` is
+// required, and a `size` above it is refused.
+//
+// For the reason a verb is switched on these two and no other (see
+// [switched]): they are the ones an app serves as its own, and how many of its
+// people or its customers a page holds is the app's to know, as it is of its
+// own entities. Nothing of payday's reads the number -- `page.All` and the
+// command line's next page carry on to the end whatever it is -- so it is a
+// cost to the app's own server, which the app already decides for every
+// entity it declares. The rest of a list -- its order, what a filter may be
+// about, how many filters -- is what the wall and payday's reads are written
+// against, and stays payday's.
+//
+// What reaches this is what the overlay said: `pd gen` puts the overlay's word
+// for a value payday's declaration says too where payday's was before the
+// merge, which otherwise kept payday's without a word. So `domain: 9` on a
+// Holder is refused here by its path, as `global: {}` is, rather than merged
+// away.
 //
 // # The past's two
 //
@@ -233,7 +261,19 @@ func CheckOverlay(s *Schema) error {
 			shipped = proto.Clone(shipped).(*pdpb.Entity)
 			shipped.SetGlobal(&pdpb.Entity_Global{})
 		}
+		if switchable(v.Own) && e.HasList() && shipped.HasList() {
+			shipped = proto.Clone(shipped).(*pdpb.Entity)
+			shipped.GetList().SetSize(e.GetList().GetSize())
+			shipped.GetList().SetMax(e.GetList().GetMax())
+		}
 		for _, p := range added(e.ProtoReflect(), shipped.ProtoReflect(), "") {
+			if switchable(v.Own) {
+				errs = append(errs, fmt.Sprintf(
+					"%s: (payday.entity) %s is not payday's; an overlay may say the page of payday's Holder and Tenant "+
+						"(`list: {size: <n>, max: <n>}`) and may not add anything else to payday's declaration",
+					v.FullName(), p))
+				continue
+			}
 			errs = append(errs, fmt.Sprintf(
 				"%s: (payday.entity) %s is not payday's; an overlay may not add to payday's declaration",
 				v.FullName(), p))
@@ -266,8 +306,8 @@ func CheckOverlay(s *Schema) error {
 			"payday keeps 1, 2, 4..7 and 13..15; 3 is the app's set edge, and an app's own go in 8..12 and from 16.\n"+
 			"Of its optional records, payday keeps every number they declare, and an app's own go at any other.\n"+
 			"Of its options, an overlay may add an index to (orm.message), and of Holder and Tenant switch a verb\n"+
-			"off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`;\n"+
-			"nothing else.\n\n  %s",
+			"off that payday does not call, `rpc: {<verb>: {disabled: true}}`, or an Apply on, `rpc: {apply: {}}`,\n"+
+			"and say their page, `(payday.entity) = {list: {size: <n>, max: <n>}}`; nothing else.\n\n  %s",
 		strings.Join(errs, "\n  "))
 }
 
