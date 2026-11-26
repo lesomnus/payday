@@ -171,7 +171,7 @@ func (s *Schema) layersAround(e *Entity) []string {
 		vs = append(vs, "Intercept")
 	}
 
-	if len(e.Secrets) > 0 && e.Serves() {
+	if s.secretWraps(e) {
 		vs = append(vs, "Secret")
 	}
 

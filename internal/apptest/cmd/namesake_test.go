@@ -142,6 +142,10 @@ type namesakes func(t *testing.T, ctx context.Context, ref *app.RobotRef) map[st
 type result struct {
 	ids  [][]byte
 	code codes.Code
+
+	// secrets is every secret an answer carried, which is none: see
+	// TestASecretIsNotAnsweredWithByAnRpcOfTheAppsOwn.
+	secrets [][]byte
 }
 
 func answered(err error, vs ...*app.Robot) result {
@@ -149,6 +153,9 @@ func answered(err error, vs ...*app.Robot) result {
 	for _, v := range vs {
 		if v != nil {
 			r.ids = append(r.ids, v.GetId())
+		}
+		if len(v.GetSecret()) > 0 {
+			r.secrets = append(r.secrets, v.GetSecret())
 		}
 	}
 

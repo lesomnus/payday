@@ -256,6 +256,7 @@ const (
 	RobotService_Reading_FullMethodName = "/app.RobotService/Reading"
 	RobotService_Job_FullMethodName     = "/app.RobotService/Job"
 	RobotService_Joint_FullMethodName   = "/app.RobotService/Joint"
+	RobotService_Survey_FullMethodName  = "/app.RobotService/Survey"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -329,6 +330,13 @@ type RobotServiceClient interface {
 	Reading(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Robot], error)
 	Job(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[RobotRef, RobotJobResponse], error)
 	Joint(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RobotRef, Robot], error)
+	// Survey answers the robot named inside an answer of its own: two messages
+	// deep, and in each way a message holds another -- a list, a map's values,
+	// a oneof's case, and a message that holds itself. It is here for the
+	// Secret layer, which clears what an answer can hold wherever it holds it:
+	// the robot is read below the layer, secret and all, and none of the
+	// copies leaves with it.
+	Survey(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotSurvey, error)
 }
 
 type robotServiceClient struct {
@@ -493,6 +501,16 @@ func (c *robotServiceClient) Joint(ctx context.Context, opts ...grpc.CallOption)
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RobotService_JointClient = grpc.BidiStreamingClient[RobotRef, Robot]
 
+func (c *robotServiceClient) Survey(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotSurvey, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RobotSurvey)
+	err := c.cc.Invoke(ctx, RobotService_Survey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -564,6 +582,13 @@ type RobotServiceServer interface {
 	Reading(*RobotRef, grpc.ServerStreamingServer[Robot]) error
 	Job(grpc.ClientStreamingServer[RobotRef, RobotJobResponse]) error
 	Joint(grpc.BidiStreamingServer[RobotRef, Robot]) error
+	// Survey answers the robot named inside an answer of its own: two messages
+	// deep, and in each way a message holds another -- a list, a map's values,
+	// a oneof's case, and a message that holds itself. It is here for the
+	// Secret layer, which clears what an answer can hold wherever it holds it:
+	// the robot is read below the layer, secret and all, and none of the
+	// copies leaves with it.
+	Survey(context.Context, *RobotRef) (*RobotSurvey, error)
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -612,6 +637,9 @@ func (UnimplementedRobotServiceServer) Job(grpc.ClientStreamingServer[RobotRef, 
 }
 func (UnimplementedRobotServiceServer) Joint(grpc.BidiStreamingServer[RobotRef, Robot]) error {
 	return status.Error(codes.Unimplemented, "method Joint not implemented")
+}
+func (UnimplementedRobotServiceServer) Survey(context.Context, *RobotRef) (*RobotSurvey, error) {
+	return nil, status.Error(codes.Unimplemented, "method Survey not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -832,6 +860,24 @@ func _RobotService_Joint_Handler(srv interface{}, stream grpc.ServerStream) erro
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type RobotService_JointServer = grpc.BidiStreamingServer[RobotRef, Robot]
 
+func _RobotService_Survey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RobotRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).Survey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_Survey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).Survey(ctx, req.(*RobotRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -874,6 +920,10 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Seal",
 			Handler:    _RobotService_Seal_Handler,
+		},
+		{
+			MethodName: "Survey",
+			Handler:    _RobotService_Survey_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

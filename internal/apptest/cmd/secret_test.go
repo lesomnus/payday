@@ -257,3 +257,118 @@ func TestASecretIsNotStreamed(t *testing.T) {
 	x.NoError(err)
 	x.Equal([]byte("hunter2"), row.Secret)
 }
+
+// TestASecretIsNotAnsweredWithByAnRpcOfTheAppsOwn: the layer clears a secret
+// from whatever leaves it, not from the generated verbs' answers alone. The
+// namesakes of `robot_svc.ext.proto` answer the robot as their handler read
+// it, below the layer and so with its secret, one of each shape a method has;
+// none of them carries it out, in process through the layer or over a
+// connection. Until the layer looked at an RPC of the app's own, `Seal`
+// answered the robot with its secret where `Get` answered without.
+func TestASecretIsNotAnsweredWithByAnRpcOfTheAppsOwn(t *testing.T) {
+	b, ctx := build(t)
+
+	v, err := b.Ungated.Robot().Add(ctx, app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant.Bytes()}.Build(),
+		Alias:  "arm-01",
+		Secret: []byte("hunter2"),
+	}.Build())
+	require.NoError(t, err)
+	ref := app.RobotRef_builder{Id: v.GetId()}.Build()
+
+	// It was stored, which is what says the ones below are the layer clearing
+	// a value rather than there being none.
+	k, err := entuuid.FromBytes(v.GetId())
+	require.NoError(t, err)
+	row, err := b.Ent.Robot.Get(ctx, k)
+	require.NoError(t, err)
+	require.Equal(t, []byte("hunter2"), row.Secret)
+
+	t.Run("in process", func(t *testing.T) {
+		require.Equal(t, served(v.GetId()), inProcess(b.Walled.Robot())(t, b.as(ctx), ref))
+	})
+	t.Run("over the wire", func(t *testing.T) {
+		call := overTheWire(app.NewClient(b.dialed(t, ctx)).Robot())
+		require.Equal(t, served(v.GetId()), call(t, b.travels(ctx), ref))
+	})
+}
+
+// TestASecretIsNotAnsweredWithThroughAnEdge: an edge is a row, answered in
+// full where it was selected, so a Pairing's `lead` is a Robot and the
+// secret's way out of a `Get` of the pairing. The layer clears what an
+// answer can hold, so the pairing's own verbs clear it, though nothing of the
+// pairing's is secret.
+func TestASecretIsNotAnsweredWithThroughAnEdge(t *testing.T) {
+	x := require.New(t)
+	b, ctx := build(t)
+
+	var refs []*app.RobotRef
+	for _, alias := range []string{"arm-01", "arm-02"} {
+		v, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+			Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+			Alias:  alias,
+			Secret: []byte("hunter2"),
+		}.Build())
+		x.NoError(err)
+		refs = append(refs, v.Ref())
+	}
+
+	v, err := b.Walled.Pairing().Add(b.as(ctx), app.PairingAddRequest_builder{
+		Lead:   refs[0],
+		Follow: refs[1],
+	}.Build())
+	x.NoError(err)
+
+	every := app.RobotSelect_builder{All: z.Ptr(true), Secret: z.Ptr(true)}.Build()
+	got, err := b.Walled.Pairing().Get(b.as(ctx), app.PairingGetRequest_builder{
+		Ref:    app.PairingRef_builder{Id: v.GetId()}.Build(),
+		Select: app.PairingSelect_builder{All: z.Ptr(true), Lead: every, Follow: every}.Build(),
+	}.Build())
+	x.NoError(err)
+	x.Equal("arm-01", got.GetLead().GetAlias(), "the edge was not read, so this proves nothing")
+	x.Empty(got.GetLead().GetSecret(), "a Get answered the secret of the row its edge names")
+	x.Empty(got.GetFollow().GetSecret(), "a Get answered the secret of the row its edge names")
+}
+
+// TestASecretIsNotAnsweredWithFromInsideAnAnswer: `Survey` answers the robot
+// two messages deep and in each way a message holds another -- a list, a
+// map's values, a oneof's case, a message inside itself -- each a copy read
+// below the layer with its secret. None carries it out, in process or over a
+// connection, and every copy is there, which is what says the walk reached
+// each place rather than finding nothing.
+func TestASecretIsNotAnsweredWithFromInsideAnAnswer(t *testing.T) {
+	b, ctx := build(t)
+
+	v, err := b.Walled.Robot().Add(b.as(ctx), app.RobotAddRequest_builder{
+		Tenant: app.TenantRef_builder{Id: b.Tenant[:]}.Build(),
+		Alias:  "arm-01",
+		Secret: []byte("hunter2"),
+	}.Build())
+	require.NoError(t, err)
+
+	held := func(t *testing.T, v *app.RobotSurvey) {
+		x := require.New(t)
+		vs := []*app.Robot{
+			v.GetCell().GetRobots()[0],
+			v.GetCell().GetWithin()[0].GetRobot(),
+			v.GetCells()[0].GetRobot(),
+			v.GetByAlias()["arm-01"].GetRobot(),
+			v.GetFirst().GetRobot(),
+		}
+		for i, w := range vs {
+			x.Equal("arm-01", w.GetAlias(), "copy %d is not there", i)
+			x.Empty(w.GetSecret(), "copy %d carried the secret", i)
+		}
+	}
+
+	t.Run("in process", func(t *testing.T) {
+		got, err := b.Walled.Robot().Survey(b.as(ctx), v.Ref())
+		require.NoError(t, err)
+		held(t, got)
+	})
+	t.Run("over the wire", func(t *testing.T) {
+		got, err := app.NewClient(b.dialed(t, ctx)).Robot().Survey(b.travels(ctx), v.Ref())
+		require.NoError(t, err)
+		held(t, got)
+	})
+}

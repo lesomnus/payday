@@ -1849,24 +1849,26 @@ func emitLeft(g *protogen.GeneratedFile, s *Schema, p Paths) {
 func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImportPath) {
 	var vs []*Entity
 	for _, v := range s.Entities {
-		// One that declared a secret and is served: a secret no server answers
-		// with is nothing for a layer to clear.
-		if len(v.Secrets) > 0 && v.Serves() {
+		if s.secretWraps(v) {
 			vs = append(vs, v)
 		}
 	}
 	if len(vs) == 0 {
-		// Nothing declared one, so there is no layer -- rather than an empty
-		// one an app would stack for no reason.
+		// Nothing can answer one, so there is no layer -- rather than an
+		// empty one an app would stack for no reason.
 		return
 	}
 
 	g.P("// Secret is the layer that keeps a declared secret off the wire.")
 	g.P("//")
-	g.P("// Every field marked `(payday.field).secret` is cleared on the way out:")
-	g.P("// from what an `Add` echoes, what a `Get` answers, and every item of a")
-	g.P("// `List` or an `AddMany`. The write side is untouched, because writing is")
-	g.P("// the half that works.")
+	g.P("// Every field marked `(payday.field).secret` is cleared from whatever")
+	g.P("// leaves this layer: what an `Add` echoes, what a `Get` answers, every item")
+	g.P("// of a `List` or an `AddMany`, every change a `Watch` sends -- and the")
+	g.P("// answer of every RPC of the app's own that can hold the entity, at any")
+	g.P("// depth, on a stream in each message sent. The write side is untouched,")
+	g.P("// because writing is the half that works, and so is what a handler beneath")
+	g.P("// this layer reads: an RPC of the app's own reads the secret and answers")
+	g.P("// with it, and this is where it stops.")
 	g.P("//")
 	g.P("//	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())")
 	g.P("//")
@@ -1906,15 +1908,77 @@ func EmitSecret(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoI
 	g.P("}")
 	g.P("")
 
+	var answers []*protogen.Message
 	for _, v := range vs {
-		emitSecretOf(g, s, v, root)
+		answers = append(answers, emitSecretOf(g, s, v, root)...)
 	}
+	emitHidingStreams(g)
+	s.hiding.emitHides(g, root, answers)
 }
 
-// emitSecretOf writes the wrapper for one entity that declared a secret.
-func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen.GoImportPath) {
+// secretVerbs is each generated verb the Secret layer writes for `e`: those
+// it has that answer with the entity, of one that can hold a secret -- its
+// own, or an edge's, which an answer carries where it was selected.
+func (s *Schema) secretVerbs(e *Entity) []string {
+	if !e.Serves() || !s.hiding.canHold(s.hiding.of(e)) {
+		return nil
+	}
+
+	var vs []string
+	for _, v := range []struct {
+		rpc string
+		has bool
+	}{
+		{"Add", e.Rpcs().HasAdd()},
+		{"AddMany", e.Rpcs().HasAddMany()},
+		{"Get", e.Rpcs().HasGet()},
+		{"Patch", e.Rpcs().HasPatch()},
+		{"Apply", e.Rpcs().HasApply()},
+		{"List", e.List != nil},
+		{"Watch", e.Watch},
+	} {
+		if v.has {
+			vs = append(vs, v.rpc)
+		}
+	}
+
+	return vs
+}
+
+// secretRpcs is every other RPC of `e`'s service whose answer can hold a
+// secret, read off the contract: one an overlay adds, and a generated one the
+// verbs above are not.
+//
+// What answers nothing that can hold one is left to promotion, as it was:
+// there is nothing for the layer to say of it.
+func (s *Schema) secretRpcs(e *Entity) []interceptRpc {
+	verbs := s.secretVerbs(e)
+
+	var vs []interceptRpc
+	for _, v := range s.rpcs {
+		if v.Entity != e.GoName() || slices.Contains(verbs, v.Rpc) || !s.hiding.canHold(v.out) {
+			continue
+		}
+
+		vs = append(vs, v)
+	}
+
+	return vs
+}
+
+// secretWraps answers whether the Secret layer writes a type around `e`'s
+// service: whether anything that service answers can hold a secret.
+func (s *Schema) secretWraps(e *Entity) bool {
+	return len(s.secretVerbs(e)) > 0 || len(s.secretRpcs(e)) > 0
+}
+
+// emitSecretOf writes the wrapper around `e`'s service, and answers with every
+// message it clears a secret from.
+func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen.GoImportPath) []*protogen.Message {
 	name := e.GoName()
 	lower := "secret" + name
+	verbs := s.secretVerbs(e)
+	rpcs := s.secretRpcs(e)
 
 	g.P("func (s Secret) ", name, "() ", root.Ident(name+"ServiceServer"), " {")
 	g.P("	return ", lower, "{s, s.Next().", name, "()}")
@@ -1925,19 +1989,28 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	g.P("	", root.Ident(name+"ServiceServer"))
 	g.P("}")
 	g.P("")
-	shadowed(g, s, root, "Secret", lower, name, "Add", "AddMany", "Get", "Patch", "Apply", "List", "Watch")
+
+	declared := []string{"Add", "AddMany", "Get", "Patch", "Apply", "List", "Watch"}
+	for _, v := range rpcs {
+		declared = append(declared, v.Rpc)
+	}
+	shadowed(g, s, root, "Secret", lower, name, declared...)
+
+	var answers []*protogen.Message
+	if len(verbs) > 0 {
+		answers = append(answers, s.hiding.of(e))
+	}
 
 	// The four that answer with the entity, of the ones it has.
 	for _, m := range []struct {
 		rpc, req string
-		has      bool
 	}{
-		{"Add", name + "AddRequest", e.Rpcs().HasAdd()},
-		{"Get", name + "GetRequest", e.Rpcs().HasGet()},
-		{"Patch", name + "PatchRequest", e.Rpcs().HasPatch()},
-		{"Apply", name + "ApplyRequest", e.Rpcs().HasApply()},
+		{"Add", name + "AddRequest"},
+		{"Get", name + "GetRequest"},
+		{"Patch", name + "PatchRequest"},
+		{"Apply", name + "ApplyRequest"},
 	} {
-		if !m.has {
+		if !slices.Contains(verbs, m.rpc) {
 			continue
 		}
 
@@ -1951,7 +2024,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	}
 
 	// And every row an AddMany answers with, for an entity that has one.
-	if e.Rpcs().HasAddMany() {
+	if slices.Contains(verbs, "AddMany") {
 		g.P("func (s ", lower, ") AddMany(ctx ", pkgCtx.Ident("Context"),
 			", req *", root.Ident(name+"AddManyRequest"), ") (*", root.Ident(name+"AddManyResponse"), ", error) {")
 		g.P("	v, err := s.", name, "ServiceServer.AddMany(ctx, req)")
@@ -1968,7 +2041,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	// `<E>ListRequest` and `s.<E>ServiceServer.List` for an entity that declared
 	// no list -- `pd gen` said nothing and `go build` failed inside a generated
 	// file nobody is allowed to edit.
-	if e.List != nil {
+	if slices.Contains(verbs, "List") {
 		g.P("func (s ", lower, ") List(ctx ", pkgCtx.Ident("Context"),
 			", req *", root.Ident(name+"ListRequest"), ") (*", root.Ident(name+"ListResponse"), ", error) {")
 		g.P("	v, err := s.", name, "ServiceServer.List(ctx, req)")
@@ -2005,7 +2078,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	// So it is hidden, which is what every other read of the same row already
 	// does. A stream that omits a column is not a surprise when `Get` omits it
 	// too, and the column is one the entity declared it never answers with.
-	if e.Watch {
+	if slices.Contains(verbs, "Watch") {
 		g.P("func (s ", lower, ") Watch(req *", root.Ident(name+"WatchRequest"),
 			", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(name+"WatchResponse"), "]) error {")
 		g.P("	return s.", name, "ServiceServer.Watch(req, ", lower, "Stream{out})")
@@ -2032,12 +2105,90 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 		g.P("")
 	}
 
+	// And every RPC of the service's own whose answer can hold a secret, in
+	// the shape it has. A handler of one is beneath this layer, so it reads
+	// the row as it is stored, secret and all, and answers with what it read:
+	// the one that answered its entity, or a message holding it, sent the
+	// secret, where `Get` of the same row did not. Clearing it in each handler
+	// was the app doing this layer's work, and the next handler forgetting to.
+	for _, v := range rpcs {
+		hide := hideName(v.out, root)
+		answers = append(answers, v.out)
+
+		g.P("// ", v.Rpc, " clears the secrets its answer can carry.")
+		switch {
+		case v.Client:
+			kind, wrap := "ClientStreamingServer", "hidingClientStream"
+			if v.Stream {
+				kind, wrap = "BidiStreamingServer", "hidingBidiStream"
+			}
+			g.P("func (s ", lower, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", v.in.GoIdent, ", ", v.out.GoIdent, "]) error {")
+			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(", wrap, "[", v.in.GoIdent, ", ", v.out.GoIdent, "]{out, ", hide, "})")
+		case v.Stream:
+			g.P("func (s ", lower, ") ", v.Rpc, "(req *", v.in.GoIdent, ", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.out.GoIdent, "]) error {")
+			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(req, hidingServerStream[", v.out.GoIdent, "]{out, ", hide, "})")
+		default:
+			g.P("func (s ", lower, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", v.in.GoIdent, ") (*", v.out.GoIdent, ", error) {")
+			g.P("	v, err := s.", name, "ServiceServer.", v.Rpc, "(ctx, req)")
+			g.P("")
+			g.P("	return ", hide, "(v), err")
+		}
+		g.P("}")
+		g.P("")
+	}
+
+	return answers
+}
+
+// emitHidingStreams writes the three streams an RPC of an app's own is
+// answered through, one for each shape that sends: each clears what it sends,
+// by the function it was handed for the message.
+//
+// `SendMsg` too, since a handler may send through it and nothing makes it
+// send through `Send`; gRPC's own `Send` calls the stream it wraps, not this,
+// so nothing is cleared twice -- and clearing twice would be no harm.
+func emitHidingStreams(g *protogen.GeneratedFile) {
+	for _, v := range []struct {
+		name, kind, params, args, send string
+	}{
+		{"hidingServerStream", "ServerStreamingServer", "Out any", "Out", "Send"},
+		{"hidingClientStream", "ClientStreamingServer", "In, Out any", "In, Out", "SendAndClose"},
+		{"hidingBidiStream", "BidiStreamingServer", "In, Out any", "In, Out", "Send"},
+	} {
+		g.P("// ", v.name, " clears what is sent through it.")
+		g.P("type ", v.name, "[", v.params, "] struct {")
+		g.P("	", pkgGrpc.Ident(v.kind), "[", v.args, "]")
+		g.P("	hide func(*Out) *Out")
+		g.P("}")
+		g.P("")
+		g.P("func (s ", v.name, "[", v.args, "]) ", v.send, "(v *Out) error {")
+		g.P("	return s.", v.kind, ".", v.send, "(s.hide(v))")
+		g.P("}")
+		g.P("")
+		g.P("func (s ", v.name, "[", v.args, "]) SendMsg(m any) error {")
+		g.P("	if v, ok := m.(*Out); ok {")
+		g.P("		s.hide(v)")
+		g.P("	}")
+		g.P("")
+		g.P("	return s.", v.kind, ".SendMsg(m)")
+		g.P("}")
+		g.P("")
+	}
+}
+
+// emitHideEntity writes `hide<E>`, which clears what the entity declared it
+// never answers with, and then what its edges can carry.
+func emitHideEntity(g *protogen.GeneratedFile, root protogen.GoImportPath, h *hiding, e *Entity, m *protogen.Message) {
+	name := e.GoName()
+
 	ns := make([]string, 0, len(e.SecretNumbers))
 	for _, n := range e.SecretNumbers {
 		ns = append(ns, strconv.FormatUint(uint64(n), 10))
 	}
 
-	g.P("// hide", name, " clears what this entity declared it never answers with.")
+	g.P("// hide", name, " clears what this entity declared it never answers with,")
+	g.P("// and what any row it holds declared -- an edge is a row, answered where it")
+	g.P("// was selected.")
 	g.P("//")
 	g.P("// A nil row passes through, because an error is answered with one and the")
 	g.P("// caller of this is handing both on.")
@@ -2054,7 +2205,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	g.P("// with\" says; one without presence reads as its zero value either way.")
 	g.P("// And the numbers are the ones `hidden` filters the trail's patch by, so")
 	g.P("// the two cannot come to disagree about which fields they are.")
-	g.P("func hide", name, "(v *", root.Ident(name), ") *", root.Ident(name), " {")
+	g.P("func hide", name, "(v *", m.GoIdent, ") *", m.GoIdent, " {")
 	g.P("	if v == nil {")
 	g.P("		return nil")
 	g.P("	}")
@@ -2065,6 +2216,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	g.P("		m.Clear(fs.ByNumber(n))")
 	g.P("	}")
 	g.P("")
+	h.emitHeld(g, root, m)
 	g.P("	return v")
 	g.P("}")
 	g.P("")

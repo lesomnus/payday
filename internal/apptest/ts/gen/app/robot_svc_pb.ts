@@ -22,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file app/robot_svc.g.proto.
  */
 export const file_app_robot_svc_g: GenFile = /*@__PURE__*/
-  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJ4Cg5DZWxsQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEhwKBndpdGhpbhgUIAEoCzIMLmFwcC5DZWxsUmVmIiYKB0NlbGxSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCKBAQoKQ2VsbFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBINCgVhbGlhcxgEIAEoCBIfCgZ3aXRoaW4YFCABKAsyDy5hcHAuQ2VsbFNlbGVjdBITCgtkYXRlX2VyYXNlZBgOIAEoCCJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giIwoRQ2VsbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIr4CCg9Sb2JvdEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGB4gASgLMhAuc2hhcmVkLlRoaW5nUmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISDgoGc2VjcmV0GAggASgMEjEKDWRhdGVfYXR0ZXN0ZWQYHyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKBmtlZXBlchggIAEoCUIFqgECCAISGAoIb3duZXJfaWQYISABKAxCBuqCFgIQQBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjoKE1JvYm90QWRkTWFueVJlcXVlc3QSIwoFaXRlbXMYASADKAsyFC5hcHAuUm9ib3RBZGRSZXF1ZXN0IjEKFFJvYm90QWRkTWFueVJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90Ik8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkwKCFJvYm90UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5Ij8KDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYimQIKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EiIKBXRoaW5nGB4gASgLMhMuc2hhcmVkLlRoaW5nU2VsZWN0Eh0KBGNlbGwYAyABKAsyDy5hcHAuQ2VsbFNlbGVjdBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSFQoNZGF0ZV9hdHRlc3RlZBgfIAEoCBIOCgZrZWVwZXIYICABKAgSEAoIb3duZXJfaWQYISABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCKQAwoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh8KBXRoaW5nGDwgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhIKCnRoaW5nX251bGwYPSABKAgSGgoEY2VsbBgGIAEoCzIMLmFwcC5DZWxsUmVmEhEKCWNlbGxfbnVsbBgHIAEoCBINCgVhbGlhcxgIIAEoCRIOCgZzZWNyZXQYECABKAwSMQoNZGF0ZV9hdHRlc3RlZBg+IAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV9hdHRlc3RlZF9udWxsGD8gASgIEg4KBmtlZXBlchhAIAEoCRIYCghvd25lcl9pZBhCIAEoDEIG6oIWAhBAEhUKDW93bmVyX2lkX251bGwYQyABKAgSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgiTAoRUm9ib3RBcHBseVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSUm9ib3RFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCLFAQoQUm9ib3RMaXN0UmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAhIWCgdyZXZlcnNlGAQgASgIQgWqAQIIAhIpCgVvcmRlchgFIAEoDjITLmFwcC5Sb2JvdExpc3RPcmRlckIFqgECCAISIAoGc2VsZWN0GAYgASgLMhAuYXBwLlJvYm90U2VsZWN0IkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCImoKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGAMgASgLMhAuc2hhcmVkLlRoaW5nUmVmIlQKEVJvYm90V2F0Y2hSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOAoSUm9ib3RXYXRjaFJlc3BvbnNlEiIKBWl0ZW1zGAEgAygLMhMuYXBwLlJvYm90V2F0Y2hJdGVtIk4KDlJvYm90V2F0Y2hJdGVtEgoKAmlkGAEgASgMEhkKBXZhbHVlGAIgASgLMgouYXBwLlJvYm90EhUKBmFjdGlvbhgDIAEoCUIFqgECCAIiSAoQUm9ib3RNb3ZlUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGAoCdG8YAiABKAsyDC5hcHAuQ2VsbFJlZiItChBSb2JvdEpvYlJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90IpUBChFQYWlyaW5nQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEhsKBGxlYWQYAiABKAsyDS5hcHAuUm9ib3RSZWYSHQoGZm9sbG93GAggASgLMg0uYXBwLlJvYm90UmVmEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUGFpcmluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlBhaXJpbmdTZWxlY3QiKQoKUGFpcmluZ1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5InQKDVBhaXJpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh4KBGxlYWQYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSIAoGZm9sbG93GAggASgLMhAuYXBwLlJvYm90U2VsZWN0EhQKDGRhdGVfY3JlYXRlZBgPIAEoCCIzChNQYWlyaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmIiYKFFBhaXJpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJZCg9Kb2ludEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiJwoISm9pbnRSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIiQKEkpvaW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiOwoPRmxlZXRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjgKCEZsZWV0UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIPCgVhbGlhcxgEIAEoCUgAQgUKA2tleSI+CgtGbGVldFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRRmxlZXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEg0KBWFsaWFzGAggASgJIiQKEkZsZWV0RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgirwEKEVJlYWRpbmdBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSHgoJdGVuYW50X2lkGAkgASgMQguqAQIIAuqCFgIQQBIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIj4KFVJlYWRpbmdBZGRNYW55UmVxdWVzdBIlCgVpdGVtcxgBIAMoCzIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdCI1ChZSZWFkaW5nQWRkTWFueVJlc3BvbnNlEhsKBWl0ZW1zGAEgAygLMgwuYXBwLlJlYWRpbmciVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiKQoKUmVhZGluZ1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5IncKDVJlYWRpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0EhEKCXRlbmFudF9pZBgJIAEoCBIPCgdjZWxzaXVzGAggASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJfChNSZWFkaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhkKCXRlbmFudF9pZBgSIAEoDEIG6oIWAhBAEg8KB2NlbHNpdXMYECABKAEiJgoUUmVhZGluZ0VyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIKm8KDlJvYm90TGlzdE9yZGVyEiAKHFJPQk9UX0xJU1RfT1JERVJfVU5TUEVDSUZJRUQQABIaChZST0JPVF9MSVNUX09SREVSX0FMSUFTEAESHwobUk9CT1RfTElTVF9PUkRFUl9BTElBU19ERVNDEAIytQEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBUFwcGx5EhUuYXBwLkNlbGxBcHBseVJlcXVlc3QaCS5hcHAuQ2VsbBItCgVFcmFzZRIMLmFwcC5DZWxsUmVmGhYuYXBwLkNlbGxFcmFzZVJlc3BvbnNlMpMFCgxSb2JvdFNlcnZpY2USJwoDQWRkEhQuYXBwLlJvYm90QWRkUmVxdWVzdBoKLmFwcC5Sb2JvdBI+CgdBZGRNYW55EhguYXBwLlJvYm90QWRkTWFueVJlcXVlc3QaGS5hcHAuUm9ib3RBZGRNYW55UmVzcG9uc2USJwoDR2V0EhQuYXBwLlJvYm90R2V0UmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVQYXRjaBIWLmFwcC5Sb2JvdFBhdGNoUmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVBcHBseRIWLmFwcC5Sb2JvdEFwcGx5UmVxdWVzdBoKLmFwcC5Sb2JvdBIvCgVFcmFzZRINLmFwcC5Sb2JvdFJlZhoXLmFwcC5Sb2JvdEVyYXNlUmVzcG9uc2USNQoETGlzdBIVLmFwcC5Sb2JvdExpc3RSZXF1ZXN0GhYuYXBwLlJvYm90TGlzdFJlc3BvbnNlEjoKBVdhdGNoEhYuYXBwLlJvYm90V2F0Y2hSZXF1ZXN0GhcuYXBwLlJvYm90V2F0Y2hSZXNwb25zZTABEjEKBE1vdmUSFS5hcHAuUm9ib3RNb3ZlUmVxdWVzdBoKLmFwcC5Sb2JvdCIG6s0WAhIAEikKBFNlYWwSDS5hcHAuUm9ib3RSZWYaCi5hcHAuUm9ib3QiBurNFgISABIuCgdSZWFkaW5nEg0uYXBwLlJvYm90UmVmGgouYXBwLlJvYm90IgbqzRYCEgAwARI1CgNKb2ISDS5hcHAuUm9ib3RSZWYaFS5hcHAuUm9ib3RKb2JSZXNwb25zZSIG6s0WAhIAKAESLgoFSm9pbnQSDS5hcHAuUm9ib3RSZWYaCi5hcHAuUm9ib3QiBurNFgISACgBMAEy0AEKDlBhaXJpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5QYWlyaW5nQWRkUmVxdWVzdBoMLmFwcC5QYWlyaW5nEisKA0dldBIWLmFwcC5QYWlyaW5nR2V0UmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBVBhdGNoEhguYXBwLlBhaXJpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUGFpcmluZxIzCgVFcmFzZRIPLmFwcC5QYWlyaW5nUmVmGhkuYXBwLlBhaXJpbmdFcmFzZVJlc3BvbnNlMr4BCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50Ei8KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhcuYXBwLkpvaW50RXJhc2VSZXNwb25zZTK+AQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIvCgVFcmFzZRINLmFwcC5GbGVldFJlZhoXLmFwcC5GbGVldEVyYXNlUmVzcG9uc2UylAIKDlJlYWRpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdBoMLmFwcC5SZWFkaW5nEkIKB0FkZE1hbnkSGi5hcHAuUmVhZGluZ0FkZE1hbnlSZXF1ZXN0GhsuYXBwLlJlYWRpbmdBZGRNYW55UmVzcG9uc2USKwoDR2V0EhYuYXBwLlJlYWRpbmdHZXRSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFUGF0Y2gSGC5hcHAuUmVhZGluZ1BhdGNoUmVxdWVzdBoMLmFwcC5SZWFkaW5nEjMKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaGS5hcHAuUmVhZGluZ0VyYXNlUmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_timestamp, file_orm, file_patch_patch, file_payday, file_shared_thing_svc_g]);
+  fileDesc("ChVhcHAvcm9ib3Rfc3ZjLmcucHJvdG8SA2FwcCJ4Cg5DZWxsQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYSFAoFYWxpYXMYBCABKAlCBaoBAggCEhwKBndpdGhpbhgUIAEoCzIMLmFwcC5DZWxsUmVmIiYKB0NlbGxSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSJMCg5DZWxsR2V0UmVxdWVzdBIZCgNyZWYYASABKAsyDC5hcHAuQ2VsbFJlZhIfCgZzZWxlY3QYAiABKAsyDy5hcHAuQ2VsbFNlbGVjdCKBAQoKQ2VsbFNlbGVjdBILCgNhbGwYASABKAgSIQoGdGVuYW50GAIgASgLMhEuYXBwLlRlbmFudFNlbGVjdBINCgVhbGlhcxgEIAEoCBIfCgZ3aXRoaW4YFCABKAsyDy5hcHAuQ2VsbFNlbGVjdBITCgtkYXRlX2VyYXNlZBgOIAEoCCJKChBDZWxsQXBwbHlSZXF1ZXN0EhkKA3JlZhgBIAEoCzIMLmFwcC5DZWxsUmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giIwoRQ2VsbEVyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIIr4CCg9Sb2JvdEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGB4gASgLMhAuc2hhcmVkLlRoaW5nUmVmEhoKBGNlbGwYAyABKAsyDC5hcHAuQ2VsbFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAISDgoGc2VjcmV0GAggASgMEjEKDWRhdGVfYXR0ZXN0ZWQYHyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKBmtlZXBlchggIAEoCUIFqgECCAISGAoIb3duZXJfaWQYISABKAxCBuqCFgIQQBIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjoKE1JvYm90QWRkTWFueVJlcXVlc3QSIwoFaXRlbXMYASADKAsyFC5hcHAuUm9ib3RBZGRSZXF1ZXN0IjEKFFJvYm90QWRkTWFueVJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90Ik8KD1JvYm90R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0IkwKCFJvYm90UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIjCgRzbHVnGAQgASgLMhMuYXBwLlJvYm90UmVmQnlTbHVnSABCBQoDa2V5Ij8KDlJvYm90UmVmQnlTbHVnEg0KBWFsaWFzGAQgASgJEh4KBnRlbmFudBgCIAEoCzIOLmFwcC5UZW5hbnRSZWYimQIKC1JvYm90U2VsZWN0EgsKA2FsbBgBIAEoCBIhCgZ0ZW5hbnQYAiABKAsyES5hcHAuVGVuYW50U2VsZWN0EiIKBXRoaW5nGB4gASgLMhMuc2hhcmVkLlRoaW5nU2VsZWN0Eh0KBGNlbGwYAyABKAsyDy5hcHAuQ2VsbFNlbGVjdBINCgVhbGlhcxgEIAEoCBIOCgZzZWNyZXQYCCABKAgSFQoNZGF0ZV9hdHRlc3RlZBgfIAEoCBIOCgZrZWVwZXIYICABKAgSEAoIb3duZXJfaWQYISABKAgSFAoMZGF0ZV91cGRhdGVkGA0gASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCBITCgtkYXRlX2VyYXNlZBgOIAEoCCKQAwoRUm9ib3RQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEh8KBXRoaW5nGDwgASgLMhAuc2hhcmVkLlRoaW5nUmVmEhIKCnRoaW5nX251bGwYPSABKAgSGgoEY2VsbBgGIAEoCzIMLmFwcC5DZWxsUmVmEhEKCWNlbGxfbnVsbBgHIAEoCBINCgVhbGlhcxgIIAEoCRIOCgZzZWNyZXQYECABKAwSMQoNZGF0ZV9hdHRlc3RlZBg+IAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSZGF0ZV9hdHRlc3RlZF9udWxsGD8gASgIEg4KBmtlZXBlchhAIAEoCRIYCghvd25lcl9pZBhCIAEoDEIG6oIWAhBAEhUKDW93bmVyX2lkX251bGwYQyABKAgSMAoMZGF0ZV91cGRhdGVkGBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkYXRlX3VwZGF0ZWRfZm9yY2UYGyABKAgiTAoRUm9ib3RBcHBseVJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLlJvYm90UmVmEhsKBXBhdGNoGAIgASgLMgwucGF0Y2guUGF0Y2giJAoSUm9ib3RFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCLFAQoQUm9ib3RMaXN0UmVxdWVzdBIhCgdmaWx0ZXJzGAEgAygLMhAuYXBwLlJvYm90RmlsdGVyEhMKBHNpemUYAiABKAVCBaoBAggCEhQKBWFmdGVyGAMgASgJQgWqAQIIAhIWCgdyZXZlcnNlGAQgASgIQgWqAQIIAhIpCgVvcmRlchgFIAEoDjITLmFwcC5Sb2JvdExpc3RPcmRlckIFqgECCAISIAoGc2VsZWN0GAYgASgLMhAuYXBwLlJvYm90U2VsZWN0IkMKEVJvYm90TGlzdFJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90EhMKBG5leHQYAiABKAlCBaoBAggCImoKC1JvYm90RmlsdGVyEhoKA3JlZhgBIAEoCzINLmFwcC5Sb2JvdFJlZhIeCgZ0ZW5hbnQYAiABKAsyDi5hcHAuVGVuYW50UmVmEh8KBXRoaW5nGAMgASgLMhAuc2hhcmVkLlRoaW5nUmVmIlQKEVJvYm90V2F0Y2hSZXF1ZXN0EiEKB2ZpbHRlcnMYASADKAsyEC5hcHAuUm9ib3RGaWx0ZXISHAoNc2tpcF9zbmFwc2hvdBgCIAEoCEIFqgECCAIiOAoSUm9ib3RXYXRjaFJlc3BvbnNlEiIKBWl0ZW1zGAEgAygLMhMuYXBwLlJvYm90V2F0Y2hJdGVtIk4KDlJvYm90V2F0Y2hJdGVtEgoKAmlkGAEgASgMEhkKBXZhbHVlGAIgASgLMgouYXBwLlJvYm90EhUKBmFjdGlvbhgDIAEoCUIFqgECCAIiSAoQUm9ib3RNb3ZlUmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuUm9ib3RSZWYSGAoCdG8YAiABKAsyDC5hcHAuQ2VsbFJlZiItChBSb2JvdEpvYlJlc3BvbnNlEhkKBWl0ZW1zGAEgAygLMgouYXBwLlJvYm90Io0CCgtSb2JvdFN1cnZleRIiCgRjZWxsGAEgASgLMhQuYXBwLlJvYm90U3VydmV5Q2VsbBIjCgVjZWxscxgCIAMoCzIULmFwcC5Sb2JvdFN1cnZleUNlbGwSLwoIYnlfYWxpYXMYAyADKAsyHS5hcHAuUm9ib3RTdXJ2ZXkuQnlBbGlhc0VudHJ5EiUKBWZpcnN0GAQgASgLMhQuYXBwLlJvYm90U3VydmV5Q2VsbEgAEg4KBG5vbmUYBSABKAlIABpECgxCeUFsaWFzRW50cnkSCwoDa2V5GAEgASgJEiMKBXZhbHVlGAIgASgLMhQuYXBwLlJvYm90U3VydmV5Q2VsbDoCOAFCBwoFZm91bmQibgoPUm9ib3RTdXJ2ZXlDZWxsEhkKBXJvYm90GAEgASgLMgouYXBwLlJvYm90EhoKBnJvYm90cxgCIAMoCzIKLmFwcC5Sb2JvdBIkCgZ3aXRoaW4YAyADKAsyFC5hcHAuUm9ib3RTdXJ2ZXlDZWxsIpUBChFQYWlyaW5nQWRkUmVxdWVzdBISCgJpZBgBIAEoDEIG6oIWAhBAEhsKBGxlYWQYAiABKAsyDS5hcHAuUm9ib3RSZWYSHQoGZm9sbG93GAggASgLMg0uYXBwLlJvYm90UmVmEjAKDGRhdGVfY3JlYXRlZBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVQoRUGFpcmluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlBhaXJpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlBhaXJpbmdTZWxlY3QiKQoKUGFpcmluZ1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5InQKDVBhaXJpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh4KBGxlYWQYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSIAoGZm9sbG93GAggASgLMhAuYXBwLlJvYm90U2VsZWN0EhQKDGRhdGVfY3JlYXRlZBgPIAEoCCIzChNQYWlyaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5QYWlyaW5nUmVmIiYKFFBhaXJpbmdFcmFzZVJlc3BvbnNlEg4KBmVyYXNlZBgBIAEoCCJZCg9Kb2ludEFkZFJlcXVlc3QSEgoCaWQYASABKAxCBuqCFgIQQBIcCgVyb2JvdBgCIAEoCzINLmFwcC5Sb2JvdFJlZhIUCgVhbGlhcxgEIAEoCUIFqgECCAIiTwoPSm9pbnRHZXRSZXF1ZXN0EhoKA3JlZhgBIAEoCzINLmFwcC5Kb2ludFJlZhIgCgZzZWxlY3QYAiABKAsyEC5hcHAuSm9pbnRTZWxlY3QiJwoISm9pbnRSZWYSFAoCaWQYASABKAxCBuqCFgIQQEgAQgUKA2tleSJfCgtKb2ludFNlbGVjdBILCgNhbGwYASABKAgSHwoFcm9ib3QYAiABKAsyEC5hcHAuUm9ib3RTZWxlY3QSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRSm9pbnRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkpvaW50UmVmEg0KBWFsaWFzGAggASgJIiQKEkpvaW50RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgiOwoPRmxlZXRBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASFAoFYWxpYXMYBCABKAlCBaoBAggCIk8KD0ZsZWV0R2V0UmVxdWVzdBIaCgNyZWYYASABKAsyDS5hcHAuRmxlZXRSZWYSIAoGc2VsZWN0GAIgASgLMhAuYXBwLkZsZWV0U2VsZWN0IjgKCEZsZWV0UmVmEhQKAmlkGAEgASgMQgbqghYCEEBIABIPCgVhbGlhcxgEIAEoCUgAQgUKA2tleSI+CgtGbGVldFNlbGVjdBILCgNhbGwYASABKAgSDQoFYWxpYXMYBCABKAgSEwoLZGF0ZV9lcmFzZWQYDiABKAgiPgoRRmxlZXRQYXRjaFJlcXVlc3QSGgoDcmVmGAEgASgLMg0uYXBwLkZsZWV0UmVmEg0KBWFsaWFzGAggASgJIiQKEkZsZWV0RXJhc2VSZXNwb25zZRIOCgZlcmFzZWQYASABKAgirwEKEVJlYWRpbmdBZGRSZXF1ZXN0EhIKAmlkGAEgASgMQgbqghYCEEASHAoFcm9ib3QYAiABKAsyDS5hcHAuUm9ib3RSZWYSHgoJdGVuYW50X2lkGAkgASgMQguqAQIIAuqCFgIQQBIWCgdjZWxzaXVzGAggASgBQgWqAQIIAhIwCgxkYXRlX2NyZWF0ZWQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIj4KFVJlYWRpbmdBZGRNYW55UmVxdWVzdBIlCgVpdGVtcxgBIAMoCzIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdCI1ChZSZWFkaW5nQWRkTWFueVJlc3BvbnNlEhsKBWl0ZW1zGAEgAygLMgwuYXBwLlJlYWRpbmciVQoRUmVhZGluZ0dldFJlcXVlc3QSHAoDcmVmGAEgASgLMg8uYXBwLlJlYWRpbmdSZWYSIgoGc2VsZWN0GAIgASgLMhIuYXBwLlJlYWRpbmdTZWxlY3QiKQoKUmVhZGluZ1JlZhIUCgJpZBgBIAEoDEIG6oIWAhBASABCBQoDa2V5IncKDVJlYWRpbmdTZWxlY3QSCwoDYWxsGAEgASgIEh8KBXJvYm90GAIgASgLMhAuYXBwLlJvYm90U2VsZWN0EhEKCXRlbmFudF9pZBgJIAEoCBIPCgdjZWxzaXVzGAggASgIEhQKDGRhdGVfY3JlYXRlZBgPIAEoCCJfChNSZWFkaW5nUGF0Y2hSZXF1ZXN0EhwKA3JlZhgBIAEoCzIPLmFwcC5SZWFkaW5nUmVmEhkKCXRlbmFudF9pZBgSIAEoDEIG6oIWAhBAEg8KB2NlbHNpdXMYECABKAEiJgoUUmVhZGluZ0VyYXNlUmVzcG9uc2USDgoGZXJhc2VkGAEgASgIKm8KDlJvYm90TGlzdE9yZGVyEiAKHFJPQk9UX0xJU1RfT1JERVJfVU5TUEVDSUZJRUQQABIaChZST0JPVF9MSVNUX09SREVSX0FMSUFTEAESHwobUk9CT1RfTElTVF9PUkRFUl9BTElBU19ERVNDEAIytQEKC0NlbGxTZXJ2aWNlEiUKA0FkZBITLmFwcC5DZWxsQWRkUmVxdWVzdBoJLmFwcC5DZWxsEiUKA0dldBITLmFwcC5DZWxsR2V0UmVxdWVzdBoJLmFwcC5DZWxsEikKBUFwcGx5EhUuYXBwLkNlbGxBcHBseVJlcXVlc3QaCS5hcHAuQ2VsbBItCgVFcmFzZRIMLmFwcC5DZWxsUmVmGhYuYXBwLkNlbGxFcmFzZVJlc3BvbnNlMsYFCgxSb2JvdFNlcnZpY2USJwoDQWRkEhQuYXBwLlJvYm90QWRkUmVxdWVzdBoKLmFwcC5Sb2JvdBI+CgdBZGRNYW55EhguYXBwLlJvYm90QWRkTWFueVJlcXVlc3QaGS5hcHAuUm9ib3RBZGRNYW55UmVzcG9uc2USJwoDR2V0EhQuYXBwLlJvYm90R2V0UmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVQYXRjaBIWLmFwcC5Sb2JvdFBhdGNoUmVxdWVzdBoKLmFwcC5Sb2JvdBIrCgVBcHBseRIWLmFwcC5Sb2JvdEFwcGx5UmVxdWVzdBoKLmFwcC5Sb2JvdBIvCgVFcmFzZRINLmFwcC5Sb2JvdFJlZhoXLmFwcC5Sb2JvdEVyYXNlUmVzcG9uc2USNQoETGlzdBIVLmFwcC5Sb2JvdExpc3RSZXF1ZXN0GhYuYXBwLlJvYm90TGlzdFJlc3BvbnNlEjoKBVdhdGNoEhYuYXBwLlJvYm90V2F0Y2hSZXF1ZXN0GhcuYXBwLlJvYm90V2F0Y2hSZXNwb25zZTABEjEKBE1vdmUSFS5hcHAuUm9ib3RNb3ZlUmVxdWVzdBoKLmFwcC5Sb2JvdCIG6s0WAhIAEikKBFNlYWwSDS5hcHAuUm9ib3RSZWYaCi5hcHAuUm9ib3QiBurNFgISABIuCgdSZWFkaW5nEg0uYXBwLlJvYm90UmVmGgouYXBwLlJvYm90IgbqzRYCEgAwARI1CgNKb2ISDS5hcHAuUm9ib3RSZWYaFS5hcHAuUm9ib3RKb2JSZXNwb25zZSIG6s0WAhIAKAESLgoFSm9pbnQSDS5hcHAuUm9ib3RSZWYaCi5hcHAuUm9ib3QiBurNFgISACgBMAESMQoGU3VydmV5Eg0uYXBwLlJvYm90UmVmGhAuYXBwLlJvYm90U3VydmV5IgbqzRYCEgAy0AEKDlBhaXJpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5QYWlyaW5nQWRkUmVxdWVzdBoMLmFwcC5QYWlyaW5nEisKA0dldBIWLmFwcC5QYWlyaW5nR2V0UmVxdWVzdBoMLmFwcC5QYWlyaW5nEi8KBVBhdGNoEhguYXBwLlBhaXJpbmdQYXRjaFJlcXVlc3QaDC5hcHAuUGFpcmluZxIzCgVFcmFzZRIPLmFwcC5QYWlyaW5nUmVmGhkuYXBwLlBhaXJpbmdFcmFzZVJlc3BvbnNlMr4BCgxKb2ludFNlcnZpY2USJwoDQWRkEhQuYXBwLkpvaW50QWRkUmVxdWVzdBoKLmFwcC5Kb2ludBInCgNHZXQSFC5hcHAuSm9pbnRHZXRSZXF1ZXN0GgouYXBwLkpvaW50EisKBVBhdGNoEhYuYXBwLkpvaW50UGF0Y2hSZXF1ZXN0GgouYXBwLkpvaW50Ei8KBUVyYXNlEg0uYXBwLkpvaW50UmVmGhcuYXBwLkpvaW50RXJhc2VSZXNwb25zZTK+AQoMRmxlZXRTZXJ2aWNlEicKA0FkZBIULmFwcC5GbGVldEFkZFJlcXVlc3QaCi5hcHAuRmxlZXQSJwoDR2V0EhQuYXBwLkZsZWV0R2V0UmVxdWVzdBoKLmFwcC5GbGVldBIrCgVQYXRjaBIWLmFwcC5GbGVldFBhdGNoUmVxdWVzdBoKLmFwcC5GbGVldBIvCgVFcmFzZRINLmFwcC5GbGVldFJlZhoXLmFwcC5GbGVldEVyYXNlUmVzcG9uc2UylAIKDlJlYWRpbmdTZXJ2aWNlEisKA0FkZBIWLmFwcC5SZWFkaW5nQWRkUmVxdWVzdBoMLmFwcC5SZWFkaW5nEkIKB0FkZE1hbnkSGi5hcHAuUmVhZGluZ0FkZE1hbnlSZXF1ZXN0GhsuYXBwLlJlYWRpbmdBZGRNYW55UmVzcG9uc2USKwoDR2V0EhYuYXBwLlJlYWRpbmdHZXRSZXF1ZXN0GgwuYXBwLlJlYWRpbmcSLwoFUGF0Y2gSGC5hcHAuUmVhZGluZ1BhdGNoUmVxdWVzdBoMLmFwcC5SZWFkaW5nEjMKBUVyYXNlEg8uYXBwLlJlYWRpbmdSZWYaGS5hcHAuUmVhZGluZ0VyYXNlUmVzcG9uc2VCLVorZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvaW50ZXJuYWwvYXBwdGVzdGIIZWRpdGlvbnNw6Ac", [file_app_payday_tenant_svc_g, file_app_robot, file_google_protobuf_timestamp, file_orm, file_patch_patch, file_payday, file_shared_thing_svc_g]);
 
 /**
  * @generated from message app.CellAddRequest
@@ -872,6 +872,82 @@ export const RobotJobResponseSchema: GenMessage<RobotJobResponse> = /*@__PURE__*
   messageDesc(file_app_robot_svc_g, 23);
 
 /**
+ * RobotSurvey holds the robot a `Survey` was asked of, in every place it can.
+ *
+ * @generated from message app.RobotSurvey
+ */
+export type RobotSurvey = Message<"app.RobotSurvey"> & {
+  /**
+   * @generated from field: app.RobotSurveyCell cell = 1;
+   */
+  cell?: RobotSurveyCell | undefined;
+
+  /**
+   * @generated from field: repeated app.RobotSurveyCell cells = 2;
+   */
+  cells: RobotSurveyCell[];
+
+  /**
+   * @generated from field: map<string, app.RobotSurveyCell> by_alias = 3;
+   */
+  byAlias: { [key: string]: RobotSurveyCell };
+
+  /**
+   * @generated from oneof app.RobotSurvey.found
+   */
+  found: {
+    /**
+     * @generated from field: app.RobotSurveyCell first = 4;
+     */
+    value: RobotSurveyCell;
+    case: "first";
+  } | {
+    /**
+     * @generated from field: string none = 5;
+     */
+    value: string;
+    case: "none";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message app.RobotSurvey.
+ * Use `create(RobotSurveySchema)` to create a new message.
+ */
+export const RobotSurveySchema: GenMessage<RobotSurvey> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 24);
+
+/**
+ * RobotSurveyCell is one place a robot is held: itself, in a list, and in a
+ * cell inside this one.
+ *
+ * @generated from message app.RobotSurveyCell
+ */
+export type RobotSurveyCell = Message<"app.RobotSurveyCell"> & {
+  /**
+   * @generated from field: app.Robot robot = 1;
+   */
+  robot?: Robot | undefined;
+
+  /**
+   * @generated from field: repeated app.Robot robots = 2;
+   */
+  robots: Robot[];
+
+  /**
+   * @generated from field: repeated app.RobotSurveyCell within = 3;
+   */
+  within: RobotSurveyCell[];
+};
+
+/**
+ * Describes the message app.RobotSurveyCell.
+ * Use `create(RobotSurveyCellSchema)` to create a new message.
+ */
+export const RobotSurveyCellSchema: GenMessage<RobotSurveyCell> = /*@__PURE__*/
+  messageDesc(file_app_robot_svc_g, 25);
+
+/**
  * @generated from message app.PairingAddRequest
  */
 export type PairingAddRequest = Message<"app.PairingAddRequest"> & {
@@ -901,7 +977,7 @@ export type PairingAddRequest = Message<"app.PairingAddRequest"> & {
  * Use `create(PairingAddRequestSchema)` to create a new message.
  */
 export const PairingAddRequestSchema: GenMessage<PairingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 24);
+  messageDesc(file_app_robot_svc_g, 26);
 
 /**
  * @generated from message app.PairingGetRequest
@@ -923,7 +999,7 @@ export type PairingGetRequest = Message<"app.PairingGetRequest"> & {
  * Use `create(PairingGetRequestSchema)` to create a new message.
  */
 export const PairingGetRequestSchema: GenMessage<PairingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 25);
+  messageDesc(file_app_robot_svc_g, 27);
 
 /**
  * @generated from message app.PairingRef
@@ -946,7 +1022,7 @@ export type PairingRef = Message<"app.PairingRef"> & {
  * Use `create(PairingRefSchema)` to create a new message.
  */
 export const PairingRefSchema: GenMessage<PairingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 26);
+  messageDesc(file_app_robot_svc_g, 28);
 
 /**
  * @generated from message app.PairingSelect
@@ -978,7 +1054,7 @@ export type PairingSelect = Message<"app.PairingSelect"> & {
  * Use `create(PairingSelectSchema)` to create a new message.
  */
 export const PairingSelectSchema: GenMessage<PairingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 27);
+  messageDesc(file_app_robot_svc_g, 29);
 
 /**
  * @generated from message app.PairingPatchRequest
@@ -995,7 +1071,7 @@ export type PairingPatchRequest = Message<"app.PairingPatchRequest"> & {
  * Use `create(PairingPatchRequestSchema)` to create a new message.
  */
 export const PairingPatchRequestSchema: GenMessage<PairingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 28);
+  messageDesc(file_app_robot_svc_g, 30);
 
 /**
  * @generated from message app.PairingEraseResponse
@@ -1018,7 +1094,7 @@ export type PairingEraseResponse = Message<"app.PairingEraseResponse"> & {
  * Use `create(PairingEraseResponseSchema)` to create a new message.
  */
 export const PairingEraseResponseSchema: GenMessage<PairingEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 29);
+  messageDesc(file_app_robot_svc_g, 31);
 
 /**
  * @generated from message app.JointAddRequest
@@ -1045,7 +1121,7 @@ export type JointAddRequest = Message<"app.JointAddRequest"> & {
  * Use `create(JointAddRequestSchema)` to create a new message.
  */
 export const JointAddRequestSchema: GenMessage<JointAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 30);
+  messageDesc(file_app_robot_svc_g, 32);
 
 /**
  * @generated from message app.JointGetRequest
@@ -1067,7 +1143,7 @@ export type JointGetRequest = Message<"app.JointGetRequest"> & {
  * Use `create(JointGetRequestSchema)` to create a new message.
  */
 export const JointGetRequestSchema: GenMessage<JointGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 31);
+  messageDesc(file_app_robot_svc_g, 33);
 
 /**
  * @generated from message app.JointRef
@@ -1090,7 +1166,7 @@ export type JointRef = Message<"app.JointRef"> & {
  * Use `create(JointRefSchema)` to create a new message.
  */
 export const JointRefSchema: GenMessage<JointRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 32);
+  messageDesc(file_app_robot_svc_g, 34);
 
 /**
  * @generated from message app.JointSelect
@@ -1122,7 +1198,7 @@ export type JointSelect = Message<"app.JointSelect"> & {
  * Use `create(JointSelectSchema)` to create a new message.
  */
 export const JointSelectSchema: GenMessage<JointSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 33);
+  messageDesc(file_app_robot_svc_g, 35);
 
 /**
  * @generated from message app.JointPatchRequest
@@ -1144,7 +1220,7 @@ export type JointPatchRequest = Message<"app.JointPatchRequest"> & {
  * Use `create(JointPatchRequestSchema)` to create a new message.
  */
 export const JointPatchRequestSchema: GenMessage<JointPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 34);
+  messageDesc(file_app_robot_svc_g, 36);
 
 /**
  * @generated from message app.JointEraseResponse
@@ -1167,7 +1243,7 @@ export type JointEraseResponse = Message<"app.JointEraseResponse"> & {
  * Use `create(JointEraseResponseSchema)` to create a new message.
  */
 export const JointEraseResponseSchema: GenMessage<JointEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 35);
+  messageDesc(file_app_robot_svc_g, 37);
 
 /**
  * @generated from message app.FleetAddRequest
@@ -1189,7 +1265,7 @@ export type FleetAddRequest = Message<"app.FleetAddRequest"> & {
  * Use `create(FleetAddRequestSchema)` to create a new message.
  */
 export const FleetAddRequestSchema: GenMessage<FleetAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 36);
+  messageDesc(file_app_robot_svc_g, 38);
 
 /**
  * @generated from message app.FleetGetRequest
@@ -1211,7 +1287,7 @@ export type FleetGetRequest = Message<"app.FleetGetRequest"> & {
  * Use `create(FleetGetRequestSchema)` to create a new message.
  */
 export const FleetGetRequestSchema: GenMessage<FleetGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 37);
+  messageDesc(file_app_robot_svc_g, 39);
 
 /**
  * @generated from message app.FleetRef
@@ -1240,7 +1316,7 @@ export type FleetRef = Message<"app.FleetRef"> & {
  * Use `create(FleetRefSchema)` to create a new message.
  */
 export const FleetRefSchema: GenMessage<FleetRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 38);
+  messageDesc(file_app_robot_svc_g, 40);
 
 /**
  * @generated from message app.FleetSelect
@@ -1267,7 +1343,7 @@ export type FleetSelect = Message<"app.FleetSelect"> & {
  * Use `create(FleetSelectSchema)` to create a new message.
  */
 export const FleetSelectSchema: GenMessage<FleetSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 39);
+  messageDesc(file_app_robot_svc_g, 41);
 
 /**
  * @generated from message app.FleetPatchRequest
@@ -1289,7 +1365,7 @@ export type FleetPatchRequest = Message<"app.FleetPatchRequest"> & {
  * Use `create(FleetPatchRequestSchema)` to create a new message.
  */
 export const FleetPatchRequestSchema: GenMessage<FleetPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 40);
+  messageDesc(file_app_robot_svc_g, 42);
 
 /**
  * @generated from message app.FleetEraseResponse
@@ -1312,7 +1388,7 @@ export type FleetEraseResponse = Message<"app.FleetEraseResponse"> & {
  * Use `create(FleetEraseResponseSchema)` to create a new message.
  */
 export const FleetEraseResponseSchema: GenMessage<FleetEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 41);
+  messageDesc(file_app_robot_svc_g, 43);
 
 /**
  * @generated from message app.ReadingAddRequest
@@ -1349,7 +1425,7 @@ export type ReadingAddRequest = Message<"app.ReadingAddRequest"> & {
  * Use `create(ReadingAddRequestSchema)` to create a new message.
  */
 export const ReadingAddRequestSchema: GenMessage<ReadingAddRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 42);
+  messageDesc(file_app_robot_svc_g, 44);
 
 /**
  * @generated from message app.ReadingAddManyRequest
@@ -1366,7 +1442,7 @@ export type ReadingAddManyRequest = Message<"app.ReadingAddManyRequest"> & {
  * Use `create(ReadingAddManyRequestSchema)` to create a new message.
  */
 export const ReadingAddManyRequestSchema: GenMessage<ReadingAddManyRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 43);
+  messageDesc(file_app_robot_svc_g, 45);
 
 /**
  * @generated from message app.ReadingAddManyResponse
@@ -1383,7 +1459,7 @@ export type ReadingAddManyResponse = Message<"app.ReadingAddManyResponse"> & {
  * Use `create(ReadingAddManyResponseSchema)` to create a new message.
  */
 export const ReadingAddManyResponseSchema: GenMessage<ReadingAddManyResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 44);
+  messageDesc(file_app_robot_svc_g, 46);
 
 /**
  * @generated from message app.ReadingGetRequest
@@ -1405,7 +1481,7 @@ export type ReadingGetRequest = Message<"app.ReadingGetRequest"> & {
  * Use `create(ReadingGetRequestSchema)` to create a new message.
  */
 export const ReadingGetRequestSchema: GenMessage<ReadingGetRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 45);
+  messageDesc(file_app_robot_svc_g, 47);
 
 /**
  * @generated from message app.ReadingRef
@@ -1428,7 +1504,7 @@ export type ReadingRef = Message<"app.ReadingRef"> & {
  * Use `create(ReadingRefSchema)` to create a new message.
  */
 export const ReadingRefSchema: GenMessage<ReadingRef> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 46);
+  messageDesc(file_app_robot_svc_g, 48);
 
 /**
  * @generated from message app.ReadingSelect
@@ -1465,7 +1541,7 @@ export type ReadingSelect = Message<"app.ReadingSelect"> & {
  * Use `create(ReadingSelectSchema)` to create a new message.
  */
 export const ReadingSelectSchema: GenMessage<ReadingSelect> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 47);
+  messageDesc(file_app_robot_svc_g, 49);
 
 /**
  * @generated from message app.ReadingPatchRequest
@@ -1492,7 +1568,7 @@ export type ReadingPatchRequest = Message<"app.ReadingPatchRequest"> & {
  * Use `create(ReadingPatchRequestSchema)` to create a new message.
  */
 export const ReadingPatchRequestSchema: GenMessage<ReadingPatchRequest> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 48);
+  messageDesc(file_app_robot_svc_g, 50);
 
 /**
  * @generated from message app.ReadingEraseResponse
@@ -1515,7 +1591,7 @@ export type ReadingEraseResponse = Message<"app.ReadingEraseResponse"> & {
  * Use `create(ReadingEraseResponseSchema)` to create a new message.
  */
 export const ReadingEraseResponseSchema: GenMessage<ReadingEraseResponse> = /*@__PURE__*/
-  messageDesc(file_app_robot_svc_g, 49);
+  messageDesc(file_app_robot_svc_g, 51);
 
 /**
  * RobotListOrder names an order a list of Robots may be read in.
@@ -1765,6 +1841,21 @@ export const RobotService: GenService<{
     methodKind: "bidi_streaming";
     input: typeof RobotRefSchema;
     output: typeof RobotSchema;
+  },
+  /**
+   * Survey answers the robot named inside an answer of its own: two messages
+   * deep, and in each way a message holds another -- a list, a map's values,
+   * a oneof's case, and a message that holds itself. It is here for the
+   * Secret layer, which clears what an answer can hold wherever it holds it:
+   * the robot is read below the layer, secret and all, and none of the
+   * copies leaves with it.
+   *
+   * @generated from rpc app.RobotService.Survey
+   */
+  survey: {
+    methodKind: "unary";
+    input: typeof RobotRefSchema;
+    output: typeof RobotSurveySchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_app_robot_svc_g, 1);

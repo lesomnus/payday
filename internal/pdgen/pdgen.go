@@ -182,6 +182,9 @@ type Schema struct {
 	Resources []*ReadResource
 	rpcs      []interceptRpc
 
+	// hiding is what the Secret layer looks into an answer for.
+	hiding *hiding
+
 	// Tenant is the entity a wall is made of, and nil for a schema that has
 	// none. A schema with a tenanted entity and no tenant does not get this
 	// far; see [Read].
@@ -402,6 +405,7 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	s.rpcs = interceptRpcs(s, files, true)
+	s.hiding = readHiding(s, files)
 	if err := s.checkShadowed(); err != nil {
 		return nil, err
 	}
