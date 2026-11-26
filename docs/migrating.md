@@ -3,13 +3,34 @@
 What an app has to change when payday does, newest first, each entry saying how
 to tell whether it applies to you.
 
-There is no entry before the first app built on payday launches. Until then
-payday keeps nothing for an earlier payday -- a store, a format, a lock,
-configuration or generated code an earlier payday made is not carried forward
--- and so nothing here says how to bring one forward. From that launch on, a
-change that asks something of an app is entered here.
+Until the first app built on payday launches, payday keeps nothing for an
+earlier payday -- a store, a format, a lock, configuration or generated code an
+earlier payday made is not carried forward -- and so nothing here says how to
+bring one forward. What is entered before then is a change in what payday does
+that an app's own code may have leaned on. From that launch on, every change
+that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
+
+## An RPC of your own no longer answers a secret
+
+**It applies to you** if an entity declares a field `(payday.field) = {secret:
+true}` and an RPC of yours answers that entity, itself or inside a message of
+yours -- or a generated verb of another entity answers it through an edge.
+
+The Secret layer cleared a secret from the generated verbs of the entity that
+declared it, and passed everything else through. It now clears one from every
+answer that can hold it, at any depth and in each message a stream sends; see
+[a field about a person](guide/schema.md#a-field-about-a-person). So an RPC
+that answered a secret through the entity's message no longer does, and a
+client that read it there reads an empty field.
+
+- **An RPC meant to hand a secret over once** -- a key, at the moment it is
+  made -- answers it in a field of the answer's own, beside the entity rather
+  than in the entity's secret field. Only an entity's field can be declared
+  `secret`, so the layer leaves that one alone.
+- **A handler that cleared the field by hand** before answering may stop: the
+  layer clears it on the way past.
 
 ## A rename is moved before the migration looks for it
 
