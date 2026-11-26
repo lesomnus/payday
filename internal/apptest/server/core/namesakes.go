@@ -78,3 +78,33 @@ func (s coreRobot) Joint(out grpc.BidiStreamingServer[app.RobotRef, app.Robot]) 
 func (s coreRobot) read(ctx context.Context, ref *app.RobotRef) (*app.Robot, error) {
 	return s.RobotServiceServer.Get(ctx, app.RobotGetRequest_builder{Ref: ref}.Build())
 }
+
+// Survey answers the robot named in every place its answer can hold one,
+// each a copy of the robot as it was read: two messages deep, in a list, a
+// map's values, a oneof's case, and a cell inside a cell.
+func (s coreRobot) Survey(ctx context.Context, req *app.RobotRef) (*app.RobotSurvey, error) {
+	read := func() (*app.Robot, error) { return s.read(ctx, req) }
+
+	var vs []*app.Robot
+	for range 5 {
+		v, err := read()
+		if err != nil {
+			return nil, err
+		}
+		vs = append(vs, v)
+	}
+
+	cell := func(v *app.Robot) *app.RobotSurveyCell {
+		return app.RobotSurveyCell_builder{Robot: v}.Build()
+	}
+
+	return app.RobotSurvey_builder{
+		Cell: app.RobotSurveyCell_builder{
+			Robots: []*app.Robot{vs[0]},
+			Within: []*app.RobotSurveyCell{cell(vs[1])},
+		}.Build(),
+		Cells:   []*app.RobotSurveyCell{cell(vs[2])},
+		ByAlias: map[string]*app.RobotSurveyCell{vs[3].GetAlias(): cell(vs[3])},
+		First:   cell(vs[4]),
+	}.Build(), nil
+}

@@ -488,6 +488,22 @@ field is read like any other. Generation refuses the two on one field, and
 refuses `personal` on an edge or on the key — those are identifiers, which is
 what the trail is made of.
 
+The Secret layer (`pd.SecretBuild()`) is what keeps a secret from being
+answered with, and it keeps it from whatever leaves it: the generated verbs'
+answers and the answer of every [RPC of your own](#an-rpc-of-your-own), each
+message a stream sends, wherever the entity is in it — itself, an edge another
+row was read with, or a field of a message of yours, in a list, a map's values
+or a `oneof`'s case, at any depth. It does not look into a
+`google.protobuf.Any`, or `bytes` that hold a message: what is in one of those
+is answered as it was made. A request is not an answer, so what a caller may
+send is unchanged. A handler of an RPC of your own is in a layer of yours, and
+which side of the Secret layer that layer is on decides what it reads: stacked
+beneath it, as a layer that verifies a secret has to be, it reads the row as
+stored, secret and all, and what it answers is cleared on the way past; stacked
+above it, it reads every row with the secret already gone. To hand a secret
+over once — a key, at the moment it is made — answer it in a field of the
+answer's own, not in the entity's secret field.
+
 It goes on the entity's own column. A message one column holds — a profile, a
 contact — is withheld or kept as the column it is in, so its own fields cannot
 say anything, and generation refuses a `(payday.field)` there rather than

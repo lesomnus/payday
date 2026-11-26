@@ -6305,6 +6305,17 @@ func (s guardedRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, appte
 	return s.RobotServiceServer.Joint(out)
 }
 
+func (s guardedRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotSurvey, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Survey_FullMethodName); err != nil {
+		return nil, err
+	}
+	if err := gate.AsAccount(ctx, apptest.RobotService_Survey_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Survey(ctx, req)
+}
+
 // guardedPairing enforces method declarations on in-process calls too.
 type guardedPairing struct{ apptest.PairingServiceServer }
 
@@ -10351,10 +10362,14 @@ var _ *patchpb.Patch
 
 // Secret is the layer that keeps a declared secret off the wire.
 //
-// Every field marked `(payday.field).secret` is cleared on the way out:
-// from what an `Add` echoes, what a `Get` answers, and every item of a
-// `List` or an `AddMany`. The write side is untouched, because writing is
-// the half that works.
+// Every field marked `(payday.field).secret` is cleared from whatever
+// leaves this layer: what an `Add` echoes, what a `Get` answers, every item
+// of a `List` or an `AddMany`, every change a `Watch` sends -- and the
+// answer of every RPC of the app's own that can hold the entity, at any
+// depth, on a stream in each message sent. The write side is untouched,
+// because writing is the half that works, and so is what a handler beneath
+// this layer reads: an RPC of the app's own reads the secret and answers
+// with it, and this is where it stops.
 //
 //	app.Build(walled, core.Build(), pd.AuditBuild(), pd.SecretBuild(), pd.GateBuild())
 //
@@ -10400,34 +10415,6 @@ func (s Secret) Robot() apptest.RobotServiceServer {
 type secretRobot struct {
 	Secret
 	apptest.RobotServiceServer
-}
-
-// Seal is the service's: Secret answers to the name as well, and
-// where the two are at one depth neither is promoted. This is what
-// promotion would have been.
-func (s secretRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
-	return s.RobotServiceServer.Seal(ctx, req)
-}
-
-// Reading is the service's: Secret answers to the name as well, and
-// where the two are at one depth neither is promoted. This is what
-// promotion would have been.
-func (s secretRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
-	return s.RobotServiceServer.Reading(req, out)
-}
-
-// Job is the service's: Secret answers to the name as well, and
-// where the two are at one depth neither is promoted. This is what
-// promotion would have been.
-func (s secretRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
-	return s.RobotServiceServer.Job(out)
-}
-
-// Joint is the service's: Secret answers to the name as well, and
-// where the two are at one depth neither is promoted. This is what
-// promotion would have been.
-func (s secretRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
-	return s.RobotServiceServer.Joint(out)
 }
 
 func (s secretRobot) Add(ctx context.Context, req *apptest.RobotAddRequest) (*apptest.Robot, error) {
@@ -10498,35 +10485,232 @@ func (s secretRobotStream) Send(v *apptest.RobotWatchResponse) error {
 	return s.ServerStreamingServer.Send(v)
 }
 
-// hideRobot clears what this entity declared it never answers with.
-//
-// A nil row passes through, because an error is answered with one and the
-// caller of this is handing both on.
-//
-// By field number and through the descriptor, rather than a setter per
-// field, because a setter's argument has a type and this has to hold for
-// every field a row can carry. A `Set<F>(nil)` per secret is what this
-// was, and it compiled only while every secret anybody had declared was
-// `bytes`: a `string` one ended the build in a generated file, and an
-// enum would have needed its own type spelled out here to say zero.
-//
-// Clear is also the truer word. A field with presence is **absent**
-// afterwards rather than present and empty, which is what "never answered
-// with" says; one without presence reads as its zero value either way.
-// And the numbers are the ones `hidden` filters the trail's patch by, so
-// the two cannot come to disagree about which fields they are.
-func hideRobot(v *apptest.Robot) *apptest.Robot {
+// Move clears the secrets its answer can carry.
+func (s secretRobot) Move(ctx context.Context, req *apptest.RobotMoveRequest) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Move(ctx, req)
+
+	return hideRobot(v), err
+}
+
+// Seal clears the secrets its answer can carry.
+func (s secretRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*apptest.Robot, error) {
+	v, err := s.RobotServiceServer.Seal(ctx, req)
+
+	return hideRobot(v), err
+}
+
+// Reading clears the secrets its answer can carry.
+func (s secretRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
+	return s.RobotServiceServer.Reading(req, hidingServerStream[apptest.Robot]{out, hideRobot})
+}
+
+// Job clears the secrets its answer can carry.
+func (s secretRobot) Job(out grpc.ClientStreamingServer[apptest.RobotRef, apptest.RobotJobResponse]) error {
+	return s.RobotServiceServer.Job(hidingClientStream[apptest.RobotRef, apptest.RobotJobResponse]{out, hideRobotJobResponse})
+}
+
+// Joint clears the secrets its answer can carry.
+func (s secretRobot) Joint(out grpc.BidiStreamingServer[apptest.RobotRef, apptest.Robot]) error {
+	return s.RobotServiceServer.Joint(hidingBidiStream[apptest.RobotRef, apptest.Robot]{out, hideRobot})
+}
+
+// Survey clears the secrets its answer can carry.
+func (s secretRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotSurvey, error) {
+	v, err := s.RobotServiceServer.Survey(ctx, req)
+
+	return hideRobotSurvey(v), err
+}
+
+func (s Secret) Pairing() apptest.PairingServiceServer {
+	return secretPairing{s, s.Next().Pairing()}
+}
+
+type secretPairing struct {
+	Secret
+	apptest.PairingServiceServer
+}
+
+func (s secretPairing) Add(ctx context.Context, req *apptest.PairingAddRequest) (*apptest.Pairing, error) {
+	v, err := s.PairingServiceServer.Add(ctx, req)
+
+	return hidePairing(v), err
+}
+
+func (s secretPairing) Get(ctx context.Context, req *apptest.PairingGetRequest) (*apptest.Pairing, error) {
+	v, err := s.PairingServiceServer.Get(ctx, req)
+
+	return hidePairing(v), err
+}
+
+func (s secretPairing) Patch(ctx context.Context, req *apptest.PairingPatchRequest) (*apptest.Pairing, error) {
+	v, err := s.PairingServiceServer.Patch(ctx, req)
+
+	return hidePairing(v), err
+}
+
+func (s Secret) Joint() apptest.JointServiceServer {
+	return secretJoint{s, s.Next().Joint()}
+}
+
+type secretJoint struct {
+	Secret
+	apptest.JointServiceServer
+}
+
+func (s secretJoint) Add(ctx context.Context, req *apptest.JointAddRequest) (*apptest.Joint, error) {
+	v, err := s.JointServiceServer.Add(ctx, req)
+
+	return hideJoint(v), err
+}
+
+func (s secretJoint) Get(ctx context.Context, req *apptest.JointGetRequest) (*apptest.Joint, error) {
+	v, err := s.JointServiceServer.Get(ctx, req)
+
+	return hideJoint(v), err
+}
+
+func (s secretJoint) Patch(ctx context.Context, req *apptest.JointPatchRequest) (*apptest.Joint, error) {
+	v, err := s.JointServiceServer.Patch(ctx, req)
+
+	return hideJoint(v), err
+}
+
+func (s Secret) Reading() apptest.ReadingServiceServer {
+	return secretReading{s, s.Next().Reading()}
+}
+
+type secretReading struct {
+	Secret
+	apptest.ReadingServiceServer
+}
+
+func (s secretReading) Add(ctx context.Context, req *apptest.ReadingAddRequest) (*apptest.Reading, error) {
+	v, err := s.ReadingServiceServer.Add(ctx, req)
+
+	return hideReading(v), err
+}
+
+func (s secretReading) Get(ctx context.Context, req *apptest.ReadingGetRequest) (*apptest.Reading, error) {
+	v, err := s.ReadingServiceServer.Get(ctx, req)
+
+	return hideReading(v), err
+}
+
+func (s secretReading) Patch(ctx context.Context, req *apptest.ReadingPatchRequest) (*apptest.Reading, error) {
+	v, err := s.ReadingServiceServer.Patch(ctx, req)
+
+	return hideReading(v), err
+}
+
+func (s secretReading) AddMany(ctx context.Context, req *apptest.ReadingAddManyRequest) (*apptest.ReadingAddManyResponse, error) {
+	v, err := s.ReadingServiceServer.AddMany(ctx, req)
+	for _, w := range v.GetItems() {
+		hideReading(w)
+	}
+
+	return v, err
+}
+
+func (s Secret) Machine() apptest.MachineServiceServer {
+	return secretMachine{s, s.Next().Machine()}
+}
+
+type secretMachine struct {
+	Secret
+	apptest.MachineServiceServer
+}
+
+func (s secretMachine) Add(ctx context.Context, req *apptest.MachineAddRequest) (*apptest.Machine, error) {
+	v, err := s.MachineServiceServer.Add(ctx, req)
+
+	return hideMachine(v), err
+}
+
+func (s secretMachine) Get(ctx context.Context, req *apptest.MachineGetRequest) (*apptest.Machine, error) {
+	v, err := s.MachineServiceServer.Get(ctx, req)
+
+	return hideMachine(v), err
+}
+
+func (s secretMachine) Patch(ctx context.Context, req *apptest.MachinePatchRequest) (*apptest.Machine, error) {
+	v, err := s.MachineServiceServer.Patch(ctx, req)
+
+	return hideMachine(v), err
+}
+
+func (s Secret) Holder() apptest.HolderServiceServer {
+	return secretHolder{s, s.Next().Holder()}
+}
+
+type secretHolder struct {
+	Secret
+	apptest.HolderServiceServer
+}
+
+func (s secretHolder) Add(ctx context.Context, req *apptest.HolderAddRequest) (*apptest.Holder, error) {
+	v, err := s.HolderServiceServer.Add(ctx, req)
+
+	return hideHolder(v), err
+}
+
+func (s secretHolder) Get(ctx context.Context, req *apptest.HolderGetRequest) (*apptest.Holder, error) {
+	v, err := s.HolderServiceServer.Get(ctx, req)
+
+	return hideHolder(v), err
+}
+
+func (s secretHolder) Patch(ctx context.Context, req *apptest.HolderPatchRequest) (*apptest.Holder, error) {
+	v, err := s.HolderServiceServer.Patch(ctx, req)
+
+	return hideHolder(v), err
+}
+
+func (s secretHolder) Apply(ctx context.Context, req *apptest.HolderApplyRequest) (*apptest.Holder, error) {
+	v, err := s.HolderServiceServer.Apply(ctx, req)
+
+	return hideHolder(v), err
+}
+
+func (s secretHolder) List(ctx context.Context, req *apptest.HolderListRequest) (*apptest.HolderListResponse, error) {
+	v, err := s.HolderServiceServer.List(ctx, req)
 	if v == nil {
-		return nil
+		return v, err
 	}
 
-	m := v.ProtoReflect()
-	fs := m.Descriptor().Fields()
-	for _, n := range []protoreflect.FieldNumber{8} {
-		m.Clear(fs.ByNumber(n))
+	for _, w := range v.GetItems() {
+		hideHolder(w)
 	}
 
-	return v
+	return v, err
+}
+
+func (s secretHolder) Watch(req *apptest.HolderWatchRequest, out grpc.ServerStreamingServer[apptest.HolderWatchResponse]) error {
+	return s.HolderServiceServer.Watch(req, secretHolderStream{out})
+}
+
+// secretHolderStream clears the secret on its way out.
+//
+// It wraps the stream rather than the response because the server below
+// sends whenever it has something, and there is no single place a
+// message passes through on the way back -- which is the difference
+// between a stream and a call.
+type secretHolderStream struct {
+	grpc.ServerStreamingServer[apptest.HolderWatchResponse]
+}
+
+func (s secretHolderStream) Send(v *apptest.HolderWatchResponse) error {
+	for _, w := range v.GetItems() {
+		hideHolder(w.GetValue())
+	}
+
+	return s.ServerStreamingServer.Send(v)
+}
+
+// Memberships clears the secrets its answer can carry.
+func (s secretHolder) Memberships(ctx context.Context, req *apptest.HolderMembershipsRequest) (*apptest.HolderMembershipsResponse, error) {
+	v, err := s.HolderServiceServer.Memberships(ctx, req)
+
+	return hideHolderMembershipsResponse(v), err
 }
 
 func (s Secret) NotificationRecord() apptest.NotificationRecordServiceServer {
@@ -10550,7 +10734,140 @@ func (s secretNotificationRecord) Get(ctx context.Context, req *apptest.Notifica
 	return hideNotificationRecord(v), err
 }
 
-// hideNotificationRecord clears what this entity declared it never answers with.
+func (s Secret) Seal() apptest.SealServiceServer {
+	return secretSeal{s, s.Next().Seal()}
+}
+
+type secretSeal struct {
+	Secret
+	apptest.SealServiceServer
+}
+
+func (s secretSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Add(ctx, req)
+
+	return hideSeal(v), err
+}
+
+func (s secretSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Get(ctx, req)
+
+	return hideSeal(v), err
+}
+
+func (s secretSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
+	v, err := s.SealServiceServer.Patch(ctx, req)
+
+	return hideSeal(v), err
+}
+
+// hidingServerStream clears what is sent through it.
+type hidingServerStream[Out any] struct {
+	grpc.ServerStreamingServer[Out]
+	hide func(*Out) *Out
+}
+
+func (s hidingServerStream[Out]) Send(v *Out) error {
+	return s.ServerStreamingServer.Send(s.hide(v))
+}
+
+func (s hidingServerStream[Out]) SendMsg(m any) error {
+	if v, ok := m.(*Out); ok {
+		s.hide(v)
+	}
+
+	return s.ServerStreamingServer.SendMsg(m)
+}
+
+// hidingClientStream clears what is sent through it.
+type hidingClientStream[In, Out any] struct {
+	grpc.ClientStreamingServer[In, Out]
+	hide func(*Out) *Out
+}
+
+func (s hidingClientStream[In, Out]) SendAndClose(v *Out) error {
+	return s.ClientStreamingServer.SendAndClose(s.hide(v))
+}
+
+func (s hidingClientStream[In, Out]) SendMsg(m any) error {
+	if v, ok := m.(*Out); ok {
+		s.hide(v)
+	}
+
+	return s.ClientStreamingServer.SendMsg(m)
+}
+
+// hidingBidiStream clears what is sent through it.
+type hidingBidiStream[In, Out any] struct {
+	grpc.BidiStreamingServer[In, Out]
+	hide func(*Out) *Out
+}
+
+func (s hidingBidiStream[In, Out]) Send(v *Out) error {
+	return s.BidiStreamingServer.Send(s.hide(v))
+}
+
+func (s hidingBidiStream[In, Out]) SendMsg(m any) error {
+	if v, ok := m.(*Out); ok {
+		s.hide(v)
+	}
+
+	return s.BidiStreamingServer.SendMsg(m)
+}
+
+// hideHolder clears every secret a Holder can carry, in the
+// fields that can carry one.
+func hideHolder(v *apptest.Holder) *apptest.Holder {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetRobot())
+
+	return v
+}
+
+// hideHolderMembershipsResponse clears every secret a HolderMembershipsResponse can carry, in the
+// fields that can carry one.
+func hideHolderMembershipsResponse(v *apptest.HolderMembershipsResponse) *apptest.HolderMembershipsResponse {
+	if v == nil {
+		return nil
+	}
+
+	for _, w := range v.GetItems() {
+		hideHolder(w)
+	}
+
+	return v
+}
+
+// hideJoint clears every secret a Joint can carry, in the
+// fields that can carry one.
+func hideJoint(v *apptest.Joint) *apptest.Joint {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetRobot())
+
+	return v
+}
+
+// hideMachine clears every secret a Machine can carry, in the
+// fields that can carry one.
+func hideMachine(v *apptest.Machine) *apptest.Machine {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetRobot())
+
+	return v
+}
+
+// hideNotificationRecord clears what this entity declared it never answers with,
+// and what any row it holds declared -- an edge is a row, answered where it
+// was selected.
 //
 // A nil row passes through, because an error is answered with one and the
 // caller of this is handing both on.
@@ -10581,34 +10898,118 @@ func hideNotificationRecord(v *apptest.NotificationRecord) *apptest.Notification
 	return v
 }
 
-func (s Secret) Seal() apptest.SealServiceServer {
-	return secretSeal{s, s.Next().Seal()}
+// hidePairing clears every secret a Pairing can carry, in the
+// fields that can carry one.
+func hidePairing(v *apptest.Pairing) *apptest.Pairing {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetLead())
+	hideRobot(v.GetFollow())
+
+	return v
 }
 
-type secretSeal struct {
-	Secret
-	apptest.SealServiceServer
+// hideReading clears every secret a Reading can carry, in the
+// fields that can carry one.
+func hideReading(v *apptest.Reading) *apptest.Reading {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetRobot())
+
+	return v
 }
 
-func (s secretSeal) Add(ctx context.Context, req *apptest.SealAddRequest) (*apptest.Seal, error) {
-	v, err := s.SealServiceServer.Add(ctx, req)
+// hideRobot clears what this entity declared it never answers with,
+// and what any row it holds declared -- an edge is a row, answered where it
+// was selected.
+//
+// A nil row passes through, because an error is answered with one and the
+// caller of this is handing both on.
+//
+// By field number and through the descriptor, rather than a setter per
+// field, because a setter's argument has a type and this has to hold for
+// every field a row can carry. A `Set<F>(nil)` per secret is what this
+// was, and it compiled only while every secret anybody had declared was
+// `bytes`: a `string` one ended the build in a generated file, and an
+// enum would have needed its own type spelled out here to say zero.
+//
+// Clear is also the truer word. A field with presence is **absent**
+// afterwards rather than present and empty, which is what "never answered
+// with" says; one without presence reads as its zero value either way.
+// And the numbers are the ones `hidden` filters the trail's patch by, so
+// the two cannot come to disagree about which fields they are.
+func hideRobot(v *apptest.Robot) *apptest.Robot {
+	if v == nil {
+		return nil
+	}
 
-	return hideSeal(v), err
+	m := v.ProtoReflect()
+	fs := m.Descriptor().Fields()
+	for _, n := range []protoreflect.FieldNumber{8} {
+		m.Clear(fs.ByNumber(n))
+	}
+
+	return v
 }
 
-func (s secretSeal) Get(ctx context.Context, req *apptest.SealGetRequest) (*apptest.Seal, error) {
-	v, err := s.SealServiceServer.Get(ctx, req)
+// hideRobotJobResponse clears every secret a RobotJobResponse can carry, in the
+// fields that can carry one.
+func hideRobotJobResponse(v *apptest.RobotJobResponse) *apptest.RobotJobResponse {
+	if v == nil {
+		return nil
+	}
 
-	return hideSeal(v), err
+	for _, w := range v.GetItems() {
+		hideRobot(w)
+	}
+
+	return v
 }
 
-func (s secretSeal) Patch(ctx context.Context, req *apptest.SealPatchRequest) (*apptest.Seal, error) {
-	v, err := s.SealServiceServer.Patch(ctx, req)
+// hideRobotSurvey clears every secret a RobotSurvey can carry, in the
+// fields that can carry one.
+func hideRobotSurvey(v *apptest.RobotSurvey) *apptest.RobotSurvey {
+	if v == nil {
+		return nil
+	}
 
-	return hideSeal(v), err
+	hideRobotSurveyCell(v.GetCell())
+	for _, w := range v.GetCells() {
+		hideRobotSurveyCell(w)
+	}
+	for _, w := range v.GetByAlias() {
+		hideRobotSurveyCell(w)
+	}
+	hideRobotSurveyCell(v.GetFirst())
+
+	return v
 }
 
-// hideSeal clears what this entity declared it never answers with.
+// hideRobotSurveyCell clears every secret a RobotSurveyCell can carry, in the
+// fields that can carry one.
+func hideRobotSurveyCell(v *apptest.RobotSurveyCell) *apptest.RobotSurveyCell {
+	if v == nil {
+		return nil
+	}
+
+	hideRobot(v.GetRobot())
+	for _, w := range v.GetRobots() {
+		hideRobot(w)
+	}
+	for _, w := range v.GetWithin() {
+		hideRobotSurveyCell(w)
+	}
+
+	return v
+}
+
+// hideSeal clears what this entity declared it never answers with,
+// and what any row it holds declared -- an edge is a row, answered where it
+// was selected.
 //
 // A nil row passes through, because an error is answered with one and the
 // caller of this is handing both on.
@@ -10888,6 +11289,11 @@ func (s interceptRobot) Seal(ctx context.Context, req *apptest.RobotRef) (*appte
 func (s interceptRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingServer[apptest.Robot]) error {
 	return grpcx.RunStream(s.stream, s.RobotServiceServer,
 		apptest.RobotService_Reading_FullMethodName, req, out, s.RobotServiceServer.Reading)
+}
+
+func (s interceptRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotSurvey, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Survey_FullMethodName, req, s.RobotServiceServer.Survey)
 }
 
 func (s Intercept) Pairing() apptest.PairingServiceServer {

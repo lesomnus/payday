@@ -19,6 +19,11 @@ type interceptRpc struct {
 	// Stream says the server sends a stream; Client says the client does.
 	Stream bool
 	Client bool
+
+	// in and out are the two messages themselves: the Secret layer looks
+	// into the answer for what it can hold, and names both by their own
+	// package.
+	in, out *protogen.Message
 }
 
 // interceptRpcs is every Rpc of every entity service, taken from the contracts
@@ -59,6 +64,8 @@ func interceptRpcs(s *Schema, files []*protogen.File, clients bool) []interceptR
 					Out:    m.Output.GoIdent.GoName,
 					Stream: m.Desc.IsStreamingServer(),
 					Client: m.Desc.IsStreamingClient(),
+					in:     m.Input,
+					out:    m.Output,
 				})
 			}
 		}

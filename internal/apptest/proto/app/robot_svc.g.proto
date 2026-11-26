@@ -101,6 +101,15 @@ service RobotService {
   rpc Joint(stream RobotRef) returns (stream Robot) {
     option (payday.method) = {direct: {}};
   }
+  // Survey answers the robot named inside an answer of its own: two messages
+  // deep, and in each way a message holds another -- a list, a map's values,
+  // a oneof's case, and a message that holds itself. It is here for the
+  // Secret layer, which clears what an answer can hold wherever it holds it:
+  // the robot is read below the layer, secret and all, and none of the
+  // copies leaves with it.
+  rpc Survey(RobotRef) returns (RobotSurvey) {
+    option (payday.method) = {direct: {}};
+  }
 }
 
 service PairingService {
@@ -435,6 +444,25 @@ message RobotMoveRequest {
 // them.
 message RobotJobResponse {
   repeated Robot items = 1;
+}
+
+// RobotSurvey holds the robot a `Survey` was asked of, in every place it can.
+message RobotSurvey {
+  RobotSurveyCell cell = 1;
+  repeated RobotSurveyCell cells = 2;
+  map<string, RobotSurveyCell> by_alias = 3;
+  oneof found {
+    RobotSurveyCell first = 4;
+    string none = 5;
+  }
+}
+
+// RobotSurveyCell is one place a robot is held: itself, in a list, and in a
+// cell inside this one.
+message RobotSurveyCell {
+  Robot robot = 1;
+  repeated Robot robots = 2;
+  repeated RobotSurveyCell within = 3;
 }
 
 message PairingAddRequest {
