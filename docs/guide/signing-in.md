@@ -189,12 +189,20 @@ empty list on the wire, and the encoder is the one place that rule is applied.
 `NotFound` for every refusal about the token — unknown, expired, revoked. Told
 apart they are an oracle for "this string was a real token once".
 
+A token the calling app had minted with a scope of its own answers it in
+`Identity.Scope`, as it was given, and the encoder writes it. The store reads
+nothing of it; it is the one that keeps it, so it bounds its length when the
+token is minted. A store that keeps none leaves it empty, and the app reads an
+empty scope; see [a token that reaches some of your
+rows](permissions.md#a-token-that-reaches-some-of-your-rows).
+
 ### It asks on every request
 
 There is no cache, deliberately: a token revoked a second ago stops working now,
 which is the whole reason to carry an opaque one. A deployment that cannot pay a
 round trip per request should wrap `auth.Remote` in a store where the window it
-is accepting is written down.
+is accepting is written down — keyed by the token and never by who it names,
+since two tokens of one person differ in what they allow and in their scope.
 
 ## Where sessions live
 

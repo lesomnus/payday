@@ -110,6 +110,13 @@ service RobotService {
   rpc Survey(RobotRef) returns (RobotSurvey) {
     option (payday.method) = {direct: {}};
   }
+  // TokenScope reads the robot named, through the wall, and answers the scope
+  // of the token the call came with, as its handler read it off the frame.
+  // It is here for that word, which is the app's own: payday carries it from
+  // what the identity store answered to the frame and reads none of it, so
+  // what a handler does with it is the app's to write, and this one shows
+  // only that it arrives -- each token's its own, though two be one person's.
+  rpc TokenScope(RobotRef) returns (RobotTokenScope);
 }
 
 service PairingService {
@@ -463,6 +470,11 @@ message RobotSurveyCell {
   Robot robot = 1;
   repeated Robot robots = 2;
   repeated RobotSurveyCell within = 3;
+}
+
+// RobotTokenScope is what a `TokenScope` read of the token its call came with.
+message RobotTokenScope {
+  string scope = 1;
 }
 
 message PairingAddRequest {

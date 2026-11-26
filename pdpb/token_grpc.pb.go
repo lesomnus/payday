@@ -60,7 +60,8 @@ const (
 // # What it does not do
 //
 // It does not answer what the bearer may do **in the calling app**. It answers
-// who they are and what the token was narrowed to, and the app applies its own
+// who they are, what the token was narrowed to and the app's own word about it
+// (`scope`, which only the app reads), and the app applies its own
 // rules to that, unchanged, the way it does for every other credential. An
 // identity store that decided what a caller may do in somebody else's app would
 // need to hold that app's rules, and then there is one place that has to know
@@ -135,7 +136,8 @@ func (c *tokenServiceClient) Introspect(ctx context.Context, in *TokenIntrospect
 // # What it does not do
 //
 // It does not answer what the bearer may do **in the calling app**. It answers
-// who they are and what the token was narrowed to, and the app applies its own
+// who they are, what the token was narrowed to and the app's own word about it
+// (`scope`, which only the app reads), and the app applies its own
 // rules to that, unchanged, the way it does for every other credential. An
 // identity store that decided what a caller may do in somebody else's app would
 // need to hold that app's rules, and then there is one place that has to know

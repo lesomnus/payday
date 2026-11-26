@@ -357,6 +357,47 @@ it verifies the token against the issuer's key set and hands the claims to your
 a `TokenStore` your app writes, and for a browser it is a session cookie — see
 [putting a login in front of an app](signing-in.md).
 
+### A token that reaches some of your rows
+
+The grant's three axes are the whole of what payday applies of a credential:
+which tenants, which sets (§7), which methods. A token that should reach *these
+two cameras* — a hosting service's access token for two repositories, say — is
+narrowed by something only your app knows, so payday carries it and you apply
+it. That is the token's **scope**: a string your app has the identity store keep
+when the token is minted, answered back by `Introspect` as it was given
+(`TokenIntrospectResponse.scope`), and read by your handler off the frame it
+already has:
+
+```go
+f := frame.Must(ctx)
+f.TokenScope() // "" for a token that carries none, and for any other credential
+```
+
+The shape of its use:
+
+1. **Your app keeps a row** saying what the token reaches — a list of cameras, a
+   person's own, made where the token is.
+2. **The token carries the row's identifier** as its scope. The store neither
+   reads it nor compares it; it keeps it, bounds its length, and answers it.
+3. **Your scope or your handler narrows by it**: a `bare.Scope` beside
+   `pd.Wall()` and `pd.Grouped` that reads the row and narrows each entity it
+   lists, or a handler that checks the one it was asked for. A path that does
+   not go through the walled reads — a raw query, a ticket signed for later —
+   has to check it too, because nothing payday generates will.
+
+It is the **token's, not the person's**: two tokens of one person carry two.
+Whatever you keep by `frame.Actor` — what a person may see, worked out once
+and kept for a few seconds — must keep nothing of it, and an answer that
+depends on it is not one to keep by actor either. payday keeps none: the
+interceptor puts it on the frame each call is served with, over whatever your
+resolver answered, so a resolver that keeps frames by actor hands no token
+another's.
+
+It is beside the grant and not a fourth axis because payday cannot apply it: an
+axis is a promise that payday narrowed the call, and this is one only your code
+can keep. A header, a certificate and a session carry none; only a
+`TokenStore` fills `Identity.Scope`.
+
 ---
 
 ## 7. A second axis, if you need one

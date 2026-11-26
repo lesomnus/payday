@@ -147,6 +147,47 @@ type Frame struct {
 	// calls is which methods a call framed as an account may be of; see
 	// [OfAccount].
 	calls func(method string) bool
+
+	// tokenScope is the app's own word about the token this call came with;
+	// see [Frame.TokenScope]. Unexported, unlike Grant, because nothing but
+	// `auth` has a reason to set it and a field anybody may set is one a
+	// resolver sets by mistake -- from a frame it keeps by actor, which is
+	// another token's. A copy of a frame keeps it, as it keeps the rest.
+	tokenScope string
+}
+
+// TokenScope is the app's own word about the token this call came with: what
+// the app had its identity store keep when the token was minted, answered back
+// by the store as it was given (`payday.TokenIntrospectResponse.scope`). Empty
+// is a token that carries none, or a call that came with no token at all -- a
+// header, a certificate or a session carries none.
+//
+// payday does not read it, and nothing payday generates narrows by it: what it
+// names is the app's -- the identifier of a row that lists what the token
+// reaches, say -- so the app's own scope or handler is what applies it. The
+// [Grant] is the part of a credential payday applies.
+//
+// It is the token's and not the actor's. Two tokens of one person carry two,
+// so whatever an app keeps by [Frame.Actor] -- what a person may see, worked
+// out once and kept a while -- must not keep this, nor an answer that depends
+// on it.
+func (f *Frame) TokenScope() string {
+	if f == nil {
+		return ""
+	}
+
+	return f.tokenScope
+}
+
+// WithTokenScope answers with this frame carrying `scope` as its token's; see
+// [Frame.TokenScope]. `auth` calls it with what the credential said, over
+// whatever the resolver answered, so a resolver that calls it changes nothing;
+// a test or an in-process caller calls it to frame a call as a token's.
+func (f *Frame) WithTokenScope(scope string) *Frame {
+	v := *f
+	v.tokenScope = scope
+
+	return &v
 }
 
 // Principal is a verified party without a credential or computed access scope.

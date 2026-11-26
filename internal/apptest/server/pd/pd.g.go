@@ -6316,6 +6316,17 @@ func (s guardedRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*appte
 	return s.RobotServiceServer.Survey(ctx, req)
 }
 
+func (s guardedRobot) TokenScope(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotTokenScope, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_TokenScope_FullMethodName); err != nil {
+		return nil, err
+	}
+	if err := gate.AsAccount(ctx, apptest.RobotService_TokenScope_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.TokenScope(ctx, req)
+}
+
 // guardedPairing enforces method declarations on in-process calls too.
 type guardedPairing struct{ apptest.PairingServiceServer }
 
@@ -11294,6 +11305,11 @@ func (s interceptRobot) Reading(req *apptest.RobotRef, out grpc.ServerStreamingS
 func (s interceptRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotSurvey, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_Survey_FullMethodName, req, s.RobotServiceServer.Survey)
+}
+
+func (s interceptRobot) TokenScope(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotTokenScope, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_TokenScope_FullMethodName, req, s.RobotServiceServer.TokenScope)
 }
 
 func (s Intercept) Pairing() apptest.PairingServiceServer {

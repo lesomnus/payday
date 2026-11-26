@@ -331,3 +331,24 @@ func TestWith(t *testing.T) {
 	x.True(g.Scope.All())
 	x.False(f.Scope.All(), "the original was changed")
 }
+
+// A token's scope is carried and not read: what a frame is given is what it
+// answers, through every copy a layer makes of it, and the frame it was given
+// to is left as it was -- a resolver may be keeping that one for another token.
+func TestATokenScopeIsCarriedThroughACopy(t *testing.T) {
+	x := require.New(t)
+
+	var none *frame.Frame
+	x.Empty(none.TokenScope())
+
+	actor, tenant := pdid.New(Holder), pdid.New(Tenant)
+	kept := frame.New(actor, tenant, frame.Whole())
+	x.Empty(kept.TokenScope())
+
+	f := kept.WithTokenScope("cameras:01")
+	x.Equal("cameras:01", f.TokenScope())
+	x.Empty(kept.TokenScope())
+
+	x.Equal("cameras:01", f.WithScope(frame.Only(tenant)).WithRow(nil).WithAccount(pdid.Nil).TokenScope())
+	x.Empty(f.WithTokenScope("").TokenScope())
+}

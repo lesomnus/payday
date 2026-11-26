@@ -171,7 +171,8 @@ func NewMemTokenStore() *MemTokenStore {
 }
 
 // Add records that `token` stands for whoever `id` names and allows what its
-// [Identity.Grant] allows, until `exp`. A zero `exp` never expires.
+// [Identity.Grant] allows, until `exp`, carrying its [Identity.Scope]. A zero
+// `exp` never expires.
 func (s *MemTokenStore) Add(token string, id Identity, exp time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

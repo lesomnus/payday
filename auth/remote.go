@@ -71,9 +71,13 @@ func Remote(c pdpb.TokenServiceClient) TokenStore {
 
 // IdentityFrom reads what [TokenService.Introspect] answered.
 func IdentityFrom(v *pdpb.TokenIntrospectResponse) (Identity, error) {
+	// The scope is taken as it came. It is the app's word and not this
+	// package's, so there is nothing here to check it against, and payday
+	// keeps nothing of it to bound: the store that keeps it bounds it.
 	id := Identity{
 		Tenant: v.GetTenant(),
 		Alias:  v.GetAlias(),
+		Scope:  v.GetScope(),
 	}
 
 	// Parsed here rather than passed along as bytes, because [Identity.Id] is
@@ -129,6 +133,7 @@ func Introspection(id Identity) (*pdpb.TokenIntrospectResponse, error) {
 		Tenant: id.Tenant,
 		Alias:  id.Alias,
 		Grant:  grantOf(id.Grant),
+		Scope:  id.Scope,
 	}
 	if !id.DateAuthenticated.IsZero() {
 		res.DateAuthenticated = timestamppb.New(id.DateAuthenticated)
