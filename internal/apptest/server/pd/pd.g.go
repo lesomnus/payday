@@ -87,6 +87,7 @@ import (
 	proto "google.golang.org/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	slog "log/slog"
 	maps "maps"
@@ -6327,6 +6328,17 @@ func (s guardedRobot) TokenScope(ctx context.Context, req *apptest.RobotRef) (*a
 	return s.RobotServiceServer.TokenScope(ctx, req)
 }
 
+func (s guardedRobot) Stamp(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {
+	if err := gate.Direct(ctx, apptest.RobotService_Stamp_FullMethodName); err != nil {
+		return nil, err
+	}
+	if err := gate.AsAccount(ctx, apptest.RobotService_Stamp_FullMethodName, AccountMethod); err != nil {
+		return nil, err
+	}
+
+	return s.RobotServiceServer.Stamp(ctx, req)
+}
+
 // guardedPairing enforces method declarations on in-process calls too.
 type guardedPairing struct{ apptest.PairingServiceServer }
 
@@ -11310,6 +11322,11 @@ func (s interceptRobot) Survey(ctx context.Context, req *apptest.RobotRef) (*app
 func (s interceptRobot) TokenScope(ctx context.Context, req *apptest.RobotRef) (*apptest.RobotTokenScope, error) {
 	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
 		apptest.RobotService_TokenScope_FullMethodName, req, s.RobotServiceServer.TokenScope)
+}
+
+func (s interceptRobot) Stamp(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {
+	return grpcx.RunUnary(ctx, s.unary, s.RobotServiceServer,
+		apptest.RobotService_Stamp_FullMethodName, req, s.RobotServiceServer.Stamp)
 }
 
 func (s Intercept) Pairing() apptest.PairingServiceServer {

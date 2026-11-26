@@ -148,7 +148,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("TenantServiceServer"))
 	g.P("}")
 	g.P("")
-	shadowed(g, s, root, "Gate", "gateTenant", "Tenant", "Erase")
+	shadowed(g, s, "Gate", "gateTenant", "Tenant", "Erase")
 	ruled(g, p, root, "Gate", "Tenant", "s, s.Next().Tenant()", wrap)
 	g.P("// admit refuses every row: no tenant is served by an Add, nor by an")
 	g.P("// AddMany if the entity had one. A tenant is put up by whoever runs the")
@@ -176,7 +176,7 @@ func EmitGate(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoImp
 	g.P("	", root.Ident("HolderServiceServer"))
 	g.P("}")
 	g.P("")
-	shadowed(g, s, root, "Gate", "gateHolder", "Holder")
+	shadowed(g, s, "Gate", "gateHolder", "Holder")
 	ruled(g, p, root, "Gate", "Holder", "s, s.Next().Holder()", wrap)
 	g.P("// admit is the one thing about a holder this layer still says, and it is here")
 	g.P("// because it is the one that is not a predicate: the row does not exist yet,")
@@ -350,7 +350,7 @@ func emitAdmit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 		g.P("	", root.Ident(name+"ServiceServer"))
 		g.P("}")
 		g.P("")
-		shadowed(g, s, root, "Gate", "gate"+name, name)
+		shadowed(g, s, "Gate", "gate"+name, name)
 		ruled(g, p, root, "Gate", name, "s, s.Next()."+name+"()", wrap)
 
 		if walled {
@@ -853,7 +853,7 @@ func EmitAudit(g *protogen.GeneratedFile, s *Schema, p Paths, root protogen.GoIm
 	g.P("	", root.Ident("AuditServiceServer"))
 	g.P("}")
 	g.P("")
-	shadowed(g, s, root, "Audit", "auditService", s.Own(pdpb.Own_OWN_AUDIT).GoName(), "Add", "AddMany", "Patch", "Apply", "Erase")
+	shadowed(g, s, "Audit", "auditService", s.Own(pdpb.Own_OWN_AUDIT).GoName(), "Add", "AddMany", "Patch", "Apply", "Erase")
 	g.P("func (s Audit) Audit() ", root.Ident("AuditServiceServer"), " {")
 	g.P("	return auditService{s, s.Next().Audit()}")
 	g.P("}")
@@ -1994,7 +1994,7 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 	for _, v := range rpcs {
 		declared = append(declared, v.Rpc)
 	}
-	shadowed(g, s, root, "Secret", lower, name, declared...)
+	shadowed(g, s, "Secret", lower, name, declared...)
 
 	var answers []*protogen.Message
 	if len(verbs) > 0 {
@@ -2122,13 +2122,13 @@ func emitSecretOf(g *protogen.GeneratedFile, s *Schema, e *Entity, root protogen
 			if v.Stream {
 				kind, wrap = "BidiStreamingServer", "hidingBidiStream"
 			}
-			g.P("func (s ", lower, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", v.in.GoIdent, ", ", v.out.GoIdent, "]) error {")
-			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(", wrap, "[", v.in.GoIdent, ", ", v.out.GoIdent, "]{out, ", hide, "})")
+			g.P("func (s ", lower, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", v.In, ", ", v.Out, "]) error {")
+			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(", wrap, "[", v.In, ", ", v.Out, "]{out, ", hide, "})")
 		case v.Stream:
-			g.P("func (s ", lower, ") ", v.Rpc, "(req *", v.in.GoIdent, ", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.out.GoIdent, "]) error {")
-			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(req, hidingServerStream[", v.out.GoIdent, "]{out, ", hide, "})")
+			g.P("func (s ", lower, ") ", v.Rpc, "(req *", v.In, ", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.Out, "]) error {")
+			g.P("	return s.", name, "ServiceServer.", v.Rpc, "(req, hidingServerStream[", v.Out, "]{out, ", hide, "})")
 		default:
-			g.P("func (s ", lower, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", v.in.GoIdent, ") (*", v.out.GoIdent, ", error) {")
+			g.P("func (s ", lower, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", v.In, ") (*", v.Out, ", error) {")
 			g.P("	v, err := s.", name, "ServiceServer.", v.Rpc, "(ctx, req)")
 			g.P("")
 			g.P("	return ", hide, "(v), err")

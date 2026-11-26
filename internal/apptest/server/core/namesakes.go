@@ -6,6 +6,8 @@ import (
 	"io"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	app "github.com/lesomnus/payday/internal/apptest"
 )
@@ -107,4 +109,10 @@ func (s coreRobot) Survey(ctx context.Context, req *app.RobotRef) (*app.RobotSur
 		ByAlias: map[string]*app.RobotSurveyCell{vs[3].GetAlias(): cell(vs[3])},
 		First:   cell(vs[4]),
 	}.Build(), nil
+}
+
+// Stamp answers the time it was served at (`robot_svc.ext.proto`). Its request
+// and answer are protobuf's own messages, which is all it is here for.
+func (s coreRobot) Stamp(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {
+	return timestamppb.Now(), nil
 }

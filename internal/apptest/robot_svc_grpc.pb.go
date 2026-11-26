@@ -11,6 +11,8 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -258,6 +260,7 @@ const (
 	RobotService_Joint_FullMethodName      = "/app.RobotService/Joint"
 	RobotService_Survey_FullMethodName     = "/app.RobotService/Survey"
 	RobotService_TokenScope_FullMethodName = "/app.RobotService/TokenScope"
+	RobotService_Stamp_FullMethodName      = "/app.RobotService/Stamp"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -345,6 +348,12 @@ type RobotServiceClient interface {
 	// what a handler does with it is the app's to write, and this one shows
 	// only that it arrives -- each token's its own, though two be one person's.
 	TokenScope(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotTokenScope, error)
+	// Stamp answers the time it was served at. It is here for its two
+	// messages, which are protobuf's and not this app's: every type a layer
+	// writes around this service says an RPC's request and answer, and said
+	// them under this app's package, `app.Empty`, so a server whose service
+	// had one did not compile (payday#312).
+	Stamp(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*timestamppb.Timestamp, error)
 }
 
 type robotServiceClient struct {
@@ -529,6 +538,16 @@ func (c *robotServiceClient) TokenScope(ctx context.Context, in *RobotRef, opts 
 	return out, nil
 }
 
+func (c *robotServiceClient) Stamp(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*timestamppb.Timestamp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(timestamppb.Timestamp)
+	err := c.cc.Invoke(ctx, RobotService_Stamp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -614,6 +633,12 @@ type RobotServiceServer interface {
 	// what a handler does with it is the app's to write, and this one shows
 	// only that it arrives -- each token's its own, though two be one person's.
 	TokenScope(context.Context, *RobotRef) (*RobotTokenScope, error)
+	// Stamp answers the time it was served at. It is here for its two
+	// messages, which are protobuf's and not this app's: every type a layer
+	// writes around this service says an RPC's request and answer, and said
+	// them under this app's package, `app.Empty`, so a server whose service
+	// had one did not compile (payday#312).
+	Stamp(context.Context, *emptypb.Empty) (*timestamppb.Timestamp, error)
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -668,6 +693,9 @@ func (UnimplementedRobotServiceServer) Survey(context.Context, *RobotRef) (*Robo
 }
 func (UnimplementedRobotServiceServer) TokenScope(context.Context, *RobotRef) (*RobotTokenScope, error) {
 	return nil, status.Error(codes.Unimplemented, "method TokenScope not implemented")
+}
+func (UnimplementedRobotServiceServer) Stamp(context.Context, *emptypb.Empty) (*timestamppb.Timestamp, error) {
+	return nil, status.Error(codes.Unimplemented, "method Stamp not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -924,6 +952,24 @@ func _RobotService_TokenScope_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RobotService_Stamp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).Stamp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_Stamp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).Stamp(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -974,6 +1020,10 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TokenScope",
 			Handler:    _RobotService_TokenScope_Handler,
+		},
+		{
+			MethodName: "Stamp",
+			Handler:    _RobotService_Stamp_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

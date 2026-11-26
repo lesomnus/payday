@@ -500,7 +500,7 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 				if v.Stream {
 					kind = "BidiStreamingServer"
 				}
-				g.P("func (s ", wrap, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", root.Ident(v.In), ", ", root.Ident(v.Out), "]) error {")
+				g.P("func (s ", wrap, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", v.In, ", ", v.Out, "]) error {")
 				g.P(" if err := ", pkgGate.Ident("Direct"), "(out.Context(), ", root.Ident(v.Const), "); err != nil { return err }")
 				if s.Accounts != nil {
 					g.P(" if err := ", pkgGate.Ident("AsAccount"), "(out.Context(), ", root.Ident(v.Const), ", AccountMethod); err != nil { return err }")
@@ -511,8 +511,8 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 				continue
 			}
 			if v.Stream {
-				g.P("func (s ", wrap, ") ", v.Rpc, "(req *", root.Ident(v.In),
-					", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(v.Out), "]) error {")
+				g.P("func (s ", wrap, ") ", v.Rpc, "(req *", v.In,
+					", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.Out, "]) error {")
 				g.P("	if err := ", pkgGate.Ident("Direct"), "(out.Context(), ", root.Ident(v.Const), "); err != nil { return err }")
 				if s.Accounts != nil {
 					g.P("	if err := ", pkgGate.Ident("AsAccount"), "(out.Context(), ", root.Ident(v.Const), ", AccountMethod); err != nil {")
@@ -527,7 +527,7 @@ func emitGateAccounts(g *protogen.GeneratedFile, s *Schema, root protogen.GoImpo
 			}
 
 			g.P("func (s ", wrap, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"),
-				", req *", root.Ident(v.In), ") (*", root.Ident(v.Out), ", error) {")
+				", req *", v.In, ") (*", v.Out, ", error) {")
 			g.P("	if err := ", pkgGate.Ident("Direct"), "(ctx, ", root.Ident(v.Const), "); err != nil { return nil, err }")
 			if s.Accounts != nil {
 				g.P("	if err := ", pkgGate.Ident("AsAccount"), "(ctx, ", root.Ident(v.Const), ", AccountMethod); err != nil {")
