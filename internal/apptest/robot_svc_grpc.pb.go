@@ -252,6 +252,10 @@ const (
 	RobotService_List_FullMethodName    = "/app.RobotService/List"
 	RobotService_Watch_FullMethodName   = "/app.RobotService/Watch"
 	RobotService_Move_FullMethodName    = "/app.RobotService/Move"
+	RobotService_Seal_FullMethodName    = "/app.RobotService/Seal"
+	RobotService_Reading_FullMethodName = "/app.RobotService/Reading"
+	RobotService_Job_FullMethodName     = "/app.RobotService/Job"
+	RobotService_Joint_FullMethodName   = "/app.RobotService/Joint"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -310,6 +314,21 @@ type RobotServiceClient interface {
 	// the same caller may no longer be able to read the row it just moved. That
 	// is the whole reason it is worth being an operation somebody can point at.
 	Move(ctx context.Context, in *RobotMoveRequest, opts ...grpc.CallOption) (*Robot, error)
+	// Seal, Reading, Job and Joint are here for their names. Each is called what
+	// another entity of this app is called, and every type a layer writes around
+	// this service embeds the layer's struct beside it -- a struct that has a
+	// method for every entity. Go promotes neither of two methods of one name at
+	// one depth, so an app whose RPC was called what one of its entities is
+	// called had a server that did not compile, in a file `pd gen` owns. One of
+	// each shape a method has, since each is written differently.
+	//
+	// What they do is read the robot named, through the wall, and answer it: the
+	// claim is about what reaches them and what refuses them, not about acts.
+	// Direct, like Move, so that the gate has a rule of its own for them.
+	Seal(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*Robot, error)
+	Reading(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Robot], error)
+	Job(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[RobotRef, RobotJobResponse], error)
+	Joint(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RobotRef, Robot], error)
 }
 
 type robotServiceClient struct {
@@ -419,6 +438,61 @@ func (c *robotServiceClient) Move(ctx context.Context, in *RobotMoveRequest, opt
 	return out, nil
 }
 
+func (c *robotServiceClient) Seal(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*Robot, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Robot)
+	err := c.cc.Invoke(ctx, RobotService_Seal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *robotServiceClient) Reading(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Robot], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RobotService_ServiceDesc.Streams[1], RobotService_Reading_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RobotRef, Robot]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_ReadingClient = grpc.ServerStreamingClient[Robot]
+
+func (c *robotServiceClient) Job(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[RobotRef, RobotJobResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RobotService_ServiceDesc.Streams[2], RobotService_Job_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RobotRef, RobotJobResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_JobClient = grpc.ClientStreamingClient[RobotRef, RobotJobResponse]
+
+func (c *robotServiceClient) Joint(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RobotRef, Robot], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RobotService_ServiceDesc.Streams[3], RobotService_Joint_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RobotRef, Robot]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_JointClient = grpc.BidiStreamingClient[RobotRef, Robot]
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -475,6 +549,21 @@ type RobotServiceServer interface {
 	// the same caller may no longer be able to read the row it just moved. That
 	// is the whole reason it is worth being an operation somebody can point at.
 	Move(context.Context, *RobotMoveRequest) (*Robot, error)
+	// Seal, Reading, Job and Joint are here for their names. Each is called what
+	// another entity of this app is called, and every type a layer writes around
+	// this service embeds the layer's struct beside it -- a struct that has a
+	// method for every entity. Go promotes neither of two methods of one name at
+	// one depth, so an app whose RPC was called what one of its entities is
+	// called had a server that did not compile, in a file `pd gen` owns. One of
+	// each shape a method has, since each is written differently.
+	//
+	// What they do is read the robot named, through the wall, and answer it: the
+	// claim is about what reaches them and what refuses them, not about acts.
+	// Direct, like Move, so that the gate has a rule of its own for them.
+	Seal(context.Context, *RobotRef) (*Robot, error)
+	Reading(*RobotRef, grpc.ServerStreamingServer[Robot]) error
+	Job(grpc.ClientStreamingServer[RobotRef, RobotJobResponse]) error
+	Joint(grpc.BidiStreamingServer[RobotRef, Robot]) error
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -511,6 +600,18 @@ func (UnimplementedRobotServiceServer) Watch(*RobotWatchRequest, grpc.ServerStre
 }
 func (UnimplementedRobotServiceServer) Move(context.Context, *RobotMoveRequest) (*Robot, error) {
 	return nil, status.Error(codes.Unimplemented, "method Move not implemented")
+}
+func (UnimplementedRobotServiceServer) Seal(context.Context, *RobotRef) (*Robot, error) {
+	return nil, status.Error(codes.Unimplemented, "method Seal not implemented")
+}
+func (UnimplementedRobotServiceServer) Reading(*RobotRef, grpc.ServerStreamingServer[Robot]) error {
+	return status.Error(codes.Unimplemented, "method Reading not implemented")
+}
+func (UnimplementedRobotServiceServer) Job(grpc.ClientStreamingServer[RobotRef, RobotJobResponse]) error {
+	return status.Error(codes.Unimplemented, "method Job not implemented")
+}
+func (UnimplementedRobotServiceServer) Joint(grpc.BidiStreamingServer[RobotRef, Robot]) error {
+	return status.Error(codes.Unimplemented, "method Joint not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -688,6 +789,49 @@ func _RobotService_Move_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RobotService_Seal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RobotRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).Seal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_Seal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).Seal(ctx, req.(*RobotRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RobotService_Reading_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RobotRef)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RobotServiceServer).Reading(m, &grpc.GenericServerStream[RobotRef, Robot]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_ReadingServer = grpc.ServerStreamingServer[Robot]
+
+func _RobotService_Job_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RobotServiceServer).Job(&grpc.GenericServerStream[RobotRef, RobotJobResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_JobServer = grpc.ClientStreamingServer[RobotRef, RobotJobResponse]
+
+func _RobotService_Joint_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RobotServiceServer).Joint(&grpc.GenericServerStream[RobotRef, Robot]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RobotService_JointServer = grpc.BidiStreamingServer[RobotRef, Robot]
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -727,12 +871,32 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Move",
 			Handler:    _RobotService_Move_Handler,
 		},
+		{
+			MethodName: "Seal",
+			Handler:    _RobotService_Seal_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Watch",
 			Handler:       _RobotService_Watch_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "Reading",
+			Handler:       _RobotService_Reading_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Job",
+			Handler:       _RobotService_Job_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Joint",
+			Handler:       _RobotService_Joint_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "app/robot_svc.g.proto",

@@ -144,6 +144,22 @@ func (s coreRobot) Add(ctx context.Context, req *api.RobotAddRequest) (*api.Robo
 }
 ```
 
+An RPC of the service called what a method your layer declares is called -- a
+`RobotService/Relay` in a layer that also overrides the `Relay` entity's
+service, with `func (s Core) Relay()` -- is promoted from neither of the two,
+since they are at one depth, and `coreRobot` is then not the
+`RobotServiceServer` it is returned as. The compiler
+says so (`ambiguous selector coreRobot.Relay`); the answer is to say the RPC
+yourself, which is what promotion would have done:
+
+```go
+func (s coreRobot) Relay(ctx context.Context, req *api.RobotRelayRequest) (*api.RobotRelayResponse, error) {
+	return s.RobotServiceServer.Relay(ctx, req)
+}
+```
+
+The layers payday generates do this for themselves.
+
 ### A rule about the rows an `Add` writes
 
 An entity that asks for `AddMany` (`rpc: {add: {many: {}}, ...}`) is

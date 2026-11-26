@@ -1150,7 +1150,18 @@ place those names live. Redeclaring `service WidgetService` adds to it; the
 generated methods stay.
 
 The service keeps the name of the entity — `WidgetService` for `Widget` — and
-what you write joins whatever `pd gen` put there. `WidgetRef` needs no import:
+what you write joins whatever `pd gen` put there.
+
+An RPC may be called anything a method may, another entity's name included: a
+`WidgetService/Part` in an app with a `Part` is the service's, through every
+layer payday generates, and the gate's rule for it is the rule for any RPC of
+your own. A layer of yours that has a method of that name says the RPC itself;
+see [writing a layer](server.md#3-writing-a-layer). What `pd gen` refuses, by
+name, is an RPC called what a type around the service holds as a field: the
+service's own Go name (`WidgetServiceServer`), the layer it is in (`Gate`,
+`Audit`, `Intercept`, `Secret`, where that layer has something to say of the
+entity), and of the ORM's server `Store`, `UnimplementedWidgetServiceServer`,
+`Db`, `Rec`, `Scope`, `Mint` and `Now`. `WidgetRef` needs no import:
 the overlay is merged **into** the file that declares it, so importing that file
 would be importing itself.
 

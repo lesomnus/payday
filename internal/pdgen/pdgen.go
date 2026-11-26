@@ -402,6 +402,10 @@ func Read(g *graph.Graph, files []*protogen.File) (*Schema, error) {
 	}
 
 	s.rpcs = interceptRpcs(s, files, true)
+	if err := s.checkShadowed(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 

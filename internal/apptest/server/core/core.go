@@ -2,7 +2,8 @@
 //
 // payday generates the CRUD of every entity and refuses to serve a general
 // write. What is left is an operation that means something -- one with a rule
-// nothing else has -- and there is exactly one of those here.
+// nothing else has -- and there is exactly one of those here. The four in
+// namesakes.go are here for their names and not for what they do.
 //
 // # Why it exists in the test app at all
 //
