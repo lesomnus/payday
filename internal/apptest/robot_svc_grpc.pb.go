@@ -243,20 +243,21 @@ var CellService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	RobotService_Add_FullMethodName     = "/app.RobotService/Add"
-	RobotService_AddMany_FullMethodName = "/app.RobotService/AddMany"
-	RobotService_Get_FullMethodName     = "/app.RobotService/Get"
-	RobotService_Patch_FullMethodName   = "/app.RobotService/Patch"
-	RobotService_Apply_FullMethodName   = "/app.RobotService/Apply"
-	RobotService_Erase_FullMethodName   = "/app.RobotService/Erase"
-	RobotService_List_FullMethodName    = "/app.RobotService/List"
-	RobotService_Watch_FullMethodName   = "/app.RobotService/Watch"
-	RobotService_Move_FullMethodName    = "/app.RobotService/Move"
-	RobotService_Seal_FullMethodName    = "/app.RobotService/Seal"
-	RobotService_Reading_FullMethodName = "/app.RobotService/Reading"
-	RobotService_Job_FullMethodName     = "/app.RobotService/Job"
-	RobotService_Joint_FullMethodName   = "/app.RobotService/Joint"
-	RobotService_Survey_FullMethodName  = "/app.RobotService/Survey"
+	RobotService_Add_FullMethodName        = "/app.RobotService/Add"
+	RobotService_AddMany_FullMethodName    = "/app.RobotService/AddMany"
+	RobotService_Get_FullMethodName        = "/app.RobotService/Get"
+	RobotService_Patch_FullMethodName      = "/app.RobotService/Patch"
+	RobotService_Apply_FullMethodName      = "/app.RobotService/Apply"
+	RobotService_Erase_FullMethodName      = "/app.RobotService/Erase"
+	RobotService_List_FullMethodName       = "/app.RobotService/List"
+	RobotService_Watch_FullMethodName      = "/app.RobotService/Watch"
+	RobotService_Move_FullMethodName       = "/app.RobotService/Move"
+	RobotService_Seal_FullMethodName       = "/app.RobotService/Seal"
+	RobotService_Reading_FullMethodName    = "/app.RobotService/Reading"
+	RobotService_Job_FullMethodName        = "/app.RobotService/Job"
+	RobotService_Joint_FullMethodName      = "/app.RobotService/Joint"
+	RobotService_Survey_FullMethodName     = "/app.RobotService/Survey"
+	RobotService_TokenScope_FullMethodName = "/app.RobotService/TokenScope"
 )
 
 // RobotServiceClient is the client API for RobotService service.
@@ -337,6 +338,13 @@ type RobotServiceClient interface {
 	// the robot is read below the layer, secret and all, and none of the
 	// copies leaves with it.
 	Survey(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotSurvey, error)
+	// TokenScope reads the robot named, through the wall, and answers the scope
+	// of the token the call came with, as its handler read it off the frame.
+	// It is here for that word, which is the app's own: payday carries it from
+	// what the identity store answered to the frame and reads none of it, so
+	// what a handler does with it is the app's to write, and this one shows
+	// only that it arrives -- each token's its own, though two be one person's.
+	TokenScope(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotTokenScope, error)
 }
 
 type robotServiceClient struct {
@@ -511,6 +519,16 @@ func (c *robotServiceClient) Survey(ctx context.Context, in *RobotRef, opts ...g
 	return out, nil
 }
 
+func (c *robotServiceClient) TokenScope(ctx context.Context, in *RobotRef, opts ...grpc.CallOption) (*RobotTokenScope, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RobotTokenScope)
+	err := c.cc.Invoke(ctx, RobotService_TokenScope_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RobotServiceServer is the server API for RobotService service.
 // All implementations must embed UnimplementedRobotServiceServer
 // for forward compatibility.
@@ -589,6 +607,13 @@ type RobotServiceServer interface {
 	// the robot is read below the layer, secret and all, and none of the
 	// copies leaves with it.
 	Survey(context.Context, *RobotRef) (*RobotSurvey, error)
+	// TokenScope reads the robot named, through the wall, and answers the scope
+	// of the token the call came with, as its handler read it off the frame.
+	// It is here for that word, which is the app's own: payday carries it from
+	// what the identity store answered to the frame and reads none of it, so
+	// what a handler does with it is the app's to write, and this one shows
+	// only that it arrives -- each token's its own, though two be one person's.
+	TokenScope(context.Context, *RobotRef) (*RobotTokenScope, error)
 	mustEmbedUnimplementedRobotServiceServer()
 }
 
@@ -640,6 +665,9 @@ func (UnimplementedRobotServiceServer) Joint(grpc.BidiStreamingServer[RobotRef, 
 }
 func (UnimplementedRobotServiceServer) Survey(context.Context, *RobotRef) (*RobotSurvey, error) {
 	return nil, status.Error(codes.Unimplemented, "method Survey not implemented")
+}
+func (UnimplementedRobotServiceServer) TokenScope(context.Context, *RobotRef) (*RobotTokenScope, error) {
+	return nil, status.Error(codes.Unimplemented, "method TokenScope not implemented")
 }
 func (UnimplementedRobotServiceServer) mustEmbedUnimplementedRobotServiceServer() {}
 func (UnimplementedRobotServiceServer) testEmbeddedByValue()                      {}
@@ -878,6 +906,24 @@ func _RobotService_Survey_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RobotService_TokenScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RobotRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RobotServiceServer).TokenScope(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RobotService_TokenScope_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RobotServiceServer).TokenScope(ctx, req.(*RobotRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RobotService_ServiceDesc is the grpc.ServiceDesc for RobotService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -924,6 +970,10 @@ var RobotService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Survey",
 			Handler:    _RobotService_Survey_Handler,
+		},
+		{
+			MethodName: "TokenScope",
+			Handler:    _RobotService_TokenScope_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

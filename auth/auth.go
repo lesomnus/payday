@@ -201,6 +201,24 @@ type Identity struct {
 	// which for a Watch is until somebody hangs up. See [Identity.Valid] and
 	// the note on cutting a stream in [InterceptorStream].
 	DateExpired time.Time
+
+	// Scope is the app's own word about this token, given when it was minted
+	// and answered back as it was given; empty is a token that carries none.
+	// Only a [TokenStore] fills it, as it does DateExpired: a header and a
+	// certificate have nowhere to carry one.
+	//
+	// payday does not read it. The interceptor puts it on the frame, where a
+	// handler reads it as [frame.Frame.TokenScope], and nothing in between
+	// narrows by it or compares it: what it names is a row of the app's, and
+	// only the app can apply that. It is beside the Grant rather than an axis
+	// of it for that reason -- an axis is something payday applies on the
+	// app's behalf. See `payday.TokenIntrospectResponse.scope`.
+	//
+	// It is the token's and not the actor's, so it is put on the frame the
+	// call is served with, as the Grant is, and not on the one the [Resolver]
+	// answered: a resolver that keeps frames by actor would otherwise hand
+	// one token's to the next token of the same person.
+	Scope string
 }
 
 // Authentication returns the verified facts that travel with this party.

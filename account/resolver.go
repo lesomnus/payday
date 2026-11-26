@@ -142,6 +142,7 @@ func (r Resolver) Resolve(ctx context.Context, id auth.Identity) (*frame.Frame, 
 		TenantId:    m.Tenant.String(),
 		Grant:       id.Grant,
 		DateExpired: id.DateExpired,
+		Scope:       id.Scope,
 	})
 	if err != nil {
 		return nil, err

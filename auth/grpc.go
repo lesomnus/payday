@@ -307,6 +307,15 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 					caller.Authentication = id.Authentication()
 					v.Caller = &caller
 				}
+
+				// And the token's scope, for the grant's reason and one more: it
+				// is the token's and not the actor's, and a resolver that keeps
+				// frames by actor holds one frame for every token of a person.
+				// Put on this copy, it is this call's; taken from the resolver,
+				// it would be whichever token's the frame was kept for. One the
+				// credential did not carry is empty, whatever the resolver said.
+				v = *v.WithTokenScope(id.Scope)
+
 				md, _ := metadata.FromIncomingContext(ctx)
 				if (len(md.Get(PresenceHeader)) > 0 || len(md.Get(SubjectHeader)) > 0 || len(md.Get(RecordedHeader)) > 0) && f.Caller == nil {
 					return nil, Identity{}, status.Error(codes.Unauthenticated, "this call's presence was not verified")

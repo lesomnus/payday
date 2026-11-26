@@ -101,6 +101,7 @@ type TokenIntrospectResponse struct {
 	xxx_hidden_Grant             *Grant                 `protobuf:"bytes,5,opt,name=grant"`
 	xxx_hidden_DateExpired       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=date_expired,json=dateExpired"`
 	xxx_hidden_DateAuthenticated *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=date_authenticated,json=dateAuthenticated"`
+	xxx_hidden_Scope             string                 `protobuf:"bytes,8,opt,name=scope"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
 }
@@ -179,6 +180,13 @@ func (x *TokenIntrospectResponse) GetDateAuthenticated() *timestamppb.Timestamp 
 	return nil
 }
 
+func (x *TokenIntrospectResponse) GetScope() string {
+	if x != nil {
+		return x.xxx_hidden_Scope
+	}
+	return ""
+}
+
 func (x *TokenIntrospectResponse) SetId(v []byte) {
 	if v == nil {
 		v = []byte{}
@@ -211,6 +219,10 @@ func (x *TokenIntrospectResponse) SetDateExpired(v *timestamppb.Timestamp) {
 
 func (x *TokenIntrospectResponse) SetDateAuthenticated(v *timestamppb.Timestamp) {
 	x.xxx_hidden_DateAuthenticated = v
+}
+
+func (x *TokenIntrospectResponse) SetScope(v string) {
+	x.xxx_hidden_Scope = v
 }
 
 func (x *TokenIntrospectResponse) HasGrant() bool {
@@ -282,6 +294,33 @@ type TokenIntrospectResponse_builder struct {
 	// Last authentication time known by the verifier. Unset means unknown.
 	// Issuing or using a token does not establish a new authentication time.
 	DateAuthenticated *timestamppb.Timestamp
+	// The calling app's own word about this token: given to the store when the
+	// token was minted, and answered back exactly as it was given. Empty is a
+	// token that carries none.
+	//
+	// **Opaque here, and to the store.** Neither reads it: no layer payday
+	// generates narrows by it and no rule compares it. What it means is the
+	// app's -- the identifier of a row of the app's own that lists what the
+	// token reaches, say, so that "this token reaches these two cameras" is a
+	// row the app keeps and a word the token carries. It reaches the app's
+	// handlers on the frame (`frame.Frame.TokenScope`), and the app's own scope
+	// or handler narrows by it.
+	//
+	// It is beside the Grant and not an axis of it, because an axis is
+	// something payday applies: the interceptor refuses a method the grant does
+	// not allow, and the wall meets every read with its tenants and sets,
+	// without the app writing a line. Nothing here knows what this names, so
+	// only the app can apply it -- and an axis payday did not apply would read
+	// as one it does.
+	//
+	// It is the token's own and not the actor's: two tokens of one person may
+	// carry two. Whatever an app keeps by actor must not hand one token's to
+	// another.
+	//
+	// payday bounds nothing of it, because it holds nothing of it: it is read
+	// off this answer and gone with the call. The store that keeps it has the
+	// column, and bounds its length there, when the token is minted.
+	Scope string
 }
 
 func (b0 TokenIntrospectResponse_builder) Build() *TokenIntrospectResponse {
@@ -295,6 +334,7 @@ func (b0 TokenIntrospectResponse_builder) Build() *TokenIntrospectResponse {
 	x.xxx_hidden_Grant = b.Grant
 	x.xxx_hidden_DateExpired = b.DateExpired
 	x.xxx_hidden_DateAuthenticated = b.DateAuthenticated
+	x.xxx_hidden_Scope = b.Scope
 	return m0
 }
 
@@ -465,7 +505,7 @@ const file_payday_token_proto_rawDesc = "" +
 	"\n" +
 	"\x12payday/token.proto\x12\x06payday\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\".\n" +
 	"\x16TokenIntrospectRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\xa3\x02\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xb9\x02\n" +
 	"\x17TokenIntrospectResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\fR\btenantId\x12\x16\n" +
@@ -473,7 +513,8 @@ const file_payday_token_proto_rawDesc = "" +
 	"\x05alias\x18\x04 \x01(\tR\x05alias\x12#\n" +
 	"\x05grant\x18\x05 \x01(\v2\r.payday.GrantR\x05grant\x12=\n" +
 	"\fdate_expired\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vdateExpired\x12I\n" +
-	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\"\xb6\x01\n" +
+	"\x12date_authenticated\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x11dateAuthenticated\x12\x14\n" +
+	"\x05scope\x18\b \x01(\tR\x05scope\"\xb6\x01\n" +
 	"\x05Grant\x12\x1d\n" +
 	"\n" +
 	"any_tenant\x18\x01 \x01(\bR\tanyTenant\x12 \n" +

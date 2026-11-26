@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payday/token.proto.
  */
 export const file_payday_token: GenFile = /*@__PURE__*/
-  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIt8BChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EjAKDGRhdGVfZXhwaXJlZBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNgoSZGF0ZV9hdXRoZW50aWNhdGVkGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKAAQoFR3JhbnQSEgoKYW55X3RlbmFudBgBIAEoCBIXCgd0ZW5hbnRzGAIgAygMQgbqghYCEEASDwoHYW55X3NldBgDIAEoCBIUCgRzZXRzGAQgAygMQgbqghYCEEASEgoKYW55X2FjdGlvbhgFIAEoCBIPCgdhY3Rpb25zGAYgAygJMl0KDFRva2VuU2VydmljZRJNCgpJbnRyb3NwZWN0Eh4ucGF5ZGF5LlRva2VuSW50cm9zcGVjdFJlcXVlc3QaHy5wYXlkYXkuVG9rZW5JbnRyb3NwZWN0UmVzcG9uc2VCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm]);
+  fileDesc("ChJwYXlkYXkvdG9rZW4ucHJvdG8SBnBheWRheSInChZUb2tlbkludHJvc3BlY3RSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIu4BChdUb2tlbkludHJvc3BlY3RSZXNwb25zZRIKCgJpZBgBIAEoDBIRCgl0ZW5hbnRfaWQYAiABKAwSDgoGdGVuYW50GAMgASgJEg0KBWFsaWFzGAQgASgJEhwKBWdyYW50GAUgASgLMg0ucGF5ZGF5LkdyYW50EjAKDGRhdGVfZXhwaXJlZBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNgoSZGF0ZV9hdXRoZW50aWNhdGVkGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVzY29wZRgIIAEoCSKAAQoFR3JhbnQSEgoKYW55X3RlbmFudBgBIAEoCBIXCgd0ZW5hbnRzGAIgAygMQgbqghYCEEASDwoHYW55X3NldBgDIAEoCBIUCgRzZXRzGAQgAygMQgbqghYCEEASEgoKYW55X2FjdGlvbhgFIAEoCBIPCgdhY3Rpb25zGAYgAygJMl0KDFRva2VuU2VydmljZRJNCgpJbnRyb3NwZWN0Eh4ucGF5ZGF5LlRva2VuSW50cm9zcGVjdFJlcXVlc3QaHy5wYXlkYXkuVG9rZW5JbnRyb3NwZWN0UmVzcG9uc2VCJlofZ2l0aHViLmNvbS9sZXNvbW51cy9wYXlkYXkvcGRwYpIDAggCYghlZGl0aW9uc3DoBw", [file_google_protobuf_timestamp, file_orm]);
 
 /**
  * @generated from message payday.TokenIntrospectRequest
@@ -118,6 +118,38 @@ export type TokenIntrospectResponse = Message<"payday.TokenIntrospectResponse"> 
    * @generated from field: google.protobuf.Timestamp date_authenticated = 7;
    */
   dateAuthenticated?: Timestamp | undefined;
+
+  /**
+   * The calling app's own word about this token: given to the store when the
+   * token was minted, and answered back exactly as it was given. Empty is a
+   * token that carries none.
+   *
+   * **Opaque here, and to the store.** Neither reads it: no layer payday
+   * generates narrows by it and no rule compares it. What it means is the
+   * app's -- the identifier of a row of the app's own that lists what the
+   * token reaches, say, so that "this token reaches these two cameras" is a
+   * row the app keeps and a word the token carries. It reaches the app's
+   * handlers on the frame (`frame.Frame.TokenScope`), and the app's own scope
+   * or handler narrows by it.
+   *
+   * It is beside the Grant and not an axis of it, because an axis is
+   * something payday applies: the interceptor refuses a method the grant does
+   * not allow, and the wall meets every read with its tenants and sets,
+   * without the app writing a line. Nothing here knows what this names, so
+   * only the app can apply it -- and an axis payday did not apply would read
+   * as one it does.
+   *
+   * It is the token's own and not the actor's: two tokens of one person may
+   * carry two. Whatever an app keeps by actor must not hand one token's to
+   * another.
+   *
+   * payday bounds nothing of it, because it holds nothing of it: it is read
+   * off this answer and gone with the call. The store that keeps it has the
+   * column, and bounds its length there, when the token is minted.
+   *
+   * @generated from field: string scope = 8;
+   */
+  scope: string;
 };
 
 /**
@@ -242,7 +274,8 @@ export const GrantSchema: GenMessage<Grant> = /*@__PURE__*/
  * # What it does not do
  *
  * It does not answer what the bearer may do **in the calling app**. It answers
- * who they are and what the token was narrowed to, and the app applies its own
+ * who they are, what the token was narrowed to and the app's own word about it
+ * (`scope`, which only the app reads), and the app applies its own
  * rules to that, unchanged, the way it does for every other credential. An
  * identity store that decided what a caller may do in somebody else's app would
  * need to hold that app's rules, and then there is one place that has to know
