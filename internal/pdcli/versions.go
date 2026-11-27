@@ -74,8 +74,12 @@ var Floors = []Floor{{
 	Why:     "the browser's transport for that client, of connect's release",
 }, {
 	Name:    "@lesomnus/payday",
-	Minimum: "0.1.2",
-	Why:     "payday's half of the page, which the template's src is written against: its store.ts deletes other callers' mirrors with deleteOtherDisks, which 0.1.2 brought",
+	Minimum: "0.1.6",
+	// One reason is said, and it is the newest. 0.1.2's -- the template's
+	// store.ts deletes other callers' mirrors with deleteOtherDisks, which
+	// 0.1.2 brought -- is still so of a page below it, and the same move
+	// covers it.
+	Why: "payday's half of the page: on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, and reads each such list twice",
 }, {
 	Name:    "typescript",
 	Minimum: "5.9.3",

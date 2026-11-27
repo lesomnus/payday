@@ -195,11 +195,11 @@ func TestAnUpgradeMovesWhatIsBelowItsFloorToItsFloor(t *testing.T) {
 	x.Equal("^5.9.3", got["typescript"].To, "the floor, in TypeScript 5")
 	x.False(got["typescript"].Partner)
 
-	// What the template's store.ts calls was 0.1.2's, so a page from before it
-	// moves there -- and no further, though `pd new` writes a later one.
+	// A list on a page from before 0.1.6 opens a Watch the server refuses, so
+	// such a page moves there: to the floor, in its major.
 	x.Equal("dependencies", got["@lesomnus/payday"].Section)
 	x.Equal("0.1.1", got["@lesomnus/payday"].From)
-	x.Equal("^0.1.2", got["@lesomnus/payday"].To)
+	x.Equal("^0.1.6", got["@lesomnus/payday"].To)
 	x.False(got["@lesomnus/payday"].Partner)
 
 	_, moved := got["@bufbuild/protoc-gen-es"]
@@ -244,7 +244,7 @@ func TestAnUpgradeCrossesAMajorOnlyToTheTemplates(t *testing.T) {
 	x.Equal(targets["vite"].Range, got["vite"].To, "Vite 6 is below 7.2.0, a later major")
 	x.Equal(targets["@vitejs/plugin-react"].Range, got["@vitejs/plugin-react"].To, "with Vite")
 	x.True(got["@vitejs/plugin-react"].Partner, "5.2.0 is above its own floor, and moves only because Vite does")
-	x.Equal("^0.1.2", got["@lesomnus/payday"].To, "0.0.5 is below 0.1.2, in the same major")
+	x.Equal("^0.1.6", got["@lesomnus/payday"].To, "0.0.5 is below 0.1.6, in the same major")
 }
 
 // TestAnUpgradeIsOneResolution: what moves is set in package.json by npm, each
@@ -280,6 +280,23 @@ func TestAnUpgradeIsOneResolution(t *testing.T) {
 		x.Empty(npm())
 		x.Contains(log.String(), "npm pkg set dependencies[@bufbuild/protobuf]=^2.12.1")
 		x.Contains(log.String(), "npm install")
+	})
+
+	// payday#313: a page on 0.1.5, which every app's caret took, is told why
+	// it moves, in a sentence.
+	t.Run("and a page whose lists watch what the server refuses is moved", func(t *testing.T) {
+		x := require.New(t)
+		npm := fake(t, "npm")
+
+		l := page(t, app(t, "github.com/acme/thing"),
+			map[string]string{"@lesomnus/payday": "^0.1.3"}, nil, map[string]string{"@lesomnus/payday": "0.1.5"})
+		var log bytes.Buffer
+		x.NoError(pdcli.Upgrade{Layout: l, Log: &log}.Run(context.Background()))
+		dir := filepath.Join(l.Root, "ts")
+		x.Equal([]string{dir + " pkg set dependencies[@lesomnus/payday]=^0.1.6", dir + " install"}, npm())
+		x.Contains(log.String(), "pd: @lesomnus/payday 0.1.5 -> ^0.1.6: below 0.1.6, payday's half of the page: "+
+			"on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, "+
+			"and reads each such list twice\n")
 	})
 
 	t.Run("and a page at its floors is left alone", func(t *testing.T) {

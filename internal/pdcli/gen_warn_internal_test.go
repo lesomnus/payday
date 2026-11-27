@@ -57,10 +57,11 @@ func TestTheDoctorSaysWhatIsBelowAFloor(t *testing.T) {
 	require.Contains(t, named[0].What, "typescript 5.8.3, older than 5.9.3")
 	require.Equal(t, "go tool pd upgrade", named[0].Fix)
 
-	// A page from before the template's store.ts swept with deleteOtherDisks
-	// is told so, and why, and how to move -- not stopped.
+	// A page whose lists open a Watch the server refuses is told so, and why,
+	// and how to move -- not stopped.
 	require.Len(t, payday, 1, "%+v", payday)
-	require.Contains(t, payday[0].What, "@lesomnus/payday 0.1.1, older than 0.1.2")
-	require.Contains(t, payday[0].What, "deleteOtherDisks")
+	require.Equal(t, "ts has @lesomnus/payday 0.1.1, older than 0.1.6 -- payday's half of the page: "+
+		"on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, "+
+		"and reads each such list twice", payday[0].What)
 	require.Equal(t, "go tool pd upgrade", payday[0].Fix)
 }

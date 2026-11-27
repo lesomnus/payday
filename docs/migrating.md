@@ -12,6 +12,45 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## The page package's floor is 0.1.6
+
+**It applies to you** if the app has a page (`ts/package.json`) and its
+`@lesomnus/payday` is older than 0.1.6. Until 0.1.6 was out, a caret of
+`^0.1.2` through `^0.1.5` installed 0.1.5. `go tool pd doctor` says so:
+
+```
+ts has @lesomnus/payday 0.1.5, older than 0.1.6 -- payday's half of the page: on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, and reads each such list twice
+
+    go tool pd upgrade
+```
+
+Before 0.1.6, a list query opened a `Watch` over whatever filters the list
+had. A generated `Watch` takes only filters that each name a row and refuses
+the rest with `InvalidArgument`. So every such list was refused at once, read a
+second time, and never live. Nothing broke, but the server logged a refusal for
+each list shown. From 0.1.6, a list opens a `Watch` only over the rows it names.
+
+`go tool pd upgrade` moves the page to `^0.1.6`, installs it, and says why as
+it does:
+
+```
+pd: @lesomnus/payday 0.1.5 -> ^0.1.6: below 0.1.6, payday's half of the page: on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, and reads each such list twice
+```
+
+The payday that raised this floor also renamed a grant's end: `date_expires`
+is now `date_expired`, at the same number and of the same type. A page reads
+it as `dateExpired` where it read `dateExpires`.
+
+- **Where a page meets it:** its own generated code. `pd gen --ts` writes
+  payday's `Entitlement` entity into `ts/gen/<app>/payday/entitlement_pb.ts`.
+  The package's own copies of `EntitlementGrant` and `TokenIntrospectResponse`
+  are not among its exports.
+- **When:** the regeneration that `go tool pd upgrade --payday <commit>` runs
+  brings the rename in, and the upgrade then meets this floor in the same run.
+- **What to change:** a page that names the field changes one word.
+  `npm run check` names each place, as a property `dateExpires` that does not
+  exist on `Entitlement`.
+
 ## An RPC of your own no longer answers a secret
 
 **It applies to you** if an entity declares a field `(payday.field) = {secret:
