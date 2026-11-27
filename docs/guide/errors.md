@@ -46,6 +46,10 @@ An error that is not a status is not a refusal, and is not the caller's to
 read: the server answers it `Internal`, or `Unavailable` where it was the store
 not being reached, in words of its own, and logs it
 ([what a handler's error becomes](server.md#what-a-handlers-error-becomes)).
+A write a recorder undid is `Internal` in the store's words, and code of yours
+in the same process still reaches the recorder's error beneath them with
+`errors.Is` and `errors.As` -- to try again a transaction the database aborted,
+say ([what a recorder answers](server.md#changing-what-the-trail-records)).
 
 ## 2. Building a path up
 

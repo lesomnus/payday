@@ -609,6 +609,17 @@ recorder rather than to an option on `WithRecorder`. Give `WithRecorder` one
 neither dropping one nor appending in call order is a thing a framework should
 decide quietly.
 
+The write a recorder undid answers `Internal`, *record the write by <the RPC>:
+<the recorder's error>*, whatever code the recorder's error carried: a conflict
+on the trail's row is not the caller's conflict. Where the call's own context
+ended while the recorder wrote, and the recorder's error is that context's, it
+answers `Canceled` or `DeadlineExceeded` in the same words, as a write whose own
+statement was interrupted does. Beneath those words the error is still the
+recorder's: code of yours around the store, in the same process -- a layer, an
+interceptor -- reaches the driver's error with `errors.As`, so a transaction the
+database aborted reads the same whether it aborted the row's statement or the
+trail's. A client sees only the code and the words.
+
 What to decide on is in `bare.Change` and in the frame:
 
 - `c.Method` is the RPC gRPC dispatched for the whole request, and `c.By` is the
