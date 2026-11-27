@@ -28,6 +28,20 @@
 // which is the one failure this whole seam exists to prevent. Cut, the stream
 // ends with `ErrBehind`, the client asks again, and a fresh stream begins with
 // everything that matches now.
+//
+// # How it stops
+//
+// By being closed, and by nothing else. A broker holds two connections of its
+// own -- the one it listens on and the one it publishes on, neither from the
+// app's pool -- and a goroutine for each, and the listener dials again whenever
+// its connection ends: killing the connection from outside brings it back a
+// second later. So a broker lives from [New] until its `Close`, which
+// `(*watch.Watch).Close` calls, and an app's server closes its Watch. In a
+// deployment that builds one server that is the process's lifetime and nothing
+// changes; in anything that builds a server more than once in a process -- a
+// test suite, an app that embeds another, a reload -- a broker nobody closed is
+// two connections and two goroutines that stay until the process exits, and a
+// suite of a few dozen servers takes every connection a default PostgreSQL has.
 package watchpg
 
 import (
@@ -79,6 +93,27 @@ const Queue = 1 << 12
 // one doing full reads it did not ask for.
 const Backoff = time.Second
 
+// CloseWithin is how long `Close` waits for the listener and the publisher to
+// be gone, and how long either is given to say goodbye to the server on its
+// way out.
+//
+// Both end as soon as they are told, since everything they wait on waits on
+// the broker's context; what can take longer is a connection to a server that
+// stopped answering, and a shutdown should not hang on that. Past it, `Close`
+// logs a warning on the context [New] was given ("watchpg: closed, and has not
+// stopped") and returns: the goroutines have been told and end when their
+// connection does.
+const CloseWithin = 5 * time.Second
+
+// ErrClosed is what a publication through a closed broker is answered.
+//
+// [watch.Broker]'s `Publish` answers nothing, so there it is logged, at ERROR,
+// as a change that was not published: a server that still writes after its
+// broker was closed is a shutdown in the wrong order, and an event nobody
+// will hear. `PublishConfirmed`, which the outbox drain uses, returns it, and
+// the row stays for whoever drains next.
+var ErrClosed = errors.New("watchpg: the broker is closed")
+
 // New answers with a broker publishing on `dsn`.
 //
 // It dials once here so that a deployment naming a database it cannot reach
@@ -98,12 +133,25 @@ func New(ctx context.Context, dsn string) (watch.Broker, error) {
 		return nil, fmt.Errorf("watchpg: %w", err)
 	}
 
-	b := &broker{dsn: dsn, to: map[chan watch.Event]struct{}{}, out: make(chan []string, Queue), ready: true}
+	// Detached from the caller's cancellation on purpose: a broker outlives the
+	// call that built it, and the one that built it is a server starting up.
+	// What is kept of that context is its values, and they are the point: the
+	// log a listener that stopped or a change that was not published is said
+	// in is the process's, carried there (see config.RegisterBroker). Its end
+	// is [broker.Close] now and not the process's.
+	ctx, stop := context.WithCancel(context.WithoutCancel(ctx))
 
-	// Detached from the caller's context on purpose: a broker outlives the call
-	// that built it, and the one that built it is a server starting up.
-	go b.listen(context.WithoutCancel(ctx), c)
-	go b.publish(context.WithoutCancel(ctx))
+	b := &broker{dsn: dsn, ctx: ctx, stop: stop, to: map[chan watch.Event]struct{}{}, out: make(chan []string, Queue), ready: true}
+
+	b.running.Add(2)
+	go func() {
+		defer b.running.Done()
+		b.listen(ctx, c)
+	}()
+	go func() {
+		defer b.running.Done()
+		b.publish(ctx)
+	}()
 
 	return b, nil
 }
@@ -111,9 +159,16 @@ func New(ctx context.Context, dsn string) (watch.Broker, error) {
 type broker struct {
 	dsn string
 
-	mu    sync.Mutex
-	to    map[chan watch.Event]struct{}
-	ready bool
+	// ctx is what both goroutines run on, and stop ends it. Kept for `Close`
+	// to log on.
+	ctx     context.Context
+	stop    context.CancelFunc
+	running sync.WaitGroup
+
+	mu     sync.Mutex
+	to     map[chan watch.Event]struct{}
+	ready  bool
+	closed bool
 
 	// out is what has been published and not yet notified.
 	//
@@ -139,7 +194,7 @@ func (b *broker) Subscribe() (<-chan watch.Event, func()) {
 	c := make(chan watch.Event, watch.Backlog)
 
 	b.mu.Lock()
-	if b.ready {
+	if b.ready && !b.closed {
 		b.to[c] = struct{}{}
 	} else {
 		close(c)
@@ -179,6 +234,12 @@ func (b *broker) Publish(ctx context.Context, v watch.Event) {
 		size += len(p)
 	}
 	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		log.From(ctx).ErrorContext(ctx, "watchpg: a change was not published", "err", ErrClosed)
+
+		return
+	}
 	accepted := false
 	if b.queued+size <= MaxWire {
 		select {
@@ -199,6 +260,13 @@ func (b *broker) Publish(ctx context.Context, v watch.Event) {
 // acknowledges broker acceptance, not subscriber receipt. Outbox drain uses this
 // so a failed send leaves the row available for retry.
 func (b *broker) PublishConfirmed(ctx context.Context, v watch.Event) error {
+	b.mu.Lock()
+	closed := b.closed
+	b.mu.Unlock()
+	if closed {
+		return ErrClosed
+	}
+
 	packets, err := packets(v)
 	if err != nil {
 		return err
@@ -225,9 +293,75 @@ func send(ctx context.Context, c *pgx.Conn, packets []string) error {
 	return tx.Commit(ctx)
 }
 
+// Close ends the broker: it refuses what is published and subscribed from
+// here on, tells both goroutines to stop, cuts every subscriber, and waits --
+// for [CloseWithin] at most -- for the listener and the publisher to be gone,
+// each closing its connection on the way out. Twice is nothing.
+//
+// A subscriber is cut exactly as it is when the listening connection is lost:
+// its channel is closed, and a Watch on it ends with `watch.ErrBehind`. A
+// subscription asked for afterwards is closed as it is made, which is what a
+// listener that never came back gives too. An app's Watch RPCs have ended by
+// then, with the server that served them, which stops before it closes its
+// Watch.
+//
+// What was published and not yet sent when it closes is not sent, and is
+// logged as such: a deployment that cannot lose an event has `watch.outbox`.
+func (b *broker) Close() error {
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+
+		return nil
+	}
+	b.closed = true
+	b.ready = false
+	b.mu.Unlock()
+
+	b.stop()
+	b.cut()
+
+	done := make(chan struct{})
+	go func() {
+		b.running.Wait()
+		close(done)
+	}()
+
+	t := time.NewTimer(CloseWithin)
+	defer t.Stop()
+
+	select {
+	case <-done:
+	case <-t.C:
+		log.From(b.ctx).WarnContext(b.ctx, "watchpg: closed, and has not stopped", "within", CloseWithin)
+	}
+
+	return nil
+}
+
+// hangUp closes `c` on the way out, whether or not `ctx` has ended, and for
+// [CloseWithin] at most: saying goodbye to a server that stopped answering is
+// not worth a shutdown that hangs.
+func hangUp(ctx context.Context, c *pgx.Conn) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), CloseWithin)
+	defer cancel()
+
+	_ = c.Close(ctx)
+}
+
 // publish drains the queue.
 func (b *broker) publish(ctx context.Context) {
 	var c *pgx.Conn
+	// lost is the publication in hand when the broker was closed.
+	lost := 0
+	defer func() {
+		if c != nil {
+			hangUp(ctx, c)
+		}
+		if n := lost + len(b.out); n > 0 {
+			log.From(ctx).WarnContext(ctx, "watchpg: closed with changes not yet published", "count", n)
+		}
+	}()
 
 	for {
 		var packets []string
@@ -248,6 +382,10 @@ func (b *broker) publish(ctx context.Context) {
 		if c == nil {
 			v, err := pgx.Connect(ctx, b.dsn)
 			if err != nil {
+				if ctx.Err() != nil {
+					lost = 1
+					return
+				}
 				log.From(ctx).ErrorContext(ctx, "watchpg: cannot reach the database to publish", "err", err)
 				b.cut()
 				b.wait(ctx)
@@ -259,6 +397,10 @@ func (b *broker) publish(ctx context.Context) {
 		}
 
 		if err := send(ctx, c, packets); err != nil {
+			if ctx.Err() != nil {
+				lost = 1
+				return
+			}
 			log.From(ctx).ErrorContext(ctx, "watchpg: a change was not published", "err", err)
 
 			// Dropped rather than retried, and the reason is the alternative:
@@ -270,7 +412,7 @@ func (b *broker) publish(ctx context.Context) {
 			// from a hole they cannot see.
 			b.cut()
 
-			_ = c.Close(ctx)
+			hangUp(ctx, c)
 			c = nil
 		}
 	}
@@ -302,11 +444,11 @@ func (b *broker) once(ctx context.Context, c *pgx.Conn) error {
 			return err
 		}
 		if _, err := c.Exec(ctx, "listen "+Channel); err != nil {
-			_ = c.Close(context.WithoutCancel(ctx))
+			hangUp(ctx, c)
 			return err
 		}
 	}
-	defer c.Close(context.WithoutCancel(ctx))
+	defer hangUp(ctx, c)
 	b.mu.Lock()
 	b.ready = true
 	b.mu.Unlock()

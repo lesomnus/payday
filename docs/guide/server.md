@@ -1073,6 +1073,14 @@ it answers is that nothing could be reached
 ([a database that cannot be reached yet](#a-database-that-cannot-be-reached-yet)),
 so a registration that answers an error leaves nothing open behind it.
 
+What `Build` made, the server's `Close` closes, and `s.Watch.Close()` is how a
+broker stops: it ends what the Watch shared out and closes the broker, which
+for `postgres` is its listener, its publisher and their two connections. Until
+then they live, and the listener dials again whenever its connection ends.
+`Close` closes the Watch before the database pool, after the server and the
+loops that publish have stopped; a subscriber still open is cut as when the
+broker loses its database, `watch.ErrBehind`.
+
 ## 6. Background work
 
 A layer with something to do on a clock answers `spin.Spinner`:

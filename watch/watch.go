@@ -150,8 +150,29 @@ type memory struct {
 }
 
 func (b *memory) Subscribe() (<-chan Event, func()) {
-	s, _ := b.Open(context.Background(), Interest{})
+	s, err := b.Open(context.Background(), Interest{})
+	if err != nil {
+		// Closed: a subscription that ends as it begins, as one that fell
+		// behind does.
+		c := make(chan Event)
+		close(c)
+		return c, func() {}
+	}
 	return s.Events, s.Close
+}
+
+// Close ends every subscription, and a subscription asked for afterwards ends
+// as it is made; a publication after it reaches nobody. Twice is nothing.
+//
+// It holds no connection and no goroutine, so this is all there is to close.
+// It is needed all the same: a memory broker is a scoped one, so a Watch hands
+// out the broker's own subscriptions rather than sharing one of its own, and
+// [Watch.Close] ends them only by closing the broker. Without it a server built
+// twice in one process kept the first one's streams open on a broker nothing
+// would publish to again.
+func (b *memory) Close() error {
+	b.hub.Close()
+	return nil
 }
 
 func (b *memory) Publish(_ context.Context, v Event) {
