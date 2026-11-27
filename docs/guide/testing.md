@@ -78,7 +78,9 @@ $ PDTEST_POSTGRES='postgres://app:app@127.0.0.1/app?sslmode=disable' go test ./.
 
 Each test then gets a **schema of its own** inside that database, created when
 it starts and dropped when it ends, named after the test so that a leak says
-which one leaked.
+which one leaked, with eight hex digits after the name that keep two tests
+apart whose names agree — in two packages, or for longer than the 63 bytes
+PostgreSQL keeps of a name.
 
 Worth doing, because everything payday generates is SQL and SQLite is permissive
 in the directions that hide a mistake: no real types, NULLs sorted the other way
