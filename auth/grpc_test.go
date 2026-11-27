@@ -1,12 +1,15 @@
 package auth_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/lesomnus/otx/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -373,6 +376,111 @@ func TestInterceptor(t *testing.T) {
 			},
 		)
 		x.Equal(codes.Unauthenticated, status.Code(err))
+	})
+}
+
+// TestACallerWhoLeftIsAnsweredByTheContext is authentication for a call whose
+// caller went away while it was asked: a token store, a resolver, and a method
+// open to anybody. Each is the context's answer, decided by the context and not
+// by what the store or the resolver said. A caller who hung up is no record of
+// a fault -- the call log's record of the call says it -- and a deadline that
+// passed keeps the record each place wrote of a failure before.
+func TestACallerWhoLeftIsAnsweredByTheContext(t *testing.T) {
+	interrupted := errors.New("sqlite3: interrupted")
+	health := "/grpc.health.v1.Health/Check"
+
+	// served is a call through the interceptor that says whether its handler
+	// ran, with what was logged.
+	served := func(t *testing.T, h auth.Handler, r auth.Resolver, ctx context.Context, method string) (bool, error, string) {
+		t.Helper()
+
+		b := &bytes.Buffer{}
+		ctx = log.Into(ctx, slog.New(slog.NewTextHandler(b, nil)))
+
+		ran := false
+		_, err := auth.InterceptorUnary(h, r, auth.PublicDefault)(ctx, nil, &grpc.UnaryServerInfo{FullMethod: method}, func(context.Context, any) (any, error) {
+			ran = true
+			return nil, nil
+		})
+		return ran, err, b.String()
+	}
+
+	for _, end := range ends {
+		t.Run(end.what, func(t *testing.T) {
+			t.Run("a token store", func(t *testing.T) {
+				for _, err := range []error{interrupted, fmt.Errorf("tokens: %w", auth.ErrUnavailable)} {
+					x := require.New(t)
+
+					s := auth.TokenStoreFunc(func(context.Context, string) (auth.Identity, error) { return auth.Identity{}, err })
+					ran, got, said := served(t, auth.Bearer(s), known(), end.of(t, incoming("Bearer s3cret")), getMethod)
+					x.Equal(end.code, status.Code(got), "%v: %v", err, got)
+					x.False(ran)
+					x.Empty(said)
+				}
+			})
+
+			// Recorded as a resolver's failure was, but for a caller who hung
+			// up: a deadline that passed is a read that did not come back in
+			// time, and the line is what names the store that was slow.
+			t.Run("a resolver", func(t *testing.T) {
+				for _, v := range []struct {
+					err    error
+					record bool
+				}{
+					{interrupted, true},
+					{fmt.Errorf("the read replica: %w", auth.ErrUnavailable), false},
+					{fmt.Errorf("names nobody: %w", auth.ErrNoCredential), false},
+				} {
+					x := require.New(t)
+
+					r := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) { return nil, v.err })
+					ran, got, said := served(t, auth.Plain(), r, end.of(t, incoming("Plain @acme/admin")), getMethod)
+					x.Equal(end.code, status.Code(got), "%v: %v", v.err, got)
+					x.False(ran)
+					if v.record && end.code == codes.DeadlineExceeded {
+						x.Contains(said, "level=ERROR")
+						x.Contains(said, "could not resolve who is calling")
+						x.Contains(said, "sqlite3: interrupted")
+					} else {
+						x.Empty(said, "%v", v.err)
+					}
+				}
+			})
+
+			// Served as nobody, a call whose caller is gone would run a
+			// handler for nobody to read, as nobody.
+			t.Run("a method open to anybody", func(t *testing.T) {
+				x := require.New(t)
+
+				s := auth.TokenStoreFunc(func(context.Context, string) (auth.Identity, error) { return auth.Identity{}, interrupted })
+				ran, got, _ := served(t, auth.Bearer(s), known(), end.of(t, incoming("Bearer s3cret")), health)
+				x.Equal(end.code, status.Code(got), got)
+				x.False(ran, "served as nobody")
+			})
+		})
+	}
+
+	// With the call going on, each is as it was.
+	t.Run("a live call", func(t *testing.T) {
+		x := require.New(t)
+
+		down := auth.TokenStoreFunc(func(context.Context, string) (auth.Identity, error) {
+			return auth.Identity{}, fmt.Errorf("tokens: %w", auth.ErrUnavailable)
+		})
+		_, got, _ := served(t, auth.Bearer(down), known(), incoming("Bearer s3cret"), getMethod)
+		x.Equal(codes.Unavailable, status.Code(got))
+
+		_, got, _ = served(t, auth.Bearer(auth.NewMemTokenStore()), known(), incoming("Bearer nope"), getMethod)
+		x.Equal(codes.Unauthenticated, status.Code(got))
+
+		r := auth.ResolverFunc(func(context.Context, auth.Identity) (*frame.Frame, error) { return nil, interrupted })
+		_, got, said := served(t, auth.Plain(), r, incoming("Plain @acme/admin"), getMethod)
+		x.Equal(codes.Internal, status.Code(got))
+		x.Contains(said, "could not resolve who is calling")
+
+		ran, got, _ := served(t, auth.Bearer(auth.NewMemTokenStore()), known(), incoming("Bearer nope"), health)
+		x.NoError(got)
+		x.True(ran, "a dead credential is nobody on a public method")
 	})
 }
 

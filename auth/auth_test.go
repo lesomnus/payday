@@ -6,12 +6,14 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -337,6 +339,72 @@ func TestBearer(t *testing.T) {
 		x.ErrorIs(err, auth.ErrUnavailable)
 		x.NotErrorIs(err, auth.ErrNoCredential)
 	})
+
+	// A caller who went away while the store was asked: the store's read was
+	// interrupted, and whatever the store made of that, the token is not what
+	// went wrong and neither is the store. The context says so, and nothing
+	// the store said is read for it.
+	t.Run("a store that fails for a caller who left is the context's", func(t *testing.T) {
+		for _, end := range ends {
+			t.Run(end.what, func(t *testing.T) {
+				for _, v := range []struct {
+					what string
+					err  func(ctx context.Context) error
+				}{
+					{"the context's own error", func(ctx context.Context) error { return fmt.Errorf("tokens: %w", ctx.Err()) }},
+					{"a bare error", func(context.Context) error { return errors.New("sqlite3: interrupted") }},
+					{"unavailable", func(context.Context) error { return fmt.Errorf("tokens: %w", auth.ErrUnavailable) }},
+				} {
+					t.Run(v.what, func(t *testing.T) {
+						x := require.New(t)
+
+						ctx := end.of(t, incoming("Bearer s3cret"))
+						s := auth.TokenStoreFunc(func(ctx context.Context, _ string) (auth.Identity, error) {
+							return auth.Identity{}, v.err(ctx)
+						})
+
+						_, err := auth.Bearer(s).Handle(ctx)
+						x.ErrorIs(err, end.err)
+						x.NotErrorIs(err, auth.ErrUnknownToken)
+						x.NotErrorIs(err, auth.ErrUnavailable)
+						x.NotErrorIs(err, auth.ErrNoCredential)
+					})
+				}
+			})
+		}
+	})
+
+	// And the context is all that decides it: the same words from a store
+	// with the call going on are a token that is no good.
+	t.Run("a store's words for a live call are as they were", func(t *testing.T) {
+		x := require.New(t)
+
+		s := auth.TokenStoreFunc(func(context.Context, string) (auth.Identity, error) {
+			return auth.Identity{}, errors.New("sqlite3: interrupted")
+		})
+		_, err := auth.Bearer(s).Handle(incoming("Bearer s3cret"))
+		x.ErrorIs(err, auth.ErrUnknownToken)
+	})
+}
+
+// ends are the two ways a call's context ends before it is answered: its
+// caller hung up, or the deadline it set passed.
+var ends = []struct {
+	what string
+	err  error
+	code codes.Code
+	of   func(t *testing.T, ctx context.Context) context.Context
+}{
+	{"cancelled", context.Canceled, codes.Canceled, func(t *testing.T, ctx context.Context) context.Context {
+		ctx, cancel := context.WithCancel(ctx)
+		cancel()
+		return ctx
+	}},
+	{"past its deadline", context.DeadlineExceeded, codes.DeadlineExceeded, func(t *testing.T, ctx context.Context) context.Context {
+		ctx, cancel := context.WithDeadline(ctx, time.Now().Add(-time.Second))
+		t.Cleanup(cancel)
+		return ctx
+	}},
 }
 
 func TestSeq(t *testing.T) {

@@ -51,6 +51,16 @@ type TokenStore interface {
 	// A store that cannot answer -- unreachable, timed out -- wraps
 	// [ErrUnavailable], and the caller is told to come back rather than told
 	// their token is bad. That one is passed on, because it is not about them.
+	//
+	// A caller who went away while the store was asked is neither, and the
+	// store need not say so: with `ctx` ended, whatever it returns -- the
+	// context's own error, which is the natural thing to return, the
+	// driver's words for a read that was interrupted, or [ErrUnavailable] --
+	// [Bearer] answers with the context's error, and the call ends `Canceled`
+	// or `DeadlineExceeded`. It is decided by the context and not by the
+	// error, so a store need not tell an interrupted read from a failed one,
+	// and cannot get it wrong. With `ctx` going on, the two answers above are
+	// as they are.
 	Lookup(ctx context.Context, token string) (Identity, error)
 }
 
@@ -87,6 +97,16 @@ func Bearer(store TokenStore) Handler {
 
 			id, err := store.Lookup(ctx, token)
 			if err != nil {
+				// A caller who left is not a token that is no good, nor a
+				// store that could not answer: told either, a caller throws
+				// away a good token or an operator looks for a store that was
+				// fine. Asked of the context, since what the store made of
+				// an interrupted read is its driver's -- the context's error
+				// from one, `interrupted` from another.
+				if ctx.Err() != nil {
+					return Identity{}, fmt.Errorf("%s: %w", BearerScheme, ctx.Err())
+				}
+
 				// A store that could not answer is not the caller's fault, and
 				// saying which it was is the whole reason for the third answer.
 				if errors.Is(err, ErrUnavailable) {

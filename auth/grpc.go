@@ -177,6 +177,15 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 		}
 
 		id, err := h.Handle(ctx)
+		if err != nil && ctx.Err() != nil {
+			// The context ended while the credential was looked at, and
+			// whatever the handler made of that is not the answer: not a bad
+			// credential (Unauthenticated), not a store that is down
+			// (Unavailable), and on a method open to anybody not a call to
+			// serve as nobody. Nothing here wrote a record of a handler's
+			// failure before, for either end, and nothing does. See [left].
+			return nil, Identity{}, left(ctx)
+		}
 		if err == nil {
 			select {
 			case <-id.Changed:
@@ -184,6 +193,15 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 			default:
 			}
 			f, err := r.Resolve(ctx, id)
+			if err != nil && ctx.Err() != nil {
+				// A resolver's read the context interrupted: answered as the
+				// context's, and recorded as [resolveFailed] records it only
+				// for a deadline that passed. See [left].
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) && !errors.Is(err, ErrNoCredential) {
+					unresolved(ctx, err)
+				}
+				return nil, Identity{}, left(ctx)
+			}
 			if err == nil {
 				if f == nil {
 					// A resolver that answered with nothing and no error. A
@@ -358,6 +376,9 @@ func authenticate(h Handler, r Resolver, public Public) func(ctx context.Context
 			// stopped at the handler that refused, so nobody is who this is
 			// served as, and not whoever the next handler would have made of
 			// the same request.
+			//
+			// Nor for a caller who went away while the handler asked, which
+			// never reaches here: it ended above, as the context's.
 			if errors.Is(err, ErrUnavailable) || !public(method) {
 				return nil, Identity{}, statusOf(err)
 			}
@@ -401,6 +422,29 @@ func statusOf(err error) error {
 	return status.Error(codes.Unauthenticated, err.Error())
 }
 
+// left is the answer to a call whose context ended while who is calling was
+// being worked out: its caller hung up, or its deadline passed -- the caller's,
+// or for a call that named none the one [grpcx.Serving] gives it, since this
+// runs inside that. It is the context's, `Canceled` or `DeadlineExceeded`, as
+// gRPC answers a call it ended itself.
+//
+// The two are told apart for the record and not for the answer. A caller who
+// hung up is no fault of anybody's here, so nothing is logged and the call
+// log's record of the call says it. A deadline that passed keeps whatever
+// record the failure had -- a resolver's is [resolveFailed]'s -- because a read
+// that did not come back in time is a slow store, and that line is the one
+// that names it.
+//
+// Asked of the context and not of the error a handler or a resolver returned.
+// What a store says of a read that was interrupted is its driver's --
+// PostgreSQL's wraps the context's error, SQLite's says `interrupted` -- and
+// read from the error, the same call would be answered one way on one
+// database and another on the other. A store a caller has not left that says
+// `interrupted` is a store that failed, and is answered as one.
+func left(ctx context.Context) error {
+	return status.FromContextError(ctx.Err()).Err()
+}
+
 // resolveFailed answers a [Resolver]'s refusal, which is not the same question
 // [statusOf] answers.
 //
@@ -421,9 +465,19 @@ func resolveFailed(ctx context.Context, err error) error {
 		return status.Error(codes.Unavailable, err.Error())
 	}
 
-	log.From(ctx).ErrorContext(ctx, "could not resolve who is calling", slog.Any("error", err))
+	unresolved(ctx, err)
 
 	return status.Error(codes.Internal, "could not say who is calling")
+}
+
+// unresolved is [resolveFailed]'s record of a resolver's error that is no
+// status and not [ErrUnavailable], which a deadline that passed keeps.
+func unresolved(ctx context.Context, err error) {
+	if _, ok := status.FromError(err); ok || errors.Is(err, ErrUnavailable) {
+		return
+	}
+
+	log.From(ctx).ErrorContext(ctx, "could not resolve who is calling", slog.Any("error", err))
 }
 
 // Inject says who the caller is on every outgoing call.
