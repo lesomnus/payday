@@ -183,6 +183,27 @@ not. This was found by an overlay that took `HasId` off an Add request and
 stopped the build, which is the lucky version; on a field nobody calls `Has` on,
 it would silently change what "not set" means on the wire.
 
+**A service overlay saying a generated field again.** A service overlay
+(`proto/ext/<pkg>/<entity>_svc.ext.proto`) may declare a message the contract
+declares too, and that is how an app adds a field to a generated request: at a
+number and a name the contract's message does not have. Adding is allowed;
+saying again a number the contract's message has, or a name it has under
+another number, is a generation failure, as it is of payday's entities and for
+the same reason: the merge takes the overlay's word and says nothing. It takes
+the overlay's field whole -- its type, its presence and its options -- and
+keeps nothing the generator said of it, so `int64 hours = 9 [deprecated =
+true];` loses the `features.field_presence = IMPLICIT` the generator gave
+`hours`, which the overlay never mentioned, and `int32 model = 8;` makes a
+request an `int32` where the entity's field is a `string`. A field in a
+`oneof` is its message's, and a message nested in a generated one is held to
+this under its own name. What is compared is the contract as merged so far, so
+payday's own half -- the `List` and `Watch` and their messages -- is the
+contract's to an app as much as the generator's `Add` is, and is held to the
+rule against the generator's in turn. The refusal names the file, the message,
+the number and both spellings. An app that wants a different request declares
+an RPC of its own under its own name, as one that wants a different `Get`
+does.
+
 ### What `pd doctor` catches instead
 
 **An overlay for an entity payday does not have.** `pd gen` looks up one overlay

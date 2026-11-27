@@ -1205,6 +1205,37 @@ generated methods stay.
 The service keeps the name of the entity — `WidgetService` for `Widget` — and
 what you write joins whatever `pd gen` put there.
 
+The same overlay can add a field to a generated request, by declaring the
+message again with only what is new in it:
+
+```proto
+// proto/ext/app/widget_svc.ext.proto
+message WidgetAddRequest {
+  string reason = 100;
+}
+```
+
+The new field goes at a number and under a name the generated message does
+not have. An `Add` request numbers its fields as the entity does, so a number
+well above the entity's own keeps a field the entity gains later from landing
+on yours, which `pd gen` would then refuse. A field the
+generator wrote is not said again, not even to put one option on it: the merge
+would take your line whole -- its type, its presence and its options -- and
+keep nothing the generator said of that field, and nothing would say so. So
+`pd gen` refuses it, a field in a `oneof` and a nested message's included, and
+of the `List` and `Watch` requests payday writes as much as the generator's
+`Add`:
+
+```
+widget_svc.ext.proto: message WidgetAddRequest says field 9 again, which the contract's message already has.
+
+    the contract's: int64 hours = 9 [features.field_presence = IMPLICIT];
+    the overlay's:  int64 hours = 9 [deprecated = true];
+```
+
+A request that is to be different -- another type, a field that means
+something else -- is a request of yours under an RPC of yours, as above.
+
 An RPC may be called anything a method may, another entity's name included: a
 `WidgetService/Part` in an app with a `Part` is the service's, through every
 layer payday generates, and the gate's rule for it is the rule for any RPC of
@@ -1294,6 +1325,7 @@ only test for whether it belongs on this list.
 | an overlay changing payday's field | a column that is no longer what its readers expect |
 | an overlay adding to payday's options, beyond an index | an entity declared differently from the one payday's layers were written for |
 | an overlay setting a file-level `features.` option | the whole contract silently changed by one line |
+| a service overlay saying again a field of a generated message, by its number or its name | a request whose field is no longer what the generator, its layers and its clients were written for |
 | a field of `Audit` or `Access` named or JSON-named `sealed` | a row of the archive that reads as sealed and is sealed by nothing |
 | a past numbered in payday's ranges, the same for both, or with a number another entity holds | identifiers that say the wrong kind of row, or nothing |
 | a past declared in two files | two answers to the number its copies are written with |
