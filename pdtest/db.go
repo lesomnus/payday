@@ -1,10 +1,14 @@
 package pdtest
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"testing"
@@ -135,7 +139,7 @@ func pgSchema(tb testing.TB, dsn string) string {
 	// Counted rather than named by the caller, so that no existing test has to
 	// say anything. Nothing could have wanted the old behaviour: a second call
 	// always dropped what the first had made.
-	name := schemaName(tb.Name(), nth(tb.Name()))
+	name := schemaName(testPackage(), tb.Name(), nth(tb.Name()))
 	if _, err := db.Exec(fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, name)); err != nil {
 		tb.Fatalf("drop schema %s: %v", name, err)
 	}
@@ -171,12 +175,41 @@ func pgSchema(tb testing.TB, dsn string) string {
 }
 
 // schemaName is a test's name, and which of its databases this is, as an
-// identifier PostgreSQL will take.
+// identifier PostgreSQL will take unquoted: `t_`, the name lower-cased with
+// everything else made `_`, `_` and eight hex digits, and the counter after.
 //
-// Truncated to 63 bytes, which is its limit -- silently, if nobody does it
-// here: a longer name is cut by the server and two tests whose names agree for
-// the first 63 characters would then share a schema and each drop the other's
-// tables.
+//	t_testseconddbisaseconddatabase_16e0a029
+//	t_testseconddbisaseconddatabase_16e0a029_1
+//
+// The name is there for a person: a schema left behind says which test left it.
+// The digits are there so that the schema is this test's alone: the first
+// eight of the SHA-256 of the test binary's package and the test's whole name,
+// as `testing` has it before any of the mapping.
+//
+// # Two tests whose names agree for 63 bytes shared a schema
+//
+// The name used to be all of it, cut to PostgreSQL's 63 bytes, and this comment
+// said two tests whose names agree that far still collide and that that was the
+// limit doing what it does. It happened in an app, across two packages: one
+// holds TestAnAddressSomebodyErasedNeverProvedKeepsNobodyFromArriving and the
+// other ...FromArrivingHereEither, named apart from the first on purpose, and
+// `t_` with the first sixty-one bytes of either is the whole sixty-three. `go
+// test ./...` runs packages side by side against one server, each test drops its
+// schema as it starts and as it ends, and whichever lost found its tables gone
+// -- `relation "tenant" does not exist`, `no schema has been selected to create
+// in` -- in CI, twice in a day, after being green by timing alone. Nothing in
+// any of it names a schema, let alone says it was shared.
+//
+// Cutting was not the only way there. Two tests of one name in two packages
+// collide however short it is, and so do two names the mapping makes one --
+// `TestA/b` and `TestA_b`, `TestAB` and `TestAb`. So the digits are always
+// there, not only when the name is cut: one rule, and it covers all three.
+// The 63 bytes are `t_`, the name, the nine of `_` and the digits, and the
+// counter; the name is what gives way.
+//
+// The package is the import path the test binary's build information carries
+// ([testPackage]), so two packages are two however alike their last elements
+// are. What can still collide is two names whose hashes agree in 32 bits.
 //
 // # The counter is appended after the truncation, and has to be
 //
@@ -189,10 +222,13 @@ func pgSchema(tb testing.TB, dsn string) string {
 // about the app and not about here.
 //
 // So the room is reserved: the name gives way to the counter rather than the
-// other way round. Two tests whose names agree that far still collide, and that
-// is the limit doing what it does; two **databases of one test** cannot, which
-// is what this decides.
-func schemaName(v string, n int) string {
+// other way round, and two **databases of one test** cannot share a schema.
+// The digits are of the test, not of the database, so a test's two schemas
+// share them and differ in the counter.
+func schemaName(pkg, v string, n int) string {
+	sum := sha256.Sum256([]byte(pkg + "\x00" + v))
+	tag := "_" + hex.EncodeToString(sum[:])[:8]
+
 	v = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
@@ -210,12 +246,31 @@ func schemaName(v string, n int) string {
 	if n > 0 {
 		nth = fmt.Sprintf("_%d", n)
 	}
-	if len(v)+len(nth) > 63 {
-		v = v[:63-len(nth)]
+	if len(v)+len(tag)+len(nth) > 63 {
+		v = v[:63-len(tag)-len(nth)]
 	}
 
-	return v + nth
+	return v + tag + nth
 }
+
+// testPackage is the import path of the package this test binary tests.
+//
+// `go test` builds a binary per package, and its build information's Path is
+// that package's import path with `.test` after it -- for a package of this
+// module and of an app's, and for an external `_test` package, which shares
+// its package's binary. Where there is no build information, the binary's own
+// name is `<package>.test`, which is the last element only: two packages
+// whose last elements agree would then share digits, and only their test names
+// keep them apart.
+var testPackage = sync.OnceValue(func() string {
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Path != "" {
+		return strings.TrimSuffix(bi.Path, ".test")
+	}
+
+	v := filepath.Base(os.Args[0])
+	v = strings.TrimSuffix(v, ".exe")
+	return strings.TrimSuffix(v, ".test")
+})
 
 // nth is how many databases this test has already been given.
 var nth = func() func(string) int {
