@@ -402,6 +402,67 @@ func TestAnOverlayThatRedeclaresAGeneratedRpcIsRefused(t *testing.T) {
 	})
 }
 
+// TestAServiceOverlayThatSaysAGeneratedFieldAgainIsRefused, at `pd gen`, as
+// the app's author reads it.
+//
+// `protobuf-merge` takes a field an overlay says again whole -- its type, its
+// presence, its options -- and keeps nothing of the generated one, and it and
+// `pd gen` exited 0 and said nothing: with the overlay below, the merged
+// contract's `hours` had lost the `features.field_presence = IMPLICIT` the
+// generator gave it, which the overlay never mentioned (payday#316).
+func TestAServiceOverlayThatSaysAGeneratedFieldAgainIsRefused(t *testing.T) {
+	x := require.New(t)
+
+	l := genApp(t)
+
+	// The test app has no overlay of its Machine's contract, so this is the
+	// whole of one, as an app's author would start it.
+	at := filepath.Join(l.Path(pdcli.DirExt), "app", "machine_svc.ext.proto")
+	const head = "edition = \"2023\";\n\npackage app;\n\noption go_package = \"github.com/lesomnus/payday/internal/apptest\";\n\n"
+	x.NoError(os.WriteFile(at, []byte(head+`message MachineAddRequest {
+  string note = 900;
+  int64 hours = 9 [deprecated = true];
+}
+`), 0o644))
+
+	err := pdcli.Gen{Layout: l}.Run(t.Context())
+	x.Error(err, "an overlay replaced a generated field quietly")
+	x.ErrorContains(err, `machine_svc.ext.proto: message MachineAddRequest says field 9 again, which the contract's message already has.
+
+    the contract's: int64 hours = 9 [features.field_presence = IMPLICIT];
+    the overlay's:  int64 hours = 9 [deprecated = true];
+
+The merge would take the overlay's field whole`)
+	x.ErrorContains(err, "Add what is wanted at a number MachineAddRequest leaves empty")
+
+	t.Run("and one that only adds is fine", func(t *testing.T) {
+		x := require.New(t)
+
+		x.NoError(os.WriteFile(at, []byte(head+"message MachineAddRequest {\n  string note = 900;\n}\n"), 0o644))
+		x.NoError(pdcli.Gen{Layout: l}.Run(t.Context()))
+
+		b, err := os.ReadFile(filepath.Join(l.Root, pdcli.DirProto, "app", "machine_svc.g.proto"))
+		x.NoError(err)
+		x.Contains(string(b), "string note = 900;")
+	})
+
+	// payday's half is merged before the app's, so its List is the
+	// contract's to the app as much as the generator's Add is.
+	t.Run("and a field of payday's half, a List's request", func(t *testing.T) {
+		x := require.New(t)
+
+		ext := filepath.Join(l.Path(pdcli.DirExt), "app", "robot_svc.ext.proto")
+		b, err := os.ReadFile(ext)
+		x.NoError(err)
+		x.NoError(os.WriteFile(ext, append(b, "\nmessage RobotListRequest {\n  int64 size = 2;\n}\n"...), 0o644))
+
+		err = pdcli.Gen{Layout: l}.Run(t.Context())
+		x.Error(err)
+		x.ErrorContains(err, "robot_svc.ext.proto: message RobotListRequest says field 2 again, which the contract's message already has.\n\n"+
+			"    the contract's: int32 size = 2 [features.field_presence = IMPLICIT];")
+	})
+}
+
 // TestAGenerationRunsOnWhatTheLastOneWrote.
 //
 // A contract the last generation wrote is an input to this one if it is left

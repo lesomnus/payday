@@ -12,6 +12,38 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A service overlay no longer says a generated field again
+
+**It applies to you** if a `proto/ext/<pkg>/*_svc.ext.proto` declares a
+message the generated contract has -- an `Add` request, a `List` request --
+and says in it a field that message already has: at a number it has, or under
+a name it has at another number. `go tool pd gen` now refuses it, naming the
+file, the message, the number and both lines:
+
+```
+machine_svc.ext.proto: message MachineAddRequest says field 9 again, which the contract's message already has.
+
+    the contract's: int64 hours = 9 [features.field_presence = IMPLICIT];
+    the overlay's:  int64 hours = 9 [deprecated = true];
+
+The merge would take the overlay's field whole -- its type, its presence and its options -- and keep nothing the generator said of it: what the generator wrote, and every layer and client written against that, would be reading another field. Nothing would say so.
+
+An overlay **adds**. Add what is wanted at a number MachineAddRequest leaves empty, under a name it does not use; or, if a different request is wanted, give it an RPC of its own under its own name
+```
+
+Before, the merge took such a line in place of the generator's field and `pd
+gen` said nothing: the field had the overlay's type, presence and options, and
+lost whatever the generator had said that the overlay did not.
+
+**What to do:** take the line out. If something was wanted beside the
+generated field, add it as a field of its own at a number and a name the
+message does not have. If a different request was wanted -- another type,
+another meaning -- declare an RPC of your own with its own request, as the
+[schema guide](guide/schema.md#an-rpc-of-your-own) shows.
+
+An overlay that only adds -- new fields at new numbers, messages and RPCs of
+its own -- is untouched.
+
 ## The page package's floor is 0.1.6
 
 **It applies to you** if the app has a page (`ts/package.json`) and its

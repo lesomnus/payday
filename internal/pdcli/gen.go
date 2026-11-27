@@ -535,10 +535,7 @@ func (r run) walk(ctx context.Context, used map[string]bool) error {
 					return err
 				}
 			} else {
-				if err := CheckOverlayFile(overlay); err != nil {
-					return err
-				}
-				if err := checkOverlayRpcs(b, overlay); err != nil {
+				if err := checkContractOverlay(b, overlay); err != nil {
 					return err
 				}
 			}
@@ -681,6 +678,20 @@ func checkContractRpcs(b []byte, contract string) error {
 	}
 
 	return nil
+}
+
+// checkContractOverlay is what a service overlay -- payday's half of a
+// contract or the app's -- is held to before it is merged onto `b`, the
+// contract as merged so far: the file, then its RPCs, then its fields, so that
+// one which says several things again is refused for the same one every time.
+func checkContractOverlay(b []byte, overlay string) error {
+	if err := CheckOverlayFile(overlay); err != nil {
+		return err
+	}
+	if err := checkOverlayRpcs(b, overlay); err != nil {
+		return err
+	}
+	return checkOverlayFields(b, overlay)
 }
 
 // checkOverlayRpcs refuses an overlay that redeclares an rpc already in the
