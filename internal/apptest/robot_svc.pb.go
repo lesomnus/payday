@@ -12,6 +12,7 @@ import (
 	_ "github.com/protobuf-orm/protobuf-orm/ormpb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	unsafe "unsafe"
@@ -6749,7 +6750,7 @@ var File_app_robot_svc_g_proto protoreflect.FileDescriptor
 
 const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\n" +
-	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"\x93\x01\n" +
+	"\x15app/robot_svc.g.proto\x12\x03app\x1a\x1dapp/payday/tenant_svc.g.proto\x1a\x0fapp/robot.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\torm.proto\x1a\x11patch/patch.proto\x1a\fpayday.proto\x1a\x18shared/thing_svc.g.proto\"\x93\x01\n" +
 	"\x0eCellAddRequest\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\fB\x06\xea\x82\x16\x02\x10@R\x02id\x12&\n" +
 	"\x06tenant\x18\x02 \x01(\v2\x0e.app.TenantRefR\x06tenant\x12\x1b\n" +
@@ -6983,7 +6984,7 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	"\x03Add\x12\x13.app.CellAddRequest\x1a\t.app.Cell\x12%\n" +
 	"\x03Get\x12\x13.app.CellGetRequest\x1a\t.app.Cell\x12)\n" +
 	"\x05Apply\x12\x15.app.CellApplyRequest\x1a\t.app.Cell\x12-\n" +
-	"\x05Erase\x12\f.app.CellRef\x1a\x16.app.CellEraseResponse2\xf9\x05\n" +
+	"\x05Erase\x12\f.app.CellRef\x1a\x16.app.CellEraseResponse2\xb6\x06\n" +
 	"\fRobotService\x12'\n" +
 	"\x03Add\x12\x14.app.RobotAddRequest\x1a\n" +
 	".app.Robot\x12>\n" +
@@ -7008,7 +7009,8 @@ const file_app_robot_svc_g_proto_rawDesc = "" +
 	".app.Robot\"\x06\xea\xcd\x16\x02\x12\x00(\x010\x01\x121\n" +
 	"\x06Survey\x12\r.app.RobotRef\x1a\x10.app.RobotSurvey\"\x06\xea\xcd\x16\x02\x12\x00\x121\n" +
 	"\n" +
-	"TokenScope\x12\r.app.RobotRef\x1a\x14.app.RobotTokenScope2\xd0\x01\n" +
+	"TokenScope\x12\r.app.RobotRef\x1a\x14.app.RobotTokenScope\x12;\n" +
+	"\x05Stamp\x12\x16.google.protobuf.Empty\x1a\x1a.google.protobuf.Timestamp2\xd0\x01\n" +
 	"\x0ePairingService\x12+\n" +
 	"\x03Add\x12\x16.app.PairingAddRequest\x1a\f.app.Pairing\x12+\n" +
 	"\x03Get\x12\x16.app.PairingGetRequest\x1a\f.app.Pairing\x12/\n" +
@@ -7103,10 +7105,11 @@ var file_app_robot_svc_g_proto_goTypes = []any{
 	(*Robot)(nil),                  // 60: app.Robot
 	(*ThingSelect)(nil),            // 61: shared.ThingSelect
 	(*Reading)(nil),                // 62: app.Reading
-	(*Cell)(nil),                   // 63: app.Cell
-	(*Pairing)(nil),                // 64: app.Pairing
-	(*Joint)(nil),                  // 65: app.Joint
-	(*Fleet)(nil),                  // 66: app.Fleet
+	(*emptypb.Empty)(nil),          // 63: google.protobuf.Empty
+	(*Cell)(nil),                   // 64: app.Cell
+	(*Pairing)(nil),                // 65: app.Pairing
+	(*Joint)(nil),                  // 66: app.Joint
+	(*Fleet)(nil),                  // 67: app.Fleet
 }
 var file_app_robot_svc_g_proto_depIdxs = []int32{
 	55,  // 0: app.CellAddRequest.tenant:type_name -> app.TenantRef
@@ -7202,61 +7205,63 @@ var file_app_robot_svc_g_proto_depIdxs = []int32{
 	11,  // 90: app.RobotService.Joint:input_type -> app.RobotRef
 	11,  // 91: app.RobotService.Survey:input_type -> app.RobotRef
 	11,  // 92: app.RobotService.TokenScope:input_type -> app.RobotRef
-	28,  // 93: app.PairingService.Add:input_type -> app.PairingAddRequest
-	29,  // 94: app.PairingService.Get:input_type -> app.PairingGetRequest
-	32,  // 95: app.PairingService.Patch:input_type -> app.PairingPatchRequest
-	30,  // 96: app.PairingService.Erase:input_type -> app.PairingRef
-	34,  // 97: app.JointService.Add:input_type -> app.JointAddRequest
-	35,  // 98: app.JointService.Get:input_type -> app.JointGetRequest
-	38,  // 99: app.JointService.Patch:input_type -> app.JointPatchRequest
-	36,  // 100: app.JointService.Erase:input_type -> app.JointRef
-	40,  // 101: app.FleetService.Add:input_type -> app.FleetAddRequest
-	41,  // 102: app.FleetService.Get:input_type -> app.FleetGetRequest
-	44,  // 103: app.FleetService.Patch:input_type -> app.FleetPatchRequest
-	42,  // 104: app.FleetService.Erase:input_type -> app.FleetRef
-	46,  // 105: app.ReadingService.Add:input_type -> app.ReadingAddRequest
-	47,  // 106: app.ReadingService.AddMany:input_type -> app.ReadingAddManyRequest
-	49,  // 107: app.ReadingService.Get:input_type -> app.ReadingGetRequest
-	52,  // 108: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
-	50,  // 109: app.ReadingService.Erase:input_type -> app.ReadingRef
-	63,  // 110: app.CellService.Add:output_type -> app.Cell
-	63,  // 111: app.CellService.Get:output_type -> app.Cell
-	63,  // 112: app.CellService.Apply:output_type -> app.Cell
-	6,   // 113: app.CellService.Erase:output_type -> app.CellEraseResponse
-	60,  // 114: app.RobotService.Add:output_type -> app.Robot
-	9,   // 115: app.RobotService.AddMany:output_type -> app.RobotAddManyResponse
-	60,  // 116: app.RobotService.Get:output_type -> app.Robot
-	60,  // 117: app.RobotService.Patch:output_type -> app.Robot
-	60,  // 118: app.RobotService.Apply:output_type -> app.Robot
-	16,  // 119: app.RobotService.Erase:output_type -> app.RobotEraseResponse
-	18,  // 120: app.RobotService.List:output_type -> app.RobotListResponse
-	21,  // 121: app.RobotService.Watch:output_type -> app.RobotWatchResponse
-	60,  // 122: app.RobotService.Move:output_type -> app.Robot
-	60,  // 123: app.RobotService.Seal:output_type -> app.Robot
-	60,  // 124: app.RobotService.Reading:output_type -> app.Robot
-	24,  // 125: app.RobotService.Job:output_type -> app.RobotJobResponse
-	60,  // 126: app.RobotService.Joint:output_type -> app.Robot
-	25,  // 127: app.RobotService.Survey:output_type -> app.RobotSurvey
-	27,  // 128: app.RobotService.TokenScope:output_type -> app.RobotTokenScope
-	64,  // 129: app.PairingService.Add:output_type -> app.Pairing
-	64,  // 130: app.PairingService.Get:output_type -> app.Pairing
-	64,  // 131: app.PairingService.Patch:output_type -> app.Pairing
-	33,  // 132: app.PairingService.Erase:output_type -> app.PairingEraseResponse
-	65,  // 133: app.JointService.Add:output_type -> app.Joint
-	65,  // 134: app.JointService.Get:output_type -> app.Joint
-	65,  // 135: app.JointService.Patch:output_type -> app.Joint
-	39,  // 136: app.JointService.Erase:output_type -> app.JointEraseResponse
-	66,  // 137: app.FleetService.Add:output_type -> app.Fleet
-	66,  // 138: app.FleetService.Get:output_type -> app.Fleet
-	66,  // 139: app.FleetService.Patch:output_type -> app.Fleet
-	45,  // 140: app.FleetService.Erase:output_type -> app.FleetEraseResponse
-	62,  // 141: app.ReadingService.Add:output_type -> app.Reading
-	48,  // 142: app.ReadingService.AddMany:output_type -> app.ReadingAddManyResponse
-	62,  // 143: app.ReadingService.Get:output_type -> app.Reading
-	62,  // 144: app.ReadingService.Patch:output_type -> app.Reading
-	53,  // 145: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
-	110, // [110:146] is the sub-list for method output_type
-	74,  // [74:110] is the sub-list for method input_type
+	63,  // 93: app.RobotService.Stamp:input_type -> google.protobuf.Empty
+	28,  // 94: app.PairingService.Add:input_type -> app.PairingAddRequest
+	29,  // 95: app.PairingService.Get:input_type -> app.PairingGetRequest
+	32,  // 96: app.PairingService.Patch:input_type -> app.PairingPatchRequest
+	30,  // 97: app.PairingService.Erase:input_type -> app.PairingRef
+	34,  // 98: app.JointService.Add:input_type -> app.JointAddRequest
+	35,  // 99: app.JointService.Get:input_type -> app.JointGetRequest
+	38,  // 100: app.JointService.Patch:input_type -> app.JointPatchRequest
+	36,  // 101: app.JointService.Erase:input_type -> app.JointRef
+	40,  // 102: app.FleetService.Add:input_type -> app.FleetAddRequest
+	41,  // 103: app.FleetService.Get:input_type -> app.FleetGetRequest
+	44,  // 104: app.FleetService.Patch:input_type -> app.FleetPatchRequest
+	42,  // 105: app.FleetService.Erase:input_type -> app.FleetRef
+	46,  // 106: app.ReadingService.Add:input_type -> app.ReadingAddRequest
+	47,  // 107: app.ReadingService.AddMany:input_type -> app.ReadingAddManyRequest
+	49,  // 108: app.ReadingService.Get:input_type -> app.ReadingGetRequest
+	52,  // 109: app.ReadingService.Patch:input_type -> app.ReadingPatchRequest
+	50,  // 110: app.ReadingService.Erase:input_type -> app.ReadingRef
+	64,  // 111: app.CellService.Add:output_type -> app.Cell
+	64,  // 112: app.CellService.Get:output_type -> app.Cell
+	64,  // 113: app.CellService.Apply:output_type -> app.Cell
+	6,   // 114: app.CellService.Erase:output_type -> app.CellEraseResponse
+	60,  // 115: app.RobotService.Add:output_type -> app.Robot
+	9,   // 116: app.RobotService.AddMany:output_type -> app.RobotAddManyResponse
+	60,  // 117: app.RobotService.Get:output_type -> app.Robot
+	60,  // 118: app.RobotService.Patch:output_type -> app.Robot
+	60,  // 119: app.RobotService.Apply:output_type -> app.Robot
+	16,  // 120: app.RobotService.Erase:output_type -> app.RobotEraseResponse
+	18,  // 121: app.RobotService.List:output_type -> app.RobotListResponse
+	21,  // 122: app.RobotService.Watch:output_type -> app.RobotWatchResponse
+	60,  // 123: app.RobotService.Move:output_type -> app.Robot
+	60,  // 124: app.RobotService.Seal:output_type -> app.Robot
+	60,  // 125: app.RobotService.Reading:output_type -> app.Robot
+	24,  // 126: app.RobotService.Job:output_type -> app.RobotJobResponse
+	60,  // 127: app.RobotService.Joint:output_type -> app.Robot
+	25,  // 128: app.RobotService.Survey:output_type -> app.RobotSurvey
+	27,  // 129: app.RobotService.TokenScope:output_type -> app.RobotTokenScope
+	59,  // 130: app.RobotService.Stamp:output_type -> google.protobuf.Timestamp
+	65,  // 131: app.PairingService.Add:output_type -> app.Pairing
+	65,  // 132: app.PairingService.Get:output_type -> app.Pairing
+	65,  // 133: app.PairingService.Patch:output_type -> app.Pairing
+	33,  // 134: app.PairingService.Erase:output_type -> app.PairingEraseResponse
+	66,  // 135: app.JointService.Add:output_type -> app.Joint
+	66,  // 136: app.JointService.Get:output_type -> app.Joint
+	66,  // 137: app.JointService.Patch:output_type -> app.Joint
+	39,  // 138: app.JointService.Erase:output_type -> app.JointEraseResponse
+	67,  // 139: app.FleetService.Add:output_type -> app.Fleet
+	67,  // 140: app.FleetService.Get:output_type -> app.Fleet
+	67,  // 141: app.FleetService.Patch:output_type -> app.Fleet
+	45,  // 142: app.FleetService.Erase:output_type -> app.FleetEraseResponse
+	62,  // 143: app.ReadingService.Add:output_type -> app.Reading
+	48,  // 144: app.ReadingService.AddMany:output_type -> app.ReadingAddManyResponse
+	62,  // 145: app.ReadingService.Get:output_type -> app.Reading
+	62,  // 146: app.ReadingService.Patch:output_type -> app.Reading
+	53,  // 147: app.ReadingService.Erase:output_type -> app.ReadingEraseResponse
+	111, // [111:148] is the sub-list for method output_type
+	74,  // [74:111] is the sub-list for method input_type
 	74,  // [74:74] is the sub-list for extension type_name
 	74,  // [74:74] is the sub-list for extension extendee
 	0,   // [0:74] is the sub-list for field type_name
