@@ -12,6 +12,30 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A recorder's failure keeps its cause
+
+**It applies to you** if your app reads the error of a write to decide what to
+do with it -- tries a transaction again when the store aborted it, tells a
+deadlock from a refusal -- or counts the `Internal`s it answers. Regenerate
+(`go tool pd gen`) with `protoc-gen-orm-ent` at
+`v0.0.0-20261127181046-80ed333182e8` or later
+(protobuf-orm/protoc-gen-orm-ent#27); `go get -tool
+github.com/protobuf-orm/protoc-gen-orm-ent@main` brings it.
+
+The error a write answers when a recorder fails -- the trail, the outbox, the
+access record, or one of yours -- was a status whose words were all that was
+left of what the recorder returned. It now unwraps to it: `errors.As` and
+`errors.Is` reach the driver's error and the context's, as they do for an
+error of the row's own statement, so a deadlock reads the same whichever of
+the transaction's statements the database aborted. And a caller who left while
+the recorder wrote is answered `Canceled`, or `DeadlineExceeded` for a deadline
+that passed, where it was `Internal`; a context's error from a recorder on a
+call still live stays `Internal`.
+
+Nothing on the wire moves otherwise: the code is `Internal` and the words are
+*record the write by <the RPC>: <the recorder's error>*, byte for byte as
+before.
+
 ## A server's `Close` closes its `Watch`
 
 **It applies to you** if your server's `Close` does not close its `Watch`. The
