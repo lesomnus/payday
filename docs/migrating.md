@@ -12,6 +12,27 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A server's `Close` closes its `Watch`
+
+**It applies to you** if your server's `Close` does not close its `Watch`. The
+scaffold's has since the NATS broker (payday#279, `a2d0d83`):
+
+```go
+func (s *Server) Close() error { return errors.Join(s.Watch.Close(), s.Db.Close()) }
+```
+
+An app scaffolded before that, or one that wrote its own `Close`, does not --
+two apps are in that state as this is written. Add `s.Watch.Close()`, before
+the database pool is closed.
+
+`(*watch.Watch).Close` closes the broker it was built on, and the `postgres`
+broker can now be closed: it ends its listener and its publisher and closes
+their connections. Without that, on `watch.broker: postgres`, every server
+built kept two connections and two goroutines until the process exited --
+nothing grows in a deployment that builds one server, and a test suite that
+builds one a test ran out of PostgreSQL's connections about thirty tests in.
+The `memory` broker closes too, and ends the subscriptions it handed out.
+
 ## A caller who left is answered `Canceled`, by `auth` too
 
 **It applies to you** if the app has an `auth.TokenStore` of its own (or an

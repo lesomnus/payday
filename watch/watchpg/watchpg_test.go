@@ -43,6 +43,10 @@ func brokers(t *testing.T, n int) []watch.Broker {
 		b, err := watchpg.New(ctx, v)
 		require.NoError(t, err)
 		vs = append(vs, b)
+
+		// As an app's server does, through its Watch: two connections a broker
+		// otherwise, for as long as the test binary runs.
+		t.Cleanup(func() { _ = watch.New(b).Close() })
 	}
 
 	// Listening is a round trip, and `New` answers before the `LISTEN` has
