@@ -12,6 +12,17 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A caller who left is answered `Canceled`, by `auth` too
+
+**It applies to you** if the app has an `auth.TokenStore` of its own (or an
+`auth.Resolver` that reads a store) and it returns `auth.ErrUnavailable` for a
+read its caller cancelled, so that the caller is not told `Unauthenticated`.
+It need not any more, though it may: with the call's context ended, whatever
+the store returns ends the call `Canceled` or `DeadlineExceeded`, and returning
+the context's error is enough. Nothing breaks if it is left as it is. A
+cancelled call writes no record of the server's own; a passed deadline writes
+the one it wrote before, which names the store that was slow.
+
 ## A service overlay no longer says a generated field again
 
 **It applies to you** if a `proto/ext/<pkg>/*_svc.ext.proto` declares a

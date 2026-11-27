@@ -847,6 +847,7 @@ text reaches the caller:
 
 | the error | the caller is told |
 | --- | --- |
+| anything at all, where the call's context has ended: its caller hung up, or the deadline the caller set passed | `Canceled` or `DeadlineExceeded`, in the context's words; `Canceled` writes no record of the server's own, and a passed deadline writes the one below |
 | the store, or anything else the server leans on, not reached or not taking more: a connection refused, reset or lost, a name not resolved, PostgreSQL's connection errors (SQLSTATE class `08`), too many clients or no room (class `53`), a server shutting down or starting (`57P01`–`57P03`) | `Unavailable`: *the server could not reach what it stores in; try again* |
 | a context's own, `context.Canceled` or `context.DeadlineExceeded` | `Canceled` or `DeadlineExceeded`, in the context's words |
 | anything else | `Internal`: *the server failed to answer this; it is on its log* |
@@ -855,11 +856,28 @@ Without it gRPC answers such an error `Unknown`, in the error's words, and a
 store's words name its database, its user and its address. Over HTTP the codes
 are the statuses every code is: 503, 499 or 504, and 500.
 
-The error itself is logged once, at `ERROR`, as `answered an error that
-carries no status`, with `grpc.method`, the code it was answered with
-(`rpc.grpc.status_code`, `rpc.grpc.status`), the peer and the error under
-`err`, beside the service and method the logger of the call carries. The
-record of the call that follows it (`gRPC out`) says what the caller was told.
+Of `Unavailable`, `Internal` and a passed deadline, the error itself is logged
+once, at `ERROR`, as `answered an error that carries no status`, with
+`grpc.method`, the code it was answered with (`rpc.grpc.status_code`, `rpc.grpc.status`), the peer and the
+error under `err`, beside the service and method the logger of the call
+carries. The record of the call that follows it (`gRPC out`) says what the
+caller was told. So a call that failed is two lines on purpose: one says why,
+in words kept from the caller, and one says the call.
+
+A cancelled call is the caller's, and is answered `Canceled` whatever the
+database said of the read it interrupted: PostgreSQL's driver wraps the
+context's error, and SQLite's says `interrupted`, and which it was is asked of
+the context and never of the error. Nothing failed, so nothing is logged of it
+but the record of the call, at `WARN`: one line. `interrupted` from a call
+whose caller is still there is a store that failed, and is `Internal`. A
+deadline that passed is answered `DeadlineExceeded` the same way, and keeps
+its record: a read that did not come back in time is a slow store, that line
+is the one that names it, and the record of the call says only the call. The
+same holds before a handler is reached: a call whose context ended while
+`auth` asked its token store or its resolver is answered as the context's, not
+`Unauthenticated` or `Unavailable`, and on a public method is not served as
+nobody; a resolver's failure keeps its record for a deadline and has none for
+a caller who hung up.
 
 ### The access record
 

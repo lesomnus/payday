@@ -71,13 +71,18 @@ func answerStream() grpc.StreamServerInterceptor {
 //
 //   - A status passes as it is, wrapped or not, as gRPC reads it: it is what a
 //     handler meant to say, and nothing here rewrites that.
-//   - A context's own error is its code, `Canceled` or `DeadlineExceeded`, in
-//     the context's words, as gRPC says them of a call it ended itself.
+//   - A call whose context has ended -- its caller hung up, or the deadline
+//     the caller set passed -- is the context's: `Canceled` or
+//     `DeadlineExceeded`, in the context's words, whatever the error says.
+//     `Canceled` is logged by nothing here; `DeadlineExceeded` is, as below.
+//   - A context's own error is its code, in the same words, as gRPC says them
+//     of a call it ended itself.
 //   - What the server leans on not being reachable, or not taking more, is
 //     `Unavailable` ([unreachable]): asked again, it may answer.
 //   - Anything else is `Internal`.
 //
-// The last two say nothing of the error, and the error is logged once, at
+// The last two say nothing of the error, and the error of those and of a
+// deadline that passed is logged once, at
 // ERROR, with the method, the code it was answered with and the peer, beside
 // what the logger the call is served with already carries. The record of the
 // call that follows says the code and the sentence the caller was told, so
@@ -85,6 +90,34 @@ func answerStream() grpc.StreamServerInterceptor {
 func answered(ctx context.Context, method string, err error) error {
 	if _, ok := status.FromError(err); ok {
 		return err
+	}
+
+	// A call whose context has ended is the context's: `Canceled` for a
+	// caller who hung up, `DeadlineExceeded` for a deadline that passed.
+	//
+	// Asked of the context and never of the error, because what a store says
+	// of a read the context interrupted is the driver's: PostgreSQL's wraps
+	// the context's error, and SQLite's says `interrupted`, which is nothing
+	// of the context's. Read from the error, one call would be `Canceled` on
+	// one database and `Internal` at ERROR on the other, beside a record of a
+	// store that failed, from a store that was fine. And not by matching
+	// `interrupted` either: a live call that SQLite says it of is a store
+	// that failed, as it always was, and the context is what tells the two
+	// apart.
+	//
+	// The two are told apart for the record and not for the answer. A caller
+	// who hung up is no fault of the server's, so nothing is written here and
+	// the call log's record says the call and its code: one line. A deadline
+	// that passed keeps the record that says why, because a read that did
+	// not come back in time is a slow store, this line is the one that names
+	// it, and the call log's says only the call.
+	if ended := ctx.Err(); ended != nil {
+		answer := status.FromContextError(ended).Err()
+		if errors.Is(ended, context.DeadlineExceeded) {
+			recordAnswered(ctx, method, answer, err)
+		}
+
+		return answer
 	}
 
 	switch {
@@ -98,7 +131,14 @@ func answered(ctx context.Context, method string, err error) error {
 	if unreachable(err) {
 		answer = errUnreachable
 	}
+	recordAnswered(ctx, method, answer, err)
 
+	return answer
+}
+
+// recordAnswered is [answered]'s record of `err`, answered with `answer`, at
+// ERROR.
+func recordAnswered(ctx context.Context, method string, answer, err error) {
 	// The method as [recovered] says it, beside what the logger the call is
 	// served with carries already, and the rest under the names the record
 	// of the call ([Log]) gives them, so that the two lines are read alike.
@@ -112,8 +152,6 @@ func answered(ctx context.Context, method string, err error) error {
 		attrs = append(attrs, slog.String("network.peer.address", p.Addr.String()))
 	}
 	log.From(ctx).ErrorContext(ctx, "answered an error that carries no status", attrs...)
-
-	return answer
 }
 
 // unreachable is whether `err` is that something the server leans on could

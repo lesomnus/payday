@@ -13,8 +13,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/lesomnus/otx/log"
+	"github.com/ncruces/go-sqlite3"
+	"github.com/ncruces/go-sqlite3/driver"
+	"github.com/ncruces/go-sqlite3/vfs/memdb"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -166,6 +170,77 @@ func TestAContextsOwnErrorIsItsCode(t *testing.T) {
 			x.Equal(v.err.Error(), status.Convert(err).Message(), "in the context's words, not the wrapper's")
 		})
 	}
+}
+
+// TestACallerWhoLeftMidReadIsCanceled is a caller hanging up while the server
+// reads SQLite, which says `interrupted` of it and not the context's error, as
+// PostgreSQL's driver does. The call is answered `Canceled` all the same, and
+// the call log's record of it is the one line it leaves: nothing failed.
+//
+// Mid-read for certain: the read calls a function that says it has begun and
+// returns only once the call's context has ended, so the caller hangs up while
+// SQLite is inside the statement and SQLite finds the interruption on its next
+// step.
+func TestACallerWhoLeftMidReadIsCanceled(t *testing.T) {
+	x := require.New(t)
+
+	reading := make(chan struct{})
+	read := make(chan error, 1)
+	c, w, ctx := serveFailing(t, func(ctx context.Context) error {
+		db, err := driver.Open(memdb.TestDB(t), func(c *sqlite3.Conn) error {
+			return c.CreateFunction("hold", 0, 0, func(sctx sqlite3.Context, _ ...sqlite3.Value) {
+				close(reading)
+				<-ctx.Done()
+				sctx.ResultInt(1)
+			})
+		})
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+
+		var n int
+		err = db.QueryRowContext(ctx, `
+			WITH RECURSIVE c(n) AS (SELECT hold() UNION ALL SELECT n + 1 FROM c WHERE n < 100000000)
+			SELECT count(*) FROM c`).Scan(&n)
+		read <- err
+		return err
+	})
+
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-reading
+		cancel()
+	}()
+
+	err := getRobot(ctx, c)
+	x.Equal(codes.Canceled, status.Code(err), err)
+
+	// What the store said is SQLite's, and not the context's error: this is
+	// the case a test of the context's own error does not reach.
+	err = <-read
+	x.Error(err)
+	x.NotErrorIs(err, context.Canceled)
+	x.Contains(err.Error(), "interrupted")
+
+	// The server's answer is on its log, after the caller has gone.
+	out := func() []string {
+		vs := []string{}
+		for _, l := range strings.Split(w.String(), "\n") {
+			if strings.Contains(l, `msg="gRPC out"`) {
+				vs = append(vs, l)
+			}
+		}
+		return vs
+	}
+	x.Eventually(func() bool { return len(out()) > 0 }, 10*time.Second, 10*time.Millisecond)
+
+	lines := out()
+	x.Len(lines, 1)
+	x.Contains(lines[0], "rpc.grpc.status=Canceled")
+	x.Contains(lines[0], "level=WARN")
+	x.Empty(logged(w), "a caller who left is no fault of the server's")
+	x.NotContains(w.String(), "level=ERROR")
 }
 
 func TestAStreamThatFailsAfterItsFirstMessage(t *testing.T) {

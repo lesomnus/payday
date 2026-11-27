@@ -242,6 +242,20 @@ than refused. The last is what lets a browser whose session idled out ask how to
 sign in again, with the dead cookie still in it. Only "cannot tell" is an answer
 there: a store that is down is `Unavailable` wherever the call was going.
 
+A `TokenStore` your app writes answers `Lookup` in three ways. A token that is
+no good -- unknown, expired, revoked -- is an error that wraps neither
+`auth.ErrNoCredential` nor `auth.ErrUnavailable`, and the caller is
+`Unauthenticated`. A store that could not answer -- unreachable, timed out --
+wraps `auth.ErrUnavailable`, and the caller is told to come back. A caller who
+went away while the store was asked needs nothing of the store: with the call's
+context ended, whatever `Lookup` returns -- the context's error, which is what a
+read it interrupted returns on PostgreSQL, the `interrupted` SQLite says, or
+`auth.ErrUnavailable` -- the call ends `Canceled` or `DeadlineExceeded`. The
+context decides it, so a store need not tell an interrupted read from a failed
+one. A resolver's error is the same: with the context ended it is the
+context's, logged as a resolver's failure is when a deadline passed, and not at
+all when the caller hung up.
+
 ---
 
 ## 5. What a caller may see
