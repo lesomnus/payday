@@ -111,3 +111,73 @@ func TestAnRpcCalledWhatATypeAroundItsServiceHoldsIsRefused(t *testing.T) {
 		require.NoError(t, refused(t, "Audit"))
 	})
 }
+
+// foreign is a service whose RPCs take and answer messages of another
+// package, one of each shape a method has, under the names of entities so
+// that what forwards a namesake writes them too.
+const foreign = `
+service PatcherService {
+  rpc Stamp(google.protobuf.Empty) returns (google.protobuf.Timestamp);
+  rpc Robot(google.protobuf.Empty) returns (google.protobuf.Timestamp);
+  rpc Holder(google.protobuf.Empty) returns (stream google.protobuf.Timestamp);
+  rpc Tenant(stream google.protobuf.Empty) returns (google.protobuf.Timestamp);
+  rpc Audit(stream google.protobuf.Empty) returns (stream google.protobuf.Timestamp);
+}
+`
+
+// TestAnRpcOfAnotherPackagesMessagesIsNamedByTheirs: an RPC of an entity's
+// service may take or answer a message of another package -- an Empty, a
+// Timestamp -- and every emitter that writes its signature names the message
+// by its own package, as protoc-gen-go has it. The gate, the intercept and
+// what forwards a namesake named it by its bare name under the app's package,
+// `app.Timestamp`, and the server did not compile (payday#312).
+func TestAnRpcOfAnotherPackagesMessagesIsNamedByTheirs(t *testing.T) {
+	x := require.New(t)
+
+	src := strings.Replace(inPkg("fleet", ownAll(t)+tenantedRobot+patcher+foreign),
+		`import "orm.proto";`, "import \"orm.proto\";\nimport \"google/protobuf/empty.proto\";", 1)
+	s, p, err := readPlugin(t, map[string]string{"test/schema.proto": src})
+	x.NoError(err)
+
+	g := p.NewGeneratedFile("pd.go", "example.com/app/server/pd")
+	g.P("package pd")
+	paths := pdgen.Paths{Ent: "example.com/app/internal/ent", Bare: "example.com/app/server/bare"}
+	root := protogen.GoImportPath("example.com/app")
+	pdgen.EmitGate(g, s, paths, root)
+	pdgen.EmitAudit(g, s, paths, root)
+	pdgen.EmitSecret(g, s, paths, root)
+	pdgen.EmitIntercept(g, s, paths, root, p.Files)
+	b, err := g.Content()
+	x.NoError(err)
+	out := string(b)
+
+	// Every line that names them under the app's package, rather than the
+	// whole file: that is what a reader of a failure wants to see.
+	var wrong []string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.Contains(l, "app.Empty") || strings.Contains(l, "app.Timestamp") {
+			wrong = append(wrong, strings.TrimSpace(l))
+		}
+	}
+	x.Empty(wrong)
+
+	// The gate's guard, in each shape.
+	x.Contains(out, "func (s guardedPatcher) Stamp(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {")
+	x.Contains(out, "func (s guardedPatcher) Holder(req *emptypb.Empty, out grpc.ServerStreamingServer[timestamppb.Timestamp]) error {")
+	x.Contains(out, "func (s guardedPatcher) Tenant(out grpc.ClientStreamingServer[emptypb.Empty, timestamppb.Timestamp]) error {")
+	x.Contains(out, "func (s guardedPatcher) Audit(out grpc.BidiStreamingServer[emptypb.Empty, timestamppb.Timestamp]) error {")
+
+	// The intercept, of the two it wraps.
+	x.Contains(out, "func (s interceptPatcher) Stamp(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {")
+	x.Contains(out, "func (s interceptPatcher) Holder(req *emptypb.Empty, out grpc.ServerStreamingServer[timestamppb.Timestamp]) error {")
+
+	// And what forwards a namesake, in each shape.
+	for _, recv := range []string{"gatePatcher", "secretPatcher", "interceptPatcher"} {
+		x.Contains(out, "func (s "+recv+") Tenant(out grpc.ClientStreamingServer[emptypb.Empty, timestamppb.Timestamp]) error {")
+		x.Contains(out, "func (s "+recv+") Audit(out grpc.BidiStreamingServer[emptypb.Empty, timestamppb.Timestamp]) error {")
+	}
+	for _, recv := range []string{"gatePatcher", "secretPatcher"} {
+		x.Contains(out, "func (s "+recv+") Robot(ctx context.Context, req *emptypb.Empty) (*timestamppb.Timestamp, error) {")
+		x.Contains(out, "func (s "+recv+") Holder(req *emptypb.Empty, out grpc.ServerStreamingServer[timestamppb.Timestamp]) error {")
+	}
+}

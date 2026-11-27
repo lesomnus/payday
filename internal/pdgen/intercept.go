@@ -13,17 +13,24 @@ type interceptRpc struct {
 	// Const is the generated full-method constant, e.g.
 	// "RobotService_Add_FullMethodName".
 	Const string
-	// In and Out are the request and answer messages' Go names. For a stream,
-	// Out is what the stream sends.
-	In, Out string
+	// In and Out are the request and answer messages' Go identifiers, each
+	// in its own package as protoc-gen-go has it. For a stream, Out is what
+	// the stream sends.
+	//
+	// Not a bare name under the app's package: an RPC of an entity's service
+	// may take or answer another package's message -- `google.protobuf.Empty`,
+	// a `Timestamp` -- and every emitter that spelled a name with
+	// `root.Ident` wrote `app.Timestamp`, a server that did not compile
+	// (payday#312). A refusal would have been the other way out, and nothing
+	// about such an RPC is wrong.
+	In, Out protogen.GoIdent
 	// Stream says the server sends a stream; Client says the client does.
 	Stream bool
 	Client bool
 
-	// in and out are the two messages themselves: the Secret layer looks
-	// into the answer for what it can hold, and names both by their own
-	// package.
-	in, out *protogen.Message
+	// out is the answer itself: the Secret layer looks into it for what it
+	// can hold.
+	out *protogen.Message
 }
 
 // interceptRpcs is every Rpc of every entity service, taken from the contracts
@@ -60,11 +67,10 @@ func interceptRpcs(s *Schema, files []*protogen.File, clients bool) []interceptR
 					Entity: e.GoName(),
 					Rpc:    m.GoName,
 					Const:  svc.GoName + "_" + m.GoName + "_FullMethodName",
-					In:     m.Input.GoIdent.GoName,
-					Out:    m.Output.GoIdent.GoName,
+					In:     m.Input.GoIdent,
+					Out:    m.Output.GoIdent,
 					Stream: m.Desc.IsStreamingServer(),
 					Client: m.Desc.IsStreamingClient(),
-					in:     m.Input,
 					out:    m.Output,
 				})
 			}
@@ -231,7 +237,7 @@ func emitInterceptOf(g *protogen.GeneratedFile, s *Schema, name string, vs []int
 	for _, v := range vs {
 		wrapped = append(wrapped, v.Rpc)
 	}
-	shadowed(g, s, root, "Intercept", lower, name, wrapped...)
+	shadowed(g, s, "Intercept", lower, name, wrapped...)
 
 	for _, v := range vs {
 		if v.Stream {
@@ -246,7 +252,7 @@ func emitInterceptOf(g *protogen.GeneratedFile, s *Schema, name string, vs []int
 // emitInterceptUnary writes one call that goes through the unary interceptor.
 func emitInterceptUnary(g *protogen.GeneratedFile, lower, name string, v interceptRpc, root protogen.GoImportPath) {
 	g.P("func (s ", lower, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"),
-		", req *", root.Ident(v.In), ") (*", root.Ident(v.Out), ", error) {")
+		", req *", v.In, ") (*", v.Out, ", error) {")
 	g.P("	return ", pkgGrpcx.Ident("RunUnary"), "(ctx, s.unary, s.", name, "ServiceServer,")
 	g.P("		", root.Ident(v.Const), ", req, s.", name, "ServiceServer.", v.Rpc, ")")
 	g.P("}")
@@ -263,8 +269,8 @@ func emitInterceptUnary(g *protogen.GeneratedFile, lower, name string, v interce
 // generated code adapts it rather than asserted back to the typed stream it
 // no longer is.
 func emitInterceptStream(g *protogen.GeneratedFile, lower, name string, v interceptRpc, root protogen.GoImportPath) {
-	g.P("func (s ", lower, ") ", v.Rpc, "(req *", root.Ident(v.In),
-		", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(v.Out), "]) error {")
+	g.P("func (s ", lower, ") ", v.Rpc, "(req *", v.In,
+		", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.Out, "]) error {")
 	g.P("	return ", pkgGrpcx.Ident("RunStream"), "(s.stream, s.", name, "ServiceServer,")
 	g.P("		", root.Ident(v.Const), ", req, out, s.", name, "ServiceServer.", v.Rpc, ")")
 	g.P("}")

@@ -54,7 +54,7 @@ func (s *Schema) layerNames(layer string) map[string]bool {
 //
 // `declared` is what the type already writes itself, which is the layer saying
 // something of that RPC and not a collision.
-func shadowed(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath, layer, recv, name string, declared ...string) {
+func shadowed(g *protogen.GeneratedFile, s *Schema, layer, recv, name string, declared ...string) {
 	names := s.layerNames(layer)
 	svc := name + "ServiceServer"
 	for _, v := range s.rpcs {
@@ -71,13 +71,13 @@ func shadowed(g *protogen.GeneratedFile, s *Schema, root protogen.GoImportPath, 
 			if v.Stream {
 				kind = "BidiStreamingServer"
 			}
-			g.P("func (s ", recv, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", root.Ident(v.In), ", ", root.Ident(v.Out), "]) error {")
+			g.P("func (s ", recv, ") ", v.Rpc, "(out ", pkgGrpc.Ident(kind), "[", v.In, ", ", v.Out, "]) error {")
 			g.P("	return s.", svc, ".", v.Rpc, "(out)")
 		case v.Stream:
-			g.P("func (s ", recv, ") ", v.Rpc, "(req *", root.Ident(v.In), ", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", root.Ident(v.Out), "]) error {")
+			g.P("func (s ", recv, ") ", v.Rpc, "(req *", v.In, ", out ", pkgGrpc.Ident("ServerStreamingServer"), "[", v.Out, "]) error {")
 			g.P("	return s.", svc, ".", v.Rpc, "(req, out)")
 		default:
-			g.P("func (s ", recv, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", root.Ident(v.In), ") (*", root.Ident(v.Out), ", error) {")
+			g.P("func (s ", recv, ") ", v.Rpc, "(ctx ", pkgCtx.Ident("Context"), ", req *", v.In, ") (*", v.Out, ", error) {")
 			g.P("	return s.", svc, ".", v.Rpc, "(ctx, req)")
 		}
 		g.P("}")
