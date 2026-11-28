@@ -123,3 +123,82 @@ func TestMintFillsTheClocksItWasNotGiven(t *testing.T) {
 	x.True(at.Equal(w.Expires))
 	x.False(w.Idle.After(at), "the idle clock outran the absolute one")
 }
+
+// tableStore keeps a session's times as a table of PostgreSQL's does: to the
+// microsecond, dropping what is below it.
+type tableStore struct{ authsession.Store }
+
+func (s tableStore) Put(ctx context.Context, v authsession.Session) error {
+	v.Expires = v.Expires.Truncate(time.Microsecond)
+	v.Idle = v.Idle.Truncate(time.Microsecond)
+	v.DateAuthenticated = v.DateAuthenticated.Truncate(time.Microsecond)
+
+	return s.Store.Put(ctx, v)
+}
+
+// TestMintAnswersWhatAStoreKeeps: a store is a table as often as it is a map,
+// and PostgreSQL's keeps microseconds where the clock gives nanoseconds. The
+// deadlines Mint computed had the clock's digits, and what Read then gave did
+// not, so the session a caller held was not the session the store held. A
+// deadline this package computes is cut before it is stored -- the two Mint
+// fills, and the idle one when a Read moves it -- so the two are one value
+// whatever the store.
+//
+// What a caller hands in is left exactly as it is, which
+// TestMintFillsTheClocksItWasNotGiven and
+// TestSessionUseNeverRefreshesAuthentication hold: a caller whose store is a
+// table hands in what a table keeps.
+func TestMintAnswersWhatAStoreKeeps(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	whole := func(name string, v time.Time) {
+		x.False(v.IsZero(), name)
+		x.Zero(v.Nanosecond()%1000, "%s has digits below the microsecond: %s", name, v.Format(time.RFC3339Nano))
+	}
+
+	for name, store := range map[string]authsession.Store{
+		"a map":   authsession.NewMemStore(),
+		"a table": tableStore{authsession.NewMemStore()},
+	} {
+		s := authsession.New(store,
+			authsession.Insecure(),
+			authsession.WithIdle(10*time.Minute),
+			authsession.WithLifetime(time.Hour))
+
+		v, _, err := s.Mint(ctx, authsession.Session{Id: actor})
+		x.NoError(err, name)
+		whole(name+": expires", v.Expires)
+		whole(name+": idle", v.Idle)
+
+		got, err := s.Read(ctx, v.Key)
+		x.NoError(err, name)
+		x.True(v.Expires.Equal(got.Expires), "%s: Mint answered %s and Read gave %s",
+			name, v.Expires.Format(time.RFC3339Nano), got.Expires.Format(time.RFC3339Nano))
+		x.True(v.Idle.Equal(got.Idle), "%s: the idle clock", name)
+	}
+}
+
+// TestTheIdleClockAReadMovesIsWhatAStoreKeeps: the idle deadline moves when a
+// session more than halfway to going stale is used, and what it moves to is
+// computed from the clock too.
+func TestTheIdleClockAReadMovesIsWhatAStoreKeeps(t *testing.T) {
+	x := require.New(t)
+	ctx := t.Context()
+
+	store := tableStore{authsession.NewMemStore()}
+	s := authsession.New(store, authsession.Insecure(), authsession.WithIdle(time.Hour), authsession.WithLifetime(24*time.Hour))
+
+	// Almost stale, so the next use moves the deadline.
+	v, _, err := s.Mint(ctx, authsession.Session{Id: actor, Idle: time.Now().Add(time.Minute).Truncate(time.Microsecond)})
+	x.NoError(err)
+
+	used, err := s.Read(ctx, v.Key)
+	x.NoError(err)
+	x.True(used.Idle.After(v.Idle), "the use did not move the idle clock, so this proves nothing")
+	x.Zero(used.Idle.Nanosecond()%1000, "the idle clock has digits below the microsecond: %s", used.Idle.Format(time.RFC3339Nano))
+
+	got, err := s.Inspect(ctx, v.Key)
+	x.NoError(err)
+	x.True(used.Idle.Equal(got.Idle), "a use answered %s and the store holds %s", used.Idle.Format(time.RFC3339Nano), got.Idle.Format(time.RFC3339Nano))
+}

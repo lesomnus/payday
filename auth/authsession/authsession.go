@@ -635,6 +635,22 @@ func (s *Sessions) Take(ctx context.Context, key string) (Session, error) {
 	return v, nil
 }
 
+// moment is a time this package made up, as a store keeps it: cut to the
+// microsecond.
+//
+// A [Store] is a table as often as it is a map, and a table of PostgreSQL's
+// keeps microseconds where the clock gives nanoseconds. A deadline computed
+// from the clock and handed to such a store came back from it without the
+// clock's last digits, so what [Sessions.Mint] answered was not what the next
+// [Sessions.Read] gave. Cut before it is stored, the two are one value on
+// every store.
+//
+// Only the deadlines this package computes go through it. A time a caller
+// handed in is the caller's -- [Session.DateAuthenticated] is when somebody
+// proved who they are, and is never touched -- and a caller whose store is a
+// table hands in what a table keeps.
+func moment(t time.Time) time.Time { return t.Truncate(time.Microsecond) }
+
 // used moves the idle deadline forward, rarely.
 //
 // **Not on every request.** An idle timeout written every time somebody clicks
@@ -660,7 +676,7 @@ func (s *Sessions) used(ctx context.Context, v Session, now time.Time) Session {
 	}
 
 	u := v
-	u.Idle = now.Add(s.idle)
+	u.Idle = moment(now.Add(s.idle))
 	if !u.Expires.IsZero() && u.Idle.After(u.Expires) {
 		u.Idle = u.Expires
 	}
@@ -832,12 +848,16 @@ func (s *Sessions) Mint(ctx context.Context, v Session) (Session, *http.Cookie, 
 		return Session{}, nil, ErrNobody
 	}
 
+	// The clocks this fills are cut to what a store keeps ([moment]), so the
+	// session answered is the session a later [Sessions.Read] gives. The
+	// ones it was handed are the caller's and are left exactly as they are:
+	// a proof's time above all, which nothing here may make up.
 	now := time.Now()
 	if v.Expires.IsZero() {
-		v.Expires = now.Add(s.lifetime)
+		v.Expires = moment(now.Add(s.lifetime))
 	}
 	if v.Idle.IsZero() && s.idle > 0 {
-		v.Idle = now.Add(s.idle)
+		v.Idle = moment(now.Add(s.idle))
 		if v.Idle.After(v.Expires) {
 			v.Idle = v.Expires
 		}
