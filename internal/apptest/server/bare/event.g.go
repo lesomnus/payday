@@ -146,7 +146,7 @@ func (st EventServiceServer) create(ctx context.Context, req *apptest.EventAddRe
 		}
 	}
 	if req.HasDateOccurred() {
-		q.SetDateOccurred(req.GetDateOccurred().AsTime())
+		q.SetDateOccurred(written(req.GetDateOccurred().AsTime()))
 	} else {
 		q.SetDateOccurred(st.now())
 	}
@@ -160,7 +160,7 @@ func (st EventServiceServer) create(ctx context.Context, req *apptest.EventAddRe
 	}
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}

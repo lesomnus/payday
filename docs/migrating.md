@@ -12,6 +12,43 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A time written is what the database keeps
+
+**It applies to you** if your app's tests or code compare a time an `Add`
+answered, or a time you handed to a write, with the nanosecond -- with what a
+clock said rather than with what was stored -- or keep a version taken from an
+`Add`'s answer, or look a row up by a time. Regenerate (`go tool pd gen`) with
+`protoc-gen-orm-ent` at `v0.0.0-20261128022808-7cf4f3348db4` or later
+(protobuf-orm/protoc-gen-orm-ent#28) and this payday; `go get -tool
+github.com/protobuf-orm/protoc-gen-orm-ent@main` brings the generator
+(payday#324).
+
+Every time the store writes is now cut to the microsecond, on SQLite as on
+PostgreSQL, which keeps no more: the stamps (`date_created`, the version, an
+erase's mark, whatever a `bare.WithClock` clock says), a time a caller hands to
+an `Add` or a `Patch`, and what payday writes of its own -- the trail's archive,
+what is owed an erasure, an entitlement's row and its window, the outbox and the
+event it carries, the access record. An `Add` answered the row as it built it,
+with the clock's nanoseconds, and on PostgreSQL that was a version no read gives
+again; it is now the version a read gives, everywhere, and a test on SQLite sees
+what PostgreSQL would. A read-back after an `Add` done only to have the stored
+version is no longer needed. A version moves in steps of a microsecond, and two
+writes of one row within one microsecond leave the same version.
+
+Nothing stored before changes, and nothing is migrated: what is compared -- the
+version a `Patch` tests, a filter, a cursor, a reference -- is compared as it is
+sent, so a row written earlier, which on SQLite can hold nanoseconds, is read and
+patched with the version a read gives of it, as before. The same rule means a
+reference by a time names what is stored: a lookup by a time you handed in with
+digits below the microsecond finds nothing on SQLite, and on PostgreSQL only
+where the driver cuts the parameter. Look a row up by its key or by the time the
+store answered. Two rows of a unique index over a time that are less than a
+microsecond apart now collide on every database, as they always did on
+PostgreSQL.
+
+A test that compared an answer with a clock's nanoseconds compares it with the
+time cut: `at.Truncate(time.Microsecond)`.
+
 ## A recorder's failure keeps its cause
 
 **It applies to you** if your app reads the error of a write to decide what to

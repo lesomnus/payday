@@ -115,6 +115,15 @@ const Payday = "(devel)"
 // in every app that develops against a checkout of payday.
 func Check() error { return version.Same(Payday) }
 
+// moment is `at` as a time is written to a database here: UTC, and cut
+// to the microsecond, which is what PostgreSQL keeps -- on SQLite too, so
+// that what is stored is the same on both (payday#324). Cut, not
+// rounded, as the generated store's stamps are. Only for what is written:
+// a time compared against stored ones is left as it is.
+func moment(at time.Time) time.Time {
+	return at.UTC().Truncate(time.Microsecond)
+}
+
 // The domain of each entity, as declared by `(payday.entity).domain`.
 //
 // A domain outlives the row it named: an identifier read out of an audit
@@ -8213,7 +8222,7 @@ func line(s bare.Server, action string) audit.Line {
 
 	return audit.Line{
 		Id:      pdid.New(AuditDomain),
-		Created: at.UTC().Truncate(time.Microsecond),
+		Created: moment(at),
 		Action:  action,
 	}
 }
@@ -12506,7 +12515,7 @@ func (s trailStore) Adding(ctx context.Context, ns, intent string, labels map[st
 		SetGone(0).
 		SetSignature(sig.Sig).
 		SetSignedBy(sig.Key).
-		SetDateUpdated(time.Now()).
+		SetDateUpdated(moment(time.Now())).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -12601,7 +12610,7 @@ func (s trailStore) archivedWrite(ctx context.Context, id uuid.UUID, was, is tra
 		SetState(is.State).
 		SetSignature(sig.Sig).
 		SetSignedBy(sig.Key).
-		SetDateUpdated(time.Now()).
+		SetDateUpdated(moment(time.Now())).
 		Save(ctx)
 	return err
 }
@@ -12627,7 +12636,7 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 	}
 	defer tx.Rollback()
 
-	n, err := tx.Archived.Update().Where(entArchived.IdEQ(archivedCounter)).AddSince(1).SetDateUpdated(time.Now()).Save(ctx)
+	n, err := tx.Archived.Update().Where(entArchived.IdEQ(archivedCounter)).AddSince(1).SetDateUpdated(moment(time.Now())).Save(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -12642,7 +12651,7 @@ func (s trailStore) Checkpoint(ctx context.Context, after int) (int, []trail.Arc
 			SetState("counter").
 			SetSince(1).
 			SetGone(0).
-			SetDateUpdated(time.Now()).
+			SetDateUpdated(moment(time.Now())).
 			Exec(ctx); err != nil {
 			return 0, nil, err
 		}
@@ -12799,7 +12808,7 @@ func (s trailStore) PurgeSeals(ctx context.Context, tenant pdid.Id) (int, error)
 func (s trailStore) InTx() bool { return s.db.InTx() }
 
 func (s trailStore) Owe(ctx context.Context, objects []pdid.Id) error {
-	now := time.Now()
+	now := moment(time.Now())
 	qs := make([]*ent.OwedCreate, 0, len(objects))
 	for _, v := range objects {
 		qs = append(qs, s.db.Owed.Create().
@@ -14664,7 +14673,7 @@ func (s entitlementStore) Tenant(ctx context.Context, tenant pdid.Id) (bool, err
 // the trail as `entitle.Applied`, in the same transaction.
 func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, error) {
 	value, amount := entitlementColumns(r.Value)
-	now := time.Now()
+	now := moment(time.Now())
 
 	id := r.Id
 	if id.IsZero() {
@@ -14677,11 +14686,11 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetAmount(amount).
 			SetGrantId(r.Grant).
 			SetGrantVersion(r.Version).
-			SetDateExpired(r.DateExpired).
+			SetDateExpired(moment(r.DateExpired)).
 			SetDateUpdated(now).
 			SetDateCreated(now)
 		if !r.DateEffective.IsZero() {
-			q.SetDateEffective(r.DateEffective)
+			q.SetDateEffective(moment(r.DateEffective))
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err
@@ -14691,12 +14700,12 @@ func (s entitlementStore) Put(ctx context.Context, r entitle.Row) (pdid.Id, erro
 			SetValue(int32(value)).
 			SetAmount(amount).
 			SetGrantVersion(r.Version).
-			SetDateExpired(r.DateExpired).
+			SetDateExpired(moment(r.DateExpired)).
 			SetDateUpdated(now)
 		if r.DateEffective.IsZero() {
 			q.ClearDateEffective()
 		} else {
-			q.SetDateEffective(r.DateEffective)
+			q.SetDateEffective(moment(r.DateEffective))
 		}
 		if err := q.Exec(ctx); err != nil {
 			return pdid.Nil, err
@@ -16228,7 +16237,7 @@ func (r resourceRecorder) Record(ctx context.Context, s bare.Server, c bare.Chan
 		return err
 	}
 	id := pdid.New(OutboxDomain)
-	at := time.Now().UTC()
+	at := moment(time.Now())
 	event, err := resource.Event(id[:], at, c.Method, watch.CallMethod(ctx, c.Method), kind, publicResource(previous), publicResource(c.Value))
 	if err != nil {
 		return err

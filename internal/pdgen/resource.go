@@ -158,7 +158,7 @@ func emitResourceRecorder(g *protogen.GeneratedFile, s *Schema, p Paths, root pr
 	}
 	g.P("case ", strings.Join(supported, ","), ":\ndefault:return nil\n}")
 	g.P("k,err:=", pkgPdid.Ident("From"), "(keyBytes(c.Key));if err!=nil{return err}")
-	g.P("id:=", pkgPdid.Ident("New"), "(OutboxDomain);at:=", pkgTime.Ident("Now"), "().UTC()")
+	g.P("id:=", pkgPdid.Ident("New"), "(OutboxDomain);at:=moment(", pkgTime.Ident("Now"), "())")
 	g.P("event,err:=", pkgResource.Ident("Event"), "(id[:],at,c.Method,", pkgWatch.Ident("CallMethod"), "(ctx,c.Method),kind,publicResource(previous),publicResource(c.Value));if err!=nil{return err}")
 	g.P("if r.selectEvent!=nil {ok,err:=r.selectEvent(ctx,", pkgProto.Ident("Clone"), "(event).(*", pkgPdpb.Ident("WatchEvent"), "));if err!=nil || !ok{return err}}")
 	g.P("doc:=[]byte{};if v:=hidden(k,c.Patch);v!=nil{doc,err=", pkgProto.Ident("Marshal"), "(v);if err!=nil{return err}}")

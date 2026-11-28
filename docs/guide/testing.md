@@ -227,7 +227,10 @@ func told(t *testing.T, db *ent.Client) app.Server {
 
 **`WithMinter`** decides the identifier a row gets. **`WithClock`** decides what
 a timestamp holds; `pdtest.Clock()` answers `pdtest.At` — 2001-02-03 04:05:06
-UTC — forever.
+UTC — forever. What a clock answers is stored, and answered, at the microsecond,
+as every time the store writes is on every database: a clock with nanoseconds in
+it is cut, so compare an answer with the time cut (`Truncate(time.Microsecond)`),
+not with what the clock said.
 
 A minter answers with a `uuid.UUID`, so a map of `pdid.Id` hands back `v.Uuid()`:
 an identifier that says what kind of thing it names is a distinct type, and that

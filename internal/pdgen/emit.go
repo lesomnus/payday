@@ -119,6 +119,30 @@ func EmitPayday(g *protogen.GeneratedFile, v string) {
 	g.P("")
 }
 
+// EmitMoment writes `moment`, which is what every time the generated package
+// writes to a database goes through: the trail's archive rows and its
+// counter, what is owed an erasure, an entitlement's row, the outbox's, the
+// line of the trail a write is recorded as. The generated store cuts its own
+// the same way (protoc-gen-orm-ent's `written`), and `past.moment` is the
+// model: an Add answers what a read gives, and SQLite stores what PostgreSQL
+// would (payday#324).
+//
+// Always written, so that whichever of those an app's schema asks for has it,
+// and a write added to any of them later reaches for one function rather than
+// for `.Truncate` and the hope that it was remembered. Only what is written: a
+// time compared against stored ones -- a cursor, a deadline -- is not cut.
+func EmitMoment(g *protogen.GeneratedFile) {
+	g.P("// moment is `at` as a time is written to a database here: UTC, and cut")
+	g.P("// to the microsecond, which is what PostgreSQL keeps -- on SQLite too, so")
+	g.P("// that what is stored is the same on both (payday#324). Cut, not")
+	g.P("// rounded, as the generated store's stamps are. Only for what is written:")
+	g.P("// a time compared against stored ones is left as it is.")
+	g.P("func moment(at ", pkgTime.Ident("Time"), ") ", pkgTime.Ident("Time"), " {")
+	g.P("	return at.UTC().Truncate(", pkgTime.Ident("Microsecond"), ")")
+	g.P("}")
+	g.P("")
+}
+
 // EmitDomains writes the domain of each entity, twice: as a constant for code
 // that names one, and as a registration so that `pdid` can answer what an
 // identifier holds and what a slug means.

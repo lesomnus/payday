@@ -790,7 +790,12 @@ A watch sends state, so a client replaces what it holds -- and two answers about
 ```
 
 A version field is stamped on every write and refused to a patch document. That
-is what makes it a version rather than a field somebody can set.
+is what makes it a version rather than a field somebody can set. It is stamped at
+the microsecond, as every time the store writes is, on SQLite as on PostgreSQL,
+so the version an `Add` answers is the one a read gives, and two writes of one
+row within one microsecond leave the same version. A time is compared as it is
+sent, so look a row up by its key or by the time the store answered, not by a
+time you handed in with digits below the microsecond.
 
 **A caller has to say which rows, and names them to say so.** A watch is a set
 of rows, resolved from the filters when the stream opens and compared identifier

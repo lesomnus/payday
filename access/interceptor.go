@@ -503,10 +503,14 @@ func Records(ctx context.Context, method string, kind Kind, result string, subje
 			Action:      method,
 			Kind:        kind,
 			Result:      result,
-			At:          at.UTC(),
-			Subjects:    ids[:min(len(ids), MaxSubjects)],
-			Count:       len(ids),
-			Detail:      d,
+			// At the microsecond, which is what the record's column keeps on
+			// PostgreSQL, so that a row is the same on SQLite and a Record
+			// handed to a sink is the row read back (payday#324). Cut, as
+			// every stamp payday writes is.
+			At:       at.UTC().Truncate(time.Microsecond),
+			Subjects: ids[:min(len(ids), MaxSubjects)],
+			Count:    len(ids),
+			Detail:   d,
 		})
 	}
 

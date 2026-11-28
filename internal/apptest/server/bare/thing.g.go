@@ -128,7 +128,7 @@ func (st ThingServiceServer) create(ctx context.Context, req *apptest.ThingAddRe
 		q.SetDescription("")
 	}
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}
@@ -375,6 +375,14 @@ func (s ThingServiceServer) apply(ctx context.Context, ref *apptest.ThingRef, do
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 14, 15:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, thingPatchColumns, s.Db.Dialect())
