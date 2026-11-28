@@ -12,6 +12,22 @@ that asks something of an app is entered here.
 
 What holds for every version is how a rename is carried, below.
 
+## A session's deadlines are what a store keeps
+
+**It applies to you** if your session store is a table (`authsession.Store`
+over a database) and your code or tests compare the session `Sessions.Mint` or
+`Sessions.Read` answered with the row, to the nanosecond.
+
+The deadlines `authsession` computes from the clock -- the `Expires` and `Idle`
+that `Mint` fills when it is handed none, and the `Idle` a `Read` moves -- are
+cut to the microsecond before they are stored, so what is answered is what a
+later read gives on a store that keeps microseconds, as PostgreSQL's
+`timestamptz` does. **A time you hand in is left exactly as it is**:
+`DateAuthenticated` is when somebody proved who they are and is never touched,
+and an `Expires` or `Idle` you set is yours. If your store is a table, hand in
+what a table keeps (`t.Truncate(time.Microsecond)`), or cut it where the store
+writes it. Nothing stored changes.
+
 ## A time written is what the database keeps
 
 **It applies to you** if your app's tests or code compare a time an `Add`
