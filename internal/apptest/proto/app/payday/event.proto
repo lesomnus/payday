@@ -66,7 +66,9 @@ message Event {
     type: TYPE_UUID
     nullable: true
   }];
-  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {version: {}}];
+  google.protobuf.Timestamp date_updated = 13 [(orm.field) = {
+    version: {}
+  }];
   google.protobuf.Timestamp date_created = 15 [(orm.field) = {
     immutable: true
     default: ""
@@ -106,7 +108,9 @@ message Event {
     // AddMany as well as Add: an operation over many things writes a child for
     // each thing it changed, a few hundred to a statement rather than one each.
     rpc: {
-      add: {many: {}}
+      add: {
+        many: {}
+      }
       get: {}
     }
     indexes: [
@@ -172,7 +176,9 @@ message Event {
 
     // An event is not erased one at a time, as it is not changed: its rows go
     // when they expire, or with their tenant, and either is a delete.
-    erase: {hard: {}}
+    erase: {
+      hard: {}
+    }
 
     // What happened last, first.
     list: {

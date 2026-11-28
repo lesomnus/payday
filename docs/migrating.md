@@ -178,19 +178,9 @@ it does:
 pd: @lesomnus/payday 0.1.5 -> ^0.1.6: below 0.1.6, payday's half of the page: on an older one a list opens a Watch the server refuses for every list over a tenant, an edge or a field, and reads each such list twice
 ```
 
-The payday that raised this floor also renamed a grant's end: `date_expires`
-is now `date_expired`, at the same number and of the same type. A page reads
-it as `dateExpired` where it read `dateExpires`.
-
-- **Where a page meets it:** its own generated code. `pd gen --ts` writes
-  payday's `Entitlement` entity into `ts/gen/<app>/payday/entitlement_pb.ts`.
-  The package's own copies of `EntitlementGrant` and `TokenIntrospectResponse`
-  are not among its exports.
-- **When:** the regeneration that `go tool pd upgrade --payday <commit>` runs
-  brings the rename in, and the upgrade then meets this floor in the same run.
-- **What to change:** a page that names the field changes one word.
-  `npm run check` names each place, as a property `dateExpires` that does not
-  exist on `Entitlement`.
+An app that meets this floor coming from a payday before 2026-11-23 meets the
+rename of a grant's end in the same run, in its page as in its Go:
+[`date_expires` is `date_expired`](#date_expires-is-date_expired), below.
 
 ## An RPC of your own no longer answers a secret
 
@@ -211,6 +201,212 @@ client that read it there reads an empty field.
   `secret`, so the layer leaves that one alone.
 - **A handler that cleared the field by hand** before answering may stop: the
   layer clears it on the way past.
+
+## `crud` is gone, and so is an `Apply` nothing asked for
+
+**It applies to you** if an `(orm.message)` of yours, in `proto/` or in an
+overlay under `proto/ext/`, says `crud` in its `rpc`; if anything of yours
+calls an `Apply` -- Go, a page, a test, a script; or if a layer, a policy or a
+test of yours names one. `orm` no longer has `crud`
+(protobuf-orm/protobuf-orm#4), and the generators payday builds on write each
+verb only where the entity names it (payday `809d6b8`, `38c291d`, `4d273bd`).
+
+- **Each verb is named.** `rpc: {crud: true}` was
+  `rpc: {add: {}, get: {}, patch: {}, erase: {}}`, and what a verb takes is
+  said inside it as before (`add: {many: {}}`, `erase: {hard: {}}`); a list
+  and a watch are declared where they were. `go tool pd gen` and `go tool pd
+  doctor` refuse a schema that still says `crud`, before buf runs, naming each
+  place and the line to write instead, where buf alone would say only `cannot
+  resolve message field name for orm.RpcOptions`:
+
+  ```
+  proto/app/thing.proto:12: says `crud` in an (orm.message)'s rpc
+  ```
+- **A verb not named is not served**, so a `disabled: true` that turned off one
+  of `crud`'s four goes with it: name the ones you serve and leave the line out.
+  An overlay of payday's `Holder` or `Tenant` is the one place `disabled` still
+  means something, since payday names their verbs
+  ([switching a verb](guide/schema.md#switching-a-verb-of-paydays-holder-and-tenant)).
+- **An `Apply` is there only where the entity says `apply: {}`.** It came with
+  every `Patch`; after `pd gen` an entity without the word has no
+  `<E>ApplyRequest`, no RPC, no client method and no command. Search the app's
+  code, its page and its tests for `Apply(`, `ApplyRequest` and
+  `.method.apply`, and give `apply: {}` to the entities something calls it of.
+  An `Apply` and no `Patch` is a shape of its own: `rpc: {add: {}, get: {},
+  apply: {}}`.
+- **payday's own entities serve none.** `Holder`, `Tenant` and a past's `Fact`
+  have no `Apply`; `Audit` has `Add` and `Get` and none of `Patch`, `Apply` or
+  `Erase`, which its layer refused to everybody. An overlay of `Holder` or
+  `Tenant` asks for the `Apply` it calls with `rpc: {apply: {}}`.
+- **What was written about an `Apply` nothing serves goes.** A layer's
+  override of `Apply` on an entity that has none now overrides nothing and is
+  never called, and a refusal of one -- in a layer, a policy rule naming
+  `/<pkg>.<E>Service/Apply`, a test that it is refused -- is about an RPC that
+  is not there. Delete them; a test that calls one no longer compiles.
+- **`buf.build/patch/patch` may be unused.** A contract imports
+  `patch/patch.proto` only for an `Apply`'s document, so an app none of whose
+  entities says `apply: {}` may drop it from `deps` in its `buf.yaml`.
+- **An `Erase` the database refuses** because another row still names the row
+  is `FailedPrecondition`, where it was `Unknown` in the driver's words.
+
+[Upgrading](guide/upgrading.md#8-onto-the-payday-where-each-verb-is-named) is
+the same move in the order to do it.
+
+## A `select` answers only what it names
+
+**It applies to you** if your code, your page or your tests call a `Get` with a
+`select` and read a field of the answer the select did not ask for, or send a
+`List` request with a field 6 of their own. A `Get` or `List` with no `select`
+answers every field, as before (payday `b678e55`, `4c03f01`, `6eac964`).
+
+A `Get` that selected some fields answered every other field as its zero, read
+from a row the query had not read it from: a `string` empty, a timestamp a
+message of year one (`"dateUpdated": "0001-01-01T00:00:00Z"`), and sent back as
+a `Patch`'s version it was refused. What the select did not ask for is now
+**cleared** from the answer -- through the Sink, so on every port and for every
+caller in the process: a column whose switch is off, unless `all` is on, and
+inside an edge the select fills, what that edge's own select did not name, to
+any depth. The identifier, an edge nobody selected (an identifier alone, as
+before) and a field the select has no word for are left as they were.
+
+- **A message field reads nil.** `GetDateUpdated()` is nil where it was a
+  timestamp of year one, and `GetDateUpdated().AsTime()` is 1970-01-01, the
+  zero of a nil timestamp, where it was `0001-01-01`. Over JSON the field is
+  absent. A scalar reads its zero, as it did.
+- **How to find such a read:** every `Select` your code builds -- in Go a
+  `<E>Select` handed to a `Get` or a `List`, in a page the `select` of a query
+  -- against the fields read off what it answers; and the tests that compare
+  such an answer with `time.Time{}`, `0001-01-01` or a whole message. Select
+  what is read, or `all: true`.
+- **A `List` takes a `select` too**, at field 6 of every `<E>ListRequest`, and
+  each row is what a `Get` of it with that select reads. An overlay that adds a
+  field 6 to a list request is refused by `pd gen`; move it to a number the
+  request leaves empty.
+- **A select goes eight levels deep at most**, the entity's own fields the
+  first and each edge one more; a deeper one is refused before anything is
+  read, `InvalidArgument`: *select: 9 levels deep, and a select goes 8 at
+  most*.
+
+## An error that carries no status is answered `Internal`
+
+**It applies to you** if a handler, a layer or an interceptor of yours returns
+an error that is not a gRPC status -- `errors.New`, `fmt.Errorf` without a
+status inside it, an error of a store or a library handed up as it came -- and
+somebody reads what the caller is told: a page that shows an error's message,
+a client or a test that compares the code or the words (payday `df29a8d`).
+
+gRPC answered such an error `Unknown`, in the error's own words, so a sentence
+written for the caller reached the caller -- and so did a store's, naming its
+database, user and address. The outermost step of every chain `grpcx.Serving`
+begins now answers it itself, and nothing of its words reaches the caller:
+`Unavailable`, *the server could not reach what it stores in; try again*, where
+the store or a connection was not reached; `Canceled` or `DeadlineExceeded`
+where the call's context ended; `Internal`, *the server failed to answer this;
+it is on its log*, for everything else. The error is logged once at `ERROR`
+([what a handler's error becomes](guide/server.md#what-a-handlers-error-becomes)).
+
+- **A sentence meant for the caller is a status.** Give it the code that says
+  what kind of answer it is -- `status.Error(codes.FailedPrecondition, …)`, or
+  `pderr`'s refusals, `pderr.Invalidf` for a field
+  ([refusals](guide/errors.md#1-refusing-on-the-server)). A status wrapped in
+  `fmt.Errorf("…: %w", err)` passes, in the wrapper's words.
+- **How to find them:** the `return` statements of handlers, layers and
+  interceptors whose error is `errors.New(` or `fmt.Errorf(` with no `%w` of a
+  status, or a sentinel `var Err… = errors.New(…)` that reaches a caller; and
+  the tests and page code that expect `codes.Unknown`, `Code.Unknown` or an
+  error's words.
+
+## TLS material is a value, not a file's name
+
+**It applies to you** if a configuration of yours says `server.tls` or a
+dial's `tls` (a `config.DialConfig`), or your own configuration types embed or
+build one (payday `6365b6e`).
+
+| was | is |
+| --- | --- |
+| `server.tls.cert_file`, `key_file`, `client_ca_file` | `server.tls.cert`, `key`, `client_ca` |
+| a dial's `tls.ca_file`, `cert_file`, `key_file` | `tls.ca`, `cert`, `key` |
+| `config.TlsConfig.CertFile`, `KeyFile`, `ClientCAFile` (`string`) | `Cert`, `Key`, `ClientCA` (`ref.String`) |
+| `config.DialConfig.CAFile`, `CertFile`, `KeyFile` (`string`) | `Ca`, `Cert`, `Key` (`ref.String`) |
+
+Each new key holds the PEM itself, `${file:/path}` or `${env:NAME}`, so a file
+that named a path writes `cert: ${file:/run/tls/tls.crt}`. They are read when
+the listener or the connection is built, as the files were.
+
+- **A configuration file** that still says a `_file` key is refused where it is
+  read, `nothing reads this key`, before anything is served.
+- **An environment variable** of an old name (`<APP>_SERVER_TLS_CERT_FILE`) is
+  read by nothing, which the loader reports and does not refuse: a deployment
+  that set its certificate only that way comes up without TLS. Rename it with
+  the key (`<APP>_SERVER_TLS_CERT`, holding `${file:…}` or the PEM).
+- **Your own types** that held a `config.DialConfig` or a `TlsConfig` follow
+  the fields: Go that read `CAFile` as a path reads `Ca`, and one that set a
+  path sets `Ca.SetFile(path)`.
+- **Your docs, charts and examples** that say the old keys say the new ones.
+
+## `date_expires` is `date_expired`
+
+**It applies to you** if anything of yours reads or writes the end of a grant
+or of an identity: Go, a page, a test, a script reading JSON, or a deployment
+with rows in the app's copy of payday's `Entitlement` (payday `25bdd81`).
+
+A grant's end is named for its event in the past tense, at the same number and
+of the same type, so protobuf on the wire is unchanged and every name moves:
+
+- **The messages:** `date_expired` in `EntitlementGrant`,
+  `TokenIntrospectResponse` and payday's `Entitlement` entity, so `GetDateExpired()` in Go and
+  `dateExpired` in JSON and in a page, where it was `dateExpires`. A script
+  that reads `.dateExpires` out of an answer reads nothing.
+- **payday's Go:** `auth.Identity.DateExpired`, `entitle.Row.DateExpired`,
+  and authoidc's claims of the same moment. `go build` names each place.
+- **A page:** its own generated code, `ts/gen/<app>/payday/entitlement_pb.ts`,
+  which `pd gen --ts` writes; `npm run check` names each place as a property
+  `dateExpires` that does not exist on `Entitlement`. The package's own copies
+  of `EntitlementGrant` and `TokenIntrospectResponse` are not among its
+  exports.
+- **Stored rows:** the column of the app's copy of `Entitlement` is renamed
+  and nothing is carried for it (`pd.ColumnRenames` holds none), so a
+  migration on this payday makes `date_expired` empty beside the old one. A
+  deployment with data renames it once, before it migrates:
+  `ALTER TABLE entitlement RENAME COLUMN date_expires TO date_expired;`
+
+A standard's names stay: a JWT's `exp`, `expires_in`, a cookie's `Expires`.
+
+## The HTTP listener serves `server.tls` too
+
+**It applies to you** if your app serves HTTP (`server.http`) and was made by
+`pd new` before payday `364852e`, or wrote its own `serveHttp`, and a
+deployment of it says `server.tls`. `pd gen` writes no `cmd/serve.go`, so the
+change is yours to make.
+
+The gRPC listener used `server.tls` and the HTTP one did not: with a
+certificate configured, the browser port served plaintext and asked for no
+client certificate. In `serveHttp`, resolve `c.Server.Tls.Server()` before
+`net.Listen` and return its error, set what it answers on
+`http.Server.TLSConfig`, and serve with `srv.ServeTLS(l, "", "")` when it is not
+nil and `srv.Serve(l)` when it is -- what `pd new` writes now, and [serving a
+browser](guide/server.md#9-serving-a-browser) says why. With an empty `tls`
+block both stay plaintext.
+
+## `pd upgrade` needs the page's generator first
+
+**It applies to you** if your app has a page (`ts/package.json`) and runs `go
+tool pd upgrade`, with or without `--payday`, in a checkout where `ts` has not
+been installed: a fresh clone, a CI job, a worktree.
+
+The page is generated with the rest, so `pd upgrade` asks for its generator
+(`protoc-gen-es`, in `ts/node_modules`) before anything moves, and stops at
+once without it:
+
+```
+protoc-gen-es is not installed: the page is generated with the rest, so its generator has to be installed first -- npm ci, in ts
+```
+
+Run `npm ci` in `ts` first; where `ts/package.json` does not list
+`@bufbuild/protoc-gen-es`, the line says to install it. It has been so since
+payday `a9a2ebe`, and is entered here because apps moving in November 2026
+met it all the same; see
+[upgrading payday](guide/upgrading.md#4-upgrading-payday).
 
 ## A rename is moved before the migration looks for it
 
