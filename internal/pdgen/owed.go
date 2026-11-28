@@ -48,7 +48,7 @@ func emitOwed(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	pkg := p.EntPkg(v)
 
 	g.P("func (s trailStore) Owe(ctx ", pkgCtx.Ident("Context"), ", objects []", pkgPdid.Ident("Id"), ") error {")
-	g.P("	now := ", pkgTime.Ident("Now"), "()")
+	g.P("	now := moment(", pkgTime.Ident("Now"), "())")
 	g.P("	qs := make([]*", p.Ent.Ident(e+"Create"), ", 0, len(objects))")
 	g.P("	for _, v := range objects {")
 	g.P("		qs = append(qs, s.db.", e, ".Create().")

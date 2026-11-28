@@ -20,7 +20,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.3
 	github.com/protobuf-orm/ent v0.0.0-20261024205432-0dd7dadc81bc
 	github.com/protobuf-orm/protobuf-orm v0.0.0-20261125011452-a062a5dd25fc
-	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20261127181046-80ed333182e8
+	github.com/protobuf-orm/protoc-gen-orm-ent/runtime v0.0.0-20261128022808-7cf4f3348db4
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/otel/trace v1.47.0
 	golang.org/x/sync v0.25.0

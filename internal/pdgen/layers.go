@@ -1755,7 +1755,7 @@ func emitLeft(g *protogen.GeneratedFile, s *Schema, p Paths) {
 	g.P("")
 	g.P("	return ", pkgAudit.Ident("Line"), "{")
 	g.P("		Id:      ", pkgPdid.Ident("New"), "(", a.GoName(), "Domain),")
-	g.P("		Created: at.UTC().Truncate(", pkgTime.Ident("Microsecond"), "),")
+	g.P("		Created: moment(at),")
 	g.P("		Action:  action,")
 	g.P("	}")
 	g.P("}")

@@ -422,6 +422,14 @@ func (s CellServiceServer) apply(ctx context.Context, ref *apptest.CellRef, doc 
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 14:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, cellPatchColumns, s.Db.Dialect())
@@ -818,7 +826,7 @@ func (st RobotServiceServer) create(ctx context.Context, req *apptest.RobotAddRe
 		q.SetSecret([]byte{})
 	}
 	if req.HasDateAttested() {
-		q.SetDateAttested(req.GetDateAttested().AsTime())
+		q.SetDateAttested(written(req.GetDateAttested().AsTime()))
 	}
 	q.SetKeeper(req.GetKeeper())
 	if req.HasOwnerId() {
@@ -830,7 +838,7 @@ func (st RobotServiceServer) create(ctx context.Context, req *apptest.RobotAddRe
 	}
 	q.SetDateUpdated(st.now())
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}
@@ -1278,6 +1286,14 @@ func (s RobotServiceServer) apply(ctx context.Context, ref *apptest.RobotRef, do
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 31, 13, 15, 14:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, robotPatchColumns, s.Db.Dialect())
@@ -1652,7 +1668,7 @@ func (st PairingServiceServer) create(ctx context.Context, req *apptest.PairingA
 		})
 	}
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}
@@ -1910,6 +1926,14 @@ func (s PairingServiceServer) apply(ctx context.Context, ref *apptest.PairingRef
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 15:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, pairingPatchColumns, s.Db.Dialect())
@@ -2479,6 +2503,14 @@ func (s JointServiceServer) apply(ctx context.Context, ref *apptest.JointRef, do
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 14:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, jointPatchColumns, s.Db.Dialect())
@@ -3025,6 +3057,14 @@ func (s FleetServiceServer) apply(ctx context.Context, ref *apptest.FleetRef, do
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 14:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, fleetPatchColumns, s.Db.Dialect())
@@ -3371,7 +3411,7 @@ func (st ReadingServiceServer) create(ctx context.Context, req *apptest.ReadingA
 	}
 	q.SetCelsius(req.GetCelsius())
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}
@@ -3748,6 +3788,14 @@ func (s ReadingServiceServer) apply(ctx context.Context, ref *apptest.ReadingRef
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 15:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, readingPatchColumns, s.Db.Dialect())

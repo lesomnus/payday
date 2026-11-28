@@ -147,12 +147,12 @@ func (st StintServiceServer) create(ctx context.Context, req *apptest.StintAddRe
 		q.SetRobotId(v)
 	}
 	if req.HasDateStart() {
-		q.SetDateStart(req.GetDateStart().AsTime())
+		q.SetDateStart(written(req.GetDateStart().AsTime()))
 	} else {
 		q.SetDateStart(st.now())
 	}
 	if req.HasDateEnd() {
-		q.SetDateEnd(req.GetDateEnd().AsTime())
+		q.SetDateEnd(written(req.GetDateEnd().AsTime()))
 	}
 	if v, err := entuuid.FromBytes(req.GetEventId()); err != nil {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "event_id: %s", err)
@@ -160,7 +160,7 @@ func (st StintServiceServer) create(ctx context.Context, req *apptest.StintAddRe
 		q.SetEventId(v)
 	}
 	if req.HasDateCreated() {
-		q.SetDateCreated(req.GetDateCreated().AsTime())
+		q.SetDateCreated(written(req.GetDateCreated().AsTime()))
 	} else {
 		q.SetDateCreated(st.now())
 	}
@@ -415,6 +415,14 @@ func (s StintServiceServer) apply(ctx context.Context, ref *apptest.StintRef, do
 			return nil, status.Errorf(codes.InvalidArgument, "%s", err)
 		}
 		plan = v
+		for i, u := range plan.Writes {
+			switch u.Prop.Number() {
+			case 9, 10, 15:
+				if op, ok := u.Op.(ormpatch.SetColumn); ok {
+					plan.Writes[i].Op = ormpatch.SetColumn{Value: writtenTimestamp(op.Value)}
+				}
+			}
+		}
 	}
 
 	pred, mod, err := entpatch.Build(plan, stintPatchColumns, s.Db.Dialect())
