@@ -107,6 +107,11 @@ exactly. They are two sections and one resolution.
 5. `go tool pd gen --ts` when the app has a page (`ts/package.json`), which
    writes the Go half again with the page's.
 
+What the new payday asks of the app's own code, configuration and stored
+rows -- what no step here writes -- is in [migrating](../migrating.md), newest
+first: read the entries between the payday the app is on and the one it moves
+to, each of which says how to tell whether it applies.
+
 Steps 2, 4 and 5 run the payday that step 1 fetched, not the one you started
 with. Code that payday's generator writes is the only code its runtime accepts
 (`version.Same`), and its floors are the ones the page has to meet.
@@ -139,7 +144,8 @@ What no generator writes is asked about instead:
 - **The page comes from the page.** Whether `--ts` is passed depends on whether
   the app has a page, not on whether its generator is installed. A page whose
   generator is missing is refused before step 1, with the install to run,
-  rather than left a payday behind its Go half.
+  rather than left a payday behind its Go half: `npm ci` in `ts` first
+  ([migrating](../migrating.md#pd-upgrade-needs-the-pages-generator-first)).
 
 `VERSION` is anything `go get` takes: a commit, a tag, or `latest`. It is
 `go get` without `-u`, so payday's own dependencies move to what payday
@@ -301,7 +307,9 @@ everything payday writes for a general write -- the gate, the Sink, the Secret
 layer, the trail, admission, the resource and access records -- which is
 written for the verbs the entity has and for no other.
 
-What an app does when it moves onto this payday:
+What an app does when it moves onto this payday, in the order to do it;
+[migrating](../migrating.md#crud-is-gone-and-so-is-an-apply-nothing-asked-for)
+has the same change as an entry, with how to tell whether it applies:
 
 1. **Name the verbs where it says `crud`.** `pd gen` and `pd doctor` find each
    `crud` in an `(orm.message)`'s `rpc`, in the app's own files and its
