@@ -54,7 +54,9 @@ service HolderService {
   // no tenant and the account where a holder would be, and reads what its
   // layer declares (`server/core`, `pd.AccountReads`) and nothing else.
   rpc Memberships(HolderMembershipsRequest) returns (HolderMembershipsResponse) {
-    option (payday.method) = {account: {}};
+    option (payday.method) = {
+      account: {}
+    };
   }
 }
 

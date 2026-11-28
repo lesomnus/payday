@@ -77,7 +77,9 @@ service RobotService {
   // is the whole reason it is worth being an operation somebody can point at.
   rpc Move(RobotMoveRequest) returns (Robot) {
     // Moving a robot between operating cells requires the person to call directly.
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   // Seal, Reading, Job and Joint are here for their names. Each is called what
   // another entity of this app is called, and every type a layer writes around
@@ -91,16 +93,24 @@ service RobotService {
   // claim is about what reaches them and what refuses them, not about acts.
   // Direct, like Move, so that the gate has a rule of its own for them.
   rpc Seal(RobotRef) returns (Robot) {
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   rpc Reading(RobotRef) returns (stream Robot) {
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   rpc Job(stream RobotRef) returns (RobotJobResponse) {
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   rpc Joint(stream RobotRef) returns (stream Robot) {
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   // Survey answers the robot named inside an answer of its own: two messages
   // deep, and in each way a message holds another -- a list, a map's values,
@@ -109,7 +119,9 @@ service RobotService {
   // the robot is read below the layer, secret and all, and none of the
   // copies leaves with it.
   rpc Survey(RobotRef) returns (RobotSurvey) {
-    option (payday.method) = {direct: {}};
+    option (payday.method) = {
+      direct: {}
+    };
   }
   // TokenScope reads the robot named, through the wall, and answers the scope
   // of the token the call came with, as its handler read it off the frame.

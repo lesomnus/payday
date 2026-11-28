@@ -24,7 +24,7 @@ require (
 	connectrpc.com/cors v0.1.0
 	connectrpc.com/vanguard v0.4.0
 	filippo.io/age v1.3.2
-	github.com/bufbuild/protocompile v0.14.2-0.20260605203730-cd7c3c124e10
+	github.com/bufbuild/protocompile v0.14.2-0.20260716165721-bb5762d29672
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/goccy/go-yaml v1.19.2
@@ -36,7 +36,7 @@ require (
 	github.com/lesomnus/mkot/pretty v0.0.0-20261013182918-46d8b05a79b3
 	github.com/lesomnus/otx v0.0.0-20261013182912-d2af55df512e
 	github.com/lesomnus/otx/otxgrpc v0.0.0-20261013182912-d2af55df512e
-	github.com/lesomnus/protobuf-patch v0.0.0-20260803175157-e1b7a0c2804f
+	github.com/lesomnus/protobuf-patch v0.0.0-20260907061053-07bbf2b842da
 	github.com/lesomnus/pwr/cel v0.0.0-20261015172325-de464a5ef1fa
 	github.com/lesomnus/sqlite3-wasm v0.0.0-20260726134538-bebcaebf933e
 	github.com/lesomnus/xli v0.0.0-20261009121920-4ce270c7448c
